@@ -1,0 +1,468 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A9273E912F6F2FEB0061B956 /* ClaudeCodeChatService in Frameworks */ = {isa = PBXBuildFile; productRef = F10000022F5C400000000001 /* ClaudeCodeChatService */; };
+		A9273E922F6F2FEB0061B956 /* SlashCommandSDK in Frameworks */ = {isa = PBXBuildFile; productRef = F10000042F5C400000000002 /* SlashCommandSDK */; };
+		A98A550C2F5C3B8F00D52127 /* EvalFeature in Frameworks */ = {isa = PBXBuildFile; productRef = A98A550B2F5C3B8F00D52127 /* EvalFeature */; };
+		A98A550E2F5C3B8F00D52127 /* EvalSDK in Frameworks */ = {isa = PBXBuildFile; productRef = A98A550D2F5C3B8F00D52127 /* EvalSDK */; };
+		A98A55102F5C3B8F00D52127 /* EvalService in Frameworks */ = {isa = PBXBuildFile; productRef = A98A550F2F5C3B8F00D52127 /* EvalService */; };
+		A98A55592F5C66EE00D52127 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = A98A55582F5C66EE00D52127 /* MarkdownUI */; };
+		B10000012F5C400000000001 /* SkillBrowserFeature in Frameworks */ = {isa = PBXBuildFile; productRef = B10000022F5C400000000001 /* SkillBrowserFeature */; };
+		B10000032F5C400000000002 /* SkillService in Frameworks */ = {isa = PBXBuildFile; productRef = B10000042F5C400000000002 /* SkillService */; };
+		B10000052F5C400000000003 /* SkillScannerSDK in Frameworks */ = {isa = PBXBuildFile; productRef = B10000062F5C400000000003 /* SkillScannerSDK */; };
+		B10000072F5C400000000004 /* RepositorySDK in Frameworks */ = {isa = PBXBuildFile; productRef = B10000082F5C400000000004 /* RepositorySDK */; };
+		C10000012F5C400000000001 /* PlanRunnerFeature in Frameworks */ = {isa = PBXBuildFile; productRef = C10000022F5C400000000001 /* PlanRunnerFeature */; };
+		C10000032F5C400000000002 /* PlanRunnerService in Frameworks */ = {isa = PBXBuildFile; productRef = C10000042F5C400000000002 /* PlanRunnerService */; };
+		D10000012F5C400000000001 /* LoggingSDK in Frameworks */ = {isa = PBXBuildFile; productRef = D10000022F5C400000000001 /* LoggingSDK */; };
+		E10000012F5C400000000001 /* AnthropicChatFeature in Frameworks */ = {isa = PBXBuildFile; productRef = E10000022F5C400000000001 /* AnthropicChatFeature */; };
+		E10000032F5C400000000002 /* AnthropicChatService in Frameworks */ = {isa = PBXBuildFile; productRef = E10000042F5C400000000002 /* AnthropicChatService */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A98A54F62F5C3B1A00D52127 /* AIDevTools.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIDevTools.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A98A54F82F5C3B1A00D52127 /* AIDevTools */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AIDevTools;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A98A54F32F5C3B1A00D52127 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9273E922F6F2FEB0061B956 /* SlashCommandSDK in Frameworks */,
+				A9273E912F6F2FEB0061B956 /* ClaudeCodeChatService in Frameworks */,
+				E10000012F5C400000000001 /* AnthropicChatFeature in Frameworks */,
+				E10000032F5C400000000002 /* AnthropicChatService in Frameworks */,
+				A98A550C2F5C3B8F00D52127 /* EvalFeature in Frameworks */,
+				A98A55592F5C66EE00D52127 /* MarkdownUI in Frameworks */,
+				A98A550E2F5C3B8F00D52127 /* EvalSDK in Frameworks */,
+				A98A55102F5C3B8F00D52127 /* EvalService in Frameworks */,
+				D10000012F5C400000000001 /* LoggingSDK in Frameworks */,
+				C10000012F5C400000000001 /* PlanRunnerFeature in Frameworks */,
+				C10000032F5C400000000002 /* PlanRunnerService in Frameworks */,
+				B10000012F5C400000000001 /* SkillBrowserFeature in Frameworks */,
+				B10000032F5C400000000002 /* SkillService in Frameworks */,
+				B10000072F5C400000000004 /* RepositorySDK in Frameworks */,
+				B10000052F5C400000000003 /* SkillScannerSDK in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A98A54ED2F5C3B1A00D52127 = {
+			isa = PBXGroup;
+			children = (
+				A98A54F82F5C3B1A00D52127 /* AIDevTools */,
+				A98A54F72F5C3B1A00D52127 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A98A54F72F5C3B1A00D52127 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A98A54F62F5C3B1A00D52127 /* AIDevTools.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A98A54F52F5C3B1A00D52127 /* AIDevTools */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A98A55012F5C3B1B00D52127 /* Build configuration list for PBXNativeTarget "AIDevTools" */;
+			buildPhases = (
+				A98A54F22F5C3B1A00D52127 /* Sources */,
+				A98A54F32F5C3B1A00D52127 /* Frameworks */,
+				A98A54F42F5C3B1A00D52127 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A98A54F82F5C3B1A00D52127 /* AIDevTools */,
+			);
+			name = AIDevTools;
+			packageProductDependencies = (
+				E10000022F5C400000000001 /* AnthropicChatFeature */,
+				E10000042F5C400000000002 /* AnthropicChatService */,
+				F10000022F5C400000000001 /* ClaudeCodeChatService */,
+				A98A550B2F5C3B8F00D52127 /* EvalFeature */,
+				A98A550D2F5C3B8F00D52127 /* EvalSDK */,
+				A98A550F2F5C3B8F00D52127 /* EvalService */,
+				D10000022F5C400000000001 /* LoggingSDK */,
+				A98A55582F5C66EE00D52127 /* MarkdownUI */,
+				C10000022F5C400000000001 /* PlanRunnerFeature */,
+				C10000042F5C400000000002 /* PlanRunnerService */,
+				B10000082F5C400000000004 /* RepositorySDK */,
+				B10000022F5C400000000001 /* SkillBrowserFeature */,
+				B10000062F5C400000000003 /* SkillScannerSDK */,
+				B10000042F5C400000000002 /* SkillService */,
+				F10000042F5C400000000002 /* SlashCommandSDK */,
+			);
+			productName = AIDevTools;
+			productReference = A98A54F62F5C3B1A00D52127 /* AIDevTools.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A98A54EE2F5C3B1A00D52127 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					A98A54F52F5C3B1A00D52127 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = A98A54F12F5C3B1A00D52127 /* Build configuration list for PBXProject "AIDevTools" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A98A54ED2F5C3B1A00D52127;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A98A550A2F5C3B8F00D52127 /* XCLocalSwiftPackageReference "AIDevToolsKit" */,
+				A98A55572F5C66EE00D52127 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A98A54F72F5C3B1A00D52127 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A98A54F52F5C3B1A00D52127 /* AIDevTools */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A98A54F42F5C3B1A00D52127 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A98A54F22F5C3B1A00D52127 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A98A54FF2F5C3B1B00D52127 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 84GLJ7PWT5;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A98A55002F5C3B1B00D52127 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 84GLJ7PWT5;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		A98A55022F5C3B1B00D52127 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 84GLJ7PWT5;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.gestrich.AIDevTools;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A98A55032F5C3B1B00D52127 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 84GLJ7PWT5;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.gestrich.AIDevTools;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A98A54F12F5C3B1A00D52127 /* Build configuration list for PBXProject "AIDevTools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A98A54FF2F5C3B1B00D52127 /* Debug */,
+				A98A55002F5C3B1B00D52127 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A98A55012F5C3B1B00D52127 /* Build configuration list for PBXNativeTarget "AIDevTools" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A98A55022F5C3B1B00D52127 /* Debug */,
+				A98A55032F5C3B1B00D52127 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A98A550A2F5C3B8F00D52127 /* XCLocalSwiftPackageReference "AIDevToolsKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = AIDevToolsKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A98A55572F5C66EE00D52127 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A98A550B2F5C3B8F00D52127 /* EvalFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvalFeature;
+		};
+		A98A550D2F5C3B8F00D52127 /* EvalSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvalSDK;
+		};
+		A98A550F2F5C3B8F00D52127 /* EvalService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvalService;
+		};
+		A98A55582F5C66EE00D52127 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A98A55572F5C66EE00D52127 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+		B10000022F5C400000000001 /* SkillBrowserFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SkillBrowserFeature;
+		};
+		B10000042F5C400000000002 /* SkillService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SkillService;
+		};
+		B10000062F5C400000000003 /* SkillScannerSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SkillScannerSDK;
+		};
+		B10000082F5C400000000004 /* RepositorySDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RepositorySDK;
+		};
+		C10000022F5C400000000001 /* PlanRunnerFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlanRunnerFeature;
+		};
+		C10000042F5C400000000002 /* PlanRunnerService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PlanRunnerService;
+		};
+		D10000022F5C400000000001 /* LoggingSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LoggingSDK;
+		};
+		E10000022F5C400000000001 /* AnthropicChatFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AnthropicChatFeature;
+		};
+		E10000042F5C400000000002 /* AnthropicChatService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AnthropicChatService;
+		};
+		F10000022F5C400000000001 /* ClaudeCodeChatService */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ClaudeCodeChatService;
+		};
+		F10000042F5C400000000002 /* SlashCommandSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SlashCommandSDK;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A98A54EE2F5C3B1A00D52127 /* Project object */;
+}

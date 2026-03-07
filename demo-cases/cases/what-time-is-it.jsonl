@@ -1,0 +1,1 @@
+{"id":"ask-time","task":"What time is it?","must_include":["THE TIME IS"],"deterministic":{"skillMustBeInvoked":"what-time-is-it"}}

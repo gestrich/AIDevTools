@@ -1,0 +1,63 @@
+import ArgumentParser
+import Foundation
+import PlanRunnerFeature
+import PlanRunnerService
+import RepositorySDK
+
+struct PlanRunnerPlanCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "plan",
+        abstract: "Generate an implementation plan from voice text"
+    )
+
+    @Argument(help: "Voice-transcribed text describing the task")
+    var text: String
+
+    @Flag(help: "Execute the plan immediately after generating it")
+    var execute = false
+
+    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    var dataPath: String?
+
+    func run() async throws {
+        let store = ReposCommand.makeStore(dataPath: dataPath)
+        let repos = try store.loadAll()
+        let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
+
+        let result = try await GeneratePlanUseCase().run(
+            GeneratePlanUseCase.Options(
+                voiceText: text,
+                repositories: repos,
+                resolveProposedDirectory: { repo in
+                    planSettings.resolvedProposedDirectory(forRepo: repo)
+                }
+            )
+        ) { progress in
+            Self.printProgress(progress)
+        }
+
+        if execute {
+            printColored("\nStarting execution...", color: .cyan)
+            let executeCmd = try PlanRunnerExecuteCommand.parse(["--plan", result.planURL.path])
+            try await executeCmd.run()
+        }
+    }
+
+    private static func printProgress(_ progress: GeneratePlanUseCase.Progress) {
+        switch progress {
+        case .matchingRepo:
+            printColored("Step 1/3: Matching repository...", color: .cyan)
+        case .matchedRepo(let repoId, let interpretedRequest):
+            printColored("Matched repository: \(repoId)", color: .green)
+            printColored("Interpreted request: \(interpretedRequest)", color: .green)
+        case .generatingPlan:
+            printColored("Step 2/3: Generating implementation plan...", color: .cyan)
+        case .generatedPlan(let filename):
+            printColored("Generated plan: \(filename)", color: .green)
+        case .writingPlan:
+            printColored("Step 3/3: Writing plan to disk...", color: .cyan)
+        case .completed(let planURL, _):
+            printColored("Plan written to: \(planURL.path)", color: .green)
+        }
+    }
+}

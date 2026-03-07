@@ -1,0 +1,286 @@
+import Foundation
+import ClaudeCLISDK
+import GitSDK
+import PlanRunnerService
+import RepositorySDK
+
+public struct ExecutePlanUseCase: Sendable {
+
+    public struct Options: Sendable {
+        public let planPath: URL
+        public let repoPath: URL?
+        public let maxMinutes: Int
+        public let repository: RepositoryInfo?
+        public let completedDirectory: URL?
+        public let useWorktree: Bool
+
+        public init(
+            planPath: URL,
+            repoPath: URL? = nil,
+            maxMinutes: Int = 90,
+            repository: RepositoryInfo? = nil,
+            completedDirectory: URL? = nil,
+            useWorktree: Bool = false
+        ) {
+            self.planPath = planPath
+            self.repoPath = repoPath
+            self.maxMinutes = maxMinutes
+            self.repository = repository
+            self.completedDirectory = completedDirectory
+            self.useWorktree = useWorktree
+        }
+    }
+
+    public struct Result: Sendable {
+        public let phasesExecuted: Int
+        public let totalPhases: Int
+        public let allCompleted: Bool
+        public let totalSeconds: Int
+
+        public init(phasesExecuted: Int, totalPhases: Int, allCompleted: Bool, totalSeconds: Int) {
+            self.phasesExecuted = phasesExecuted
+            self.totalPhases = totalPhases
+            self.allCompleted = allCompleted
+            self.totalSeconds = totalSeconds
+        }
+    }
+
+    public enum Progress: Sendable {
+        case fetchingStatus
+        case phaseOverview(phases: [PhaseStatus])
+        case startingPhase(index: Int, total: Int, description: String)
+        case phaseOutput(text: String)
+        case phaseCompleted(index: Int, elapsedSeconds: Int, totalElapsedSeconds: Int)
+        case phaseFailed(index: Int, description: String, error: String)
+        case allCompleted(phasesExecuted: Int, totalSeconds: Int)
+        case timeLimitReached(remaining: Int, totalSeconds: Int)
+    }
+
+    public enum ExecuteError: Error, LocalizedError {
+        case phaseFailed(index: Int, description: String)
+        case planNotFound(String)
+
+        public var errorDescription: String? {
+            switch self {
+            case .phaseFailed(let index, let description):
+                return "Phase \(index + 1) failed: \(description)"
+            case .planNotFound(let path):
+                return "Planning document not found: \(path)"
+            }
+        }
+    }
+
+    private let claudeClient: ClaudeCLIClient
+    private let gitClient: GitClient
+
+    public init(
+        claudeClient: ClaudeCLIClient = ClaudeCLIClient(),
+        gitClient: GitClient = GitClient()
+    ) {
+        self.claudeClient = claudeClient
+        self.gitClient = gitClient
+    }
+
+    public func run(
+        _ options: Options,
+        onProgress: (@Sendable (Progress) -> Void)? = nil
+    ) async throws -> Result {
+        guard FileManager.default.fileExists(atPath: options.planPath.path) else {
+            throw ExecuteError.planNotFound(options.planPath.path)
+        }
+
+        let repository = options.repository
+        let completedDirectory = options.completedDirectory
+
+        let maxRuntimeSeconds = options.maxMinutes * 60
+        let scriptStart = Date()
+
+        onProgress?(.fetchingStatus)
+        var statusResponse = try await getPhaseStatus(
+            planPath: options.planPath,
+            repoPath: options.repoPath
+        )
+        var phases = statusResponse.phases
+        var nextIndex = statusResponse.nextPhaseIndex
+
+        onProgress?(.phaseOverview(phases: phases))
+
+        if nextIndex == -1 {
+            let totalSeconds = Int(Date().timeIntervalSince(scriptStart))
+            onProgress?(.allCompleted(phasesExecuted: 0, totalSeconds: totalSeconds))
+            return Result(phasesExecuted: 0, totalPhases: phases.count, allCompleted: true, totalSeconds: totalSeconds)
+        }
+
+        var phasesExecuted = 0
+
+        while nextIndex != -1 {
+            let elapsed = Date().timeIntervalSince(scriptStart)
+            if Int(elapsed) >= maxRuntimeSeconds {
+                let remaining = phases.filter { !$0.isCompleted }.count
+                let totalSeconds = Int(elapsed)
+                onProgress?(.timeLimitReached(remaining: remaining, totalSeconds: totalSeconds))
+                return Result(phasesExecuted: phasesExecuted, totalPhases: phases.count, allCompleted: false, totalSeconds: totalSeconds)
+            }
+
+            let phase = phases[nextIndex]
+            onProgress?(.startingPhase(index: nextIndex, total: phases.count, description: phase.description))
+
+            let phaseStart = Date()
+
+            let phaseResult: PhaseResult
+            do {
+                phaseResult = try await executePhase(
+                    planPath: options.planPath,
+                    phaseIndex: nextIndex,
+                    description: phase.description,
+                    repoPath: options.repoPath,
+                    repository: repository,
+                    onOutput: { text in onProgress?(.phaseOutput(text: text)) }
+                )
+            } catch {
+                let phaseElapsed = Int(Date().timeIntervalSince(phaseStart))
+                let totalElapsed = Int(Date().timeIntervalSince(scriptStart))
+                onProgress?(.phaseFailed(index: nextIndex, description: phase.description, error: error.localizedDescription))
+                onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
+                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description)
+            }
+
+            let phaseElapsed = Int(Date().timeIntervalSince(phaseStart))
+            let totalElapsed = Int(Date().timeIntervalSince(scriptStart))
+
+            if !phaseResult.success {
+                onProgress?(.phaseFailed(index: nextIndex, description: phase.description, error: "Phase reported failure"))
+                onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
+                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description)
+            }
+
+            onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
+            phasesExecuted += 1
+
+            onProgress?(.fetchingStatus)
+            statusResponse = try await getPhaseStatus(
+                planPath: options.planPath,
+                repoPath: options.repoPath
+            )
+            phases = statusResponse.phases
+            nextIndex = statusResponse.nextPhaseIndex
+
+            if nextIndex != -1 {
+                try await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+
+        let totalSeconds = Int(Date().timeIntervalSince(scriptStart))
+        let allDone = nextIndex == -1
+
+        if allDone {
+            onProgress?(.allCompleted(phasesExecuted: phasesExecuted, totalSeconds: totalSeconds))
+            moveToCompleted(planPath: options.planPath, completedDirectory: completedDirectory)
+        }
+
+        return Result(
+            phasesExecuted: phasesExecuted,
+            totalPhases: phases.count,
+            allCompleted: allDone,
+            totalSeconds: totalSeconds
+        )
+    }
+
+    // MARK: - Claude Calls
+
+    private static let statusSchema = """
+    {"type":"object","properties":{"phases":{"type":"array","items":{"type":"object","properties":{"description":{"type":"string"},"status":{"type":"string","enum":["pending","in_progress","completed"]}},"required":["description","status"]}},"nextPhaseIndex":{"type":"integer","description":"Index of the next phase to execute (0-based), or -1 if all complete"}},"required":["phases","nextPhaseIndex"]}
+    """
+
+    private static let executionSchema = """
+    {"type":"object","properties":{"success":{"type":"boolean","description":"Whether the phase was completed successfully"}},"required":["success"]}
+    """
+
+    private func getPhaseStatus(planPath: URL, repoPath: URL?) async throws -> PhaseStatusResponse {
+        let prompt = """
+        Look at \(planPath.path) and analyze the phased implementation plan.
+
+        Return a JSON with:
+        1. phases: Array of all phases with their description and current status (pending/in_progress/completed)
+        2. nextPhaseIndex: The index (0-based) of the next phase to execute, or -1 if all phases are complete
+
+        Determine status by checking if each phase has been marked as complete in the document.
+        """
+
+        var command = Claude(prompt: prompt)
+        command.printMode = true
+        command.verbose = true
+        command.dangerouslySkipPermissions = true
+        command.outputFormat = ClaudeOutputFormat.streamJSON.rawValue
+        command.jsonSchema = Self.statusSchema
+
+        let output = try await claudeClient.runStructured(
+            PhaseStatusResponse.self,
+            command: command,
+            workingDirectory: repoPath?.path
+        )
+        return output.value
+    }
+
+    private func executePhase(
+        planPath: URL,
+        phaseIndex: Int,
+        description: String,
+        repoPath: URL?,
+        repository: RepositoryInfo?,
+        onOutput: (@Sendable (String) -> Void)?
+    ) async throws -> PhaseResult {
+        var ghInstructions = "\nWhen creating pull requests, ALWAYS use `gh pr create --draft`."
+        if let githubUser = repository?.githubUser {
+            ghInstructions += "\nBefore running any `gh` commands, first run `gh auth switch -u \(githubUser)`."
+        }
+
+        let prompt = """
+        Look at \(planPath.path) for background.
+
+        You are working on Phase \(phaseIndex + 1): \(description)
+
+        Complete ONLY this phase by:
+        1. Implementing the required changes
+        2. Ensuring the build succeeds
+        3. Updating the markdown document to mark this phase as completed with any relevant technical notes
+        4. Committing your changes
+        \(ghInstructions)
+
+        Return success: true if the phase was completed successfully, false otherwise.
+        """
+
+        var command = Claude(prompt: prompt)
+        command.printMode = true
+        command.verbose = true
+        command.dangerouslySkipPermissions = true
+        command.outputFormat = ClaudeOutputFormat.streamJSON.rawValue
+        command.jsonSchema = Self.executionSchema
+
+        let output = try await claudeClient.runStructured(
+            PhaseResult.self,
+            command: command,
+            workingDirectory: repoPath?.path,
+            onFormattedOutput: onOutput
+        )
+        return output.value
+    }
+
+    // MARK: - Completion Handling
+
+    private func moveToCompleted(planPath: URL, completedDirectory: URL?) {
+        let fm = FileManager.default
+        let completedDir = completedDirectory
+            ?? planPath.deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("completed")
+
+        do {
+            if !fm.fileExists(atPath: completedDir.path) {
+                try fm.createDirectory(at: completedDir, withIntermediateDirectories: true)
+            }
+            let dest = completedDir.appendingPathComponent(planPath.lastPathComponent)
+            try fm.moveItem(at: planPath, to: dest)
+        } catch {
+            // Non-fatal: plan stays in proposed/
+        }
+    }
+}

@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "properties": {
+    "overall_pass": {
+      "type": "boolean",
+      "description": "Whether the response passes overall quality check"
+    },
+    "score": {
+      "type": "integer",
+      "description": "Quality score from 0-3"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identifier for this check"
+          },
+          "pass": {
+            "type": "boolean",
+            "description": "Whether this check passed"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Explanation of the check result"
+          }
+        },
+        "required": ["id", "pass", "notes"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["overall_pass", "score", "checks"],
+  "additionalProperties": false
+}

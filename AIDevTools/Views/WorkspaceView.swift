@@ -1,0 +1,371 @@
+import AnthropicChatFeature
+import AnthropicChatService
+import ClaudeCodeChatService
+import PlanRunnerService
+import RepositorySDK
+import SkillService
+import SwiftData
+import SwiftUI
+
+enum ChatMode: String, CaseIterable {
+    case anthropicAPI = "API"
+    case claudeCode = "CLI"
+}
+
+enum WorkspaceItem: Hashable {
+    case skill(String)
+    case plan(String)
+}
+
+struct WorkspaceView: View {
+    @Environment(WorkspaceModel.self) var model
+    @Environment(PlanRunnerModel.self) var planRunnerModel
+
+    @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
+    @AppStorage("selectedPlanName") private var storedPlanName: String?
+    @AppStorage("selectedSkillName") private var storedSkillName: String?
+    @AppStorage("anthropicAPIKey") private var apiKey = ""
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("chatPanelVisible") private var chatPanelVisible = false
+    @State private var selectedRepoID: UUID?
+    @State private var selectedItem: WorkspaceItem?
+    @State private var showGenerateSheet = false
+    @State private var chatViewModel: ChatViewModel?
+    @AppStorage("chatMode") private var chatMode: ChatMode = .claudeCode
+    @State private var claudeCodeChatManager: ClaudeCodeChatManager?
+
+    var body: some View {
+        NavigationSplitView {
+            List(model.repositories, selection: $selectedRepoID) { repo in
+                Text(repo.name)
+            }
+            .navigationTitle("Repositories")
+            .onChange(of: selectedRepoID) { _, newValue in
+                storedRepoID = newValue?.uuidString ?? ""
+                selectedItem = nil
+                if let id = newValue, let repo = model.repositories.first(where: { $0.id == id }) {
+                    model.selectRepository(repo)
+                    planRunnerModel.loadPlans(for: repo)
+                }
+                rebuildChatViewModel()
+                rebuildClaudeCodeChatManager()
+            }
+        } content: {
+            if model.selectedRepository != nil {
+                List(selection: $selectedItem) {
+                    Section("Plans") {
+                        planListContent
+                    }
+
+                    Section("Skills") {
+                        ForEach(model.skills, id: \.name) { skill in
+                            Text(skill.name)
+                                .tag(WorkspaceItem.skill(skill.name))
+                        }
+                    }
+                }
+                .navigationTitle(model.selectedRepository?.name ?? "")
+                .onAppear {
+                    if let repo = model.selectedRepository {
+                        planRunnerModel.loadPlans(for: repo)
+                    }
+                }
+                .onChange(of: model.selectedRepository?.id) {
+                    if let repo = model.selectedRepository {
+                        planRunnerModel.loadPlans(for: repo)
+                    }
+                }
+                .onChange(of: selectedItem) { _, newValue in
+                    switch newValue {
+                    case .skill(let name):
+                        storedSkillName = name
+                        storedPlanName = nil
+                    case .plan(let name):
+                        storedPlanName = name
+                        storedSkillName = nil
+                    case nil:
+                        storedSkillName = nil
+                        storedPlanName = nil
+                    }
+                }
+                .sheet(isPresented: $showGenerateSheet) {
+                    GeneratePlanSheet()
+                }
+            } else {
+                ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Choose a repository from the sidebar."))
+            }
+        } detail: {
+            VStack(spacing: 0) {
+                if chatPanelVisible {
+                    VSplitView {
+                        detailContentView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        VStack(spacing: 0) {
+                            bottomBar
+                            chatPanelView
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                        .frame(minHeight: 100, idealHeight: 300)
+                    }
+                } else {
+                    detailContentView
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    bottomBar
+                }
+            }
+        }
+        .onAppear {
+            model.load()
+            if let id = UUID(uuidString: storedRepoID),
+               let repo = model.repositories.first(where: { $0.id == id }) {
+                selectedRepoID = id
+                model.selectRepository(repo)
+                planRunnerModel.loadPlans(for: repo)
+                if let planName = storedPlanName {
+                    selectedItem = .plan(planName)
+                } else if let skillName = storedSkillName {
+                    selectedItem = .skill(skillName)
+                }
+            }
+            rebuildChatViewModel()
+            rebuildClaudeCodeChatManager()
+        }
+        .onChange(of: apiKey) { _, _ in
+            rebuildChatViewModel()
+        }
+    }
+
+    // MARK: - Chat
+
+    @ViewBuilder
+    private var detailContentView: some View {
+        switch selectedItem {
+        case .skill(let name):
+            if let skill = model.skills.first(where: { $0.name == name }),
+               let repo = model.selectedRepository {
+                SkillDetailView(
+                    skill: skill,
+                    evalConfig: model.evalConfig(for: repo)
+                )
+            }
+        case .plan(let name):
+            if let plan = planRunnerModel.plans.first(where: { $0.name == name }),
+               let repo = model.selectedRepository {
+                PlanDetailView(plan: plan, repository: repo)
+            }
+        case nil:
+            ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill or plan to view details."))
+        }
+    }
+
+    private var bottomBar: some View {
+        HStack(spacing: 8) {
+            Spacer()
+
+            if chatPanelVisible {
+                Picker("", selection: $chatMode) {
+                    ForEach(ChatMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 100)
+            }
+
+            Spacer()
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { chatPanelVisible.toggle() }
+            } label: {
+                Image(systemName: chatPanelVisible ? "terminal.fill" : "terminal")
+            }
+            .buttonStyle(.plain)
+            .help(chatPanelVisible ? "Hide chat" : "Show chat")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.bar)
+    }
+
+    @ViewBuilder
+    private var chatPanelView: some View {
+        switch chatMode {
+        case .anthropicAPI:
+            if let chatViewModel {
+                ChatView(viewModel: chatViewModel)
+            } else {
+                ContentUnavailableView("API Key Required", systemImage: "key", description: Text("Set your Anthropic API key in Settings to use API chat."))
+            }
+        case .claudeCode:
+            if let claudeCodeChatManager {
+                ClaudeCodeChatView()
+                    .environment(claudeCodeChatManager)
+            } else {
+                ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Select a repository to start Claude Code chat."))
+            }
+        }
+    }
+
+    private func rebuildChatViewModel() {
+        guard !apiKey.isEmpty, model.selectedRepository != nil else {
+            chatViewModel = nil
+            return
+        }
+        chatViewModel = ChatViewModel(
+            apiKey: apiKey,
+            modelContext: modelContext,
+            systemPrompt: buildSystemPrompt()
+        )
+    }
+
+    private func rebuildClaudeCodeChatManager() {
+        guard let repo = model.selectedRepository else {
+            claudeCodeChatManager = nil
+            return
+        }
+        claudeCodeChatManager = ClaudeCodeChatManager(
+            workingDirectory: repo.path.path()
+        )
+    }
+
+    private func buildSystemPrompt() -> String {
+        guard let repo = model.selectedRepository else {
+            return "You are a helpful AI assistant."
+        }
+        return "You are a helpful AI assistant. The user is working in the repository '\(repo.name)' located at \(repo.path.path())."
+    }
+
+    // MARK: - Plan List Content
+
+    @ViewBuilder
+    private var planListContent: some View {
+        if case .generating(let step) = planRunnerModel.state {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(step)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+
+        if case .error(let error) = planRunnerModel.state {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                    Text("Generation Failed")
+                        .font(.caption.bold())
+                        .foregroundStyle(.red)
+                    Spacer()
+                    Button("Dismiss") {
+                        planRunnerModel.reset()
+                    }
+                    .font(.caption)
+                    .buttonStyle(.borderless)
+                }
+                Text(error.localizedDescription)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+            }
+            .padding(6)
+            .background(.red.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+
+        ForEach(planRunnerModel.plans) { plan in
+            PlanListRow(plan: plan)
+                .tag(WorkspaceItem.plan(plan.name))
+                .contextMenu {
+                    Button(role: .destructive) {
+                        if case .plan(plan.name) = selectedItem {
+                            selectedItem = nil
+                        }
+                        try? planRunnerModel.deletePlan(plan)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+        }
+
+        Button {
+            showGenerateSheet = true
+        } label: {
+            Image(systemName: "plus")
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Plan List Row
+
+private struct PlanListRow: View {
+    let plan: PlanEntry
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: plan.isFullyCompleted ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(plan.isFullyCompleted ? .green : .secondary)
+                .font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(plan.name)
+                HStack(spacing: 4) {
+                    Text("\(plan.completedPhases)/\(plan.totalPhases) phases")
+                    if let date = plan.creationDate {
+                        Text("·")
+                        Text(date, style: .date)
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Generate Plan Sheet
+
+private struct GeneratePlanSheet: View {
+    @Environment(WorkspaceModel.self) var model
+    @Environment(PlanRunnerModel.self) var planRunnerModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var voiceText = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Generate Plan")
+                .font(.headline)
+
+            TextField("Describe what you want to build...", text: $voiceText, axis: .vertical)
+                .lineLimit(3...6)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Generate") {
+                    let text = voiceText
+                    let repos = model.repositories
+                    dismiss()
+                    Task {
+                        await planRunnerModel.generate(voiceText: text, repositories: repos)
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(voiceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding()
+        .frame(minWidth: 400)
+    }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "string",
+      "description": "The generated result text from the eval task"
+    }
+  },
+  "required": ["result"],
+  "additionalProperties": false
+}
