@@ -8,6 +8,12 @@ struct PlanPhase: Identifiable {
     let index: Int
     let description: String
     let isCompleted: Bool
+
+    init(index: Int, description: String, isCompleted: Bool) {
+        self.index = index
+        self.description = description
+        self.isCompleted = isCompleted
+    }
 }
 
 @MainActor @Observable

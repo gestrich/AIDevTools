@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .executable(name: "ai-dev-tools-kit", targets: ["AIDevToolsKitCLI"]),
+        .library(name: "AIDevToolsKitMac", targets: ["AIDevToolsKitMac"]),
         .library(name: "AnthropicChatFeature", targets: ["AnthropicChatFeature"]),
         .library(name: "AnthropicChatService", targets: ["AnthropicChatService"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
@@ -34,6 +35,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
         .package(url: "https://github.com/gestrich/SwiftCLI", branch: "main"),
+        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui.git", from: "2.0.0"),
         .package(url: "https://github.com/jamesrochabrun/SwiftAnthropic", from: "2.0.0"),
     ],
     targets: [
@@ -54,6 +56,28 @@ let package = Package(
                 "SkillBrowserFeature",
             ],
             path: "Sources/Apps/AIDevToolsKitCLI"
+        ),
+        .target(
+            name: "AIDevToolsKitMac",
+            dependencies: [
+                .product(name: "MarkdownUI", package: "swift-markdown-ui"),
+                "AnthropicChatFeature",
+                "AnthropicChatService",
+                "ClaudeCodeChatService",
+                "ClaudeCLISDK",
+                "EvalFeature",
+                "EvalSDK",
+                "EvalService",
+                "LoggingSDK",
+                "PlanRunnerFeature",
+                "PlanRunnerService",
+                "RepositorySDK",
+                "SkillBrowserFeature",
+                "SkillScannerSDK",
+                "SkillService",
+                "SlashCommandSDK",
+            ],
+            path: "Sources/Apps/AIDevToolsKitMac"
         ),
 
         // Features Layer
