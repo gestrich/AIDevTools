@@ -4,7 +4,7 @@ import PlanRunnerService
 import RepositorySDK
 import SwiftUI
 
-public struct PlanDetailView: View {
+struct PlanDetailView: View {
     @Environment(PlanRunnerModel.self) var planRunnerModel
     let plan: PlanEntry
     let repository: RepositoryInfo
@@ -13,7 +13,7 @@ public struct PlanDetailView: View {
     @State private var localPhases: [PlanPhase] = []
     @State private var loadError: String?
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             headerBar
 

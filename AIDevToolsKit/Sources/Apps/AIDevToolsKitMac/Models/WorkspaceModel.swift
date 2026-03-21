@@ -6,19 +6,19 @@ import SkillBrowserFeature
 import SkillService
 
 @MainActor @Observable
-public final class WorkspaceModel {
+final class WorkspaceModel {
 
-    public enum State {
+    enum State {
         case idle
         case loading
         case loaded
         case error(Error)
     }
 
-    public var repositories: [RepositoryInfo] = []
-    public var selectedRepository: RepositoryInfo?
-    public var skills: [Skill] = []
-    public var state: State = .idle
+    var repositories: [RepositoryInfo] = []
+    var selectedRepository: RepositoryInfo?
+    var skills: [Skill] = []
+    var state: State = .idle
 
     private let repoStore: RepositoryStore
     private let evalSettingsStore: EvalRepoSettingsStore
@@ -29,7 +29,7 @@ public final class WorkspaceModel {
     private let removeRepository: RemoveRepositoryUseCase
     private let updateRepository: UpdateRepositoryUseCase
 
-    public init(
+    init(
         repoStore: RepositoryStore,
         evalSettingsStore: EvalRepoSettingsStore,
         planSettingsStore: PlanRepoSettingsStore,
@@ -49,7 +49,7 @@ public final class WorkspaceModel {
         self.updateRepository = updateRepository
     }
 
-    public func evalConfig(for repo: RepositoryInfo) -> RepositoryEvalConfig? {
+    func evalConfig(for repo: RepositoryInfo) -> RepositoryEvalConfig? {
         guard let settings = try? evalSettingsStore.settings(forRepoId: repo.id) else { return nil }
         return RepositoryEvalConfig(
             casesDirectory: settings.resolvedCasesDirectory(repoPath: repo.path),
@@ -58,11 +58,11 @@ public final class WorkspaceModel {
         )
     }
 
-    public func casesDirectory(for repo: RepositoryInfo) -> String? {
+    func casesDirectory(for repo: RepositoryInfo) -> String? {
         try? evalSettingsStore.settings(forRepoId: repo.id)?.casesDirectory
     }
 
-    public func load() {
+    func load() {
         state = .loading
         do {
             repositories = try loadRepositories.run()
@@ -72,7 +72,7 @@ public final class WorkspaceModel {
         }
     }
 
-    public func selectRepository(_ repo: RepositoryInfo) {
+    func selectRepository(_ repo: RepositoryInfo) {
         selectedRepository = repo
         do {
             skills = try loadSkills.run(options: repo)
@@ -82,7 +82,7 @@ public final class WorkspaceModel {
         }
     }
 
-    public func addRepository(
+    func addRepository(
         path: URL,
         name: String? = nil,
         casesDirectory: String? = nil,
@@ -107,7 +107,7 @@ public final class WorkspaceModel {
         }
     }
 
-    public func updateRepository(_ repo: RepositoryInfo) {
+    func updateRepository(_ repo: RepositoryInfo) {
         do {
             try updateRepository.run(repo)
             if selectedRepository?.id == repo.id {
@@ -119,7 +119,7 @@ public final class WorkspaceModel {
         }
     }
 
-    public func removeRepository(id: UUID) {
+    func removeRepository(id: UUID) {
         do {
             try removeRepository.run(id: id)
             try evalSettingsStore.remove(repoId: id)
@@ -134,7 +134,7 @@ public final class WorkspaceModel {
         }
     }
 
-    public func updateCasesDirectory(for repoID: UUID, casesDirectory: String?) {
+    func updateCasesDirectory(for repoID: UUID, casesDirectory: String?) {
         do {
             if let casesDirectory {
                 try evalSettingsStore.update(repoId: repoID, casesDirectory: casesDirectory)
@@ -147,19 +147,19 @@ public final class WorkspaceModel {
         }
     }
 
-    public func planSettings(for repo: RepositoryInfo) -> PlanRepoSettings? {
+    func planSettings(for repo: RepositoryInfo) -> PlanRepoSettings? {
         try? planSettingsStore.settings(forRepoId: repo.id)
     }
 
-    public func proposedDirectory(for repo: RepositoryInfo) -> String? {
+    func proposedDirectory(for repo: RepositoryInfo) -> String? {
         try? planSettingsStore.settings(forRepoId: repo.id)?.proposedDirectory
     }
 
-    public func completedDirectory(for repo: RepositoryInfo) -> String? {
+    func completedDirectory(for repo: RepositoryInfo) -> String? {
         try? planSettingsStore.settings(forRepoId: repo.id)?.completedDirectory
     }
 
-    public func updatePlanDirectories(for repoID: UUID, proposedDirectory: String?, completedDirectory: String?) {
+    func updatePlanDirectories(for repoID: UUID, proposedDirectory: String?, completedDirectory: String?) {
         do {
             if proposedDirectory != nil || completedDirectory != nil {
                 try planSettingsStore.update(

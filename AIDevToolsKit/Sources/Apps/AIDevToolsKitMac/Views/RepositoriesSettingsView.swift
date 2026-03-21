@@ -2,7 +2,7 @@ import PlanRunnerService
 import RepositorySDK
 import SwiftUI
 
-public struct RepositoriesSettingsView: View {
+struct RepositoriesSettingsView: View {
     let workspaceModel: WorkspaceModel
     @Binding var editingConfig: RepositoryInfo?
     @Binding var isAddingNew: Bool
@@ -10,7 +10,7 @@ public struct RepositoriesSettingsView: View {
     @State private var selectedConfigId: UUID?
     @State private var configIdToDelete: UUID?
 
-    public var body: some View {
+    var body: some View {
         HSplitView {
             VStack(spacing: 0) {
                 if workspaceModel.repositories.isEmpty {
@@ -126,7 +126,7 @@ private struct ConfigurationDetailView: View {
     let proposedDirectory: String?
     let onEdit: () -> Void
 
-    public var body: some View {
+    var body: some View {
         Form {
             Section {
                 LabeledContent("Name") {

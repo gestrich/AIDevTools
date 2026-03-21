@@ -1,12 +1,12 @@
 import ClaudeCodeChatService
 import SwiftUI
 
-public struct GeneralSettingsView: View {
+struct GeneralSettingsView: View {
     @Environment(SettingsModel.self) private var settingsModel
     @AppStorage("anthropicAPIKey") private var apiKey = ""
     @State private var claudeCodeSettings = ClaudeCodeChatSettings()
 
-    public var body: some View {
+    var body: some View {
         Form {
             Section("Anthropic API") {
                 SecureField("API Key", text: $apiKey)

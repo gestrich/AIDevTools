@@ -1,7 +1,7 @@
 import SlashCommandSDK
 import SwiftUI
 
-public struct MessageInputWithAutocomplete: View {
+struct MessageInputWithAutocomplete: View {
     @Binding var messageText: String
     let workingDirectory: String
     let onSubmit: () -> Void
@@ -13,7 +13,7 @@ public struct MessageInputWithAutocomplete: View {
 
     private let commandScanner = SlashCommandScanner()
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             if showAutocomplete {
                 CommandAutocompleteView(

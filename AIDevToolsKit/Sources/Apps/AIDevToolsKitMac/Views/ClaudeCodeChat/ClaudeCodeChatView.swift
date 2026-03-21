@@ -3,7 +3,7 @@ import ClaudeCodeChatService
 import SlashCommandSDK
 import SwiftUI
 
-public struct ClaudeCodeChatView: View {
+struct ClaudeCodeChatView: View {
     @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
     @State private var messageText: String = ""
     @State private var pastedImages: [ImageAttachment] = []
@@ -14,7 +14,7 @@ public struct ClaudeCodeChatView: View {
     @State private var lastSeenMessageId: UUID?
     @State private var scrollDebounceTask: Task<Void, Never>?
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             chatMessagesView
 
@@ -313,11 +313,11 @@ public struct ClaudeCodeChatView: View {
 
 // MARK: - Message Row
 
-public struct ClaudeCodeChatMessageRow: View {
+struct ClaudeCodeChatMessageRow: View {
     let message: ClaudeCodeChatMessage
     @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager?
 
-    public var body: some View {
+    var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if message.role == .user {
                 Image(systemName: "person.circle.fill")
@@ -395,12 +395,12 @@ public struct ClaudeCodeChatMessageRow: View {
 
 // MARK: - Formatted Content
 
-public struct ClaudeCodeFormattedContent: View {
+struct ClaudeCodeFormattedContent: View {
     let message: ClaudeCodeChatMessage
     let isProcessing: Bool
     @State private var showThinkingAndTools = true
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             let lines = message.contentLines
             let hasText = lines.contains { $0.type == .text }

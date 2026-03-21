@@ -1,14 +1,14 @@
 import RepositorySDK
 import SwiftUI
 
-public struct SettingsView: View {
+struct SettingsView: View {
     @Environment(SettingsModel.self) private var settingsModel
     @Environment(WorkspaceModel.self) private var workspaceModel
     @State private var editingConfig: RepositoryInfo?
     @State private var isAddingNew = false
     @State private var currentError: Error?
 
-    public var body: some View {
+    var body: some View {
         TabView {
             Tab("General", systemImage: "gearshape") {
                 GeneralSettingsView()

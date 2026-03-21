@@ -2,12 +2,12 @@ import EvalSDK
 import EvalService
 import SwiftUI
 
-public enum ProviderSelection: String, CaseIterable {
+enum ProviderSelection: String, CaseIterable {
     case claude
     case codex
     case both
 
-    public var label: String {
+    var label: String {
         switch self {
         case .claude: "Claude"
         case .codex: "Codex"
@@ -15,7 +15,7 @@ public enum ProviderSelection: String, CaseIterable {
         }
     }
 
-    public var providers: [Provider] {
+    var providers: [Provider] {
         switch self {
         case .claude: [.claude]
         case .codex: [.codex]
@@ -24,7 +24,7 @@ public enum ProviderSelection: String, CaseIterable {
     }
 }
 
-public struct EvalResultsView: View {
+struct EvalResultsView: View {
     @Environment(EvalRunnerModel.self) var evalRunnerModel
     let skillName: String?
 
@@ -32,7 +32,7 @@ public struct EvalResultsView: View {
     @State private var pendingRunAction: (() -> Void)?
     @State private var presentedError: Error?
 
-    public var body: some View {
+    var body: some View {
         caseListView
             .alert("Outstanding Changes", isPresented: $showDirtyRepoAlert) {
                 Button("Continue Anyway", role: .destructive) {
@@ -184,7 +184,7 @@ public struct EvalResultsView: View {
 private struct RunEvalMenu: View {
     let onRun: (ProviderSelection) -> Void
 
-    public var body: some View {
+    var body: some View {
         Menu {
             Button { onRun(.claude) } label: {
                 Label("Claude", systemImage: "play.fill")
@@ -209,7 +209,7 @@ private struct RunEvalMenu: View {
 private struct RunEvalMenuCompact: View {
     let onRun: (ProviderSelection) -> Void
 
-    public var body: some View {
+    var body: some View {
         Menu {
             Button { onRun(.claude) } label: {
                 Label("Claude", systemImage: "play.fill")
@@ -275,7 +275,7 @@ private struct EvalCaseRow: View {
         return .passed
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 statusIcon
@@ -681,7 +681,7 @@ private struct OutputPanel: View {
     let text: String
     var autoScroll: Bool = false
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let title {
                 Text(title)
@@ -714,7 +714,7 @@ private struct DetailSection: View {
     let label: String
     let content: String
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.headline.weight(.bold))

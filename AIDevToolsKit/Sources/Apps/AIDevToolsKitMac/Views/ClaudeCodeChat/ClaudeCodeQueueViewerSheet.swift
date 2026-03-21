@@ -1,11 +1,11 @@
 import ClaudeCodeChatService
 import SwiftUI
 
-public struct ClaudeCodeQueueViewerSheet: View {
+struct ClaudeCodeQueueViewerSheet: View {
     @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
     @Environment(\.dismiss) private var dismiss
 
-    public var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if chatManager.messageQueue.isEmpty {

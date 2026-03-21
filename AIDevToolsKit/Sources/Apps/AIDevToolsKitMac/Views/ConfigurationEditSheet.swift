@@ -1,7 +1,7 @@
 import RepositorySDK
 import SwiftUI
 
-public struct ConfigurationEditSheet: View {
+struct ConfigurationEditSheet: View {
     @State var config: RepositoryInfo
     @State private var nameText: String
     @State private var repoPathText: String
@@ -13,7 +13,7 @@ public struct ConfigurationEditSheet: View {
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
 
-    public init(
+    init(
         config: RepositoryInfo,
         casesDirectory: String?,
         completedDirectory: String?,
@@ -33,7 +33,7 @@ public struct ConfigurationEditSheet: View {
         _proposedDirectoryText = State(initialValue: proposedDirectory ?? "")
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(isNew ? "Add Repository" : "Edit Repository")
                 .font(.title2)

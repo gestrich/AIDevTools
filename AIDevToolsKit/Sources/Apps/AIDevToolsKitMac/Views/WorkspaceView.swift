@@ -7,17 +7,17 @@ import SkillService
 import SwiftData
 import SwiftUI
 
-public enum ChatMode: String, CaseIterable {
+enum ChatMode: String, CaseIterable {
     case anthropicAPI = "API"
     case claudeCode = "CLI"
 }
 
-public enum WorkspaceItem: Hashable {
+enum WorkspaceItem: Hashable {
     case skill(String)
     case plan(String)
 }
 
-public struct WorkspaceView: View {
+struct WorkspaceView: View {
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
 
@@ -34,7 +34,7 @@ public struct WorkspaceView: View {
     @AppStorage("chatMode") private var chatMode: ChatMode = .claudeCode
     @State private var claudeCodeChatManager: ClaudeCodeChatManager?
 
-    public var body: some View {
+    var body: some View {
         NavigationSplitView {
             List(model.repositories, selection: $selectedRepoID) { repo in
                 Text(repo.name)
@@ -306,7 +306,7 @@ public struct WorkspaceView: View {
 private struct PlanListRow: View {
     let plan: PlanEntry
 
-    public var body: some View {
+    var body: some View {
         HStack(spacing: 8) {
             Image(systemName: plan.isFullyCompleted ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(plan.isFullyCompleted ? .green : .secondary)
@@ -336,7 +336,7 @@ private struct GeneratePlanSheet: View {
 
     @State private var voiceText = ""
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 16) {
             Text("Generate Plan")
                 .font(.headline)

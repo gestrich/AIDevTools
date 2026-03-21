@@ -1,10 +1,10 @@
 import Foundation
 
-public struct SkillContent {
-    public let frontMatter: [(key: String, value: String)]
-    public let body: String
+struct SkillContent {
+    let frontMatter: [(key: String, value: String)]
+    let body: String
 
-    public init(parsing raw: String) {
+    init(parsing raw: String) {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.hasPrefix("---") else {
             self.frontMatter = []

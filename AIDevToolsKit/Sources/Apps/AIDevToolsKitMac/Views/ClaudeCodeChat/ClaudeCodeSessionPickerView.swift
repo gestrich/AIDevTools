@@ -1,14 +1,14 @@
 import ClaudeCodeChatService
 import SwiftUI
 
-public struct ClaudeCodeSessionPickerView: View {
+struct ClaudeCodeSessionPickerView: View {
     @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
     @Environment(\.dismiss) private var dismiss
     @State private var sessions: [ClaudeSession] = []
     @State private var isLoading = true
     @State private var selectedSessionForDetail: ClaudeSession?
 
-    public var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if isLoading {

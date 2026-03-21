@@ -3,13 +3,13 @@ import PlanRunnerFeature
 import PlanRunnerService
 import RepositorySDK
 
-public struct PlanPhase: Identifiable {
-    public var id: Int { index }
-    public let index: Int
-    public let description: String
-    public let isCompleted: Bool
+struct PlanPhase: Identifiable {
+    var id: Int { index }
+    let index: Int
+    let description: String
+    let isCompleted: Bool
 
-    public init(index: Int, description: String, isCompleted: Bool) {
+    init(index: Int, description: String, isCompleted: Bool) {
         self.index = index
         self.description = description
         self.isCompleted = isCompleted
@@ -17,9 +17,9 @@ public struct PlanPhase: Identifiable {
 }
 
 @MainActor @Observable
-public final class PlanRunnerModel {
+final class PlanRunnerModel {
 
-    public enum State {
+    enum State {
         case idle
         case executing(progress: ExecutionProgress)
         case generating(step: String)
@@ -27,19 +27,19 @@ public final class PlanRunnerModel {
         case error(Error)
     }
 
-    public struct ExecutionProgress {
-        public var phases: [PhaseStatus] = []
-        public var currentPhaseIndex: Int?
-        public var currentPhaseDescription: String = ""
-        public var currentOutput: String = ""
-        public var phasesCompleted: Int = 0
-        public var totalPhases: Int = 0
+    struct ExecutionProgress {
+        var phases: [PhaseStatus] = []
+        var currentPhaseIndex: Int?
+        var currentPhaseDescription: String = ""
+        var currentOutput: String = ""
+        var phasesCompleted: Int = 0
+        var totalPhases: Int = 0
     }
 
-    public var state: State = .idle
-    public var plans: [PlanEntry] = []
-    public var executionCompleteCount: Int = 0
-    public private(set) var currentRepository: RepositoryInfo?
+    var state: State = .idle
+    var plans: [PlanEntry] = []
+    var executionCompleteCount: Int = 0
+    private(set) var currentRepository: RepositoryInfo?
 
     private let deletePlanUseCase: DeletePlanUseCase
     private let executePlan: ExecutePlanUseCase
@@ -47,7 +47,7 @@ public final class PlanRunnerModel {
     private let loadPlansUseCase: LoadPlansUseCase
     private let planSettingsStore: PlanRepoSettingsStore
 
-    public init(
+    init(
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
         executePlan: ExecutePlanUseCase = ExecutePlanUseCase(),
         generatePlan: GeneratePlanUseCase = GeneratePlanUseCase(),
@@ -61,23 +61,23 @@ public final class PlanRunnerModel {
         self.planSettingsStore = planSettingsStore
     }
 
-    public func loadPlans(for repo: RepositoryInfo) {
+    func loadPlans(for repo: RepositoryInfo) {
         currentRepository = repo
         let proposedDir = resolvedProposedDirectory(for: repo)
         plans = loadPlansUseCase.run(proposedDirectory: proposedDir)
     }
 
-    public func deletePlan(_ plan: PlanEntry) throws {
+    func deletePlan(_ plan: PlanEntry) throws {
         try deletePlanUseCase.run(planURL: plan.planURL)
         plans.removeAll { $0.id == plan.id }
     }
 
-    public func reloadPlans() {
+    func reloadPlans() {
         guard let repo = currentRepository else { return }
         loadPlans(for: repo)
     }
 
-    public func execute(plan: PlanEntry, repository: RepositoryInfo) async {
+    func execute(plan: PlanEntry, repository: RepositoryInfo) async {
         state = .executing(progress: ExecutionProgress())
 
         let settings = (try? planSettingsStore.settings(forRepoId: repository.id)) ?? PlanRepoSettings(repoId: repository.id)
@@ -103,7 +103,7 @@ public final class PlanRunnerModel {
         }
     }
 
-    public func generate(voiceText: String, repositories: [RepositoryInfo]) async {
+    func generate(voiceText: String, repositories: [RepositoryInfo]) async {
         state = .generating(step: "Matching repository...")
 
         let settingsStore = planSettingsStore
@@ -143,7 +143,7 @@ public final class PlanRunnerModel {
         }
     }
 
-    public func reset() {
+    func reset() {
         state = .idle
     }
 
@@ -185,7 +185,7 @@ public final class PlanRunnerModel {
         state = .executing(progress: current)
     }
 
-    public static func parsePhases(from content: String) -> [PlanPhase] {
+    static func parsePhases(from content: String) -> [PlanPhase] {
         var phases: [PlanPhase] = []
         var index = 0
         for line in content.components(separatedBy: "\n") {

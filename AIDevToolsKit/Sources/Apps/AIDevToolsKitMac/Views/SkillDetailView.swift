@@ -2,7 +2,7 @@ import MarkdownUI
 import SkillService
 import SwiftUI
 
-public struct SkillDetailView: View {
+struct SkillDetailView: View {
     @Environment(EvalRunnerModel.self) var evalRunnerModel
     let skill: Skill
     let evalConfig: RepositoryEvalConfig?
@@ -26,7 +26,7 @@ public struct SkillDetailView: View {
         return result
     }
 
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             if evalConfig != nil {
                 Picker(selection: $selectedTab) {

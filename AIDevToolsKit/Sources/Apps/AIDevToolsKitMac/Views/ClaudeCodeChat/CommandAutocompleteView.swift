@@ -2,12 +2,12 @@ import AppKit
 import SlashCommandSDK
 import SwiftUI
 
-public struct CommandAutocompleteView: View {
+struct CommandAutocompleteView: View {
     let filteredCommands: [SlashCommand]
     let selectedCommandIndex: Int
     let onSelectCommand: (SlashCommand) -> Void
 
-    public var body: some View {
+    var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 ForEach(Array(filteredCommands.prefix(5).enumerated()), id: \.element.id) { index, command in

@@ -2,7 +2,7 @@ import AppKit
 import ClaudeCodeChatService
 import SwiftUI
 
-public struct ClaudeCodeSessionDetailView: View {
+struct ClaudeCodeSessionDetailView: View {
     @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
     @Environment(\.dismiss) private var dismiss
     let session: ClaudeSession
@@ -10,7 +10,7 @@ public struct ClaudeCodeSessionDetailView: View {
     @State private var isLoading = true
     @State private var searchText = ""
 
-    public var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if isLoading {
