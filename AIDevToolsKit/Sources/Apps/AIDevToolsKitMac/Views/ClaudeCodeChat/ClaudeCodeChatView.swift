@@ -52,7 +52,19 @@ struct ClaudeCodeChatView: View {
         ScrollViewReader { proxy in
             ZStack(alignment: .top) {
                 List {
-                    if chatManager.messages.isEmpty {
+                    if chatManager.isLoadingHistory {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .controlSize(.regular)
+                            Text("Loading conversation...")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 60)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                    } else if chatManager.messages.isEmpty {
                         emptyStateView
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets())
