@@ -175,11 +175,17 @@ Replace top-level skill fields with the `skills` array:
 - Selection state persisted via `@AppStorage("selectedEvalsView")` boolean, restored on app launch alongside existing plan/skill persistence
 - `EvalRunnerModel` environment dependency added to `WorkspaceView` to configure eval state when switching to the Evals view directly (previously only configured via `SkillDetailView`)
 
-## - [ ] Phase 5: Migrate Existing Evals
+## - [x] Phase 5: Migrate Existing Evals
 
 - Update all existing JSONL eval files to the new `skills` array format
 - Remove old top-level `skill_hint`, `should_trigger`, `skillMustBeInvoked`, `skillMustNotBeInvoked` fields from every case
 - No backward compatibility needed — old format support is dropped
+
+### Technical Notes
+
+- `what-time-is-it.jsonl` — Moved `deterministic.skillMustBeInvoked: "what-time-is-it"` to `skills: [{skill: "what-time-is-it", must_be_invoked: true}]`, removed empty `deterministic` object
+- `ai-dev-tools-joke.jsonl` — Moved `deterministic.skillMustBeInvoked: "ai-dev-tools-joke"` to `skills: [{skill: "ai-dev-tools-joke", must_be_invoked: true}]`, removed empty `deterministic` object
+- `commit-skill.jsonl` — No changes needed, already had no skill-specific fields
 
 ## - [ ] Phase 6: Validation
 
