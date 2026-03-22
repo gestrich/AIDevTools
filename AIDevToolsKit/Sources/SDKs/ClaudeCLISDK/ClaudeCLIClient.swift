@@ -15,7 +15,7 @@ public enum ClaudeCLIError: Error, LocalizedError {
 
 public struct ClaudeCLIClient: Sendable {
 
-    private static let inactivityTimeout: TimeInterval = 120
+    private static let inactivityTimeout: TimeInterval = 480
 
     private let client: CLIClient
 
@@ -145,17 +145,97 @@ public struct ClaudeCLIClient: Sendable {
         command: Claude,
         workingDirectory: String? = nil,
         environment: [String: String]? = nil,
+        maxTimeoutRetries: Int = 1,
         onFormattedOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> ClaudeStructuredOutput<T> {
-        let executionResult = try await run(
-            command: command,
-            workingDirectory: workingDirectory,
-            environment: environment,
-            onFormattedOutput: onFormattedOutput
-        )
+        let formatter = ClaudeStreamFormatter()
+        let stdoutCapture = StdoutAccumulator()
         let parser = ClaudeStructuredOutputParser()
-        return try parser.parse(type, from: executionResult.stdout)
+        var currentCommand = command
+        var retryCount = 0
+
+        while true {
+            do {
+                let result = try await run(
+                    command: currentCommand,
+                    workingDirectory: workingDirectory,
+                    environment: environment,
+                    onOutput: Self.outputHandler(
+                        formatter: formatter,
+                        stdoutCapture: stdoutCapture,
+                        onFormattedOutput: onFormattedOutput
+                    )
+                )
+                return try parser.parse(type, from: result.stdout)
+            } catch let error as ClaudeCLIError {
+                guard case .inactivityTimeout = error,
+                      retryCount < maxTimeoutRetries,
+                      let sessionId = Self.extractSessionId(from: stdoutCapture.content) else {
+                    throw error
+                }
+                retryCount += 1
+                currentCommand = Self.resumeCommand(from: command, sessionId: sessionId)
+            }
+        }
     }
+
+    // MARK: - Timeout Retry Helpers
+
+    private static func outputHandler(
+        formatter: ClaudeStreamFormatter,
+        stdoutCapture: StdoutAccumulator,
+        onFormattedOutput: (@Sendable (String) -> Void)?
+    ) -> @Sendable (StreamOutput) -> Void {
+        { item in
+            switch item {
+            case .stdout(_, let text):
+                stdoutCapture.append(text)
+                if let onFormattedOutput {
+                    let formatted = formatter.format(text)
+                    if !formatted.isEmpty { onFormattedOutput(formatted) }
+                }
+            case .stderr(_, let text):
+                if let onFormattedOutput {
+                    let nonJSON = text.components(separatedBy: "\n")
+                        .filter { line in
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+                            return !trimmed.isEmpty && !trimmed.hasPrefix("{")
+                        }
+                        .joined(separator: "\n")
+                    if !nonJSON.isEmpty { onFormattedOutput(nonJSON) }
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    static func extractSessionId(from stdout: String) -> String? {
+        let decoder = JSONDecoder()
+        for line in stdout.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { continue }
+            guard let json = try? decoder.decode([String: JSONValue].self, from: data),
+                  json["type"]?.stringValue == "system",
+                  let sessionId = json["session_id"]?.stringValue else { continue }
+            return sessionId
+        }
+        return nil
+    }
+
+    private static func resumeCommand(from original: Claude, sessionId: String) -> Claude {
+        var command = Claude(prompt: "Continue where you left off.")
+        command.resume = sessionId
+        command.dangerouslySkipPermissions = original.dangerouslySkipPermissions
+        command.jsonSchema = original.jsonSchema
+        command.model = original.model
+        command.outputFormat = original.outputFormat
+        command.printMode = original.printMode
+        command.verbose = original.verbose
+        return command
+    }
+
+    // MARK: - Path Resolution
 
     private static func resolveClaudePath() -> String {
         let preferredPath = FileManager.default.homeDirectoryForCurrentUser
@@ -164,5 +244,22 @@ public struct ClaudeCLIClient: Sendable {
             return preferredPath
         }
         return "claude"
+    }
+}
+
+final class StdoutAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer = ""
+
+    var content: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return buffer
+    }
+
+    func append(_ text: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        buffer += text
     }
 }
