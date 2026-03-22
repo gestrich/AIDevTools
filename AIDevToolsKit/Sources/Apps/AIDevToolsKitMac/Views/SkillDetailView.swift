@@ -3,7 +3,6 @@ import SkillService
 import SwiftUI
 
 struct SkillDetailView: View {
-    @Environment(EvalRunnerModel.self) var evalRunnerModel
     let skill: Skill
     let evalConfig: RepositoryEvalConfig?
     var onNavigateToEvals: (() -> Void)?
@@ -45,7 +44,7 @@ struct SkillDetailView: View {
             case .skill:
                 skillContent
             case .evals:
-                if evalConfig != nil {
+                if let evalConfig {
                     VStack(spacing: 0) {
                         if onNavigateToEvals != nil {
                             HStack {
@@ -59,7 +58,8 @@ struct SkillDetailView: View {
                             }
                             .padding([.horizontal, .top])
                         }
-                        EvalResultsView()
+                        EvalResultsView(config: evalConfig, skillName: skill.name)
+                            .id(skill.name)
                     }
                 }
             }
@@ -68,7 +68,6 @@ struct SkillDetailView: View {
         .task(id: skill.path) {
             selectedTab = .skill
             selectedFileTab = resolveSkillFileURL(skill.path)
-            evalRunnerModel.load(config: evalConfig, skillName: skill.name)
         }
         .onChange(of: selectedFileTab) { _, newValue in
             guard let url = newValue else { return }

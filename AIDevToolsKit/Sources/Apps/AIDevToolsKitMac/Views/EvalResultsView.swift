@@ -25,7 +25,15 @@ enum ProviderSelection: String, CaseIterable {
 }
 
 struct EvalResultsView: View {
-    @Environment(EvalRunnerModel.self) var evalRunnerModel
+    let config: RepositoryEvalConfig
+    let skillName: String?
+    @State private var evalRunnerModel: EvalRunnerModel
+
+    init(config: RepositoryEvalConfig, skillName: String? = nil) {
+        self.config = config
+        self.skillName = skillName
+        _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName))
+    }
 
     @State private var showDirtyRepoAlert = false
     @State private var pendingRunAction: (() -> Void)?
@@ -96,6 +104,7 @@ struct EvalResultsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environment(evalRunnerModel)
     }
 
     private var isRunning: Bool {
@@ -108,8 +117,7 @@ struct EvalResultsView: View {
     }
 
     private var headerBar: some View {
-        @Bindable var model = evalRunnerModel
-        return HStack(spacing: 12) {
+        HStack(spacing: 12) {
             if evalRunnerModel.suites.count > 1 {
                 Picker("Suite", selection: Binding(
                     get: { evalRunnerModel.selectedSuite?.id },

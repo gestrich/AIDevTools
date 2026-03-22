@@ -18,7 +18,6 @@ enum WorkspaceItem: Hashable {
 }
 
 struct WorkspaceView: View {
-    @Environment(EvalRunnerModel.self) var evalRunnerModel
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
 
@@ -98,9 +97,6 @@ struct WorkspaceView: View {
                         storedEvalsView = true
                         storedPlanName = nil
                         storedSkillName = nil
-                        if let repo = model.selectedRepository {
-                            evalRunnerModel.load(config: model.evalConfig(for: repo))
-                        }
                     case .plan(let name):
                         storedEvalsView = false
                         storedPlanName = name
@@ -157,7 +153,6 @@ struct WorkspaceView: View {
                 async let _ = planRunnerModel.loadPlans(for: repo)
                 if storedEvalsView {
                     selectedItem = .evals
-                    evalRunnerModel.load(config: model.evalConfig(for: repo))
                 } else if let planName = storedPlanName {
                     selectedItem = .plan(planName)
                 } else if let skillName = storedSkillName {
@@ -240,8 +235,9 @@ struct WorkspaceView: View {
     private var detailContentView: some View {
         switch selectedItem {
         case .evals:
-            if model.selectedRepository != nil {
-                EvalResultsView()
+            if let repo = model.selectedRepository,
+               let config = model.evalConfig(for: repo) {
+                EvalResultsView(config: config)
             }
         case .plan(let name):
             if let plan = planRunnerModel.plans.first(where: { $0.name == name }),
@@ -253,9 +249,8 @@ struct WorkspaceView: View {
                let repo = model.selectedRepository {
                 SkillDetailView(
                     skill: skill,
-                    evalConfig: model.evalConfig(for: repo),
-                    onNavigateToEvals: { selectedItem = .evals }
-                )
+                    evalConfig: model.evalConfig(for: repo)
+                ) { selectedItem = .evals }
             }
         case nil:
             ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
