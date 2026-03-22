@@ -233,27 +233,26 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var detailContentView: some View {
-        switch selectedItem {
-        case .evals:
-            if let repo = model.selectedRepository,
-               let config = model.evalConfig(for: repo) {
-                EvalResultsView(config: config)
+        if let repo = model.selectedRepository {
+            switch selectedItem {
+            case .evals:
+                if let config = model.evalConfig(for: repo) {
+                    EvalResultsView(config: config)
+                }
+            case .plan(let name):
+                if let plan = planRunnerModel.plans.first(where: { $0.name == name }) {
+                    PlanDetailView(plan: plan, repository: repo)
+                }
+            case .skill(let name):
+                if let skill = model.skills.first(where: { $0.name == name }) {
+                    SkillDetailView(
+                        skill: skill,
+                        evalConfig: model.evalConfig(for: repo)
+                    ) { selectedItem = .evals }
+                }
+            case nil:
+                ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
             }
-        case .plan(let name):
-            if let plan = planRunnerModel.plans.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                PlanDetailView(plan: plan, repository: repo)
-            }
-        case .skill(let name):
-            if let skill = model.skills.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                SkillDetailView(
-                    skill: skill,
-                    evalConfig: model.evalConfig(for: repo)
-                ) { selectedItem = .evals }
-            }
-        case nil:
-            ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
         }
     }
 
