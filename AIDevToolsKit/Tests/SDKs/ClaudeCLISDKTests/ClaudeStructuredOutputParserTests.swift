@@ -93,10 +93,19 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func parseThrowsOnTypeMismatch() {
         let wrongType = """
-        {"type":"result","is_error":false,"structured_output":{"unexpected":"fields"}}
+        {"type":"result","subtype":"success","is_error":false,"structured_output":{"unexpected":"fields"}}
         """
         #expect(throws: ClaudeStructuredOutputError.self) {
             try parser.parse(TestOutput.self, from: wrongType)
+        }
+    }
+
+    @Test func parseThrowsOnMissingSubtype() {
+        let noSubtype = """
+        {"type":"result","is_error":false,"structured_output":{"result":"ok"}}
+        """
+        #expect(throws: ClaudeStructuredOutputError.self) {
+            try parser.parse(SimpleResult.self, from: noSubtype)
         }
     }
 
@@ -167,7 +176,7 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func handlesLeadingWhitespace() throws {
         let raw = """
-            {"type":"result","is_error":false,"structured_output":{"result":"ok"}}
+            {"type":"result","subtype":"success","is_error":false,"structured_output":{"result":"ok"}}
         """
         let output = try parser.parse(SimpleResult.self, from: raw)
         #expect(output.value.result == "ok")
@@ -183,7 +192,7 @@ struct ClaudeStructuredOutputParserTests {
         }
 
         let raw = """
-        {"type":"result","is_error":false,"structured_output":{"phases":[{"description":"Setup","status":"completed"},{"description":"Build","status":"pending"}]}}
+        {"type":"result","subtype":"success","is_error":false,"structured_output":{"phases":[{"description":"Setup","status":"completed"},{"description":"Build","status":"pending"}]}}
         """
         let output = try parser.parse(Nested.self, from: raw)
         #expect(output.value.phases.count == 2)

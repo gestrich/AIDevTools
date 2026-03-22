@@ -35,15 +35,13 @@ public struct ClaudeStructuredOutputParser: Sendable {
     public func parse<T: Decodable & Sendable>(_ type: T.Type, from stdout: String) throws -> ClaudeStructuredOutput<T> {
         let resultEvent = try findResultEvent(in: stdout)
 
-        if resultEvent.isError == true {
-            if resultEvent.subtype == "success", resultEvent.structuredOutput != nil {
-                // CLI marked is_error but completed successfully with output — try to use it
-            } else {
-                throw ClaudeStructuredOutputError.resultError(
-                    subtype: resultEvent.subtype,
-                    errors: resultEvent.errors
-                )
-            }
+        // Use subtype as the authoritative success signal, matching claude-code-action behavior.
+        // The is_error field should align with subtype but is not the primary indicator.
+        if resultEvent.subtype != "success" {
+            throw ClaudeStructuredOutputError.resultError(
+                subtype: resultEvent.subtype,
+                errors: resultEvent.errors
+            )
         }
 
         guard let structuredJSON = resultEvent.structuredOutput else {
