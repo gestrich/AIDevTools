@@ -102,11 +102,11 @@ Replace top-level skill fields with the `skills` array:
 - Skills view: list of skills, drill-in shows associated eval suites/cases
 - Navigating from skills view to a suite/case jumps to the evals view filtered to that item
 
-## - [ ] Phase 5: Migration & Backward Compatibility
+## - [ ] Phase 5: Migrate Existing Evals
 
-- Support both old (`skill_hint`, `skillMustBeInvoked`) and new (`skills` array) formats during a transition period
-- Migrate existing JSONL files to the new format
-- Log a deprecation warning when old fields are encountered
+- Update all existing JSONL eval files to the new `skills` array format
+- Remove old top-level `skill_hint`, `should_trigger`, `skillMustBeInvoked`, `skillMustNotBeInvoked` fields from every case
+- No backward compatibility needed — old format support is dropped
 
 ## - [ ] Phase 6: Validation
 
