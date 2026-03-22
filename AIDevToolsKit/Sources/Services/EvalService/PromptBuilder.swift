@@ -14,9 +14,7 @@ public struct PromptBuilder: Sendable {
         }
 
         var invocationHint = ""
-        if evalCase.skillHint == "explicit" {
-            invocationHint = "Use the skill name exactly as specified in the task.\n"
-        } else if evalCase.skillHint == "implicit" {
+        if let skills = evalCase.skills, skills.contains(where: { $0.shouldTrigger == true }) {
             invocationHint = "Use the most relevant repository skill for this task.\n"
         }
 

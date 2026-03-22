@@ -453,11 +453,15 @@ private struct EvalCaseRow: View {
                 .foregroundStyle(.secondary)
 
             DetailSection(label: "Mode", content: evalCase.mode.rawValue)
-            if let skillHint = evalCase.skillHint {
-                DetailSection(label: "Skill Hint", content: skillHint)
-            }
-            if let shouldTrigger = evalCase.shouldTrigger {
-                DetailSection(label: "Should Trigger", content: shouldTrigger ? "Yes" : "No")
+            if let skills = evalCase.skills, !skills.isEmpty {
+                let skillSummary = skills.map { assertion in
+                    var parts = [assertion.skill]
+                    if assertion.shouldTrigger == true { parts.append("should_trigger") }
+                    if assertion.mustBeInvoked == true { parts.append("must_invoke") }
+                    if assertion.mustNotBeInvoked == true { parts.append("must_not_invoke") }
+                    return parts.joined(separator: " ")
+                }.joined(separator: "\n")
+                DetailSection(label: "Skills", content: skillSummary)
             }
             if let task = evalCase.task {
                 DetailSection(label: "Task", content: task)
@@ -648,12 +652,6 @@ private struct EvalCaseRow: View {
                 if let notContains = expectedDiff.notContains, !notContains.isEmpty {
                     DetailSection(label: "Diff Must Not Contain", content: notContains.joined(separator: "\n"))
                 }
-            }
-            if let skill = det.skillMustBeInvoked {
-                DetailSection(label: "Skill Must Be Invoked", content: skill)
-            }
-            if let skills = det.skillMustNotBeInvoked, !skills.isEmpty {
-                DetailSection(label: "Skill Must Not Be Invoked", content: skills.joined(separator: "\n"))
             }
             if let refs = det.referenceFileMustBeRead, !refs.isEmpty {
                 DetailSection(label: "Reference File Must Be Read", content: refs.joined(separator: "\n"))

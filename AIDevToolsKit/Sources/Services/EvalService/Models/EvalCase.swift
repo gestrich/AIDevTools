@@ -5,12 +5,30 @@ public enum EvalMode: String, Codable, Sendable {
     case edit
 }
 
+public struct SkillAssertion: Codable, Sendable {
+    public let skill: String
+    public let shouldTrigger: Bool?
+    public let mustBeInvoked: Bool?
+    public let mustNotBeInvoked: Bool?
+
+    public init(
+        skill: String,
+        shouldTrigger: Bool? = nil,
+        mustBeInvoked: Bool? = nil,
+        mustNotBeInvoked: Bool? = nil
+    ) {
+        self.skill = skill
+        self.shouldTrigger = shouldTrigger
+        self.mustBeInvoked = mustBeInvoked
+        self.mustNotBeInvoked = mustNotBeInvoked
+    }
+}
+
 public struct EvalCase: Codable, Sendable {
     public let id: String
     public var suite: String?
     public let mode: EvalMode
-    public let skillHint: String?
-    public let shouldTrigger: Bool?
+    public let skills: [SkillAssertion]?
     public let task: String?
     public let input: String?
     public let prompt: String?
@@ -24,8 +42,7 @@ public struct EvalCase: Codable, Sendable {
         id: String,
         suite: String? = nil,
         mode: EvalMode = .structured,
-        skillHint: String? = nil,
-        shouldTrigger: Bool? = nil,
+        skills: [SkillAssertion]? = nil,
         task: String? = nil,
         input: String? = nil,
         prompt: String? = nil,
@@ -38,8 +55,7 @@ public struct EvalCase: Codable, Sendable {
         self.id = id
         self.suite = suite
         self.mode = mode
-        self.skillHint = skillHint
-        self.shouldTrigger = shouldTrigger
+        self.skills = skills
         self.task = task
         self.input = input
         self.prompt = prompt
@@ -56,8 +72,10 @@ public struct EvalCase: Codable, Sendable {
 
     public var summaryDescription: String {
         var lines = ["\(qualifiedId)  mode: \(mode.rawValue)"]
-        if let skillHint { lines.append("  skill_hint: \(skillHint)") }
-        if let shouldTrigger { lines.append("  should_trigger: \(shouldTrigger ? "yes" : "no")") }
+        if let skills, !skills.isEmpty {
+            let skillNames = skills.map(\.skill).joined(separator: ", ")
+            lines.append("  skills: \(skillNames)")
+        }
         if let task { lines.append("  task: \(task)") }
         if let input { lines.append("  input: \(input)") }
         if let prompt { lines.append("  prompt: \(prompt)") }
@@ -78,8 +96,7 @@ public struct EvalCase: Codable, Sendable {
         id = try container.decode(String.self, forKey: .id)
         suite = try container.decodeIfPresent(String.self, forKey: .suite)
         mode = try container.decodeIfPresent(EvalMode.self, forKey: .mode) ?? .structured
-        skillHint = try container.decodeIfPresent(String.self, forKey: .skillHint)
-        shouldTrigger = try container.decodeIfPresent(Bool.self, forKey: .shouldTrigger)
+        skills = try container.decodeIfPresent([SkillAssertion].self, forKey: .skills)
         task = try container.decodeIfPresent(String.self, forKey: .task)
         input = try container.decodeIfPresent(String.self, forKey: .input)
         prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
@@ -102,8 +119,6 @@ public struct DeterministicChecks: Codable, Sendable {
     public let fileContains: [String: [String]]?
     public let fileNotContains: [String: [String]]?
     public let expectedDiff: ExpectedDiff?
-    public let skillMustBeInvoked: String?
-    public let skillMustNotBeInvoked: [String]?
     public let referenceFileMustBeRead: [String]?
     public let referenceFileMustNotBeRead: [String]?
 
@@ -118,8 +133,6 @@ public struct DeterministicChecks: Codable, Sendable {
         fileContains: [String: [String]]? = nil,
         fileNotContains: [String: [String]]? = nil,
         expectedDiff: ExpectedDiff? = nil,
-        skillMustBeInvoked: String? = nil,
-        skillMustNotBeInvoked: [String]? = nil,
         referenceFileMustBeRead: [String]? = nil,
         referenceFileMustNotBeRead: [String]? = nil
     ) {
@@ -133,8 +146,6 @@ public struct DeterministicChecks: Codable, Sendable {
         self.fileContains = fileContains
         self.fileNotContains = fileNotContains
         self.expectedDiff = expectedDiff
-        self.skillMustBeInvoked = skillMustBeInvoked
-        self.skillMustNotBeInvoked = skillMustNotBeInvoked
         self.referenceFileMustBeRead = referenceFileMustBeRead
         self.referenceFileMustNotBeRead = referenceFileMustNotBeRead
     }

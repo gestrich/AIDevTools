@@ -163,23 +163,9 @@ public struct RunCaseUseCase: Sendable {
         repoRoot: URL
     ) -> [SkillCheckResult] {
         var checks: [SkillCheckResult] = []
-        let deterministic = evalCase.deterministic
 
-        if let skillName = deterministic?.skillMustBeInvoked {
-            if !capabilities.supportsToolEventAssertions {
-                checks.append(.skipped(skillName: skillName, reason: "provider lacks support"))
-            } else {
-                let method = adapter.invocationMethod(for: skillName, toolEvents: toolEvents, traceCommands: traceCommands, skills: skills, repoRoot: repoRoot)
-                if let method {
-                    let skill = skills.first(where: { $0.name == skillName }) ?? SkillInfo(name: skillName, path: URL(fileURLWithPath: skillName))
-                    checks.append(.invoked(skill, method: method))
-                } else {
-                    checks.append(.notInvoked(skillName: skillName))
-                }
-            }
-        }
-
-        for skillName in deterministic?.skillMustNotBeInvoked ?? [] {
+        for assertion in evalCase.skills ?? [] {
+            let skillName = assertion.skill
             if !capabilities.supportsToolEventAssertions {
                 checks.append(.skipped(skillName: skillName, reason: "provider lacks support"))
             } else {

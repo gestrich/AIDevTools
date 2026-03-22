@@ -123,7 +123,7 @@ Audit the eval case model, loader, and grading pipeline to identify everywhere a
 - `SkillCheckResult` / `ToolEvent` / `InvocationMethod` — Output types, unchanged
 - `MockProviderAdapter.swift` — Mock `invocationMethod` stays the same
 
-## - [ ] Phase 2: Update Eval Case Data Model
+## - [x] Phase 2: Update Eval Case Data Model
 
 Replace top-level skill fields with the `skills` array:
 - Remove `skill_hint`, `should_trigger` from `EvalCase`
@@ -132,6 +132,18 @@ Replace top-level skill fields with the `skills` array:
 - `SkillAssertion` has: `skill`, `shouldTrigger`, `mustBeInvoked`, `mustNotBeInvoked`
 - Update `CaseLoader` to decode the new shape
 - Update grading logic to evaluate skill assertions from the array
+
+### Technical Notes
+
+- `SkillAssertion` added as a top-level `Codable`/`Sendable` struct in `EvalCase.swift`
+- `PromptBuilder` now derives the invocation hint from `skills.contains(where: { $0.shouldTrigger == true })` — the old explicit/implicit distinction was collapsed into a single "use the most relevant repository skill" hint since it was not meaningfully used
+- `DeterministicGrader` iterates `evalCase.skills` for both `mustBeInvoked`/`mustNotBeInvoked` checks and `shouldTrigger` validation
+- `RunCaseUseCase.resolveSkillChecks()` now iterates `evalCase.skills` to resolve each skill's invocation status, replacing the old two-pass approach that read from `deterministic`
+- `EvalResultsView` updated to display skills array instead of the removed fields (minimal change to keep Phase 4 scope intact)
+- `CopyrightHeaderEvals` and `DesignKitMigrationEvals` migrated to use `SkillAssertion` with explicit skill names
+- `CaseLoader` required no changes — `EvalCase`'s `Codable` conformance handles the new shape automatically
+- Fixed pre-existing compile error in `PlanRunnerFeatureTests` (missing `underlyingError` argument)
+- All 52 DeterministicGrader + PromptBuilder tests pass
 
 ## - [ ] Phase 3: Update CLI Output
 
