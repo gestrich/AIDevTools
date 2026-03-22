@@ -61,34 +61,61 @@ public struct CompileArchitectureInfoUseCase: Sendable {
         let guidelineDescriptor = FetchDescriptor<Guideline>(predicate: guidelinePredicate)
         let guidelines = try context.fetch(guidelineDescriptor)
 
+        // Read ARCHITECTURE.md from the repo path
+        let architectureMDPath = URL(fileURLWithPath: options.repoPath)
+            .appendingPathComponent("ARCHITECTURE.md")
+        let architectureContent: String
+        if FileManager.default.fileExists(atPath: architectureMDPath.path) {
+            architectureContent = (try? String(contentsOf: architectureMDPath, encoding: .utf8)) ?? ""
+        } else {
+            architectureContent = ""
+        }
+
         onProgress?(.identifyingLayers)
 
         let requirementsSummary = job.requirements.sorted(by: { $0.sortOrder < $1.sortOrder })
             .map { "- \($0.summary)" }
             .joined(separator: "\n")
 
-        let guidelinesSummary = guidelines.map { "- \($0.title): \($0.highLevelOverview)" }
-            .joined(separator: "\n")
+        let guidelinesSection = guidelines.map { guideline in
+            "- **\(guideline.title)**: \(guideline.highLevelOverview)"
+        }.joined(separator: "\n")
+
+        let architectureSection: String
+        if architectureContent.isEmpty {
+            architectureSection = "(No ARCHITECTURE.md found in repo)"
+        } else {
+            architectureSection = """
+            <architecture-document>
+            \(architectureContent)
+            </architecture-document>
+            """
+        }
 
         let prompt = """
         You are analyzing an application's architecture to plan a new feature.
 
-        Requirements:
+        ## ARCHITECTURE.md
+        \(architectureSection)
+
+        ## Requirements
         \(requirementsSummary)
 
-        Known architectural guidelines:
-        \(guidelinesSummary.isEmpty ? "(none loaded yet)" : guidelinesSummary)
+        ## Loaded Architectural Guidelines
+        \(guidelinesSection.isEmpty ? "(no guidelines loaded)" : guidelinesSection)
 
-        Analyze the repository structure and identify:
-        1. The application's architectural layers
-        2. Which guidelines are relevant to these requirements
-        3. A summary of the architectural context
+        ## Task
+        Based on the ARCHITECTURE.md document and the loaded guidelines, produce:
+        1. A summary of the application's architectural layers as described in ARCHITECTURE.md
+        2. Which specific layers from the architecture are relevant to the requirements above
+        3. Which guidelines apply to these requirements and why
+        4. Any architectural constraints or conventions that should influence the implementation
 
-        Return a concise summary.
+        Be specific — reference actual layer names, guideline titles, and conventions from the documents above.
         """
 
         let schema = """
-        {"type":"object","properties":{"layersSummary":{"type":"string","description":"Summary of identified layers and architecture"},"relevantGuidelineCount":{"type":"integer","description":"Number of relevant guidelines identified"}},"required":["layersSummary","relevantGuidelineCount"]}
+        {"type":"object","properties":{"layersSummary":{"type":"string","description":"Detailed summary of identified layers, relevant guidelines, and architectural context drawn from ARCHITECTURE.md and loaded guidelines"},"relevantGuidelineCount":{"type":"integer","description":"Number of guidelines relevant to these requirements"}},"required":["layersSummary","relevantGuidelineCount"]}
         """
 
         var command = Claude(prompt: prompt)
@@ -108,11 +135,11 @@ public struct CompileArchitectureInfoUseCase: Sendable {
             workingDirectory: options.repoPath
         )
 
-        // Update step
+        // Update step with the full layers summary
         let step = job.processSteps.first { $0.stepIndex == ArchitecturePlannerStep.compileArchitectureInfo.rawValue }
         step?.status = "completed"
         step?.completedAt = Date()
-        step?.summary = output.value.layersSummary.prefix(200).description
+        step?.summary = output.value.layersSummary
         job.currentStepIndex = max(job.currentStepIndex, ArchitecturePlannerStep.planAcrossLayers.rawValue)
         job.updatedAt = Date()
 

@@ -41,7 +41,7 @@ The entire guideline pipeline is empty — nothing populates the SwiftData guide
 - `CreatePlanningJobUseCase` calls `SeedGuidelinesUseCase` automatically before creating the job
 - `GuidelinesSeedCommand` added as `arch-planner guidelines seed --repo-name NAME --repo-path PATH`
 
-## - [ ] Phase 2: Fix CompileArchitectureInfoUseCase to Use Real Data
+## - [x] Phase 2: Fix CompileArchitectureInfoUseCase to Use Real Data
 
 The current implementation sends a generic prompt without reading any actual files. Fix it to:
 
@@ -50,6 +50,13 @@ The current implementation sends a generic prompt without reading any actual fil
 - The prompt should ask Claude to identify which layers are relevant to the requirements and which guidelines apply
 - Store the layers summary in the ProcessStep
 - Verify: `arch-planner update --step compile-arch-info` produces output that references real layers from ARCHITECTURE.md
+
+**Completed.** Technical notes:
+- `CompileArchitectureInfoUseCase` now reads `ARCHITECTURE.md` from the repo path and includes its full content in the prompt (wrapped in `<architecture-document>` tags)
+- Falls back gracefully if `ARCHITECTURE.md` doesn't exist at the repo path
+- Guidelines loaded from SwiftData are included with titles and high-level overviews
+- Prompt restructured into sections (ARCHITECTURE.md, Requirements, Loaded Guidelines, Task) and asks Claude to reference actual layer names, guideline titles, and conventions
+- ProcessStep summary now stores the full layers summary instead of truncating to 200 characters
 
 ## - [ ] Phase 3: Fix PlanAcrossLayersUseCase to Include Guidelines
 
