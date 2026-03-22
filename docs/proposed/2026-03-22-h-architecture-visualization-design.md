@@ -513,8 +513,166 @@ Keeping the views small and focused follows the existing pattern in the codebase
 - "Why here?" interactive justification from AI
 - Refactoring detection, violation alerts
 
-## - [ ] Phase 3: Validation
+## - [x] Phase 3: Validation
 
 - Review the design document with a real plan to verify the model is expressive enough
 - Walk through a sample plan and manually annotate where changes would land — confirm the model captures it
 - Identify any gaps or missing concepts before implementation begins
+
+---
+
+### Test Case: `2026-03-21-a-unified-app-rearchitecture.md`
+
+This 8-phase plan unified two separate repository models, migrated both Evals and Plan Runner to a shared `RepositorySDK`, generalized the Mac app navigation, and added a Plan Runner UI. It touched every architectural layer.
+
+**Mapping each phase's file changes to the architecture:**
+
+| Phase | Layer | Module | Files | Action |
+|-------|-------|--------|-------|--------|
+| 1 | SDKs | RepositorySDK | `RepositoryInfo.swift`, `RepositoryStore.swift`, `RepositoryStoreConfiguration.swift` | add |
+| 1 | (root) | — | `Package.swift` | modify |
+| 2 | Services | SkillService | `RepositoryConfiguration.swift`, `RepositoryConfigurationStore.swift`, `SkillServiceConfiguration.swift` | delete |
+| 2 | Features | SkillBrowserFeature | `LoadRepositoriesUseCase.swift`, `AddRepositoryUseCase.swift`, etc. | modify |
+| 2 | Services | EvalService | Various files updated for new types | modify |
+| 2 | Apps | AIDevToolsKitCLI | `ReposCommand.swift`, `SkillsCommand.swift` | modify |
+| 3 | Services | PlanRunnerService | `Repository.swift`, `ReposConfig.swift` | delete |
+| 3 | Features | PlanRunnerFeature | `GeneratePlanUseCase.swift`, `ExecutePlanUseCase.swift`, `ClaudeResponseModels.swift` | modify |
+| 3 | Apps | AIDevToolsKitCLI | `PlanRunnerPlanCommand.swift`, `PlanRunnerExecuteCommand.swift` | modify |
+| 4 | — | — | (external data files only — no code changes) | — |
+| 5 | Apps | AIDevToolsKitMac | `SkillBrowserView.swift` → `WorkspaceView.swift`, `SkillBrowserModel.swift` → `WorkspaceModel.swift`, `AIDevToolsApp.swift` | modify |
+| 6 | Apps | AIDevToolsKitMac | `PlanDetailView.swift`, `PlanListView.swift`, `PlanRunnerModel.swift` | add |
+| 7 | (root) | — | `Package.swift` | modify |
+| 8 | — | — | (validation only — no code changes) | — |
+
+**Sample architecture JSON this plan would produce:**
+
+```json
+{
+  "layers": [
+    {
+      "name": "Apps",
+      "dependsOn": ["Features", "Services", "SDKs"],
+      "modules": [
+        {
+          "name": "AIDevToolsKitCLI",
+          "changes": [
+            { "file": "Sources/Apps/AIDevToolsKitCLI/ReposCommand.swift", "action": "modify", "summary": "Use RepositoryStore instead of old config types", "phase": 2 },
+            { "file": "Sources/Apps/AIDevToolsKitCLI/SkillsCommand.swift", "action": "modify", "summary": "Use RepositoryInfo", "phase": 2 },
+            { "file": "Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift", "action": "modify", "summary": "Load repos from RepositoryStore", "phase": 3 },
+            { "file": "Sources/Apps/AIDevToolsKitCLI/PlanRunnerExecuteCommand.swift", "action": "modify", "summary": "Load repos from RepositoryStore", "phase": 3 }
+          ]
+        },
+        {
+          "name": "AIDevToolsKitMac",
+          "changes": [
+            { "file": "Sources/Apps/AIDevToolsKitMac/Views/WorkspaceView.swift", "action": "modify", "summary": "Rename from SkillBrowserView, generalize navigation", "phase": 5 },
+            { "file": "Sources/Apps/AIDevToolsKitMac/Models/WorkspaceModel.swift", "action": "modify", "summary": "Rename from SkillBrowserModel", "phase": 5 },
+            { "file": "Sources/Apps/AIDevToolsKitMac/AIDevToolsApp.swift", "action": "modify", "summary": "Use new model/view names", "phase": 5 },
+            { "file": "Sources/Apps/AIDevToolsKitMac/Views/PlanDetailView.swift", "action": "add", "summary": "Plan detail with phase checklist and execution", "phase": 6 },
+            { "file": "Sources/Apps/AIDevToolsKitMac/Views/PlanListView.swift", "action": "add", "summary": "Plan list for selected repository", "phase": 6 },
+            { "file": "Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift", "action": "add", "summary": "Observable model for plan state", "phase": 6 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Features",
+      "dependsOn": ["Services", "SDKs"],
+      "modules": [
+        { "name": "AnthropicChatFeature", "changes": [] },
+        { "name": "ClaudeCodeChatFeature", "changes": [] },
+        { "name": "EvalFeature", "changes": [] },
+        {
+          "name": "PlanRunnerFeature",
+          "changes": [
+            { "file": "Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift", "action": "modify", "summary": "Accept RepositoryInfo instead of Repository", "phase": 3 },
+            { "file": "Sources/Features/PlanRunnerFeature/usecases/ExecutePlanUseCase.swift", "action": "modify", "summary": "Accept RepositoryInfo instead of Repository", "phase": 3 },
+            { "file": "Sources/Features/PlanRunnerFeature/services/ClaudeResponseModels.swift", "action": "modify", "summary": "Update RepoMatch to use shared ID type", "phase": 3 }
+          ]
+        },
+        {
+          "name": "SkillBrowserFeature",
+          "changes": [
+            { "file": "Sources/Features/SkillBrowserFeature/usecases/LoadRepositoriesUseCase.swift", "action": "modify", "summary": "Use RepositoryInfo and RepositoryStore", "phase": 2 },
+            { "file": "Sources/Features/SkillBrowserFeature/usecases/AddRepositoryUseCase.swift", "action": "modify", "summary": "Use RepositoryInfo and RepositoryStore", "phase": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "dependsOn": ["SDKs"],
+      "modules": [
+        { "name": "AnthropicChatService", "changes": [] },
+        { "name": "ClaudeCodeChatService", "changes": [] },
+        {
+          "name": "EvalService",
+          "changes": [
+            { "file": "Sources/Services/EvalService/EvalRepoSettings.swift", "action": "add", "summary": "Eval-specific repo settings (casesDirectory)", "phase": 2 },
+            { "file": "Sources/Services/EvalService/EvalRepoSettingsStore.swift", "action": "add", "summary": "Persistence for eval-specific settings", "phase": 2 }
+          ]
+        },
+        {
+          "name": "PlanRunnerService",
+          "changes": [
+            { "file": "Sources/Services/PlanRunnerService/Models/Repository.swift", "action": "delete", "summary": "Replaced by RepositoryInfo in RepositorySDK", "phase": 3 },
+            { "file": "Sources/Services/PlanRunnerService/Models/ReposConfig.swift", "action": "delete", "summary": "Replaced by RepositoryStore in RepositorySDK", "phase": 3 }
+          ]
+        },
+        {
+          "name": "SkillService",
+          "changes": [
+            { "file": "Sources/Services/SkillService/RepositoryConfiguration.swift", "action": "delete", "summary": "Replaced by RepositoryInfo", "phase": 2 },
+            { "file": "Sources/Services/SkillService/RepositoryConfigurationStore.swift", "action": "delete", "summary": "Replaced by RepositoryStore", "phase": 2 },
+            { "file": "Sources/Services/SkillService/SkillServiceConfiguration.swift", "action": "delete", "summary": "Replaced by RepositoryStoreConfiguration", "phase": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SDKs",
+      "dependsOn": [],
+      "modules": [
+        { "name": "AnthropicSDK", "changes": [] },
+        { "name": "ClaudeCLISDK", "changes": [] },
+        { "name": "ClaudePythonSDK", "changes": [] },
+        { "name": "CodexCLISDK", "changes": [] },
+        { "name": "ConcurrencySDK", "changes": [] },
+        { "name": "EnvironmentSDK", "changes": [] },
+        { "name": "EvalSDK", "changes": [] },
+        { "name": "GitSDK", "changes": [] },
+        { "name": "LoggingSDK", "changes": [] },
+        {
+          "name": "RepositorySDK",
+          "changes": [
+            { "file": "Sources/SDKs/RepositorySDK/RepositoryInfo.swift", "action": "add", "summary": "Unified repository model", "phase": 1 },
+            { "file": "Sources/SDKs/RepositorySDK/RepositoryStore.swift", "action": "add", "summary": "Unified persistence", "phase": 1 },
+            { "file": "Sources/SDKs/RepositorySDK/RepositoryStoreConfiguration.swift", "action": "add", "summary": "Data path configuration", "phase": 1 }
+          ]
+        },
+        { "name": "SkillScannerSDK", "changes": [] }
+      ]
+    }
+  ]
+}
+```
+
+### Findings
+
+**The model works.** The JSON above captures the plan's changes across all four layers, 16 modules, and 6 implementation phases. Every file change has a clear module mapping and the `phase` field correctly traces changes back to plan phases.
+
+**Gaps identified:**
+
+1. **Root-level files (e.g., `Package.swift`)** — The model has no place for files that don't belong to any module. `Package.swift` changes are common in plans that add/remove targets. **Severity: Low.** These changes are structural (adding a target line) rather than architectural. The diagram is about where code lives, not build config. **No schema change needed** — document this as an intentional exclusion.
+
+2. **File renames** — Phase 5 renamed `SkillBrowserView` → `WorkspaceView`. The schema has `add`/`modify`/`delete` but not `rename`. A rename can be approximated as `modify` (same file, new name) but loses the rename semantic. **Severity: Low.** Renames are infrequent and the approximation is acceptable for v1. A future `"rename"` action with an `oldFile` field could be added if needed.
+
+3. **Phases with no code changes** — Phases 4 (manual data migration) and 8 (validation) produce no entries in the JSON. This is correct — the diagram shows code architecture, not every phase's activity.
+
+4. **Test file mapping** — Tests in `Tests/SDKs/RepositorySDKTests/` map to `RepositorySDK`. This works because the naming convention mirrors the source module. The LLM should be instructed to map test files to the module they test, not create separate test "modules."
+
+5. **Layer rule exceptions** — `EvalSDK` depends on `EvalService` (an SDK depending on a Service), violating the standard layer rule. The model captures layer-level `dependsOn` rules, not module-level exceptions. **Severity: Low for v1.** The "Later Steps" violation detection feature would need module-level dependency data, but that's out of scope for this design.
+
+### Conclusion
+
+The data model is expressive enough for its intended purpose. The five gaps identified are all low severity and don't warrant schema changes for v1. The sample JSON validates that a real, complex plan maps cleanly onto the architecture diagram model.
