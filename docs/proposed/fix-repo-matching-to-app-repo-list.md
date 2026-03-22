@@ -1,164 +1,111 @@
-## Fix Repository Matching to Only Source Repos from App's Repo List
+## Fix Repository Matching to Only Use App-Configured Repositories
 
 ### Background
 
-The feature that matches repositories from text (likely voice-transcribed or pasted text) is currently pulling in repositories that are not part of the user's configured repository list in the AIDevTools app. The matching logic appears to be sourcing repositories from somewhere other than the app's own repo store. This needs to be fixed so that repository matching only returns repositories that exist in the user's configured repo list within the app.
+The feature that matches repositories from text (likely voice-transcribed or pasted text) is returning repositories that are not part of the user's configured repository list in the AIDevTools app. The matching logic appears to source repositories from somewhere other than the app's own repo store (e.g., scanning the filesystem or using a broader source). This needs to be fixed so that repository matching only returns repositories that exist in the user's configured repo list within the app.
 
 ## - [x] Phase 1: Interpret the Request
 
-When executed, this phase will explore the codebase and recent commits to understand what the voice transcription is asking for. The request text — "The feature to match repository from text is pulling repos that are not in my repo list in this app. I'm not sure where it is coming from. I'd like it to only source repos from this repo." — likely means:
-
-- There is a feature that extracts/matches repository references from text input
-- It is returning repositories not in the user's configured list
-- The fix should constrain matching to only repositories configured in the app
-
-This phase will find the relevant code for repository-from-text matching, identify where repositories are being sourced, and document the current behavior. It will look at recent commits and search for repository matching logic. Document findings underneath this phase heading.
+When executed, this phase will:
+- Examine recent commits related to repo matching (especially `40b9131`, `035c718`, `a416dbf`, `21b9360`) to understand what has already been attempted
+- Read any existing proposed docs (`docs/proposed/fix-repo-matching-to-app-repo-list.md` — noted as deleted in git status, check history)
+- Trace the repository matching flow: find where text is parsed to extract repo references, where candidate repos are sourced, and where matching occurs
+- Identify the current source of repositories used for matching (e.g., filesystem scan, git discovery, vs. the app's configured repo list)
+- Identify the app's configured repo list storage (likely in `RepositorySDK` or `SkillService`)
+- Document all relevant files, functions, and data flow
 
 ### Findings
+
+#### Prior Work (Commits `40b9131`, `035c718`, `a416dbf`, `21b9360`)
+
+These commits documented the issue and applied an initial fix:
+- **`21b9360`**: Traced the repo matching flow and identified two root causes — prompt ambiguity and unnecessary filesystem access flags.
+- **`a416dbf`**: Documented architectural constraints (4-layer architecture, `RepositoryStore` as single source of truth).
+- **`035c718`**: Planned implementation phases 4–6.
+- **`40b9131`**: Applied the fix — added explicit "You MUST select one of the listed repositories" constraint to the prompt and removed `dangerouslySkipPermissions`, `verbose`, and `printMode` flags from the `matchRepo` Claude CLI command.
+
+The doc was then reset (all phases unchecked) to re-run the process from scratch.
 
 #### Repository Matching Code Flow
 
-The "Match repository from text" feature lives in `GeneratePlanUseCase.matchRepo()` (`GeneratePlanUseCase.swift:117-152`). It:
+The feature lives in `GeneratePlanUseCase.matchRepo()` (`GeneratePlanUseCase.swift:117–151`):
 
-1. Takes a `voiceText` string and a `[RepositoryInfo]` array
-2. Formats the repo list (id, description, recent focus) into a prompt
-3. Sends the prompt to Claude CLI via `ClaudeCLIClient.runStructured()` with a JSON schema constraining output to `{ repoId, interpretedRequest }`
-4. Returns the `RepoMatch` result
+1. Takes `prompt: String` and `repositories: [RepositoryInfo]`
+2. Formats repos as `- id: {UUID} | description: ... | recent focus: ...`
+3. Sends prompt to Claude CLI via `ClaudeCLIClient.runStructured()` with a JSON schema constraining output to `{ repoId, interpretedRequest }`
+4. Returns `RepoMatch` (defined in `ClaudeResponseModels.swift:1–11`)
 
-**Validation:** After matching, the caller validates the returned `repoId` UUID exists in the passed `repositories` array (lines 88-91). If not found, it throws `GenerateError.repoNotFound`.
+**Caller validation** (`GeneratePlanUseCase.run()`, lines 88–91): The returned `repoId` UUID must exist in the passed `repositories` array, otherwise `GenerateError.repoNotFound` is thrown.
 
 #### Where Repositories Are Sourced
 
-- **Mac App:** `GeneratePlanSheet` passes `model.repositories` → loaded by `WorkspaceModel.load()` → `LoadRepositoriesUseCase` → `RepositoryStore.loadAll()` → reads `{dataPath}/repositories.json`
-- **CLI:** `PlanRunnerPlanCommand` → `ReposCommand.makeStore()` → `RepositoryStore.loadAll()` → same `repositories.json`
-- **Default data path:** `~/Desktop/ai-dev-tools` (from `RepositoryStoreConfiguration`)
+| Entry Point | Flow | Source |
+|-------------|------|--------|
+| **Mac App** | `GeneratePlanSheet` → `PlanRunnerModel.generate()` → `GeneratePlanUseCase.run()` | `WorkspaceModel.repositories` → `LoadRepositoriesUseCase` → `RepositoryStore.loadAll()` → `{dataPath}/repositories.json` |
+| **CLI** | `PlanRunnerPlanCommand` → `ReposCommand.makeStore()` → `RepositoryStore.loadAll()` | Same `repositories.json` |
 
-Both entry points source repos exclusively from the app's `repositories.json`. The `matchRepo()` prompt only includes repos from the passed array.
+Both paths source repos exclusively from the app's `repositories.json`. The `matchRepo()` prompt only includes repos from the passed array.
+
+#### Current State of the Fix (Commit `40b9131`)
+
+The `matchRepo()` function now:
+- Includes explicit constraint: "You MUST select one of the listed repositories. Do not reference or suggest any repository not in this list."
+- Uses only `outputFormat` and `jsonSchema` flags — no `dangerouslySkipPermissions`, `verbose`, or `printMode`
+- Does **not** pass a `workingDirectory`, keeping Claude CLI sandboxed without filesystem access
 
 #### Uncommitted Working Tree Changes
 
-The working tree contains changes that add a `selectedRepository` bypass to the matching flow:
+The working tree contains additional changes **unrelated to the repo matching fix**:
+- `ConfigurationEditSheet.swift` / `RepositoriesSettingsView.swift` / `SettingsView.swift`: Expanded repo configuration UI (description, skills, architecture docs, verification, PR settings)
+- `WorkspaceModel.swift`: `addRepository()` now accepts full `RepositoryInfo` and persists all fields
+- `ReposCommand.swift`: CLI `update-repo` expanded with `--description`, `--github-user`, `--recent-focus`, `--skills`, `--architecture-docs`, `--verification-commands`, `--verification-notes`, `--pr-base-branch`, `--pr-branch-naming`, `--pr-template`, `--pr-notes`
+- `EntryPoint.swift` / `Package.swift`: Added `LoggingSDK` dependency and bootstrap
+- `ClaudeStructuredOutputParser.swift`: Handle edge case where CLI marks `is_error=true` but `subtype=success` with valid output
+- `PlanRunnerFeatureTests.swift`: Test updates
 
-- `GeneratePlanUseCase.Options` gains a `selectedRepository: RepositoryInfo?` field
-- `GeneratePlanUseCase.run()` skips `matchRepo()` when `selectedRepository` is provided
-- `GeneratePlanSheet` adds a "Match repository from text" toggle (default off) — when off, uses the currently selected repo directly; when on, triggers Claude-based matching
-- `PlanRunnerModel.generate()` accepts the optional `selectedRepository` parameter
+There is also a `selectedRepository` bypass in the working tree:
+- `GeneratePlanUseCase.Options` has a `selectedRepository: RepositoryInfo?` field
+- When provided, `run()` skips `matchRepo()` entirely and uses the selected repo
+- The Mac app's `GeneratePlanSheet` has a "Match repository from text" toggle (default off) that controls this
 
-#### Root Cause Hypothesis
+#### Root Cause Analysis
 
-The `matchRepo()` function runs Claude CLI **without a working directory** (unlike `generatePlan()` which passes `repo.path.path()`). With `dangerouslySkipPermissions = true`, `printMode = true`, and `verbose = true`, Claude CLI has filesystem access in whatever directory the process runs from. Claude may be discovering or referencing repos outside the provided list in its reasoning, even though the JSON output is schema-constrained. The existing UUID validation guard would catch truly invalid matches, but the user may be seeing Claude's verbose output reference unexpected repos.
+Two root causes were identified and already fixed in commit `40b9131`:
 
-Additionally, the prompt doesn't explicitly instruct Claude to **only** choose from the listed repos — it says "Available repositories" but doesn't say "You must choose one of these."
+1. **Prompt ambiguity**: The prompt said "Available repositories" without explicitly constraining Claude to choose only from that list. Fixed by adding an explicit constraint.
+2. **Unnecessary filesystem access**: `matchRepo()` ran Claude CLI with `dangerouslySkipPermissions=true`, `verbose=true`, and `printMode=true`, allowing Claude to discover repos via the filesystem. Since repo matching is pure text-in/JSON-out (no tool access needed), these flags were removed.
 
-## - [x] Phase 2: Gather Architectural Guidance
-
-When executed, this phase will look at the repository's skills and architecture docs to identify which documentation and architectural guidelines are relevant to this request. It will read and summarize the key constraints. Document findings underneath this phase heading.
-
-### Findings
-
-#### Project Architecture (4-Layer Pattern)
-
-The project follows a 4-layer architecture defined in `AIDevToolsKit/Package.swift`:
-
-1. **Apps** — CLI and Mac app entry points (`AIDevToolsKitCLI`, `AIDevToolsKitMac`)
-2. **Features** — Domain-specific use cases and workflows (`PlanRunnerFeature`, `EvalFeature`, etc.)
-3. **Services** — Stateless business logic and persistence (`PlanRunnerService`, `EvalService`, etc.)
-4. **SDKs** — Reusable, stateless utilities and external integrations (`RepositorySDK`, `ClaudeCLISDK`, `GitSDK`, etc.)
-
-**Dependency rule:** No upward dependencies — SDKs cannot depend on Features/Services/Apps. The repo matching logic lives in the Features layer (`GeneratePlanUseCase` in `PlanRunnerFeature`), which correctly depends on `ClaudeCLISDK` and `RepositorySDK`.
-
-#### Relevant Architecture Docs
-
-| Document | Relevance |
-|----------|-----------|
-| `docs/completed/2026-03-21-a-unified-app-rearchitecture.md` | Establishes `RepositorySDK` as the single source of truth for repository information. `RepositoryStore` loads from `repositories.json`. |
-| `docs/completed/2026-03-21-a-extract-claude-cli-sdk.md` | Defines `ClaudeCLIClient` patterns: stateless Sendable struct, `run()` and `runStructured()` both accept optional `workingDirectory` parameter. |
-
-#### SDK Design Constraints
-
-- **Stateless & Sendable:** All SDK types (`ClaudeCLIClient`, `RepositoryStore`, `RepositoryInfo`, `RepoMatch`) must remain `Sendable` and `Codable` where applicable.
-- **ClaudeCLIClient interface:** `runStructured<T>(type:command:workingDirectory:environment:onFormattedOutput:)` — the `workingDirectory` parameter is optional and currently omitted in `matchRepo()` but used in `generatePlan()`.
-- **Environment setup:** ClaudeCLIClient clears the `CLAUDECODE` env var, enriches PATH with `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, and has a 120-second inactivity watchdog.
-
-#### Key Constraints for the Fix
-
-1. **Single source of truth:** `RepositoryStore` → `repositories.json` is the canonical repo list. Both Mac app and CLI already source repos correctly before passing them to `matchRepo()`.
-2. **Working directory gap:** `matchRepo()` does not pass `workingDirectory` to `claudeClient.runStructured()`, while `generatePlan()` does. Without a working directory constraint, Claude CLI may discover repos via filesystem access (especially with `dangerouslySkipPermissions = true`).
-3. **Prompt clarity:** The current prompt says "Available repositories" but lacks an explicit constraint like "You must choose one of these and no others."
-4. **Existing validation:** The UUID guard at lines 88-91 catches invalid repo IDs, but doesn't prevent Claude from being influenced by external repo discovery.
-5. **selectedRepository bypass:** The working tree already has a `selectedRepository` parameter that skips `matchRepo()` entirely — this path must remain functional.
-6. **Alphabetical ordering:** Per `CLAUDE.md`, any changes to Package.swift targets, enum cases, imports, or CLI command definitions must maintain alphabetical order.
-
-#### Relevant Skills
-
-- **`swift-architecture`** (referenced in `CLAUDE.md` for architecture/planning): Provides the 4-layer architecture patterns, layer placement guidance, and SDK design principles.
-- **`ai-dev-tools-debug`** (referenced in `CLAUDE.md` for debugging): Provides CLI commands for manual validation — `swift run ai-dev-tools-kit repos list`, `swift run ai-dev-tools-kit plan-runner plan "..."`.
-
-#### Files Most Relevant to the Fix
+#### Key Files
 
 | File | Role |
 |------|------|
-| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift` | Primary fix location — `matchRepo()` method and prompt |
-| `AIDevToolsKit/Sources/SDKs/ClaudeCLISDK/ClaudeCLIClient.swift` | Client pattern reference for `runStructured()` signature |
-| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryStore.swift` | Single source of truth for repo loading |
-| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryInfo.swift` | Repository model definition |
-| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/services/ClaudeResponseModels.swift` | `RepoMatch` struct definition |
-| `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift` | Mac app integration point |
-| `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift` | CLI integration point |
+| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift` | `matchRepo()` (lines 117–151), `run()` with `selectedRepository` bypass (lines 76–93) |
+| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/services/ClaudeResponseModels.swift` | `RepoMatch` struct (lines 1–11) |
+| `AIDevToolsKit/Sources/SDKs/ClaudeCLISDK/ClaudeCLIClient.swift` | `runStructured()` signature (lines 143–158) |
+| `AIDevToolsKit/Sources/SDKs/ClaudeCLISDK/ClaudeCLI.swift` | `Claude` command struct with flags (lines 9–20) |
+| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryStore.swift` | `loadAll()` — single source of truth for repo list |
+| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryInfo.swift` | `RepositoryInfo` model |
+| `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift` | Mac app `generate()` integration (lines 142–182) |
+| `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift` | CLI plan command — always triggers matching (no `selectedRepository`) |
 
-## - [x] Phase 3: Plan the Implementation
+## - [ ] Phase 2: Gather Architectural Guidance
 
-When executed, this phase will use insights from Phases 1 and 2 to create concrete implementation steps. It will append new phases (Phase 4 through N) to this document, each with: what to implement, which files to modify, which architectural documents to reference, and acceptance criteria. It will also append a Testing/Verification phase and a Create Pull Request phase at the end. The Create Pull Request phase MUST always use `gh pr create --draft` (all PRs are drafts). This phase is responsible for generating the remaining phases dynamically.
+When executed, this phase will:
+- Read `AIDevToolsKit/ARCHITECTURE.md` to understand layer boundaries and module responsibilities
+- Review the `RepositorySDK` module (repository configuration and storage) to understand how configured repos are stored and accessed
+- Review the `SkillService` module (skill configuration and repository settings) for its role in repo management
+- Check relevant skills and architecture docs for patterns around repository access
+- Summarize key architectural constraints that apply to this fix (e.g., which layer should own the matching logic, how to properly access the configured repo list without violating dependency rules)
 
-### Implementation Plan
+## - [ ] Phase 3: Plan the Implementation
 
-Two root causes were identified in Phase 1:
-
-1. **Prompt ambiguity** — The `matchRepo()` prompt says "Available repositories" but never tells Claude it *must* choose from that list and no other source.
-2. **Unnecessary filesystem access** — `matchRepo()` sets `dangerouslySkipPermissions = true` and `verbose = true`, giving Claude CLI full filesystem access. Since repo matching is pure text-in/JSON-out (no tools needed), these flags are unnecessary and allow Claude to discover repos outside the provided list.
-
-The `selectedRepository` bypass (already in the working tree) is a separate, valid path that skips matching entirely — it remains untouched.
-
-## - [x] Phase 4: Fix matchRepo Prompt and Command Flags
-
-**What to implement:**
-
-1. **Strengthen the prompt** — Add an explicit constraint: "You MUST select one of the listed repositories. Do not reference or suggest any repository not in this list."
-2. **Remove `dangerouslySkipPermissions`** — Repo matching doesn't need filesystem/tool access. Removing this prevents Claude from discovering repos via the filesystem.
-3. **Remove `verbose = true`** — Not needed for a simple matching task; reduces noise.
-4. **Remove `printMode = true`** — Not needed for structured output matching.
-
-**File to modify:**
-- `AIDevToolsKit/Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift` — `matchRepo()` method (lines 117-152)
-
-**Architecture reference:**
-- `docs/completed/2026-03-21-a-extract-claude-cli-sdk.md` — `ClaudeCLIClient` patterns; `runStructured()` signature
-
-**Acceptance criteria:**
-- [x] Prompt includes explicit instruction to only choose from listed repos
-- [x] `dangerouslySkipPermissions` is not set on the match command
-- [x] `verbose` is not set on the match command
-- [x] `printMode` is not set on the match command
-- [x] Existing `selectedRepository` bypass path is unchanged
-- [x] UUID validation guard (lines 88-91) remains in place as a safety net
-
-**Technical notes:**
-- Added constraint line "You MUST select one of the listed repositories. Do not reference or suggest any repository not in this list." to the match prompt, placed after the repo list and before the return instruction.
-- Removed `printMode`, `verbose`, and `dangerouslySkipPermissions` flags from the match command. The command now only sets `outputFormat` and `jsonSchema`, which is all that's needed for a pure text-in/JSON-out matching task.
-- The `selectedRepository` bypass (lines 76-79) and UUID validation guard (lines 88-91) are untouched.
-
-## - [ ] Phase 5: Testing and Verification
-
-**What to verify:**
-1. Project builds successfully: `swift build` in `AIDevToolsKit/`
-2. Existing tests pass: `swift test` in `AIDevToolsKit/`
-3. CLI repo listing still works: `swift run ai-dev-tools-kit repos list`
-
-**Acceptance criteria:**
-- [ ] `swift build` succeeds with no errors
-- [ ] `swift test` passes
-- [ ] No regressions in repo listing
-
-## - [ ] Phase 6: Create Pull Request
-
-Create a draft pull request with `gh pr create --draft` summarizing the prompt and flag changes.
+When executed, this phase will:
+- Use findings from Phases 1 and 2 to create concrete implementation steps
+- Append new phases (Phase 4 through N) to this document, each specifying:
+  - What to implement
+  - Which files to modify
+  - Which architectural documents to reference
+  - Acceptance criteria
+- Append a Testing/Verification phase
+- Append a Create Pull Request phase (using `gh pr create --draft`)
+- Generate the architecture diagram JSON file (`fix-repo-matching-to-app-repo-list-architecture.json`) mapping all changed files to their modules and layers
