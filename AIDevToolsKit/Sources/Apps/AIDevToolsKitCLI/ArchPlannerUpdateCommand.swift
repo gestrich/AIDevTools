@@ -19,7 +19,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Job ID (UUID)")
     var jobId: String
 
-    @Option(name: .long, help: "Step to run (e.g. form-requirements, compile-arch-info, plan-across-layers, checklist-validation, build-implementation-model, score, execute, report, followups, next)")
+    @Option(name: .long, help: "Step to run (e.g. form-requirements, compile-arch-info, plan-across-layers, checklist-validation, build-implementation-model, score, execute, report, followups, all, next)")
     var step: String?
 
     mutating func run() async throws {
@@ -29,9 +29,30 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         }
 
         let store = try ArchitecturePlannerStore(repoName: repoName)
+        let stepName = step ?? "next"
 
-        let targetStep = try await resolveStep(step ?? "next", store: store, jobId: uuid)
-        try await runStep(targetStep, store: store, jobId: uuid)
+        if stepName == "all" {
+            try await runAllSteps(store: store, jobId: uuid)
+        } else {
+            let targetStep = try await resolveStep(stepName, store: store, jobId: uuid)
+            try await runStep(targetStep, store: store, jobId: uuid)
+        }
+    }
+
+    private func runAllSteps(store: ArchitecturePlannerStore, jobId: UUID) async throws {
+        while true {
+            let resolved: String
+            do {
+                resolved = try await resolveStep("next", store: store, jobId: jobId)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                break
+            }
+            print("\n--- Running: \(resolved) ---\n")
+            try await runStep(resolved, store: store, jobId: jobId)
+        }
+        print("\nAll steps completed.")
     }
 
     private func resolveStep(_ stepName: String, store: ArchitecturePlannerStore, jobId: UUID) async throws -> String {

@@ -305,6 +305,11 @@ struct ArchitecturePlannerDetailView: View {
 
             Spacer()
 
+            Button("Run All Steps") {
+                Task { await model.runAllSteps() }
+            }
+            .disabled(isRunning)
+
             Button("Run Next Step") {
                 Task { await model.runNextStep() }
             }

@@ -148,6 +148,14 @@ final class ArchitecturePlannerModel {
         }
     }
 
+    func runAllSteps() async {
+        while let job = selectedJob,
+              ArchitecturePlannerStep(rawValue: job.currentStepIndex) != nil {
+            await runNextStep()
+            if case .error = state { break }
+        }
+    }
+
     func deleteJob(_ job: PlanningJob) {
         guard let store else { return }
         do {
