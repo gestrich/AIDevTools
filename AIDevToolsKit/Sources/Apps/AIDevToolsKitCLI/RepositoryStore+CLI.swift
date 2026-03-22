@@ -4,11 +4,12 @@ import RepositorySDK
 extension RepositoryStore {
     static func fromCLI(dataPath: String?) -> RepositoryStore {
         let config: RepositoryStoreConfiguration
-        if let dataPath {
-            config = RepositoryStoreConfiguration(dataPath: URL(filePath: dataPath))
+        let resolvedPath = if let dataPath {
+            URL(filePath: dataPath)
         } else {
-            config = RepositoryStoreConfiguration()
+            URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
         }
+        config = RepositoryStoreConfiguration(dataPath: resolvedPath)
         return RepositoryStore(configuration: config)
     }
 

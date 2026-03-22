@@ -8,7 +8,7 @@ extension EvalRepoSettingsStore {
         if let dataPath {
             path = URL(filePath: dataPath)
         } else {
-            path = RepositoryStoreConfiguration().dataPath
+            path = URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
         }
         return EvalRepoSettingsStore(dataPath: path)
     }

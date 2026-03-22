@@ -107,7 +107,7 @@ public struct ExecutePlanUseCase: Sendable {
 
         let repository = options.repository
         let completedDirectory = options.completedDirectory
-        let resolvedDataPath = options.dataPath ?? RepositoryStoreConfiguration().dataPath
+        let resolvedDataPath = options.dataPath ?? URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
         let logDir: URL? = if let repoName = repository?.name {
             Self.logDirectory(dataPath: resolvedDataPath, repoName: repoName, planURL: options.planPath)
         } else {

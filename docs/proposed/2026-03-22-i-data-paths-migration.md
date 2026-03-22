@@ -40,7 +40,7 @@ Port `DataPathsService` from RefactorApp into `AIDevToolsKit/Sources/Services/Da
 
 **Completed:** Simplified from RefactorApp's `serviceName`/`subdirectory` pattern to a single `relativePath` computed property on `ServicePath`, since AIDevTools paths don't all follow a two-level structure. The `internal init(rootPath:fileManager:)` serves as the test initializer. Generic `path(for: String)` and `path(for: String, subdirectory: String)` methods retained for ad-hoc paths.
 
-## - [ ] Phase 2: Update SettingsModel and RepositoryStoreConfiguration
+## - [x] Phase 2: Update SettingsModel and RepositoryStoreConfiguration
 
 **SettingsModel** already stores `dataPath` in UserDefaults — this stays as the source of truth for the Mac app. No changes needed to SettingsModel itself.
 
@@ -50,6 +50,8 @@ public init(dataPath: URL)
 ```
 
 This forces callers (Mac app, CLI) to explicitly provide the path, making it clear this is an app-level concern.
+
+**Completed:** Removed the default parameter `URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")` from `RepositoryStoreConfiguration.init`. Callers that relied on the implicit default (`RepositoryStore+CLI`, `PlanRepoSettingsStore+CLI`, `EvalRepoSettingsStore+CLI`, `ExecutePlanUseCase`) now inline the default path directly. The Mac app and tests already passed explicit paths and required no changes.
 
 ## - [ ] Phase 3: Migrate RepositoryStore
 
