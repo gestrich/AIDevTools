@@ -188,7 +188,7 @@ Added 4 tests to `PlanRunnerFeatureTests.swift`:
 
 All 18 tests pass via `swift test --filter PlanRunnerFeatureTests`.
 
-## - [ ] Phase 5: Build and Run Tests
+## - [x] Phase 5: Build and Run Tests
 
 When executed, this phase will:
 - Run `swift build` to verify the project compiles
@@ -199,6 +199,14 @@ When executed, this phase will:
 - Build succeeds with no errors
 - All PlanRunnerFeature tests pass
 - No regressions in the full test suite
+
+### Completed
+
+| Step | Result |
+|------|--------|
+| `swift build` | Passed — clean build with no errors |
+| `swift test --filter PlanRunnerFeatureTests` | Passed — all 18 tests pass |
+| Full test suite | No regressions — all failures are pre-existing `SkillScannerTests` issues (tests scan `~/.claude/commands/` instead of isolated fixtures, picking up real user skills) |
 
 ## - [ ] Phase 6: Create Pull Request
 
