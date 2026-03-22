@@ -73,11 +73,55 @@ The CLI follows the same principle — eval commands are not skill-scoped:
 
 ## Phases
 
-## - [ ] Phase 1: Audit Skill Coupling
+## - [x] Phase 1: Audit Skill Coupling
 
 **Skills to read**: `ai-dev-tools-debug`
 
 Audit the eval case model, loader, and grading pipeline to identify everywhere a skill is assumed or required. Document which parts need to change to make skill association optional.
+
+### Audit Findings
+
+#### Fields to Remove
+
+| Field | Location | Purpose |
+|-------|----------|---------|
+| `skillHint: String?` | `EvalCase` | Prompt hint (`"explicit"` / `"implicit"`) |
+| `shouldTrigger: Bool?` | `EvalCase` | Validation that `mustInclude`/`mustNotInclude` are set |
+| `skillMustBeInvoked: String?` | `DeterministicChecks` | Single skill must-invoke assertion |
+| `skillMustNotBeInvoked: [String]?` | `DeterministicChecks` | Forbidden skill assertions |
+
+#### Files That Need Changes (by phase)
+
+**Phase 2 — Data Model & Grading:**
+- `EvalCase.swift` — Remove `skillHint`, `shouldTrigger`; add `skills: [SkillAssertion]?`
+- `EvalCase.swift` (`DeterministicChecks`) — Remove `skillMustBeInvoked`, `skillMustNotBeInvoked`
+- `PromptBuilder.swift` — Derives prompt hint from `evalCase.skillHint`; change to derive from `skills` array (e.g., any entry with `shouldTrigger: true` implies explicit/implicit hint)
+- `DeterministicGrader.swift` — Grades `skillMustBeInvoked` (lines 125-138), `skillMustNotBeInvoked` (lines 140-151), and `shouldTrigger` validation (lines 177-184); all move to iterate over `skills` array
+- `RunCaseUseCase.swift` — `resolveSkillChecks()` reads `deterministic?.skillMustBeInvoked` and `deterministic?.skillMustNotBeInvoked`; change to read from `evalCase.skills`
+- `DeterministicGraderTests.swift` — Tests for `skillMustBeInvoked`, `skillMustNotBeInvoked`, `shouldTrigger`
+- `PromptBuilderTests.swift` — Tests for `skillHint`
+- `CopyrightHeaderEvals.swift` — Uses `skillHint` and `shouldTrigger` on all cases
+- `DesignKitMigrationEvals.swift` — Uses `skillHint` and `shouldTrigger` on all cases
+
+**Phase 3 — CLI:**
+- `EvalCase.summaryDescription` — Prints `skillHint` and `shouldTrigger`; update to print `skills` array
+- `RunEvalsCommand.swift` — Abstract says "Run skill evaluation cases"; minor wording fix
+
+**Phase 4 — Mac App:**
+- `EvalResultsView.swift` — Displays `skillHint`/`shouldTrigger` (lines 456-461) and `skillMustBeInvoked`/`skillMustNotBeInvoked` (lines 652-657)
+
+**Phase 5 — JSONL Migration:**
+- `what-time-is-it.jsonl` — `deterministic.skillMustBeInvoked`
+- `ai-dev-tools-joke.jsonl` — `deterministic.skillMustBeInvoked`
+- `commit-skill.jsonl` — No skill fields (already compatible)
+
+#### Files That Need No Changes
+- `CaseLoader.swift` — Generic JSON decoding; changes to `EvalCase` propagate automatically
+- `ProviderAdapterProtocol.swift` — `invocationMethod()` is the resolution mechanism, not coupled to case shape
+- `ClaudeAdapter.swift` / `CodexAdapter.swift` — Skill detection logic stays the same
+- `CaseResult.swift` — `skillChecks: [SkillCheckResult]` is output-side, not input-side
+- `SkillCheckResult` / `ToolEvent` / `InvocationMethod` — Output types, unchanged
+- `MockProviderAdapter.swift` — Mock `invocationMethod` stays the same
 
 ## - [ ] Phase 2: Update Eval Case Data Model
 
