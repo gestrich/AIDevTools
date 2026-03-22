@@ -763,7 +763,7 @@ Wire the architecture diagram into the existing plan detail view and update the 
   - After moving the plan markdown, also move the `-architecture.json` file if it exists
 - Add `import PlanRunnerService` if not already present (for `ArchitectureDiagram` type)
 
-## - [ ] Phase 9: Validation
+## - [x] Phase 9: Validation
 
 **Skills to read**: `swift-testing`
 
