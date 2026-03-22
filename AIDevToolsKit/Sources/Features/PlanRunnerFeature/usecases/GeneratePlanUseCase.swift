@@ -185,6 +185,7 @@ public struct GeneratePlanUseCase: Sendable {
 
         ## - [ ] Phase 3: Plan the Implementation
         When executed, this phase will use insights from Phases 1 and 2 to create concrete implementation steps. It will append new phases (Phase 4 through N) to this document, each with: what to implement, which files to modify, which architectural documents to reference, and acceptance criteria. It will also append a Testing/Verification phase and a Create Pull Request phase at the end. The Create Pull Request phase MUST always use `gh pr create --draft` (all PRs are drafts).\(repo.githubUser.map { " Before any `gh` commands, run `gh auth switch -u \($0)`." } ?? "") This phase is responsible for generating the remaining phases dynamically.
+        \(architectureJSONInstruction(architectureDocs: architectureDocs))
 
         CRITICAL scope and sizing rules for Phase 3:
         - Stay focused on exactly what was requested. Do not expand scope, refactor surrounding code, or make unrelated improvements.
@@ -217,6 +218,47 @@ public struct GeneratePlanUseCase: Sendable {
             workingDirectory: repo.path.path()
         )
         return output.value
+    }
+
+    private func architectureJSONInstruction(architectureDocs: [String]) -> String {
+        guard !architectureDocs.isEmpty else { return "" }
+
+        return """
+        Additionally, after generating implementation phases, Phase 3 must also produce an architecture diagram JSON file.
+
+        Read the repository's ARCHITECTURE.md (listed in architecture docs: \(architectureDocs.joined(separator: ", "))).
+        For every file planned to be added, modified, or deleted across all implementation phases, map it to the appropriate module and layer from ARCHITECTURE.md.
+
+        Write the JSON to the same directory as this plan file, named: {this-plan-filename-without-extension}-architecture.json (e.g., if this plan is my-feature.md, write my-feature-architecture.json).
+
+        The JSON must conform to this schema:
+        {
+          "layers": [
+            {
+              "name": "LayerName",
+              "dependsOn": ["OtherLayer"],
+              "modules": [
+                {
+                  "name": "ModuleName",
+                  "changes": [
+                    {
+                      "file": "relative/path/from/repo/root",
+                      "action": "add|modify|delete",
+                      "summary": "One-line description",
+                      "phase": 4
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+
+        Include ALL layers and modules from ARCHITECTURE.md, even those with no changes (use empty changes array).
+        The layers array must be ordered top-to-bottom (highest layer first).
+        Map files to modules using directory structure conventions (e.g., Sources/{Layer}/{Module}/).
+        Root-level files like Package.swift that don't belong to a module should be omitted.
+        """
     }
 
     private func writePlan(_ plan: GeneratedPlan, to proposedDirectory: URL) throws -> URL {

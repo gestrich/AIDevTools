@@ -681,7 +681,7 @@ The data model is expressive enough for its intended purpose. The five gaps iden
 
 ## Implementation Phases
 
-## - [ ] Phase 4: ArchitectureDiagram Codable Model
+## - [x] Phase 4: ArchitectureDiagram Codable Model
 
 **Skills to read**: `swift-testing`
 
@@ -703,7 +703,7 @@ Create the `ArchitectureDiagram` Codable model in `PlanRunnerService` (Services 
   - Verify `action` enum decodes all three cases
 - Ensure `swift build` passes
 
-## - [ ] Phase 5: Create ARCHITECTURE.md for This Repository
+## - [x] Phase 5: Create ARCHITECTURE.md for This Repository
 
 Create the first real `ARCHITECTURE.md` for the AIDevTools project, following the convention defined in Phase 1. This serves as both a reference example and enables architecture visualization for this repo's own plans.
 
@@ -712,7 +712,7 @@ Create the first real `ARCHITECTURE.md` for the AIDevTools project, following th
 - Include `Depends on:` lines and `## Dependency Rules` summary
 - Verify the `architectureDocs` field on the AIDevTools repository configuration includes this file path (or note it needs to be added manually via the repos settings)
 
-## - [ ] Phase 6: Update Plan Generation to Produce Architecture JSON
+## - [x] Phase 6: Update Plan Generation to Produce Architecture JSON
 
 Modify `GeneratePlanUseCase` so that the Phase 3 template instructs the LLM to also produce an architecture JSON file when it generates implementation phases.
 
@@ -724,7 +724,7 @@ Modify `GeneratePlanUseCase` so that the Phase 3 template instructs the LLM to a
 - The instruction is embedded in the plan markdown — `ExecutePlanUseCase` does NOT need changes. When Claude executes Phase 3, it reads the plan text and follows the embedded instructions.
 - If no ARCHITECTURE.md is listed in `architectureDocs`, the Phase 3 text should skip the architecture JSON instruction (conditional inclusion in the template)
 
-## - [ ] Phase 7: SwiftUI Architecture Diagram Views
+## - [x] Phase 7: SwiftUI Architecture Diagram Views
 
 **Skills to read**: `swift-testing`
 
@@ -749,7 +749,7 @@ Create the four SwiftUI views from the Phase 2 design in `Sources/Apps/AIDevTool
   - Sorted by phase then file path alphabetically
 - Create `ModuleSelection.swift` (can be in the same file as `ArchitectureDiagramView` or separate) — simple struct with `layerName` and `moduleName`
 
-## - [ ] Phase 8: Integrate into PlanDetailView and Plan Lifecycle
+## - [x] Phase 8: Integrate into PlanDetailView and Plan Lifecycle
 
 Wire the architecture diagram into the existing plan detail view and update the plan file lifecycle.
 
@@ -763,7 +763,7 @@ Wire the architecture diagram into the existing plan detail view and update the 
   - After moving the plan markdown, also move the `-architecture.json` file if it exists
 - Add `import PlanRunnerService` if not already present (for `ArchitectureDiagram` type)
 
-## - [ ] Phase 9: Validation
+## - [x] Phase 9: Validation
 
 **Skills to read**: `swift-testing`
 
