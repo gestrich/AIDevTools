@@ -22,8 +22,8 @@ public struct AIDevToolsKitMacEntryView: View {
         AIDevToolsLogging.bootstrap()
         let settingsModel = SettingsModel()
         let store = RepositoryStore(repositoriesFile: settingsModel.dataPath.appending(path: "repositories.json"))
-        let evalSettingsStore = EvalRepoSettingsStore(dataPath: settingsModel.dataPath)
-        let planSettingsStore = PlanRepoSettingsStore(dataPath: settingsModel.dataPath)
+        let evalSettingsStore = EvalRepoSettingsStore(filePath: settingsModel.dataPath.appending(path: "eval-settings.json"))
+        let planSettingsStore = PlanRepoSettingsStore(filePath: settingsModel.dataPath.appending(path: "plan-settings.json"))
         _settingsModel = State(initialValue: settingsModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: settingsModel.dataPath,
@@ -58,8 +58,8 @@ public struct AIDevToolsSettingsView: View {
     public init() {
         let settingsModel = SettingsModel()
         let store = RepositoryStore(repositoriesFile: settingsModel.dataPath.appending(path: "repositories.json"))
-        let evalSettingsStore = EvalRepoSettingsStore(dataPath: settingsModel.dataPath)
-        let planSettingsStore = PlanRepoSettingsStore(dataPath: settingsModel.dataPath)
+        let evalSettingsStore = EvalRepoSettingsStore(filePath: settingsModel.dataPath.appending(path: "eval-settings.json"))
+        let planSettingsStore = PlanRepoSettingsStore(filePath: settingsModel.dataPath.appending(path: "plan-settings.json"))
         _settingsModel = State(initialValue: settingsModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: settingsModel.dataPath,

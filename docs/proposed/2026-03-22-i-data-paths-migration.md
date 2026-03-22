@@ -62,13 +62,15 @@ This forces callers (Mac app, CLI) to explicitly provide the path, making it cle
 
 **Completed:** Changed `RepositoryStore.init` to accept `repositoriesFile: URL` directly instead of `RepositoryStoreConfiguration`. Deleted `RepositoryStoreConfiguration` entirely. Removed `dataPath` property and `outputDirectory(for:)` from `RepositoryStore` — output directory computation moved to callers: `WorkspaceModel` now takes a `dataPath: URL` init parameter, and the CLI extension's `outputDirectory(forRepoAt:dataPath:)` takes an explicit data path. Added `cliDataPath(from:)` helper to the CLI extension for resolving the data path option. Updated `RunEvalsCommand`, `ShowOutputCommand`, `ClearArtifactsCommand`, both Mac entry views, and tests. Removed the `outputDirectoryUsesRepoName` test since the method no longer exists on the store.
 
-## - [ ] Phase 4: Migrate EvalRepoSettingsStore and PlanRepoSettingsStore
+## - [x] Phase 4: Migrate EvalRepoSettingsStore and PlanRepoSettingsStore
 
 Both stores currently take `dataPath: URL` and derive their file path.
 
 - Change `EvalRepoSettingsStore.init` to take the resolved file URL directly (e.g., `filePath: URL`) rather than building it from `dataPath`.
 - Same for `PlanRepoSettingsStore`.
 - The app layer uses `DataPathsService` to resolve the path and passes it in.
+
+**Completed:** Changed both `EvalRepoSettingsStore.init(dataPath:)` and `PlanRepoSettingsStore.init(dataPath:)` to accept `filePath: URL` directly — the stores no longer derive the JSON filename internally. Callers now pass the full file URL: the Mac app entry views append `eval-settings.json` / `plan-settings.json` to `settingsModel.dataPath`, the CLI `fromCLI` extensions use `RepositoryStore.cliDataPath(from:)` to resolve the base path then append the filename, and tests pass a temp directory path with the filename appended.
 
 ## - [ ] Phase 5: Migrate ArchitecturePlannerStore
 

@@ -4,13 +4,8 @@ import RepositorySDK
 
 extension EvalRepoSettingsStore {
     static func fromCLI(dataPath: String?) -> EvalRepoSettingsStore {
-        let path: URL
-        if let dataPath {
-            path = URL(filePath: dataPath)
-        } else {
-            path = URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
-        }
-        return EvalRepoSettingsStore(dataPath: path)
+        let path = RepositoryStore.cliDataPath(from: dataPath)
+        return EvalRepoSettingsStore(filePath: path.appending(path: "eval-settings.json"))
     }
 
     func casesDirectory(forRepo repo: RepositoryInfo) throws -> URL {

@@ -4,13 +4,8 @@ import RepositorySDK
 
 extension PlanRepoSettingsStore {
     static func fromCLI(dataPath: String?) -> PlanRepoSettingsStore {
-        let path: URL
-        if let dataPath {
-            path = URL(filePath: dataPath)
-        } else {
-            path = URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
-        }
-        return PlanRepoSettingsStore(dataPath: path)
+        let path = RepositoryStore.cliDataPath(from: dataPath)
+        return PlanRepoSettingsStore(filePath: path.appending(path: "plan-settings.json"))
     }
 
     func resolvedProposedDirectory(forRepo repo: RepositoryInfo) throws -> URL {

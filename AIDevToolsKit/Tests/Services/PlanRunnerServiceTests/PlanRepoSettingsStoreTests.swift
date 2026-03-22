@@ -6,7 +6,7 @@ struct PlanRepoSettingsStoreTests {
     private func makeTempStore() -> (PlanRepoSettingsStore, URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        return (PlanRepoSettingsStore(dataPath: tempDir), tempDir)
+        return (PlanRepoSettingsStore(filePath: tempDir.appending(path: "plan-settings.json")), tempDir)
     }
 
     private func cleanup(_ url: URL) {
