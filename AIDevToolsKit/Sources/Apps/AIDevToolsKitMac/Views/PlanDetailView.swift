@@ -12,6 +12,9 @@ struct PlanDetailView: View {
     @State private var planContent: String?
     @State private var localPhases: [PlanPhase] = []
     @State private var loadError: String?
+    @State private var architectureDiagram: ArchitectureDiagram?
+    @State private var selectedModule: ModuleSelection?
+    @State private var isArchitectureExpanded = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,6 +28,15 @@ struct PlanDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         phaseSection
+
+                        if let diagram = architectureDiagram {
+                            DisclosureGroup("Architecture", isExpanded: $isArchitectureExpanded) {
+                                ArchitectureDiagramView(
+                                    diagram: diagram,
+                                    selectedModule: $selectedModule
+                                )
+                            }
+                        }
 
                         if case .executing(let progress) = planRunnerModel.state,
                            !progress.currentOutput.isEmpty {
@@ -270,6 +282,18 @@ struct PlanDetailView: View {
             localPhases = []
             loadError = error.localizedDescription
         }
+
+        // Load architecture diagram JSON if present
+        let planName = plan.planURL.deletingPathExtension().lastPathComponent
+        let architectureURL = plan.planURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("\(planName)-architecture.json")
+        if let data = try? Data(contentsOf: architectureURL) {
+            architectureDiagram = try? JSONDecoder().decode(ArchitectureDiagram.self, from: data)
+        } else {
+            architectureDiagram = nil
+        }
+        selectedModule = nil
     }
 
     private func formattedTime(_ totalSeconds: Int) -> String {

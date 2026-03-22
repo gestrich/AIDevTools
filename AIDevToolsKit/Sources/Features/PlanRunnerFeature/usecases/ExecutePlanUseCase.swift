@@ -339,6 +339,15 @@ public struct ExecutePlanUseCase: Sendable {
             }
             let dest = completedDir.appendingPathComponent(planPath.lastPathComponent)
             try fm.moveItem(at: planPath, to: dest)
+
+            // Also move architecture JSON if it exists
+            let planName = planPath.deletingPathExtension().lastPathComponent
+            let archSource = planPath.deletingLastPathComponent()
+                .appendingPathComponent("\(planName)-architecture.json")
+            if fm.fileExists(atPath: archSource.path) {
+                let archDest = completedDir.appendingPathComponent("\(planName)-architecture.json")
+                try fm.moveItem(at: archSource, to: archDest)
+            }
         } catch {
             // Non-fatal: plan stays in proposed/
         }

@@ -749,7 +749,7 @@ Create the four SwiftUI views from the Phase 2 design in `Sources/Apps/AIDevTool
   - Sorted by phase then file path alphabetically
 - Create `ModuleSelection.swift` (can be in the same file as `ArchitectureDiagramView` or separate) — simple struct with `layerName` and `moduleName`
 
-## - [ ] Phase 8: Integrate into PlanDetailView and Plan Lifecycle
+## - [x] Phase 8: Integrate into PlanDetailView and Plan Lifecycle
 
 Wire the architecture diagram into the existing plan detail view and update the plan file lifecycle.
 
