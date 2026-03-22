@@ -106,6 +106,54 @@ The project follows a 4-layer architecture defined in `AIDevToolsKit/Package.swi
 | `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift` | Mac app integration point |
 | `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift` | CLI integration point |
 
-## - [ ] Phase 3: Plan the Implementation
+## - [x] Phase 3: Plan the Implementation
 
 When executed, this phase will use insights from Phases 1 and 2 to create concrete implementation steps. It will append new phases (Phase 4 through N) to this document, each with: what to implement, which files to modify, which architectural documents to reference, and acceptance criteria. It will also append a Testing/Verification phase and a Create Pull Request phase at the end. The Create Pull Request phase MUST always use `gh pr create --draft` (all PRs are drafts). This phase is responsible for generating the remaining phases dynamically.
+
+### Implementation Plan
+
+Two root causes were identified in Phase 1:
+
+1. **Prompt ambiguity** — The `matchRepo()` prompt says "Available repositories" but never tells Claude it *must* choose from that list and no other source.
+2. **Unnecessary filesystem access** — `matchRepo()` sets `dangerouslySkipPermissions = true` and `verbose = true`, giving Claude CLI full filesystem access. Since repo matching is pure text-in/JSON-out (no tools needed), these flags are unnecessary and allow Claude to discover repos outside the provided list.
+
+The `selectedRepository` bypass (already in the working tree) is a separate, valid path that skips matching entirely — it remains untouched.
+
+## - [ ] Phase 4: Fix matchRepo Prompt and Command Flags
+
+**What to implement:**
+
+1. **Strengthen the prompt** — Add an explicit constraint: "You MUST select one of the listed repositories. Do not reference or suggest any repository not in this list."
+2. **Remove `dangerouslySkipPermissions`** — Repo matching doesn't need filesystem/tool access. Removing this prevents Claude from discovering repos via the filesystem.
+3. **Remove `verbose = true`** — Not needed for a simple matching task; reduces noise.
+4. **Remove `printMode = true`** — Not needed for structured output matching.
+
+**File to modify:**
+- `AIDevToolsKit/Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift` — `matchRepo()` method (lines 117-152)
+
+**Architecture reference:**
+- `docs/completed/2026-03-21-a-extract-claude-cli-sdk.md` — `ClaudeCLIClient` patterns; `runStructured()` signature
+
+**Acceptance criteria:**
+- [ ] Prompt includes explicit instruction to only choose from listed repos
+- [ ] `dangerouslySkipPermissions` is not set on the match command
+- [ ] `verbose` is not set on the match command
+- [ ] `printMode` is not set on the match command
+- [ ] Existing `selectedRepository` bypass path is unchanged
+- [ ] UUID validation guard (lines 88-91) remains in place as a safety net
+
+## - [ ] Phase 5: Testing and Verification
+
+**What to verify:**
+1. Project builds successfully: `swift build` in `AIDevToolsKit/`
+2. Existing tests pass: `swift test` in `AIDevToolsKit/`
+3. CLI repo listing still works: `swift run ai-dev-tools-kit repos list`
+
+**Acceptance criteria:**
+- [ ] `swift build` succeeds with no errors
+- [ ] `swift test` passes
+- [ ] No regressions in repo listing
+
+## - [ ] Phase 6: Create Pull Request
+
+Create a draft pull request with `gh pr create --draft` summarizing the prompt and flag changes.
