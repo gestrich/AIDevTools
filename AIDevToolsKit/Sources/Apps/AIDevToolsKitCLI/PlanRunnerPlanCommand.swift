@@ -7,10 +7,10 @@ import RepositorySDK
 struct PlanRunnerPlanCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "plan",
-        abstract: "Generate an implementation plan from voice text"
+        abstract: "Generate an implementation plan from a prompt"
     )
 
-    @Argument(help: "Voice-transcribed text describing the task")
+    @Argument(help: "Text describing the task")
     var text: String
 
     @Flag(help: "Execute the plan immediately after generating it")
@@ -26,7 +26,7 @@ struct PlanRunnerPlanCommand: AsyncParsableCommand {
 
         let result = try await GeneratePlanUseCase().run(
             GeneratePlanUseCase.Options(
-                voiceText: text,
+                prompt: text,
                 repositories: repos,
                 resolveProposedDirectory: { repo in
                     try planSettings.resolvedProposedDirectory(forRepo: repo)

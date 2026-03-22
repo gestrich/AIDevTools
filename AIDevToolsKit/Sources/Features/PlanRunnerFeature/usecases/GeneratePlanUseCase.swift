@@ -5,17 +5,20 @@ import RepositorySDK
 public struct GeneratePlanUseCase: Sendable {
 
     public struct Options: Sendable {
-        public let voiceText: String
+        public let prompt: String
         public let repositories: [RepositoryInfo]
+        public let selectedRepository: RepositoryInfo?
         public let resolveProposedDirectory: @Sendable (RepositoryInfo) throws -> URL
 
         public init(
-            voiceText: String,
+            prompt: String,
             repositories: [RepositoryInfo],
+            selectedRepository: RepositoryInfo? = nil,
             resolveProposedDirectory: @escaping @Sendable (RepositoryInfo) throws -> URL
         ) {
-            self.voiceText = voiceText
+            self.prompt = prompt
             self.repositories = repositories
+            self.selectedRepository = selectedRepository
             self.resolveProposedDirectory = resolveProposedDirectory
         }
     }
@@ -67,16 +70,26 @@ public struct GeneratePlanUseCase: Sendable {
         _ options: Options,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> Result {
-        onProgress?(.matchingRepo)
-        let repoMatch: RepoMatch = try await matchRepo(
-            voiceText: options.voiceText,
-            repositories: options.repositories
-        )
-        onProgress?(.matchedRepo(repoId: repoMatch.repoId, interpretedRequest: repoMatch.interpretedRequest))
+        let repo: RepositoryInfo
+        let repoMatch: RepoMatch
 
-        guard let repoUUID = UUID(uuidString: repoMatch.repoId),
-              let repo = options.repositories.first(where: { $0.id == repoUUID }) else {
-            throw GenerateError.repoNotFound(repoMatch.repoId)
+        if let selected = options.selectedRepository {
+            repo = selected
+            repoMatch = RepoMatch(repoId: selected.id.uuidString, interpretedRequest: options.prompt)
+            onProgress?(.matchedRepo(repoId: repoMatch.repoId, interpretedRequest: repoMatch.interpretedRequest))
+        } else {
+            onProgress?(.matchingRepo)
+            repoMatch = try await matchRepo(
+                prompt: options.prompt,
+                repositories: options.repositories
+            )
+            onProgress?(.matchedRepo(repoId: repoMatch.repoId, interpretedRequest: repoMatch.interpretedRequest))
+
+            guard let repoUUID = UUID(uuidString: repoMatch.repoId),
+                  let matched = options.repositories.first(where: { $0.id == repoUUID }) else {
+                throw GenerateError.repoNotFound(repoMatch.repoId)
+            }
+            repo = matched
         }
 
         onProgress?(.generatingPlan)
@@ -101,7 +114,7 @@ public struct GeneratePlanUseCase: Sendable {
 
     // MARK: - Private
 
-    private func matchRepo(voiceText: String, repositories: [RepositoryInfo]) async throws -> RepoMatch {
+    private func matchRepo(prompt: String, repositories: [RepositoryInfo]) async throws -> RepoMatch {
         let repoList = repositories.map { repo in
             var entry = "- id: \(repo.id.uuidString) | description: \(repo.description ?? repo.name)"
             if let focus = repo.recentFocus {
@@ -110,24 +123,24 @@ public struct GeneratePlanUseCase: Sendable {
             return entry
         }.joined(separator: "\n")
 
-        let prompt = """
-        You are helping match a voice-transcribed development request to the correct repository.
+        let matchPrompt = """
+        You are helping match a development request to the correct repository.
 
-        The voice transcription likely has errors — use the repository descriptions and recent focus areas to infer the best match.
+        Use the repository descriptions and recent focus areas to infer the best match.
 
-        Voice text: "\(voiceText)"
+        Request: "\(prompt)"
 
         Available repositories:
         \(repoList)
 
-        Return the best matching repository ID and your interpretation of what the request is actually asking for (correcting any likely transcription errors).
+        Return the best matching repository ID and your interpretation of what the request is asking for.
         """
 
         let schema = """
-        {"type":"object","properties":{"repoId":{"type":"string","description":"The id of the matched repository"},"interpretedRequest":{"type":"string","description":"The corrected/interpreted version of the voice request"}},"required":["repoId","interpretedRequest"]}
+        {"type":"object","properties":{"repoId":{"type":"string","description":"The id of the matched repository"},"interpretedRequest":{"type":"string","description":"The interpreted version of the request"}},"required":["repoId","interpretedRequest"]}
         """
 
-        var command = Claude(prompt: prompt)
+        var command = Claude(prompt: matchPrompt)
         command.printMode = true
         command.verbose = true
         command.dangerouslySkipPermissions = true
@@ -178,7 +191,7 @@ public struct GeneratePlanUseCase: Sendable {
         3. Exactly three phases, all unchecked:
 
         ## - [ ] Phase 1: Interpret the Request
-        When executed, this phase will explore the codebase and recent commits to understand what the voice transcription is asking for. It will find the relevant code, files, and areas. This phase is purely about understanding — no implementation planning yet. The voice text may have transcription errors; use recent commits and codebase context to infer intent. Document findings underneath this phase heading.
+        When executed, this phase will explore the codebase and recent commits to understand what the request is asking for. It will find the relevant code, files, and areas. This phase is purely about understanding — no implementation planning yet. Use recent commits and codebase context to infer intent. Document findings underneath this phase heading.
 
         ## - [ ] Phase 2: Gather Architectural Guidance
         When executed, this phase will look at the repository's skills (\(skillsList)) and architecture docs (\(archDocsList)) to identify which documentation and architectural guidelines are relevant to this request. It will read and summarize the key constraints. Document findings underneath this phase heading.

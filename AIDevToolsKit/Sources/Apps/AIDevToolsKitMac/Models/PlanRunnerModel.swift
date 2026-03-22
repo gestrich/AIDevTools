@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import PlanRunnerFeature
 import PlanRunnerService
 import RepositorySDK
@@ -48,6 +49,7 @@ final class PlanRunnerModel {
     private let executePlan: ExecutePlanUseCase
     private let generatePlan: GeneratePlanUseCase
     private let loadPlansUseCase: LoadPlansUseCase
+    private let logger = Logger(label: "PlanRunnerModel")
     private let planSettingsStore: PlanRepoSettingsStore
     private let togglePhaseUseCase: TogglePhaseUseCase
 
@@ -137,13 +139,14 @@ final class PlanRunnerModel {
         }
     }
 
-    func generate(voiceText: String, repositories: [RepositoryInfo]) async {
-        state = .generating(step: "Matching repository...")
+    func generate(prompt: String, repositories: [RepositoryInfo], selectedRepository: RepositoryInfo? = nil) async {
+        state = .generating(step: selectedRepository != nil ? "Generating plan..." : "Matching repository...")
 
         let settingsStore = planSettingsStore
         let options = GeneratePlanUseCase.Options(
-            voiceText: voiceText,
+            prompt: prompt,
             repositories: repositories,
+            selectedRepository: selectedRepository,
             resolveProposedDirectory: { repo in
                 let settings = try settingsStore.settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
@@ -173,6 +176,7 @@ final class PlanRunnerModel {
             await loadPlans(for: result.repository)
             state = .idle
         } catch {
+            logger.error("Plan generation failed: \(error.localizedDescription)")
             state = .error(error)
         }
     }

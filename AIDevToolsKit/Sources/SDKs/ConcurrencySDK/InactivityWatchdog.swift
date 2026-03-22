@@ -29,6 +29,10 @@ public actor InactivityWatchdog {
         lastActivity = Date()
     }
 
+    public func timeSinceLastActivity() -> TimeInterval {
+        Date().timeIntervalSince(lastActivity)
+    }
+
     public func cancel() {
         task?.cancel()
     }

@@ -412,16 +412,29 @@ private struct GeneratePlanSheet: View {
     @Environment(PlanRunnerModel.self) var planRunnerModel
     @Environment(\.dismiss) var dismiss
 
-    @State private var voiceText = ""
+    @State private var promptText = ""
+    @AppStorage("planGenerateMatchRepo") private var matchRepo = false
 
     var body: some View {
         VStack(spacing: 16) {
             Text("Generate Plan")
                 .font(.headline)
 
-            TextField("Describe what you want to build...", text: $voiceText, axis: .vertical)
+            if let repo = model.selectedRepository, !matchRepo {
+                HStack {
+                    Text("Repository:")
+                        .foregroundStyle(.secondary)
+                    Text(repo.name)
+                        .fontWeight(.medium)
+                }
+            }
+
+            TextField("Describe what you want to build...", text: $promptText, axis: .vertical)
                 .lineLimit(3...6)
                 .textFieldStyle(.roundedBorder)
+
+            Toggle("Match repository from text", isOn: $matchRepo)
+                .font(.caption)
 
             HStack {
                 Button("Cancel") {
@@ -432,15 +445,16 @@ private struct GeneratePlanSheet: View {
                 Spacer()
 
                 Button("Generate") {
-                    let text = voiceText
+                    let text = promptText
                     let repos = model.repositories
+                    let selected = matchRepo ? nil : model.selectedRepository
                     dismiss()
                     Task {
-                        await planRunnerModel.generate(voiceText: text, repositories: repos)
+                        await planRunnerModel.generate(prompt: text, repositories: repos, selectedRepository: selected)
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(voiceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
         .padding()
