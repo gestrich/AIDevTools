@@ -114,8 +114,16 @@ Delete the `SlashCommandSDK` target from `Package.swift` and remove its source f
 - Deleted `Tests/SDKs/SlashCommandSDKTests/` (1 file: `SlashCommandScannerTests.swift`)
 - Verified no remaining imports or references to `SlashCommandSDK` in the codebase
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
 - Verify autocomplete in the chat input still works for both `/skills/` and `/commands/` entries
 - Run the app and confirm no references to the removed framework
 - Build all targets to confirm clean compilation
+
+### Changes
+
+- Confirmed no `.swift` files import or reference `SlashCommandSDK` — all remaining mentions are in documentation (historical phase notes)
+- Updated `README.md`: replaced `SlashCommandSDK` row with `SkillScannerSDK` in the SDK table, updated `ClaudeCodeChatFeature` description from "scan slash commands" to "scan skills"
+- Renamed `CommandAutocompleteView.swift` → `SkillAutocompleteView.swift` to match the `SkillAutocompleteView` struct inside
+- All 17 `SkillScannerSDKTests` pass (scanning, filtering, priority/override, global commands)
+- `swift build` succeeds cleanly across all targets
