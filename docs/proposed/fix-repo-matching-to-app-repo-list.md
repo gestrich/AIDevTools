@@ -50,9 +50,61 @@ The `matchRepo()` function runs Claude CLI **without a working directory** (unli
 
 Additionally, the prompt doesn't explicitly instruct Claude to **only** choose from the listed repos — it says "Available repositories" but doesn't say "You must choose one of these."
 
-## - [ ] Phase 2: Gather Architectural Guidance
+## - [x] Phase 2: Gather Architectural Guidance
 
 When executed, this phase will look at the repository's skills and architecture docs to identify which documentation and architectural guidelines are relevant to this request. It will read and summarize the key constraints. Document findings underneath this phase heading.
+
+### Findings
+
+#### Project Architecture (4-Layer Pattern)
+
+The project follows a 4-layer architecture defined in `AIDevToolsKit/Package.swift`:
+
+1. **Apps** — CLI and Mac app entry points (`AIDevToolsKitCLI`, `AIDevToolsKitMac`)
+2. **Features** — Domain-specific use cases and workflows (`PlanRunnerFeature`, `EvalFeature`, etc.)
+3. **Services** — Stateless business logic and persistence (`PlanRunnerService`, `EvalService`, etc.)
+4. **SDKs** — Reusable, stateless utilities and external integrations (`RepositorySDK`, `ClaudeCLISDK`, `GitSDK`, etc.)
+
+**Dependency rule:** No upward dependencies — SDKs cannot depend on Features/Services/Apps. The repo matching logic lives in the Features layer (`GeneratePlanUseCase` in `PlanRunnerFeature`), which correctly depends on `ClaudeCLISDK` and `RepositorySDK`.
+
+#### Relevant Architecture Docs
+
+| Document | Relevance |
+|----------|-----------|
+| `docs/completed/2026-03-21-a-unified-app-rearchitecture.md` | Establishes `RepositorySDK` as the single source of truth for repository information. `RepositoryStore` loads from `repositories.json`. |
+| `docs/completed/2026-03-21-a-extract-claude-cli-sdk.md` | Defines `ClaudeCLIClient` patterns: stateless Sendable struct, `run()` and `runStructured()` both accept optional `workingDirectory` parameter. |
+
+#### SDK Design Constraints
+
+- **Stateless & Sendable:** All SDK types (`ClaudeCLIClient`, `RepositoryStore`, `RepositoryInfo`, `RepoMatch`) must remain `Sendable` and `Codable` where applicable.
+- **ClaudeCLIClient interface:** `runStructured<T>(type:command:workingDirectory:environment:onFormattedOutput:)` — the `workingDirectory` parameter is optional and currently omitted in `matchRepo()` but used in `generatePlan()`.
+- **Environment setup:** ClaudeCLIClient clears the `CLAUDECODE` env var, enriches PATH with `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`, and has a 120-second inactivity watchdog.
+
+#### Key Constraints for the Fix
+
+1. **Single source of truth:** `RepositoryStore` → `repositories.json` is the canonical repo list. Both Mac app and CLI already source repos correctly before passing them to `matchRepo()`.
+2. **Working directory gap:** `matchRepo()` does not pass `workingDirectory` to `claudeClient.runStructured()`, while `generatePlan()` does. Without a working directory constraint, Claude CLI may discover repos via filesystem access (especially with `dangerouslySkipPermissions = true`).
+3. **Prompt clarity:** The current prompt says "Available repositories" but lacks an explicit constraint like "You must choose one of these and no others."
+4. **Existing validation:** The UUID guard at lines 88-91 catches invalid repo IDs, but doesn't prevent Claude from being influenced by external repo discovery.
+5. **selectedRepository bypass:** The working tree already has a `selectedRepository` parameter that skips `matchRepo()` entirely — this path must remain functional.
+6. **Alphabetical ordering:** Per `CLAUDE.md`, any changes to Package.swift targets, enum cases, imports, or CLI command definitions must maintain alphabetical order.
+
+#### Relevant Skills
+
+- **`swift-architecture`** (referenced in `CLAUDE.md` for architecture/planning): Provides the 4-layer architecture patterns, layer placement guidance, and SDK design principles.
+- **`ai-dev-tools-debug`** (referenced in `CLAUDE.md` for debugging): Provides CLI commands for manual validation — `swift run ai-dev-tools-kit repos list`, `swift run ai-dev-tools-kit plan-runner plan "..."`.
+
+#### Files Most Relevant to the Fix
+
+| File | Role |
+|------|------|
+| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift` | Primary fix location — `matchRepo()` method and prompt |
+| `AIDevToolsKit/Sources/SDKs/ClaudeCLISDK/ClaudeCLIClient.swift` | Client pattern reference for `runStructured()` signature |
+| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryStore.swift` | Single source of truth for repo loading |
+| `AIDevToolsKit/Sources/SDKs/RepositorySDK/RepositoryInfo.swift` | Repository model definition |
+| `AIDevToolsKit/Sources/Features/PlanRunnerFeature/services/ClaudeResponseModels.swift` | `RepoMatch` struct definition |
+| `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift` | Mac app integration point |
+| `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift` | CLI integration point |
 
 ## - [ ] Phase 3: Plan the Implementation
 
