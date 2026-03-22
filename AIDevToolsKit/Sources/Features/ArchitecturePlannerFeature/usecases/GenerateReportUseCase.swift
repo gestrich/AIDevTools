@@ -130,6 +130,7 @@ public struct GenerateReportUseCase: Sendable {
         step?.status = "completed"
         step?.completedAt = Date()
         step?.summary = "Report generated"
+        job.currentStepIndex = max(job.currentStepIndex, ArchitecturePlannerStep.followups.rawValue)
         job.updatedAt = Date()
 
         try context.save()

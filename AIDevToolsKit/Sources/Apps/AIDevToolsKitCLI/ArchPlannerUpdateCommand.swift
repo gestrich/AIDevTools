@@ -2,6 +2,7 @@ import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
 import Foundation
+import SwiftData
 
 struct ArchPlannerUpdateCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -18,7 +19,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Job ID (UUID)")
     var jobId: String
 
-    @Option(name: .long, help: "Step to run (e.g. form-requirements, compile-arch-info, plan-across-layers)")
+    @Option(name: .long, help: "Step to run (e.g. form-requirements, compile-arch-info, plan-across-layers, checklist-validation, build-implementation-model, score, execute, report, followups, next)")
     var step: String?
 
     mutating func run() async throws {
@@ -29,12 +30,38 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
 
         let store = try ArchitecturePlannerStore(repoName: repoName)
 
-        let targetStep = step ?? "next"
+        let targetStep = try await resolveStep(step ?? "next", store: store, jobId: uuid)
+        try await runStep(targetStep, store: store, jobId: uuid)
+    }
 
+    private func resolveStep(_ stepName: String, store: ArchitecturePlannerStore, jobId: UUID) async throws -> String {
+        guard stepName == "next" else { return stepName }
+
+        let currentIndex = try await MainActor.run {
+            let context = store.createContext()
+            let predicate = #Predicate<PlanningJob> { $0.jobId == jobId }
+            let descriptor = FetchDescriptor<PlanningJob>(predicate: predicate)
+            guard let job = try context.fetch(descriptor).first else {
+                throw ArchitecturePlannerError.jobNotFound(jobId)
+            }
+            return job.currentStepIndex
+        }
+
+        guard let plannerStep = ArchitecturePlannerStep(rawValue: currentIndex) else {
+            print("All steps completed (index \(currentIndex))")
+            throw ExitCode.success
+        }
+
+        let resolved = plannerStep.cliName
+        print("Next step: \(plannerStep.name) (\(resolved))")
+        return resolved
+    }
+
+    private func runStep(_ targetStep: String, store: ArchitecturePlannerStore, jobId: UUID) async throws {
         switch targetStep {
-        case "form-requirements", "next":
+        case "form-requirements":
             let useCase = FormRequirementsUseCase()
-            let options = FormRequirementsUseCase.Options(jobId: uuid, repoPath: repoPath)
+            let options = FormRequirementsUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store) { progress in
                 switch progress {
                 case .extracting: print("Extracting requirements...")
@@ -46,7 +73,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
 
         case "compile-arch-info":
             let useCase = CompileArchitectureInfoUseCase()
-            let options = CompileArchitectureInfoUseCase.Options(jobId: uuid, repoPath: repoPath)
+            let options = CompileArchitectureInfoUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store) { progress in
                 switch progress {
                 case .loadingGuidelines: print("Loading guidelines...")
@@ -58,7 +85,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
 
         case "plan-across-layers":
             let useCase = PlanAcrossLayersUseCase()
-            let options = PlanAcrossLayersUseCase.Options(jobId: uuid, repoPath: repoPath)
+            let options = PlanAcrossLayersUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store) { progress in
                 switch progress {
                 case .planning: print("Planning across layers...")
@@ -68,9 +95,91 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             }
             print("Components: \(result.componentCount)")
 
+        case "checklist-validation":
+            let useCase = ChecklistValidationUseCase()
+            let options = ChecklistValidationUseCase.Options(jobId: jobId)
+            let result = try await MainActor.run {
+                try useCase.run(options, store: store) { progress in
+                    switch progress {
+                    case .validating: print("Validating checklist...")
+                    case .validated: print("Validated")
+                    }
+                }
+            }
+            print("Requirements covered: \(result.requirementsCovered)/\(result.requirementsTotal)")
+            print("Components with mappings: \(result.componentsWithMappings)/\(result.componentsTotal)")
+
+        case "build-implementation-model", "score":
+            let useCase = ScoreConformanceUseCase()
+            let options = ScoreConformanceUseCase.Options(jobId: jobId, repoPath: repoPath)
+            let result = try await useCase.run(options, store: store) { progress in
+                switch progress {
+                case .scoring: print("Scoring conformance...")
+                case .scored(let count): print("Created \(count) mappings")
+                case .saved: print("Saved")
+                }
+            }
+            print("Average score: \(String(format: "%.1f", result.averageScore))/10")
+            print("Mappings: \(result.mappingsCreated)")
+
+        case "review-implementation-plan":
+            try await MainActor.run {
+                let context = store.createContext()
+                let predicate = #Predicate<PlanningJob> { $0.jobId == jobId }
+                let descriptor = FetchDescriptor<PlanningJob>(predicate: predicate)
+                guard let job = try context.fetch(descriptor).first else {
+                    throw ArchitecturePlannerError.jobNotFound(jobId)
+                }
+
+                let step = job.processSteps.first { $0.stepIndex == ArchitecturePlannerStep.reviewImplementationPlan.rawValue }
+                step?.status = "completed"
+                step?.completedAt = Date()
+                step?.summary = "Auto-approved (interactive review not yet implemented)"
+                job.currentStepIndex = max(job.currentStepIndex, ArchitecturePlannerStep.executeImplementation.rawValue)
+                job.updatedAt = Date()
+                try context.save()
+            }
+            print("Review step auto-approved")
+
+        case "execute":
+            let useCase = ExecuteImplementationUseCase()
+            let options = ExecuteImplementationUseCase.Options(jobId: jobId, repoPath: repoPath)
+            let result = try await useCase.run(options, store: store) { progress in
+                switch progress {
+                case .startingPhase(let idx, let summary): print("Phase \(idx): \(summary)")
+                case .phaseOutput(let text): print(text)
+                case .phaseCompleted(let idx): print("Phase \(idx) completed")
+                case .evaluating(let idx): print("Evaluating phase \(idx)...")
+                case .allCompleted: print("All phases completed")
+                }
+            }
+            print("Executed \(result.phasesExecuted) phases, \(result.decisionsRecorded) decisions recorded")
+
+        case "report":
+            let useCase = GenerateReportUseCase()
+            let result = try await MainActor.run {
+                try useCase.run(GenerateReportUseCase.Options(jobId: jobId), store: store)
+            }
+            print(result.report)
+
+        case "followups":
+            let useCase = CompileFollowupsUseCase()
+            let options = CompileFollowupsUseCase.Options(jobId: jobId)
+            let result = try await MainActor.run {
+                try useCase.run(options, store: store) { progress in
+                    switch progress {
+                    case .collecting: print("Collecting followups...")
+                    case .collected(let count): print("Found \(count) followup items")
+                    case .saved: print("Saved")
+                    }
+                }
+            }
+            print("Followups created: \(result.followupsCreated)")
+
         default:
+            let allSteps = ArchitecturePlannerStep.allCases.map { $0.cliName }.joined(separator: ", ")
             print("Unknown step: \(targetStep)")
-            print("Available: form-requirements, compile-arch-info, plan-across-layers")
+            print("Available: \(allSteps), next")
         }
     }
 }

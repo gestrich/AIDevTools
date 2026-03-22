@@ -75,7 +75,7 @@ The current implementation creates components without real guideline context. Fi
 - `GuidelineMapping` records created automatically linking each component to its referenced guidelines via case-insensitive title matching
 - JSON schema updated to require `guidelinesApplied` array on each component
 
-## - [ ] Phase 4: Complete the CLI `update` Command for All Steps
+## - [x] Phase 4: Complete the CLI `update` Command for All Steps
 
 `ArchPlannerUpdateCommand` only handles 3 steps. Add the remaining:
 
@@ -87,6 +87,15 @@ The current implementation creates components without real guideline context. Fi
 - `followups` — create and store FollowupItems from the job's unclear flags and open questions
 - `next` — auto-advance to the correct next step based on `job.currentStepIndex` (currently hardcoded to `form-requirements`)
 - Verify: `arch-planner update --step next` advances through every step in sequence
+
+**Completed.** Technical notes:
+- `ArchPlannerUpdateCommand` now handles all 10 steps: `form-requirements`, `compile-arch-info`, `plan-across-layers`, `checklist-validation`, `build-implementation-model`/`score`, `review-implementation-plan`, `execute`, `report`, `followups`, plus `next`
+- `next` resolves `job.currentStepIndex` to a step via `ArchitecturePlannerStep.cliName` and dispatches to the matching handler
+- `ChecklistValidationUseCase` created for step 4 — validates that requirements are covered by components and components have guideline mappings
+- `CompileFollowupsUseCase` created for step 9 — promotes `UnclearFlag` records to `FollowupItem` entries (idempotent via `isPromotedToFollowup`)
+- `review-implementation-plan` (step 6) auto-completes with a summary noting interactive review is not yet implemented
+- `GenerateReportUseCase` fixed to advance `currentStepIndex` to the followups step after completing
+- `ArchitecturePlannerStep` gained `cliName` property and `fromCLIName(_:)` factory for CLI ↔ step resolution
 
 ## - [ ] Phase 5: Fix ExecuteImplementationUseCase to Record Real Decisions
 
