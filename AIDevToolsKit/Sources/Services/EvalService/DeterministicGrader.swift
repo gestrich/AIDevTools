@@ -122,7 +122,8 @@ public struct DeterministicGrader: Sendable {
             }
         }
 
-        if let skillName = deterministic?.skillMustBeInvoked {
+        for assertion in evalCase.skills ?? [] {
+            let skillName = assertion.skill
             let check = skillChecks.first { check in
                 switch check {
                 case .invoked(let skill, _): return skill.name == skillName
@@ -130,23 +131,15 @@ public struct DeterministicGrader: Sendable {
                 case .skipped(let name, _): return name == skillName
                 }
             }
-            if let check {
-                if case .notInvoked = check {
+            if assertion.mustBeInvoked == true {
+                if let check, case .notInvoked = check {
                     errors.append("skill not invoked: \(quoted(skillName))")
                 }
             }
-        }
-
-        for skillName in deterministic?.skillMustNotBeInvoked ?? [] {
-            let check = skillChecks.first { check in
-                switch check {
-                case .invoked(let skill, _): return skill.name == skillName
-                case .notInvoked(let name): return name == skillName
-                case .skipped(let name, _): return name == skillName
+            if assertion.mustNotBeInvoked == true {
+                if let check, case .invoked = check {
+                    errors.append("skill should not have been invoked: \(quoted(skillName))")
                 }
-            }
-            if let check, case .invoked = check {
-                errors.append("skill should not have been invoked: \(quoted(skillName))")
             }
         }
 
@@ -174,12 +167,14 @@ public struct DeterministicGrader: Sendable {
             }
         }
 
-        if let shouldTrigger = evalCase.shouldTrigger, evalCase.mode == .structured {
-            if shouldTrigger && (evalCase.mustInclude ?? []).isEmpty {
-                errors.append("invalid case: should_trigger=true must define must_include")
-            }
-            if !shouldTrigger && (evalCase.mustNotInclude ?? []).isEmpty {
-                errors.append("invalid case: should_trigger=false must define must_not_include")
+        if evalCase.mode == .structured {
+            for assertion in evalCase.skills ?? [] {
+                if assertion.shouldTrigger == true && (evalCase.mustInclude ?? []).isEmpty {
+                    errors.append("invalid case: should_trigger=true must define must_include")
+                }
+                if assertion.shouldTrigger == false && (evalCase.mustNotInclude ?? []).isEmpty {
+                    errors.append("invalid case: should_trigger=false must define must_not_include")
+                }
             }
         }
 

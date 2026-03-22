@@ -12,14 +12,16 @@ enum ChatMode: String, CaseIterable {
 }
 
 enum WorkspaceItem: Hashable {
-    case skill(String)
+    case evals
     case plan(String)
+    case skill(String)
 }
 
 struct WorkspaceView: View {
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
 
+    @AppStorage("selectedEvalsView") private var storedEvalsView = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedPlanName") private var storedPlanName: String?
     @AppStorage("selectedSkillName") private var storedSkillName: String?
@@ -56,6 +58,13 @@ struct WorkspaceView: View {
         } content: {
             if model.selectedRepository != nil {
                 List(selection: $selectedItem) {
+                    if let repo = model.selectedRepository, model.evalConfig(for: repo) != nil {
+                        Section("Evals") {
+                            Text("All Evals")
+                                .tag(WorkspaceItem.evals)
+                        }
+                    }
+
                     Section("Plans") {
                         planListContent
                     }
@@ -84,15 +93,22 @@ struct WorkspaceView: View {
                 }
                 .onChange(of: selectedItem) { _, newValue in
                     switch newValue {
-                    case .skill(let name):
-                        storedSkillName = name
+                    case .evals:
+                        storedEvalsView = true
                         storedPlanName = nil
+                        storedSkillName = nil
                     case .plan(let name):
+                        storedEvalsView = false
                         storedPlanName = name
                         storedSkillName = nil
-                    case nil:
-                        storedSkillName = nil
+                    case .skill(let name):
+                        storedEvalsView = false
                         storedPlanName = nil
+                        storedSkillName = name
+                    case nil:
+                        storedEvalsView = false
+                        storedPlanName = nil
+                        storedSkillName = nil
                     }
                 }
                 .sheet(isPresented: $showGenerateSheet) {
@@ -135,7 +151,9 @@ struct WorkspaceView: View {
                 selectedRepoID = id
                 async let _ = model.selectRepository(repo)
                 async let _ = planRunnerModel.loadPlans(for: repo)
-                if let planName = storedPlanName {
+                if storedEvalsView {
+                    selectedItem = .evals
+                } else if let planName = storedPlanName {
                     selectedItem = .plan(planName)
                 } else if let skillName = storedSkillName {
                     selectedItem = .skill(skillName)
@@ -215,22 +233,26 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var detailContentView: some View {
-        switch selectedItem {
-        case .skill(let name):
-            if let skill = model.skills.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                SkillDetailView(
-                    skill: skill,
-                    evalConfig: model.evalConfig(for: repo)
-                )
+        if let repo = model.selectedRepository {
+            switch selectedItem {
+            case .evals:
+                if let config = model.evalConfig(for: repo) {
+                    EvalResultsView(config: config)
+                }
+            case .plan(let name):
+                if let plan = planRunnerModel.plans.first(where: { $0.name == name }) {
+                    PlanDetailView(plan: plan, repository: repo)
+                }
+            case .skill(let name):
+                if let skill = model.skills.first(where: { $0.name == name }) {
+                    SkillDetailView(
+                        skill: skill,
+                        evalConfig: model.evalConfig(for: repo)
+                    ) { selectedItem = .evals }
+                }
+            case nil:
+                ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
             }
-        case .plan(let name):
-            if let plan = planRunnerModel.plans.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                PlanDetailView(plan: plan, repository: repo)
-            }
-        case nil:
-            ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill or plan to view details."))
         }
     }
 

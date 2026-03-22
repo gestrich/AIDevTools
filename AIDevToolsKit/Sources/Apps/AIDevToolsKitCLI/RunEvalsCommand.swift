@@ -7,7 +7,7 @@ import RepositorySDK
 struct RunEvalsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "run-evals",
-        abstract: "Run skill evaluation cases against AI providers"
+        abstract: "Run evaluation cases against AI providers"
     )
 
     @Option(help: "Path to cases directory")

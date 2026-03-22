@@ -1,0 +1,1 @@
+{"id":"time-not-joke","task":"What time is it right now?","must_include":["THE TIME IS"],"skills":[{"skill":"what-time-is-it","must_be_invoked":true},{"skill":"ai-dev-tools-joke","must_not_be_invoked":true}]}

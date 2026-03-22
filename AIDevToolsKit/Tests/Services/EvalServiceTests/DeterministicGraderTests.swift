@@ -171,40 +171,25 @@ struct DeterministicGraderTests {
     // MARK: - Skill Must Be Invoked
 
     @Test func skillMustBeInvokedPassesWhenInvoked() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-1", deterministic: DeterministicChecks(skillMustBeInvoked: "map-layer"))
+        let evalCase = EvalCase(id: "skill-1", skills: [SkillAssertion(skill: "map-layer", mustBeInvoked: true)])
         let skill = SkillInfo(name: "map-layer", path: URL(fileURLWithPath: "/repo/.claude/skills/map-layer/SKILL.md"))
         let checks: [SkillCheckResult] = [.invoked(skill, method: .explicit)]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.isEmpty)
     }
 
     @Test func skillMustBeInvokedFailsWhenNotInvoked() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-2", deterministic: DeterministicChecks(skillMustBeInvoked: "map-layer"))
+        let evalCase = EvalCase(id: "skill-2", skills: [SkillAssertion(skill: "map-layer", mustBeInvoked: true)])
         let checks: [SkillCheckResult] = [.notInvoked(skillName: "map-layer")]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.contains(where: { $0.contains("skill not invoked") }))
     }
 
     @Test func skillMustBeInvokedPassesWithDiscoveredMethod() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-3", deterministic: DeterministicChecks(skillMustBeInvoked: "map-layer"))
+        let evalCase = EvalCase(id: "skill-3", skills: [SkillAssertion(skill: "map-layer", mustBeInvoked: true)])
         let skill = SkillInfo(name: "map-layer", path: URL(fileURLWithPath: "/repo/.claude/skills/map-layer/SKILL.md"))
         let checks: [SkillCheckResult] = [.invoked(skill, method: .discovered)]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.isEmpty)
         #expect(result.skillChecks.count == 1)
         guard case .invoked(let resultSkill, let method) = result.skillChecks[0] else {
@@ -216,15 +201,10 @@ struct DeterministicGraderTests {
     }
 
     @Test func skillMustBeInvokedPassesWithInferredMethod() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-4", deterministic: DeterministicChecks(skillMustBeInvoked: "map-layer"))
+        let evalCase = EvalCase(id: "skill-4", skills: [SkillAssertion(skill: "map-layer", mustBeInvoked: true)])
         let skill = SkillInfo(name: "map-layer", path: URL(fileURLWithPath: "/repo/.claude/skills/map-layer/SKILL.md"))
         let checks: [SkillCheckResult] = [.invoked(skill, method: .inferred)]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.isEmpty)
         guard case .invoked(_, let method) = result.skillChecks[0] else {
             Issue.record("Expected .invoked, got \(result.skillChecks[0])")
@@ -234,41 +214,26 @@ struct DeterministicGraderTests {
     }
 
     @Test func skillMustBeInvokedPassesSkippedCheck() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-5", deterministic: DeterministicChecks(skillMustBeInvoked: "map-layer"))
+        let evalCase = EvalCase(id: "skill-5", skills: [SkillAssertion(skill: "map-layer", mustBeInvoked: true)])
         let checks: [SkillCheckResult] = [.skipped(skillName: "map-layer", reason: "provider lacks support")]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.isEmpty)
     }
 
     // MARK: - Skill Must Not Be Invoked
 
     @Test func skillMustNotBeInvokedPassesWhenNotInvoked() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-6", deterministic: DeterministicChecks(skillMustNotBeInvoked: ["design-kit"]))
+        let evalCase = EvalCase(id: "skill-6", skills: [SkillAssertion(skill: "design-kit", mustNotBeInvoked: true)])
         let checks: [SkillCheckResult] = [.notInvoked(skillName: "design-kit")]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.isEmpty)
     }
 
     @Test func skillMustNotBeInvokedFailsWhenInvoked() {
-        // Arrange
-        let evalCase = EvalCase(id: "skill-7", deterministic: DeterministicChecks(skillMustNotBeInvoked: ["design-kit"]))
+        let evalCase = EvalCase(id: "skill-7", skills: [SkillAssertion(skill: "design-kit", mustNotBeInvoked: true)])
         let skill = SkillInfo(name: "design-kit", path: URL(fileURLWithPath: "/repo/.claude/skills/design-kit/SKILL.md"))
         let checks: [SkillCheckResult] = [.invoked(skill, method: .explicit)]
-
-        // Act
         let result = grader.grade(case: evalCase, resultText: "", traceCommands: [], providerCapabilities: caps(), skillChecks: checks)
-
-        // Assert
         #expect(result.errors.contains(where: { $0.contains("skill should not have been invoked") }))
     }
 
@@ -363,19 +328,19 @@ struct DeterministicGraderTests {
     // MARK: - Should Trigger
 
     @Test func shouldTriggerTrueRequiresMustInclude() {
-        let evalCase = EvalCase(id: "t13", shouldTrigger: true)
+        let evalCase = EvalCase(id: "t13", skills: [SkillAssertion(skill: "test-skill", shouldTrigger: true)])
         let result = grader.grade(case: evalCase, resultText: "anything", traceCommands: [], providerCapabilities: caps())
         #expect(result.errors.contains(where: { $0.contains("should_trigger=true must define must_include") }))
     }
 
     @Test func shouldTriggerFalseRequiresMustNotInclude() {
-        let evalCase = EvalCase(id: "t14", shouldTrigger: false)
+        let evalCase = EvalCase(id: "t14", skills: [SkillAssertion(skill: "test-skill", shouldTrigger: false)])
         let result = grader.grade(case: evalCase, resultText: "anything", traceCommands: [], providerCapabilities: caps())
         #expect(result.errors.contains(where: { $0.contains("should_trigger=false must define must_not_include") }))
     }
 
     @Test func shouldTriggerEditModeSkipsMustIncludeValidation() {
-        let evalCase = EvalCase(id: "t15", mode: .edit, shouldTrigger: true)
+        let evalCase = EvalCase(id: "t15", mode: .edit, skills: [SkillAssertion(skill: "test-skill", shouldTrigger: true)])
         let result = grader.grade(case: evalCase, resultText: "anything", traceCommands: [], providerCapabilities: caps())
         #expect(!result.errors.contains(where: { $0.contains("should_trigger=true must define must_include") }))
     }

@@ -25,8 +25,15 @@ enum ProviderSelection: String, CaseIterable {
 }
 
 struct EvalResultsView: View {
-    @Environment(EvalRunnerModel.self) var evalRunnerModel
+    let config: RepositoryEvalConfig
     let skillName: String?
+    @State private var evalRunnerModel: EvalRunnerModel
+
+    init(config: RepositoryEvalConfig, skillName: String? = nil) {
+        self.config = config
+        self.skillName = skillName
+        _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName))
+    }
 
     @State private var showDirtyRepoAlert = false
     @State private var pendingRunAction: (() -> Void)?
@@ -97,12 +104,7 @@ struct EvalResultsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-            evalRunnerModel.loadSuites(skillName: skillName)
-        }
-        .onChange(of: skillName) {
-            evalRunnerModel.loadSuites(skillName: skillName)
-        }
+        .environment(evalRunnerModel)
     }
 
     private var isRunning: Bool {
@@ -115,8 +117,7 @@ struct EvalResultsView: View {
     }
 
     private var headerBar: some View {
-        @Bindable var model = evalRunnerModel
-        return HStack(spacing: 12) {
+        HStack(spacing: 12) {
             if evalRunnerModel.suites.count > 1 {
                 Picker("Suite", selection: Binding(
                     get: { evalRunnerModel.selectedSuite?.id },
@@ -453,11 +454,15 @@ private struct EvalCaseRow: View {
                 .foregroundStyle(.secondary)
 
             DetailSection(label: "Mode", content: evalCase.mode.rawValue)
-            if let skillHint = evalCase.skillHint {
-                DetailSection(label: "Skill Hint", content: skillHint)
-            }
-            if let shouldTrigger = evalCase.shouldTrigger {
-                DetailSection(label: "Should Trigger", content: shouldTrigger ? "Yes" : "No")
+            if let skills = evalCase.skills, !skills.isEmpty {
+                let skillSummary = skills.map { assertion in
+                    var parts = [assertion.skill]
+                    if assertion.shouldTrigger == true { parts.append("should_trigger") }
+                    if assertion.mustBeInvoked == true { parts.append("must_invoke") }
+                    if assertion.mustNotBeInvoked == true { parts.append("must_not_invoke") }
+                    return parts.joined(separator: " ")
+                }.joined(separator: "\n")
+                DetailSection(label: "Skills", content: skillSummary)
             }
             if let task = evalCase.task {
                 DetailSection(label: "Task", content: task)
@@ -648,12 +653,6 @@ private struct EvalCaseRow: View {
                 if let notContains = expectedDiff.notContains, !notContains.isEmpty {
                     DetailSection(label: "Diff Must Not Contain", content: notContains.joined(separator: "\n"))
                 }
-            }
-            if let skill = det.skillMustBeInvoked {
-                DetailSection(label: "Skill Must Be Invoked", content: skill)
-            }
-            if let skills = det.skillMustNotBeInvoked, !skills.isEmpty {
-                DetailSection(label: "Skill Must Not Be Invoked", content: skills.joined(separator: "\n"))
             }
             if let refs = det.referenceFileMustBeRead, !refs.isEmpty {
                 DetailSection(label: "Reference File Must Be Read", content: refs.joined(separator: "\n"))

@@ -1,0 +1,2 @@
+{"id":"capital-of-france","task":"What is the capital of France? Respond with just the city name.","must_include":["Paris"],"must_not_include":["I think","probably"]}
+{"id":"simple-addition","task":"What is 2 + 2? Respond with just the number.","must_include":["4"],"must_not_include":["maybe","approximately"]}

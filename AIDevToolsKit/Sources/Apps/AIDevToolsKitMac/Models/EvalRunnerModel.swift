@@ -46,39 +46,30 @@ final class EvalRunnerModel {
     var selectedSuite: EvalSuite?
     var displayedCases: [EvalCase] = []
 
-    private(set) var evalConfig: RepositoryEvalConfig?
+    let evalConfig: RepositoryEvalConfig
 
     private let runEvals: RunEvalsUseCase
     private let listSuites: ListEvalSuitesUseCase
 
     init(
+        config: RepositoryEvalConfig,
+        skillName: String? = nil,
         runEvals: RunEvalsUseCase = RunEvalsUseCase(),
         listSuites: ListEvalSuitesUseCase = ListEvalSuitesUseCase()
     ) {
+        self.evalConfig = config
         self.runEvals = runEvals
         self.listSuites = listSuites
-    }
 
-    func configure(with config: RepositoryEvalConfig?) {
-        evalConfig = config
-        suites = []
-        selectedSuite = nil
-        displayedCases = []
-        lastResults = []
-        state = .idle
-    }
-
-    func loadSuites(skillName: String?) {
-        guard let casesDirectory = evalConfig?.casesDirectory else { return }
         let options = ListEvalSuitesUseCase.Options(
-            casesDirectory: casesDirectory,
+            casesDirectory: config.casesDirectory,
             skillName: skillName
         )
-        guard let loadedSuites = try? listSuites.run(options) else { return }
-
-        suites = loadedSuites
-        if suites.count == 1 {
-            selectedSuite = suites[0]
+        if let loadedSuites = try? listSuites.run(options) {
+            suites = loadedSuites
+            if loadedSuites.count == 1 {
+                selectedSuite = loadedSuites[0]
+            }
         }
         filterCases()
         loadLastResults()
@@ -107,8 +98,7 @@ final class EvalRunnerModel {
     }
 
     func repoHasOutstandingChanges() throws -> Bool {
-        guard let evalConfig else { return false }
-        return try GitClient().hasOutstandingChanges(at: evalConfig.repoRoot)
+        try GitClient().hasOutstandingChanges(at: evalConfig.repoRoot)
     }
 
     func run(
@@ -116,7 +106,6 @@ final class EvalRunnerModel {
         suite: EvalSuite? = nil,
         evalCase: EvalCase? = nil
     ) async {
-        guard let evalConfig else { return }
         let suiteName = suite?.name
         let caseId = evalCase?.id
         debugLog("run() called — providers=\(providers.map(\.rawValue)), suite=\(suiteName ?? "nil"), caseId=\(caseId ?? "nil")")
@@ -208,9 +197,8 @@ final class EvalRunnerModel {
     }
 
     func clearArtifacts() {
-        guard let outputDirectory = evalConfig?.outputDirectory else { return }
         do {
-            try ClearArtifactsUseCase().run(outputDirectory: outputDirectory)
+            try ClearArtifactsUseCase().run(outputDirectory: evalConfig.outputDirectory)
             lastResults = []
             state = .idle
         } catch {
@@ -229,8 +217,7 @@ final class EvalRunnerModel {
     }
 
     func loadCaseOutput(for evalCase: EvalCase, provider: String) -> FormattedOutput? {
-        guard let evalConfig,
-              let providerEnum = Provider(rawValue: provider) else { return nil }
+        guard let providerEnum = Provider(rawValue: provider) else { return nil }
 
         let qualifiedId: String
         if let matchedResult = lastResults
@@ -249,9 +236,8 @@ final class EvalRunnerModel {
         return try? ReadCaseOutputUseCase().run(options)
     }
 
-    func loadLastResults() {
-        guard let outputDirectory = evalConfig?.outputDirectory else { return }
-        let artifactsDir = outputDirectory.appendingPathComponent("artifacts")
+    private func loadLastResults() {
+        let artifactsDir = evalConfig.outputDirectory.appendingPathComponent("artifacts")
         let fm = FileManager.default
         guard fm.fileExists(atPath: artifactsDir.path) else { return }
 

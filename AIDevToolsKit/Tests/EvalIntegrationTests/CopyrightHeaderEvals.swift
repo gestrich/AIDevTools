@@ -16,8 +16,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "add-header-basic",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: true,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: true, mustBeInvoked: true)],
             task: "Add the Acme Corp copyright header to this Swift file",
             input: """
             import Foundation
@@ -32,8 +31,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "add-header-preserves-code",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: true,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: true, mustBeInvoked: true)],
             task: "Add the Acme Corp copyright header to this Swift file",
             input: """
             import UIKit
@@ -50,8 +48,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "replace-existing-header",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: true,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: true, mustBeInvoked: true)],
             task: "Add the Acme Corp copyright header to this Swift file (replace any existing header)",
             input: """
             // Created by John on 2024-01-15
@@ -76,8 +73,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "not-swift-python",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: false,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: false, mustNotBeInvoked: true)],
             task: "Add the Acme Corp copyright header to this Python file",
             input: """
             import os
@@ -90,8 +86,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "not-swift-objc",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: false,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: false, mustNotBeInvoked: true)],
             task: "Convert this Objective-C code to Swift",
             input: """
             #import <Foundation/Foundation.h>
@@ -105,8 +100,7 @@ enum CopyrightHeaderEvals {
         EvalCase(
             id: "unrelated-task-write-tests",
             suite: "copyright-header",
-            skillHint: "explicit",
-            shouldTrigger: false,
+            skills: [SkillAssertion(skill: "swift-copyright-header", shouldTrigger: false, mustNotBeInvoked: true)],
             task: "Write unit tests for this function",
             input: """
             func add(_ a: Int, _ b: Int) -> Int {
