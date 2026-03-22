@@ -1,28 +1,28 @@
 import AppKit
-import SlashCommandSDK
+import SkillScannerSDK
 import SwiftUI
 
-struct CommandAutocompleteView: View {
-    let filteredCommands: [SlashCommand]
-    let selectedCommandIndex: Int
-    let onSelectCommand: (SlashCommand) -> Void
+struct SkillAutocompleteView: View {
+    let filteredSkills: [SkillInfo]
+    let selectedSkillIndex: Int
+    let onSelectSkill: (SkillInfo) -> Void
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(Array(filteredCommands.prefix(5).enumerated()), id: \.element.id) { index, command in
+                ForEach(Array(filteredSkills.prefix(5).enumerated()), id: \.element.id) { index, skill in
                     Button(action: {
-                        onSelectCommand(command)
+                        onSelectSkill(skill)
                     }) {
                         HStack {
-                            Text(command.name)
+                            Text("/" + skill.name)
                                 .font(.body)
                                 .fontDesign(.monospaced)
-                                .foregroundStyle(index == selectedCommandIndex ? .white : .primary)
+                                .foregroundStyle(index == selectedSkillIndex ? .white : .primary)
 
                             Spacer()
 
-                            if index == selectedCommandIndex {
+                            if index == selectedSkillIndex {
                                 Text("↩")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.7))
@@ -30,7 +30,7 @@ struct CommandAutocompleteView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(index == selectedCommandIndex ? Color.blue : Color.clear)
+                        .background(index == selectedSkillIndex ? Color.blue : Color.clear)
                         .cornerRadius(4)
                     }
                     .buttonStyle(.plain)

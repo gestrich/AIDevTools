@@ -78,6 +78,54 @@ public struct SkillScanner: Sendable {
         return skillsByName.values.sorted { $0.name < $1.name }
     }
 
+    public func filterSkills(_ skills: [SkillInfo], query: String) -> [SkillInfo] {
+        guard !query.isEmpty else { return skills }
+
+        let searchQuery = query.hasPrefix("/") ? String(query.dropFirst()) : query
+        let lowercaseQuery = searchQuery.lowercased()
+
+        let scored: [(skill: SkillInfo, score: Int)] = skills.compactMap { skill in
+            let score = scoreSkill(skill.name, query: lowercaseQuery)
+            return score > 0 ? (skill, score) : nil
+        }
+
+        return scored
+            .sorted { $0.score > $1.score }
+            .map(\.skill)
+    }
+
+    private func scoreSkill(_ skillName: String, query: String) -> Int {
+        let lowercaseName = skillName.lowercased()
+        let segments = skillName.split(separator: "/").map { String($0) }
+        let lowercaseSegments = segments.map { $0.lowercased() }
+
+        var bestScore = 0
+
+        for (index, segment) in lowercaseSegments.enumerated() {
+            if segment == query {
+                return 1000 - (index * 10)
+            } else if segment.hasPrefix(query) {
+                let score = 500 - (index * 10) - (segment.count - query.count)
+                bestScore = max(bestScore, score)
+            } else if segment.contains(query) {
+                if let range = segment.range(of: query) {
+                    let distanceFromStart = segment.distance(from: segment.startIndex, to: range.lowerBound)
+                    let score = 250 - (index * 10) - distanceFromStart
+                    bestScore = max(bestScore, score)
+                }
+            }
+        }
+
+        if bestScore == 0 && lowercaseName.contains(query) {
+            if let range = lowercaseName.range(of: query) {
+                let distanceFromStart = lowercaseName.distance(from: lowercaseName.startIndex, to: range.lowerBound)
+                bestScore = 100 - distanceFromStart
+            }
+        }
+
+        return bestScore
+    }
+
     private func scanCommandsDirectory(_ directory: URL) -> [SkillInfo] {
         let resolved = directory.resolvingSymlinksInPath()
         guard let enumerator = FileManager.default.enumerator(

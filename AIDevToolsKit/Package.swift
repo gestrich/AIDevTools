@@ -75,7 +75,6 @@ let package = Package(
                 "SkillBrowserFeature",
                 "SkillScannerSDK",
                 "SkillService",
-                "SlashCommandSDK",
             ],
             path: "Sources/Apps/AIDevToolsKitMac"
         ),
@@ -94,7 +93,7 @@ let package = Package(
             dependencies: [
                 "ClaudeCLISDK",
                 "ClaudeCodeChatService",
-                "SlashCommandSDK",
+                "SkillScannerSDK",
             ],
             path: "Sources/Features/ClaudeCodeChatFeature"
         ),
@@ -245,7 +244,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClaudeCodeChatFeatureTests",
-            dependencies: ["ClaudeCodeChatFeature", "SlashCommandSDK"],
+            dependencies: ["ClaudeCodeChatFeature", "SkillScannerSDK"],
             path: "Tests/Features/ClaudeCodeChatFeatureTests"
         ),
         .testTarget(

@@ -1,6 +1,7 @@
 import Foundation
 
-public struct SkillInfo: Codable, Sendable {
+public struct SkillInfo: Codable, Identifiable, Sendable {
+    public var id: String { name }
     public let name: String
     public let path: URL
     public let referenceFiles: [SkillReferenceFile]

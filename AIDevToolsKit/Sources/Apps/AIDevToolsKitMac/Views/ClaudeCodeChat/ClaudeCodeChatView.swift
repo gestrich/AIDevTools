@@ -1,6 +1,5 @@
 import AppKit
 import ClaudeCodeChatService
-import SlashCommandSDK
 import SwiftUI
 
 struct ClaudeCodeChatView: View {

@@ -1,4 +1,4 @@
-import SlashCommandSDK
+import SkillScannerSDK
 import SwiftUI
 
 struct MessageInputWithAutocomplete: View {
@@ -6,20 +6,20 @@ struct MessageInputWithAutocomplete: View {
     let workingDirectory: String
     let onSubmit: () -> Void
 
-    @State private var availableCommands: [SlashCommand] = []
-    @State private var filteredCommands: [SlashCommand] = []
-    @State private var selectedCommandIndex: Int = 0
+    @State private var availableSkills: [SkillInfo] = []
+    @State private var filteredSkills: [SkillInfo] = []
+    @State private var selectedSkillIndex: Int = 0
     @State private var showAutocomplete: Bool = false
 
-    private let commandScanner = SlashCommandScanner()
+    private let skillScanner = SkillScanner()
 
     var body: some View {
         VStack(spacing: 0) {
             if showAutocomplete {
-                CommandAutocompleteView(
-                    filteredCommands: filteredCommands,
-                    selectedCommandIndex: selectedCommandIndex,
-                    onSelectCommand: selectCommand
+                SkillAutocompleteView(
+                    filteredSkills: filteredSkills,
+                    selectedSkillIndex: selectedSkillIndex,
+                    onSelectSkill: selectSkill
                 )
                 Divider()
             }
@@ -28,26 +28,29 @@ struct MessageInputWithAutocomplete: View {
                 text: $messageText,
                 placeholder: "Ask Claude anything...",
                 onSubmit: onSubmit,
-                onTab: acceptSelectedCommand,
-                onUpArrow: selectPreviousCommand,
-                onDownArrow: selectNextCommand
+                onTab: acceptSelectedSkill,
+                onUpArrow: selectPreviousSkill,
+                onDownArrow: selectNextSkill
             )
         }
         .task {
-            scanSlashCommands()
+            scanSkills()
         }
         .onChange(of: workingDirectory) { _, _ in
-            scanSlashCommands()
+            scanSkills()
         }
         .onChange(of: messageText) { _, newValue in
             updateAutocomplete(for: newValue)
         }
     }
 
-    // MARK: - Slash Command Autocomplete
+    // MARK: - Skill Autocomplete
 
-    private func scanSlashCommands() {
-        availableCommands = commandScanner.scanCommands(workingDirectory: workingDirectory)
+    private func scanSkills() {
+        let repoURL = URL(filePath: workingDirectory)
+        let globalCommandsDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/commands")
+        availableSkills = (try? skillScanner.scanSkills(at: repoURL, globalCommandsDirectory: globalCommandsDir)) ?? []
     }
 
     private func updateAutocomplete(for text: String) {
@@ -56,31 +59,31 @@ struct MessageInputWithAutocomplete: View {
             return
         }
 
-        filteredCommands = commandScanner.filterCommands(availableCommands, query: text)
-        showAutocomplete = !filteredCommands.isEmpty
-        selectedCommandIndex = 0
+        filteredSkills = skillScanner.filterSkills(availableSkills, query: text)
+        showAutocomplete = !filteredSkills.isEmpty
+        selectedSkillIndex = 0
     }
 
-    private func selectCommand(_ command: SlashCommand) {
-        messageText = command.name + " "
+    private func selectSkill(_ skill: SkillInfo) {
+        messageText = "/" + skill.name + " "
         showAutocomplete = false
     }
 
-    private func selectNextCommand() {
-        guard !filteredCommands.isEmpty else { return }
-        selectedCommandIndex = (selectedCommandIndex + 1) % filteredCommands.count
+    private func selectNextSkill() {
+        guard !filteredSkills.isEmpty else { return }
+        selectedSkillIndex = (selectedSkillIndex + 1) % filteredSkills.count
     }
 
-    private func selectPreviousCommand() {
-        guard !filteredCommands.isEmpty else { return }
-        selectedCommandIndex = (selectedCommandIndex - 1 + filteredCommands.count) % filteredCommands.count
+    private func selectPreviousSkill() {
+        guard !filteredSkills.isEmpty else { return }
+        selectedSkillIndex = (selectedSkillIndex - 1 + filteredSkills.count) % filteredSkills.count
     }
 
-    private func acceptSelectedCommand() {
-        guard showAutocomplete, !filteredCommands.isEmpty,
-              selectedCommandIndex < filteredCommands.count else {
+    private func acceptSelectedSkill() {
+        guard showAutocomplete, !filteredSkills.isEmpty,
+              selectedSkillIndex < filteredSkills.count else {
             return
         }
-        selectCommand(filteredCommands[selectedCommandIndex])
+        selectSkill(filteredSkills[selectedSkillIndex])
     }
 }

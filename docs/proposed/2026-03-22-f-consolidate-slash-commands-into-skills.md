@@ -82,13 +82,26 @@ Update the skills framework to also scan `.claude/commands/` (and `.agents/comma
 - The `globalCommandsDirectory` parameter defaults to `nil`, preserving backward compatibility for existing callers
 - 8 new tests cover: commands discovery, recursive nesting, priority/override behavior, global commands, and non-markdown filtering
 
-## - [ ] Phase 3: Migrate Consumers
+## - [x] Phase 3: Migrate Consumers
 
 Update the Mac app and CLI to use the skills framework everywhere slash commands were used:
 
 - Chat autocomplete should use skills instead of slash commands
 - Any UI referencing "commands" should use consistent "skills" terminology
 - Remove imports of `SlashCommandSDK` from consuming modules
+
+### Changes
+
+- **SkillScanner** gained `filterSkills(_:query:)` — the fuzzy scoring algorithm ported from `SlashCommandScanner` (exact segment, prefix, substring, full-name tiers)
+- **SkillInfo** now conforms to `Identifiable` (id = name) for direct SwiftUI usage
+- **ScanSlashCommandsUseCase** → **ScanSkillsUseCase** — uses `SkillScanner` instead of `SlashCommandScanner`, passes `~/.claude/commands` as `globalCommandsDirectory` to preserve global command discovery
+- **MessageInputWithAutocomplete** — replaced `SlashCommandScanner`/`SlashCommand` with `SkillScanner`/`SkillInfo`; skill names display with `/` prefix in the UI
+- **CommandAutocompleteView** → **SkillAutocompleteView** — updated types and terminology
+- **ClaudeCodeChatView** — removed `import SlashCommandSDK`
+- **SlashCommandsCommand** (CLI) — now uses `ScanSkillsUseCase` internally; output uses "skills" terminology
+- **Package.swift** — replaced `SlashCommandSDK` dependency with `SkillScannerSDK` in `AIDevToolsKitMac`, `ClaudeCodeChatFeature`, and `ClaudeCodeChatFeatureTests`
+- **ClaudeCodeChatFeatureTests** — migrated to `ScanSkillsUseCase`/`SkillInfo` types; all tests updated
+- No consumer module imports `SlashCommandSDK` after this phase; the SDK itself remains for Phase 4 removal
 
 ## - [ ] Phase 4: Remove SlashCommandSDK
 

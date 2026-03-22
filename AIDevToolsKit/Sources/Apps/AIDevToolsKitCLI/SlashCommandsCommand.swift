@@ -5,7 +5,7 @@ import Foundation
 struct SlashCommandsCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "slash-commands",
-        abstract: "List available Claude slash commands"
+        abstract: "List available skills (formerly slash commands)"
     )
 
     @Option(name: .long, help: "Working directory to scan (defaults to current directory)")
@@ -13,18 +13,18 @@ struct SlashCommandsCommand: ParsableCommand {
 
     func run() throws {
         let dir = workingDir ?? FileManager.default.currentDirectoryPath
-        let useCase = ScanSlashCommandsUseCase()
-        let commands = useCase.run(.init(workingDirectory: dir))
+        let useCase = ScanSkillsUseCase()
+        let skills = try useCase.run(.init(workingDirectory: dir))
 
-        if commands.isEmpty {
-            print("No slash commands found.")
+        if skills.isEmpty {
+            print("No skills found.")
             return
         }
 
-        print("Found \(commands.count) slash command(s):\n")
-        for command in commands {
-            print("  \(command.name)")
-            print("    \(command.path)")
+        print("Found \(skills.count) skill(s):\n")
+        for skill in skills {
+            print("  /\(skill.name)")
+            print("    \(skill.path.path())")
         }
     }
 }
