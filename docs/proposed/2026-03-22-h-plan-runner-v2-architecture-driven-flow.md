@@ -1,3 +1,15 @@
+## Implementation Phases
+
+- [ ] Phase 1: SwiftData models in ArchitecturePlannerService (Request, Requirement, Guideline, GuidelineCategory, ImplementationComponent, ConformanceScore, PlanningJob, ProcessStep, UnclearFlag, FollowupItem)
+- [ ] Phase 2: Use cases in ArchitecturePlannerFeature (FormRequirements, CompileArchitectureInfo, PlanAcrossLayers, BuildImplementationModel, ScoreConformance, ExecuteImplementation, GenerateReport, ManageGuidelines)
+- [ ] Phase 3: CLI subcommands (arch-planner group: create, inspect, update, score, execute, report, guidelines)
+- [ ] Phase 4: Mac app model and views (ArchitecturePlannerModel, step-based navigation UI, graphical layer view, guideline browser, approve/revise loops)
+- [ ] Phase 5: Wire everything together, ensure swift build passes
+- [ ] Phase 6: Unit tests for models, use cases, and services
+- [ ] Phase 7: Validation — end-to-end manual test, PR creation
+
+---
+
 ## Background
 
 The current planning feature follows a straightforward generate → execute → complete flow. Plans are generated as markdown with numbered phases, executed sequentially by Claude, and moved to a completed directory. While functional, the process lacks structured architectural reasoning — it doesn't formally gather requirements, consult architecture rules, determine where logic belongs across layers, or provide traceability from requirements through to implementation decisions.

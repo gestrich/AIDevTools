@@ -8,6 +8,8 @@ let package = Package(
     products: [
         .executable(name: "ai-dev-tools-kit", targets: ["AIDevToolsKitCLI"]),
         .library(name: "AIDevToolsKitMac", targets: ["AIDevToolsKitMac"]),
+        .library(name: "ArchitecturePlannerFeature", targets: ["ArchitecturePlannerFeature"]),
+        .library(name: "ArchitecturePlannerService", targets: ["ArchitecturePlannerService"]),
         .library(name: "AnthropicChatFeature", targets: ["AnthropicChatFeature"]),
         .library(name: "AnthropicChatService", targets: ["AnthropicChatService"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
@@ -44,6 +46,8 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 "AnthropicChatFeature",
+                "ArchitecturePlannerFeature",
+                "ArchitecturePlannerService",
                 "ClaudeCodeChatFeature",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
@@ -62,6 +66,8 @@ let package = Package(
             dependencies: [
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 "AnthropicChatService",
+                "ArchitecturePlannerFeature",
+                "ArchitecturePlannerService",
                 "AnthropicSDK",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
@@ -80,6 +86,15 @@ let package = Package(
         ),
 
         // Features Layer
+        .target(
+            name: "ArchitecturePlannerFeature",
+            dependencies: [
+                "ArchitecturePlannerService",
+                "ClaudeCLISDK",
+                "RepositorySDK",
+            ],
+            path: "Sources/Features/ArchitecturePlannerFeature"
+        ),
         .target(
             name: "AnthropicChatFeature",
             dependencies: [
@@ -128,6 +143,11 @@ let package = Package(
         ),
 
         // Services Layer
+        .target(
+            name: "ArchitecturePlannerService",
+            dependencies: [],
+            path: "Sources/Services/ArchitecturePlannerService"
+        ),
         .target(
             name: "AnthropicChatService",
             dependencies: [
@@ -240,6 +260,16 @@ let package = Package(
         .testTarget(
             name: "AIDevToolsKitCLITests",
             dependencies: ["AIDevToolsKitCLI"]
+        ),
+        .testTarget(
+            name: "ArchitecturePlannerFeatureTests",
+            dependencies: ["ArchitecturePlannerFeature", "ArchitecturePlannerService", "ClaudeCLISDK", "RepositorySDK"],
+            path: "Tests/Features/ArchitecturePlannerFeatureTests"
+        ),
+        .testTarget(
+            name: "ArchitecturePlannerServiceTests",
+            dependencies: ["ArchitecturePlannerService"],
+            path: "Tests/Services/ArchitecturePlannerServiceTests"
         ),
         .testTarget(
             name: "ClaudeCodeChatFeatureTests",
