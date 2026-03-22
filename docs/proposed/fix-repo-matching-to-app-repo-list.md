@@ -131,7 +131,7 @@ When executed, this phase will:
 5. **The `selectedRepository` bypass is architecturally sound**. When the Mac app provides a pre-selected repo, skipping `matchRepo()` entirely avoids an unnecessary Claude CLI call while staying within the same use case boundary.
 6. **No cross-layer shortcuts**. `GeneratePlanUseCase` (Features) correctly depends on `ClaudeCLISDK` and `RepositorySDK` (SDKs). It must not reach into Apps or Services for repo data.
 
-## - [ ] Phase 3: Plan the Implementation
+## - [x] Phase 3: Plan the Implementation
 
 When executed, this phase will:
 - Use findings from Phases 1 and 2 to create concrete implementation steps
@@ -143,3 +143,57 @@ When executed, this phase will:
 - Append a Testing/Verification phase
 - Append a Create Pull Request phase (using `gh pr create --draft`)
 - Generate the architecture diagram JSON file (`fix-repo-matching-to-app-repo-list-architecture.json`) mapping all changed files to their modules and layers
+
+### Implementation Plan
+
+The core fix was applied in commit `40b9131` (prompt constraint + removal of filesystem access flags). The remaining work is test coverage for the fix and verification.
+
+#### Summary of Changes (Already Applied)
+
+| File | Change | Purpose |
+|------|--------|---------|
+| `GeneratePlanUseCase.swift` (lines 126–139) | Added explicit "MUST select one of the listed repositories" constraint to `matchRepo()` prompt | Prevents Claude from hallucinating repos outside the configured list |
+| `GeneratePlanUseCase.swift` (lines 145–147) | Removed `dangerouslySkipPermissions`, `verbose`, `printMode` flags from `matchRepo()` command | Prevents Claude CLI from accessing the filesystem to discover repos |
+
+#### Architecture Diagram
+
+Generated `fix-repo-matching-to-app-repo-list-architecture.json` — maps all affected files to their modules and layers per `ARCHITECTURE.md`.
+
+## - [ ] Phase 4: Add Unit Tests for matchRepo Constraints
+
+When executed, this phase will:
+- Add a test verifying `GenerateError.repoNotFound` produces the correct error message for unrecognized repo IDs
+- Add a test verifying the `selectedRepository` bypass skips matching and uses the provided repo directly
+- Add a test verifying `GeneratePlanUseCase.Options` correctly stores the `selectedRepository` field
+
+**Files to modify:**
+- `AIDevToolsKit/Tests/Features/PlanRunnerFeatureTests/PlanRunnerFeatureTests.swift`
+
+**Architectural reference:** `AIDevToolsKit/ARCHITECTURE.md` — tests live alongside their module in the `Tests/` mirror
+
+**Acceptance criteria:**
+- All new tests pass via `swift test --filter PlanRunnerFeatureTests`
+- Tests cover the error path (`repoNotFound`) and the bypass path (`selectedRepository`)
+
+## - [ ] Phase 5: Build and Run Tests
+
+When executed, this phase will:
+- Run `swift build` to verify the project compiles
+- Run `swift test --filter PlanRunnerFeatureTests` to verify all PlanRunnerFeature tests pass
+- Run the full test suite to check for regressions
+
+**Acceptance criteria:**
+- Build succeeds with no errors
+- All PlanRunnerFeature tests pass
+- No regressions in the full test suite
+
+## - [ ] Phase 6: Create Pull Request
+
+When executed, this phase will:
+- Create a new branch from the current state
+- Commit all changes related to this fix
+- Push the branch and create a draft PR via `gh pr create --draft`
+
+**Acceptance criteria:**
+- Draft PR is created and URL is returned
+- PR title and description accurately summarize the fix and test additions

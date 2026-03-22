@@ -1,0 +1,50 @@
+{
+  "layers": [
+    {
+      "name": "Apps",
+      "dependsOn": ["Features", "Services", "SDKs"],
+      "modules": [
+        { "name": "AIDevToolsKitCLI", "changes": [] },
+        { "name": "AIDevToolsKitMac", "changes": [] }
+      ]
+    },
+    {
+      "name": "Features",
+      "dependsOn": ["Services", "SDKs"],
+      "modules": [
+        {
+          "name": "PlanRunnerFeature",
+          "changes": [
+            {
+              "file": "Sources/Features/PlanRunnerFeature/usecases/GeneratePlanUseCase.swift",
+              "action": "modify",
+              "summary": "Added explicit constraint to matchRepo prompt; removed dangerouslySkipPermissions, verbose, printMode flags",
+              "phase": 4
+            },
+            {
+              "file": "Tests/Features/PlanRunnerFeatureTests/PlanRunnerFeatureTests.swift",
+              "action": "modify",
+              "summary": "Added tests for repoNotFound error and selectedRepository bypass",
+              "phase": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "dependsOn": ["SDKs"],
+      "modules": [
+        { "name": "PlanRunnerService", "changes": [] }
+      ]
+    },
+    {
+      "name": "SDKs",
+      "dependsOn": [],
+      "modules": [
+        { "name": "ClaudeCLISDK", "changes": [] },
+        { "name": "RepositorySDK", "changes": [] }
+      ]
+    }
+  ]
+}
