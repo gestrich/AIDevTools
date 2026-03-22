@@ -58,7 +58,8 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
                 repoPath: repoPath,
                 maxMinutes: maxMinutes,
                 repository: repository,
-                completedDirectory: completedDirectory
+                completedDirectory: completedDirectory,
+                dataPath: dataPath.map { URL(filePath: $0) }
             )
         ) { progress in
             Self.handleProgress(progress, timer: timer)

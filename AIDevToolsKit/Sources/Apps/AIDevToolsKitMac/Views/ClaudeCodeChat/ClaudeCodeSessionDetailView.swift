@@ -57,7 +57,7 @@ struct ClaudeCodeSessionDetailView: View {
 
                     ToolbarItem(placement: .primaryAction) {
                         Button("Resume This Session") {
-                            chatManager.resumeSession(session.id)
+                            Task { await chatManager.resumeSession(session.id) }
                             dismiss()
                         }
                         .buttonStyle(.borderedProminent)

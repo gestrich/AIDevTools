@@ -2,8 +2,9 @@ import ArgumentParser
 import Foundation
 import RepositorySDK
 import SkillBrowserFeature
+import SkillScannerSDK
 
-struct SkillsCommand: ParsableCommand {
+struct SkillsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "skills",
         abstract: "List skills for a repository"
@@ -15,16 +16,16 @@ struct SkillsCommand: ParsableCommand {
     @Argument(help: "Repository path or UUID of a configured repository")
     var repo: String
 
-    func run() throws {
+    func run() async throws {
         let store = ReposCommand.makeStore(dataPath: dataPath)
         let repoInfo = try resolveRepo(store: store)
-        let skills = try LoadSkillsUseCase().run(options: repoInfo)
+        let skills = try await LoadSkillsUseCase().run(options: repoInfo)
         if skills.isEmpty {
             print("No skills found at \(repoInfo.path.path())")
             return
         }
         for skill in skills {
-            print(skill.name)
+            print("\(skill.name) (\(skill.source.rawValue))")
         }
     }
 

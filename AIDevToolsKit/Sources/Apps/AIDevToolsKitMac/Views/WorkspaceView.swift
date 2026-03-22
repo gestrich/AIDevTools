@@ -1,4 +1,3 @@
-import AnthropicChatFeature
 import AnthropicChatService
 import ClaudeCodeChatService
 import PlanRunnerService
@@ -13,14 +12,16 @@ enum ChatMode: String, CaseIterable {
 }
 
 enum WorkspaceItem: Hashable {
-    case skill(String)
+    case evals
     case plan(String)
+    case skill(String)
 }
 
 struct WorkspaceView: View {
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
 
+    @AppStorage("selectedEvalsView") private var storedEvalsView = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedPlanName") private var storedPlanName: String?
     @AppStorage("selectedSkillName") private var storedSkillName: String?
@@ -33,6 +34,8 @@ struct WorkspaceView: View {
     @State private var chatViewModel: ChatViewModel?
     @AppStorage("chatMode") private var chatMode: ChatMode = .claudeCode
     @State private var claudeCodeChatManager: ClaudeCodeChatManager?
+    @State private var showingChatSettings = false
+    @State private var showingSessionPicker = false
 
     var body: some View {
         NavigationSplitView {
@@ -44,8 +47,10 @@ struct WorkspaceView: View {
                 storedRepoID = newValue?.uuidString ?? ""
                 selectedItem = nil
                 if let id = newValue, let repo = model.repositories.first(where: { $0.id == id }) {
-                    model.selectRepository(repo)
-                    planRunnerModel.loadPlans(for: repo)
+                    Task {
+                        async let _ = model.selectRepository(repo)
+                        async let _ = planRunnerModel.loadPlans(for: repo)
+                    }
                 }
                 rebuildChatViewModel()
                 rebuildClaudeCodeChatManager()
@@ -53,11 +58,27 @@ struct WorkspaceView: View {
         } content: {
             if model.selectedRepository != nil {
                 List(selection: $selectedItem) {
+                    if let repo = model.selectedRepository, model.evalConfig(for: repo) != nil {
+                        Section("Evals") {
+                            Text("All Evals")
+                                .tag(WorkspaceItem.evals)
+                        }
+                    }
+
                     Section("Plans") {
                         planListContent
                     }
 
                     Section("Skills") {
+                        if model.isLoadingSkills {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Loading skills...")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                         ForEach(model.skills, id: \.name) { skill in
                             Text(skill.name)
                                 .tag(WorkspaceItem.skill(skill.name))
@@ -65,27 +86,29 @@ struct WorkspaceView: View {
                     }
                 }
                 .navigationTitle(model.selectedRepository?.name ?? "")
-                .onAppear {
+                .task(id: model.selectedRepository?.id) {
                     if let repo = model.selectedRepository {
-                        planRunnerModel.loadPlans(for: repo)
-                    }
-                }
-                .onChange(of: model.selectedRepository?.id) {
-                    if let repo = model.selectedRepository {
-                        planRunnerModel.loadPlans(for: repo)
+                        await planRunnerModel.loadPlans(for: repo)
                     }
                 }
                 .onChange(of: selectedItem) { _, newValue in
                     switch newValue {
-                    case .skill(let name):
-                        storedSkillName = name
+                    case .evals:
+                        storedEvalsView = true
                         storedPlanName = nil
+                        storedSkillName = nil
                     case .plan(let name):
+                        storedEvalsView = false
                         storedPlanName = name
                         storedSkillName = nil
-                    case nil:
-                        storedSkillName = nil
+                    case .skill(let name):
+                        storedEvalsView = false
                         storedPlanName = nil
+                        storedSkillName = name
+                    case nil:
+                        storedEvalsView = false
+                        storedPlanName = nil
+                        storedSkillName = nil
                     }
                 }
                 .sheet(isPresented: $showGenerateSheet) {
@@ -102,7 +125,7 @@ struct WorkspaceView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         VStack(spacing: 0) {
-                            bottomBar
+                            chatToolbar
                             chatPanelView
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
@@ -114,15 +137,23 @@ struct WorkspaceView: View {
                     bottomBar
                 }
             }
+            .sheet(isPresented: $showingChatSettings) {
+                if let claudeCodeChatManager {
+                    ClaudeCodeChatSettingsView()
+                        .environment(claudeCodeChatManager)
+                }
+            }
         }
-        .onAppear {
+        .task {
             model.load()
             if let id = UUID(uuidString: storedRepoID),
                let repo = model.repositories.first(where: { $0.id == id }) {
                 selectedRepoID = id
-                model.selectRepository(repo)
-                planRunnerModel.loadPlans(for: repo)
-                if let planName = storedPlanName {
+                async let _ = model.selectRepository(repo)
+                async let _ = planRunnerModel.loadPlans(for: repo)
+                if storedEvalsView {
+                    selectedItem = .evals
+                } else if let planName = storedPlanName {
                     selectedItem = .plan(planName)
                 } else if let skillName = storedSkillName {
                     selectedItem = .skill(skillName)
@@ -138,54 +169,91 @@ struct WorkspaceView: View {
 
     // MARK: - Chat
 
-    @ViewBuilder
-    private var detailContentView: some View {
-        switch selectedItem {
-        case .skill(let name):
-            if let skill = model.skills.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                SkillDetailView(
-                    skill: skill,
-                    evalConfig: model.evalConfig(for: repo)
-                )
-            }
-        case .plan(let name):
-            if let plan = planRunnerModel.plans.first(where: { $0.name == name }),
-               let repo = model.selectedRepository {
-                PlanDetailView(plan: plan, repository: repo)
-            }
-        case nil:
-            ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill or plan to view details."))
-        }
-    }
-
-    private var bottomBar: some View {
+    private var chatToolbar: some View {
         HStack(spacing: 8) {
+            Picker("", selection: $chatMode) {
+                ForEach(ChatMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 100)
+
             Spacer()
 
-            if chatPanelVisible {
-                Picker("", selection: $chatMode) {
-                    ForEach(ChatMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+            if chatMode == .claudeCode, claudeCodeChatManager != nil {
+                Button(action: { showingSessionPicker = true }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+                .buttonStyle(.plain)
+                .help("Session history")
+                .popover(isPresented: $showingSessionPicker) {
+                    if let claudeCodeChatManager {
+                        ClaudeCodeSessionPickerView()
+                            .environment(claudeCodeChatManager)
+                            .frame(minWidth: 300, minHeight: 400)
                     }
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 100)
-            }
 
-            Spacer()
+                Button(action: { showingChatSettings = true }) {
+                    Image(systemName: "gear")
+                }
+                .buttonStyle(.plain)
+                .help("Claude Code settings")
+            }
 
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { chatPanelVisible.toggle() }
+                withAnimation(.easeInOut(duration: 0.2)) { chatPanelVisible = false }
             } label: {
-                Image(systemName: chatPanelVisible ? "terminal.fill" : "terminal")
+                Image(systemName: "xmark")
             }
             .buttonStyle(.plain)
-            .help(chatPanelVisible ? "Hide chat" : "Show chat")
+            .help("Hide chat")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(.bar)
+    }
+
+    private var bottomBar: some View {
+        HStack {
+            Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { chatPanelVisible = true }
+            } label: {
+                Image(systemName: "terminal")
+            }
+            .buttonStyle(.plain)
+            .help("Show chat")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.bar)
+    }
+
+    @ViewBuilder
+    private var detailContentView: some View {
+        if let repo = model.selectedRepository {
+            switch selectedItem {
+            case .evals:
+                if let config = model.evalConfig(for: repo) {
+                    EvalResultsView(config: config)
+                }
+            case .plan(let name):
+                if let plan = planRunnerModel.plans.first(where: { $0.name == name }) {
+                    PlanDetailView(plan: plan, repository: repo)
+                }
+            case .skill(let name):
+                if let skill = model.skills.first(where: { $0.name == name }) {
+                    SkillDetailView(
+                        skill: skill,
+                        evalConfig: model.evalConfig(for: repo)
+                    ) { selectedItem = .evals }
+                }
+            case nil:
+                ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
+            }
+        }
     }
 
     @ViewBuilder
@@ -240,6 +308,16 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var planListContent: some View {
+        if planRunnerModel.isLoadingPlans {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Loading plans...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+
         if case .generating(let step) = planRunnerModel.state {
             HStack(spacing: 8) {
                 ProgressView()

@@ -1,11 +1,11 @@
 import Foundation
 import Testing
 @testable import ClaudeCodeChatFeature
-@testable import SlashCommandSDK
+@testable import SkillScannerSDK
 
-struct ScanSlashCommandsUseCaseTests {
+struct ScanSkillsUseCaseTests {
 
-    @Test func runReturnsCommandsForDirectory() throws {
+    @Test func runReturnsSkillsForDirectory() throws {
         // Arrange
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -14,15 +14,15 @@ struct ScanSlashCommandsUseCaseTests {
         try "# Test".write(to: commandsDir.appendingPathComponent("test.md"), atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let useCase = ScanSlashCommandsUseCase()
+        let useCase = ScanSkillsUseCase()
 
         // Act
-        let commands = useCase.run(.init(workingDirectory: dir.path))
+        let skills = try useCase.run(.init(workingDirectory: dir.path))
 
         // Assert
-        let localCommands = commands.filter { $0.path.contains(dir.path) }
-        #expect(localCommands.count == 1)
-        #expect(localCommands.first?.name == "/test")
+        let localSkills = skills.filter { $0.path.path().contains(dir.path) }
+        #expect(localSkills.count == 1)
+        #expect(localSkills.first?.name == "test")
     }
 
     @Test func runWithQueryFiltersResults() throws {
@@ -35,26 +35,26 @@ struct ScanSlashCommandsUseCaseTests {
         try "# B".write(to: commandsDir.appendingPathComponent("beta.md"), atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let useCase = ScanSlashCommandsUseCase()
+        let useCase = ScanSkillsUseCase()
 
         // Act
-        let commands = useCase.run(.init(workingDirectory: dir.path, query: "/alp"))
+        let skills = try useCase.run(.init(workingDirectory: dir.path, query: "/alp"))
 
         // Assert
-        let localCommands = commands.filter { $0.path.contains(dir.path) }
-        #expect(localCommands.count == 1)
-        #expect(localCommands.first?.name == "/alpha")
+        let localSkills = skills.filter { $0.path.path().contains(dir.path) }
+        #expect(localSkills.count == 1)
+        #expect(localSkills.first?.name == "alpha")
     }
 
-    @Test func runHandlesMissingDirectory() {
+    @Test func runHandlesMissingDirectory() throws {
         // Arrange
-        let useCase = ScanSlashCommandsUseCase()
+        let useCase = ScanSkillsUseCase()
         let fakePath = "/tmp/\(UUID().uuidString)"
 
         // Act
-        let commands = useCase.run(.init(workingDirectory: fakePath))
+        let skills = try useCase.run(.init(workingDirectory: fakePath))
 
         // Assert — should not crash
-        #expect(commands.count >= 0)
+        #expect(skills.count >= 0)
     }
 }

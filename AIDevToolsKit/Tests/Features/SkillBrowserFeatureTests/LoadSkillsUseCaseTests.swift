@@ -22,7 +22,7 @@ struct LoadSkillsUseCaseTests {
         try? FileManager.default.removeItem(at: url)
     }
 
-    @Test func loadSkillsMapsToSkillType() throws {
+    @Test func loadSkillsMapsToSkillType() async throws {
         // Arrange
         let repoDir = try makeTempRepo(skillFiles: ["deploy.md", "test.md"])
         defer { cleanup(repoDir) }
@@ -30,7 +30,7 @@ struct LoadSkillsUseCaseTests {
         let config = RepositoryInfo(path: repoDir)
 
         // Act
-        let skills = try useCase.run(options: config)
+        let skills = try await useCase.run(options: config)
 
         // Assert
         #expect(skills.count == 2)
@@ -39,7 +39,7 @@ struct LoadSkillsUseCaseTests {
         #expect(skills[0].path.pathExtension == "md")
     }
 
-    @Test func loadSkillsReturnsEmptyForRepoWithoutSkills() throws {
+    @Test func loadSkillsReturnsEmptyForRepoWithoutSkills() async throws {
         // Arrange
         let repoDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -49,7 +49,7 @@ struct LoadSkillsUseCaseTests {
         let config = RepositoryInfo(path: repoDir)
 
         // Act
-        let skills = try useCase.run(options: config)
+        let skills = try await useCase.run(options: config)
 
         // Assert
         #expect(skills.isEmpty)

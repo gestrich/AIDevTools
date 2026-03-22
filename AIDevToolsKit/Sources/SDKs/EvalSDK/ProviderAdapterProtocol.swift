@@ -1,5 +1,6 @@
 import Foundation
 import EvalService
+import SkillScannerSDK
 
 public struct RunConfiguration: Sendable {
     public let prompt: String
@@ -39,6 +40,7 @@ public struct RunConfiguration: Sendable {
 public protocol ProviderAdapterProtocol: Sendable {
     func capabilities() -> ProviderCapabilities
     func run(configuration: RunConfiguration, onOutput: (@Sendable (String) -> Void)?) async throws -> ProviderResult
+    func invocationMethod(for skillName: String, toolEvents: [ToolEvent], traceCommands: [String], skills: [SkillInfo], repoRoot: URL?) -> InvocationMethod?
 }
 
 extension ProviderAdapterProtocol {

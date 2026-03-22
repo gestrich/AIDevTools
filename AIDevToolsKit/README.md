@@ -47,7 +47,7 @@ Dependencies flow downward only. Each layer is a separate target with its own te
 | `AnthropicSDK` | SwiftAnthropic HTTP API | Direct Anthropic Messages API — send messages, stream responses, tool calling |
 | `ClaudeCLISDK` | `/usr/local/bin/claude` binary | Claude Code CLI subprocess — structured output, stream-json parsing, result events |
 | `ClaudePythonSDK` | Python `claude_agent.py` script | Claude Agent via Python subprocess — JSON stdin/stdout, inactivity watchdog |
-| `SlashCommandSDK` | Filesystem scan | Scans `~/.claude/commands/` and project `.claude/commands/` for slash command `.md` files |
+| `SkillScannerSDK` | Filesystem scan | Scans `.agents/skills/`, `.claude/skills/`, `.claude/commands/`, and `~/.claude/commands/` for skill `.md` files |
 
 **Services (shared models, config, stateful utilities):**
 
@@ -61,7 +61,7 @@ Dependencies flow downward only. Each layer is a separate target with its own te
 | Target | Description |
 |--------|-------------|
 | `AnthropicChatFeature` | Use cases for Anthropic HTTP chat (send message, manage conversations) |
-| `ClaudeCodeChatFeature` | Use cases for Claude Code CLI chat (send message, list sessions, scan slash commands) |
+| `ClaudeCodeChatFeature` | Use cases for Claude Code CLI chat (send message, list sessions, scan skills) |
 
 ## How Eval Cases Work
 

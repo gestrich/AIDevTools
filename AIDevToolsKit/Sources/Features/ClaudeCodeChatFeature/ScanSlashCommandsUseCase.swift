@@ -1,7 +1,7 @@
 import Foundation
-import SlashCommandSDK
+import SkillScannerSDK
 
-public struct ScanSlashCommandsUseCase: Sendable {
+public struct ScanSkillsUseCase: Sendable {
 
     public struct Options: Sendable {
         public let workingDirectory: String
@@ -13,17 +13,18 @@ public struct ScanSlashCommandsUseCase: Sendable {
         }
     }
 
-    private let scanner: SlashCommandScanner
+    private let scanner: SkillScanner
 
-    public init(scanner: SlashCommandScanner = SlashCommandScanner()) {
+    public init(scanner: SkillScanner = SkillScanner()) {
         self.scanner = scanner
     }
 
-    public func run(_ options: Options) -> [SlashCommand] {
-        let commands = scanner.scanCommands(workingDirectory: options.workingDirectory)
+    public func run(_ options: Options) throws -> [SkillInfo] {
+        let repoURL = URL(filePath: options.workingDirectory)
+        let skills = try scanner.scanSkills(at: repoURL)
         if let query = options.query, !query.isEmpty {
-            return scanner.filterCommands(commands, query: query)
+            return scanner.filterSkills(skills, query: query)
         }
-        return commands
+        return skills
     }
 }

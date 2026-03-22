@@ -148,7 +148,7 @@ struct PlanRunnerFeatureModelTests {
 
     @Test("ExecutePlanUseCase.ExecuteError describes phase failure")
     func executeErrorDescription() {
-        let error = ExecutePlanUseCase.ExecuteError.phaseFailed(index: 2, description: "Build the widget")
+        let error = ExecutePlanUseCase.ExecuteError.phaseFailed(index: 2, description: "Build the widget", underlyingError: "build failed")
         #expect(error.localizedDescription.contains("Phase 3"))
         #expect(error.localizedDescription.contains("Build the widget"))
     }

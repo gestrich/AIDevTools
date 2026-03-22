@@ -1,15 +1,11 @@
 import SwiftUI
 
-public struct ChatView: View {
+struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     @State private var inputText = ""
     @State private var useStreaming = true
 
-    public init(viewModel: ChatViewModel) {
-        self.viewModel = viewModel
-    }
-
-    public var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             messagesSection
             errorSection

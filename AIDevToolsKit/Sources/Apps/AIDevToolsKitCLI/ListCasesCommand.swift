@@ -20,6 +20,8 @@ struct ListCasesCommand: ParsableCommand {
     var dataPath: String?
 
     @Option var caseId: String?
+    @Option(help: "Filter by skill name (show cases referencing this skill)")
+    var skill: String?
     @Option var suite: String?
 
     func validate() throws {
@@ -50,6 +52,7 @@ struct ListCasesCommand: ParsableCommand {
             ListEvalCasesUseCase.Options(
                 casesDirectory: resolvedCasesDir,
                 caseId: caseId,
+                skill: skill,
                 suite: suite
             )
         )

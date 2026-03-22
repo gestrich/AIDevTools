@@ -101,18 +101,26 @@ public struct RunCaseUseCase: Sendable {
         let traceCommands = providerResult.toolEvents.compactMap(\.command)
         let capabilities = adapter.capabilities()
 
-        let (detErrors, detSkipped) = deterministicGrader.grade(
+        let skillChecks = resolveSkillChecks(
+            evalCase: evalCase,
+            toolEvents: providerResult.toolEvents,
+            traceCommands: traceCommands,
+            capabilities: capabilities,
+            skills: options.skills,
+            repoRoot: options.repoRoot
+        )
+
+        let gradeResult = deterministicGrader.grade(
             case: evalCase,
             resultText: resultText,
             traceCommands: traceCommands,
             toolEvents: providerResult.toolEvents,
             providerCapabilities: capabilities,
-            repoRoot: options.repoRoot,
-            skills: options.skills
+            skillChecks: skillChecks
         )
 
-        var errors = detErrors
-        let skipped = detSkipped
+        var errors = gradeResult.errors
+        let skipped = gradeResult.skipped
 
         if evalCase.mode != .edit, let rubric = evalCase.rubric {
             let rubricErrors = try await rubricEvaluator.evaluate(
@@ -135,6 +143,7 @@ public struct RunCaseUseCase: Sendable {
             passed: errors.isEmpty,
             errors: errors,
             skipped: skipped,
+            skillChecks: gradeResult.skillChecks,
             task: evalCase.task ?? evalCase.prompt,
             input: evalCase.input,
             expected: evalCase.expected,
@@ -143,6 +152,34 @@ public struct RunCaseUseCase: Sendable {
             providerResponse: resultText,
             toolCallSummary: providerResult.toolCallSummary
         )
+    }
+
+    private func resolveSkillChecks(
+        evalCase: EvalCase,
+        toolEvents: [ToolEvent],
+        traceCommands: [String],
+        capabilities: ProviderCapabilities,
+        skills: [SkillInfo],
+        repoRoot: URL
+    ) -> [SkillCheckResult] {
+        var checks: [SkillCheckResult] = []
+
+        for assertion in evalCase.skills ?? [] {
+            let skillName = assertion.skill
+            if !capabilities.supportsToolEventAssertions {
+                checks.append(.skipped(skillName: skillName, reason: "provider lacks support"))
+            } else {
+                let method = adapter.invocationMethod(for: skillName, toolEvents: toolEvents, traceCommands: traceCommands, skills: skills, repoRoot: repoRoot)
+                if let method {
+                    let skill = skills.first(where: { $0.name == skillName }) ?? SkillInfo(name: skillName, path: URL(fileURLWithPath: skillName))
+                    checks.append(.invoked(skill, method: method))
+                } else {
+                    checks.append(.notInvoked(skillName: skillName))
+                }
+            }
+        }
+
+        return checks
     }
 
     private func encodeEventsAsJSONL(_ events: [[String: JSONValue]]) -> String {

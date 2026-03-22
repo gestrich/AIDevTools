@@ -38,10 +38,12 @@ final class PlanRunnerModel {
 
     var state: State = .idle
     var plans: [PlanEntry] = []
+    var isLoadingPlans: Bool = false
     var executionCompleteCount: Int = 0
     private(set) var currentRepository: RepositoryInfo?
 
     private let completePlanUseCase: CompletePlanUseCase
+    private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
     private let executePlan: ExecutePlanUseCase
     private let generatePlan: GeneratePlanUseCase
@@ -51,6 +53,7 @@ final class PlanRunnerModel {
 
     init(
         completePlanUseCase: CompletePlanUseCase = CompletePlanUseCase(),
+        dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
         executePlan: ExecutePlanUseCase = ExecutePlanUseCase(),
         generatePlan: GeneratePlanUseCase = GeneratePlanUseCase(),
@@ -59,6 +62,7 @@ final class PlanRunnerModel {
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
     ) {
         self.completePlanUseCase = completePlanUseCase
+        self.dataPath = dataPath
         self.deletePlanUseCase = deletePlanUseCase
         self.executePlan = executePlan
         self.generatePlan = generatePlan
@@ -67,10 +71,15 @@ final class PlanRunnerModel {
         self.togglePhaseUseCase = togglePhaseUseCase
     }
 
-    func loadPlans(for repo: RepositoryInfo) {
+    func loadPlans(for repo: RepositoryInfo) async {
         currentRepository = repo
+        plans = []
+        isLoadingPlans = true
         let proposedDir = resolvedProposedDirectory(for: repo)
-        plans = loadPlansUseCase.run(proposedDirectory: proposedDir)
+        let loaded = await loadPlansUseCase.run(proposedDirectory: proposedDir)
+        guard self.currentRepository?.id == repo.id else { return }
+        self.plans = loaded
+        self.isLoadingPlans = false
     }
 
     func deletePlan(_ plan: PlanEntry) throws {
@@ -78,15 +87,15 @@ final class PlanRunnerModel {
         plans.removeAll { $0.id == plan.id }
     }
 
-    func reloadPlans() {
+    func reloadPlans() async {
         guard let repo = currentRepository else { return }
-        loadPlans(for: repo)
+        await loadPlans(for: repo)
     }
 
     /// Toggles a phase checkbox in the plan markdown and returns the updated content.
     func togglePhase(plan: PlanEntry, phaseIndex: Int) throws -> String {
         let updatedContent = try togglePhaseUseCase.run(planURL: plan.planURL, phaseIndex: phaseIndex)
-        reloadPlans()
+        Task { await reloadPlans() }
         return updatedContent
     }
 
@@ -95,7 +104,7 @@ final class PlanRunnerModel {
         let settings = (try? planSettingsStore.settings(forRepoId: repository.id)) ?? PlanRepoSettings(repoId: repository.id)
         let completedDir = settings.resolvedCompletedDirectory(repoPath: repository.path)
         try completePlanUseCase.run(planURL: plan.planURL, completedDirectory: completedDir)
-        reloadPlans()
+        Task { await reloadPlans() }
     }
 
     func execute(plan: PlanEntry, repository: RepositoryInfo) async {
@@ -106,7 +115,8 @@ final class PlanRunnerModel {
             planPath: plan.planURL,
             repoPath: repository.path,
             repository: repository,
-            completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path)
+            completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
+            dataPath: dataPath
         )
 
         do {
@@ -118,7 +128,7 @@ final class PlanRunnerModel {
             }
             state = .completed(result)
             executionCompleteCount += 1
-            loadPlans(for: repository)
+            await loadPlans(for: repository)
         } catch {
             state = .error(error)
         }
@@ -157,7 +167,7 @@ final class PlanRunnerModel {
                     }
                 }
             }
-            loadPlans(for: result.repository)
+            await loadPlans(for: result.repository)
             state = .idle
         } catch {
             state = .error(error)

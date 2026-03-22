@@ -14,8 +14,8 @@ public struct ListClaudeCodeSessionsUseCase: Sendable {
     public init() {}
 
     @MainActor
-    public func run(_ options: Options) -> [ClaudeSession] {
+    public func run(_ options: Options) async -> [ClaudeSession] {
         let manager = ClaudeCodeChatManager(workingDirectory: options.workingDirectory)
-        return manager.listSessions()
+        return await manager.listSessions()
     }
 }

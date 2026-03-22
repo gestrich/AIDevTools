@@ -5,7 +5,13 @@ public struct LoadPlansUseCase: Sendable {
 
     public init() {}
 
-    public func run(proposedDirectory: URL) -> [PlanEntry] {
+    public func run(proposedDirectory: URL) async -> [PlanEntry] {
+        await Task.detached {
+            self.loadFromDisk(proposedDirectory: proposedDirectory)
+        }.value
+    }
+
+    private func loadFromDisk(proposedDirectory: URL) -> [PlanEntry] {
         let fm = FileManager.default
 
         guard fm.fileExists(atPath: proposedDirectory.path),

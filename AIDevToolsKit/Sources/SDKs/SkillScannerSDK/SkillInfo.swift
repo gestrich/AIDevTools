@@ -1,14 +1,22 @@
 import Foundation
 
-public struct SkillInfo: Sendable {
+public enum SkillSource: String, Codable, Sendable {
+    case project
+    case user
+}
+
+public struct SkillInfo: Codable, Identifiable, Sendable {
+    public var id: String { path.absoluteString }
     public let name: String
     public let path: URL
     public let referenceFiles: [SkillReferenceFile]
+    public let source: SkillSource
 
-    public init(name: String, path: URL, referenceFiles: [SkillReferenceFile] = []) {
+    public init(name: String, path: URL, referenceFiles: [SkillReferenceFile] = [], source: SkillSource = .project) {
         self.name = name
         self.path = path
         self.referenceFiles = referenceFiles
+        self.source = source
     }
 
     public func relativePath(to repoRoot: URL) -> String {
@@ -16,7 +24,7 @@ public struct SkillInfo: Sendable {
     }
 }
 
-public struct SkillReferenceFile: Sendable {
+public struct SkillReferenceFile: Codable, Sendable {
     public let name: String
     public let url: URL
 

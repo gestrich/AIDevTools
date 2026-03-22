@@ -36,7 +36,7 @@ struct ClaudeCodeSessionPickerView: View {
                         ForEach(sessions) { session in
                             HStack {
                                 Button(action: {
-                                    chatManager.resumeSession(session.id)
+                                    Task { await chatManager.resumeSession(session.id) }
                                     dismiss()
                                 }) {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -88,9 +88,9 @@ struct ClaudeCodeSessionPickerView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            .onAppear {
+            .task {
                 isLoading = true
-                sessions = chatManager.listSessions()
+                sessions = await chatManager.listSessions()
                 isLoading = false
             }
             .sheet(item: $selectedSessionForDetail) { session in

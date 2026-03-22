@@ -1,1 +1,1 @@
-{"id":"tell-joke","task":"Tell me an AI dev tools themed joke.","must_include":["AI DEV TOOLS JOKE:"],"deterministic":{"skillMustBeInvoked":"ai-dev-tools-joke"}}
+{"id":"tell-joke","task":"Tell me an AI dev tools themed joke.","must_include":["AI DEV TOOLS JOKE:"],"skills":[{"skill":"ai-dev-tools-joke","must_be_invoked":true}]}

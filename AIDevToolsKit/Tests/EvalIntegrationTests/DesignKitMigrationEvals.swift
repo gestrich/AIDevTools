@@ -6,8 +6,7 @@ enum DesignKitMigrationEvals {
         EvalCase(
             id: "button-basic",
             suite: "designkit-migration",
-            skillHint: "explicit",
-            shouldTrigger: true,
+            skills: [SkillAssertion(skill: "design-kit-migration", shouldTrigger: true, mustBeInvoked: true)],
             task: "Migrate this SwiftUI view from DesignKit 1.0 to DesignKit 2.0",
             input: """
             Button(action: { save() }) {
@@ -21,8 +20,7 @@ enum DesignKitMigrationEvals {
         EvalCase(
             id: "color-replacement",
             suite: "designkit-migration",
-            skillHint: "explicit",
-            shouldTrigger: true,
+            skills: [SkillAssertion(skill: "design-kit-migration", shouldTrigger: true, mustBeInvoked: true)],
             task: "Migrate this SwiftUI view from DesignKit 1.0 to DesignKit 2.0",
             input: """
             Text("Hello")

@@ -188,6 +188,30 @@ swift run ai-dev-tools-kit plan-runner delete
 
 Plans are stored at `~/Desktop/ai-dev-tools/<repoId>/<job-name>/plan.md`. Each job directory may also contain a `worktree/` directory and `*.log` files.
 
+### Plan Execution Logs
+
+Each plan phase execution writes two types of logs:
+
+**1. AI output logs** — the full Claude output for each phase:
+```
+<dataPath>/<repoName>/plan-logs/<plan-name>/phase-<N>.stdout
+```
+
+Example: `~/Desktop/ai-dev-tools/AIDevTools/plan-logs/2026-03-22-f-consolidate-slash-commands-into-skills/phase-2.stdout`
+
+These are written on both success and failure (partial output is captured even when a phase fails). One file per phase, overwritten on re-execution.
+
+**2. Structured error logs** — phase start/complete/fail events written to the app-wide log via `Logger(label: "PlanRunner")`:
+```bash
+# Filter plan execution errors
+cat ~/Library/Logs/AIDevTools/aidevtools.log | jq 'select(.label == "PlanRunner")'
+
+# Just errors (includes underlying error message and path to the .stdout log file)
+cat ~/Library/Logs/AIDevTools/aidevtools.log | jq 'select(.label == "PlanRunner" and .level == "error")'
+```
+
+Error log entries include a `logFile` metadata field pointing to the corresponding `.stdout` file for cross-referencing.
+
 ## Other CLI Commands
 
 ```bash
@@ -273,3 +297,4 @@ Log files auto-rotate at 10MB.
 - **diffNotContains false positive?** Git diffs include 3 context lines. Nearby code may contain the forbidden string even though the provider didn't add it.
 - **Wrong cwd?** Check `"cwd"` in the first line of raw stdout (`"type":"system","subtype":"init"`).
 - **Stale artifacts?** Artifacts are overwritten each run. Use `--keep-traces` to preserve JSONL traces.
+- **Plan phase failed?** Check the AI output log at `<dataPath>/<repoName>/plan-logs/<plan-name>/phase-<N>.stdout` for Claude's full output, then check `~/Library/Logs/AIDevTools/aidevtools.log` filtered by `label == "PlanRunner"` for the structured error with the underlying cause.

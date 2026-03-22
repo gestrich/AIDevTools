@@ -1,17 +1,11 @@
 import SwiftUI
 
-public struct MessageBubbleView: View {
+struct MessageBubbleView: View {
     let content: String
     let isUser: Bool
     let timestamp: Date
 
-    public init(content: String, isUser: Bool, timestamp: Date) {
-        self.content = content
-        self.isUser = isUser
-        self.timestamp = timestamp
-    }
-
-    public var body: some View {
+    var body: some View {
         HStack(alignment: .top, spacing: 8) {
             if isUser {
                 Spacer(minLength: 60)

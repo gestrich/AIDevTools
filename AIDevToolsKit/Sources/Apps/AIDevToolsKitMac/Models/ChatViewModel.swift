@@ -4,29 +4,24 @@ import Foundation
 @preconcurrency import SwiftAnthropic
 import SwiftData
 
-public struct ChatMessageUI: Identifiable, Sendable {
-    public let id = UUID()
-    public let content: String
-    public let isUser: Bool
-    public let timestamp = Date()
-
-    public init(content: String, isUser: Bool) {
-        self.content = content
-        self.isUser = isUser
-    }
+struct ChatMessageUI: Identifiable, Sendable {
+    let id = UUID()
+    let content: String
+    let isUser: Bool
+    let timestamp = Date()
 }
 
 @MainActor
 @Observable
-public final class ChatViewModel {
+final class ChatViewModel {
     // MARK: - UI State
 
-    public var messages: [ChatMessageUI] = []
-    public var isLoading = false
-    public var isStreaming = false
-    public var streamingMessage = ""
-    public var errorMessage: String?
-    public var currentConversation: ChatConversation?
+    var messages: [ChatMessageUI] = []
+    var isLoading = false
+    var isStreaming = false
+    var streamingMessage = ""
+    var errorMessage: String?
+    var currentConversation: ChatConversation?
 
     // MARK: - Dependencies
 
@@ -42,7 +37,7 @@ public final class ChatViewModel {
 
     // MARK: - Initialization
 
-    public init(
+    init(
         apiKey: String,
         modelContext: ModelContext,
         systemPrompt: String = MessageBuilder.defaultSystemPrompt(),
@@ -60,22 +55,22 @@ public final class ChatViewModel {
 
     // MARK: - Configuration
 
-    public func updateAPIKey(_ newKey: String) async {
+    func updateAPIKey(_ newKey: String) async {
         await apiClient.updateAPIKey(newKey)
     }
 
-    public func updateSystemPrompt(_ prompt: String) {
+    func updateSystemPrompt(_ prompt: String) {
         self.systemPrompt = prompt
     }
 
-    public func updateTools(_ tools: [MessageParameter.Tool]?, handler: ToolExecutionHandler?) {
+    func updateTools(_ tools: [MessageParameter.Tool]?, handler: ToolExecutionHandler?) {
         self.tools = tools
         self.toolHandler = handler
     }
 
     // MARK: - Messaging
 
-    public func sendMessage(_ content: String) async {
+    func sendMessage(_ content: String) async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
         do {
@@ -118,7 +113,7 @@ public final class ChatViewModel {
         isLoading = false
     }
 
-    public func streamMessage(_ content: String) async {
+    func streamMessage(_ content: String) async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
         do {
@@ -206,14 +201,14 @@ public final class ChatViewModel {
         currentStreamTask = task
     }
 
-    public func clearConversation() {
+    func clearConversation() {
         messages.removeAll()
         errorMessage = nil
     }
 
     // MARK: - Conversation Management
 
-    public func loadConversation(_ conversation: ChatConversation) {
+    func loadConversation(_ conversation: ChatConversation) {
         currentConversation = conversation
         messages.removeAll()
 
@@ -226,7 +221,7 @@ public final class ChatViewModel {
         }
     }
 
-    public func createNewConversation(title: String = "New Conversation") -> ChatConversation? {
+    func createNewConversation(title: String = "New Conversation") -> ChatConversation? {
         let conversation = conversationManager.createConversation(title: title)
         if let conversation {
             currentConversation = conversation
@@ -235,11 +230,11 @@ public final class ChatViewModel {
         return conversation
     }
 
-    public func updateConversationTitle(_ conversation: ChatConversation, title: String) {
+    func updateConversationTitle(_ conversation: ChatConversation, title: String) {
         conversationManager.updateTitle(conversation, title: title)
     }
 
-    public func deleteConversation(_ conversation: ChatConversation) {
+    func deleteConversation(_ conversation: ChatConversation) {
         if currentConversation?.id == conversation.id {
             currentConversation = nil
             messages.removeAll()
@@ -247,7 +242,7 @@ public final class ChatViewModel {
         conversationManager.deleteConversation(conversation)
     }
 
-    public func fetchConversations() -> [ChatConversation] {
+    func fetchConversations() -> [ChatConversation] {
         return conversationManager.fetchConversations()
     }
 

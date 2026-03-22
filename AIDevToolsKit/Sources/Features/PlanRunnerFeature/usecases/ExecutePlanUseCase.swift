@@ -1,6 +1,7 @@
 import Foundation
 import ClaudeCLISDK
 import GitSDK
+import Logging
 import PlanRunnerService
 import RepositorySDK
 
@@ -12,6 +13,7 @@ public struct ExecutePlanUseCase: Sendable {
         public let maxMinutes: Int
         public let repository: RepositoryInfo?
         public let completedDirectory: URL?
+        public let dataPath: URL?
         public let useWorktree: Bool
 
         public init(
@@ -20,6 +22,7 @@ public struct ExecutePlanUseCase: Sendable {
             maxMinutes: Int = 90,
             repository: RepositoryInfo? = nil,
             completedDirectory: URL? = nil,
+            dataPath: URL? = nil,
             useWorktree: Bool = false
         ) {
             self.planPath = planPath
@@ -27,6 +30,7 @@ public struct ExecutePlanUseCase: Sendable {
             self.maxMinutes = maxMinutes
             self.repository = repository
             self.completedDirectory = completedDirectory
+            self.dataPath = dataPath
             self.useWorktree = useWorktree
         }
     }
@@ -57,13 +61,13 @@ public struct ExecutePlanUseCase: Sendable {
     }
 
     public enum ExecuteError: Error, LocalizedError {
-        case phaseFailed(index: Int, description: String)
+        case phaseFailed(index: Int, description: String, underlyingError: String)
         case planNotFound(String)
 
         public var errorDescription: String? {
             switch self {
-            case .phaseFailed(let index, let description):
-                return "Phase \(index + 1) failed: \(description)"
+            case .phaseFailed(let index, let description, let underlyingError):
+                return "Phase \(index + 1) failed: \(description) — \(underlyingError)"
             case .planNotFound(let path):
                 return "Planning document not found: \(path)"
             }
@@ -72,6 +76,7 @@ public struct ExecutePlanUseCase: Sendable {
 
     private let claudeClient: ClaudeCLIClient
     private let gitClient: GitClient
+    private let logger = Logger(label: "PlanRunner")
 
     public init(
         claudeClient: ClaudeCLIClient = ClaudeCLIClient(),
@@ -91,6 +96,12 @@ public struct ExecutePlanUseCase: Sendable {
 
         let repository = options.repository
         let completedDirectory = options.completedDirectory
+        let resolvedDataPath = options.dataPath ?? RepositoryStoreConfiguration().dataPath
+        let logDir: URL? = if let repoName = repository?.name {
+            Self.logDirectory(dataPath: resolvedDataPath, repoName: repoName, planURL: options.planPath)
+        } else {
+            nil
+        }
 
         let maxRuntimeSeconds = options.maxMinutes * 60
         let scriptStart = Date()
@@ -123,9 +134,13 @@ public struct ExecutePlanUseCase: Sendable {
             }
 
             let phase = phases[nextIndex]
+            logger.info("Phase \(nextIndex + 1)/\(phases.count) started: \(phase.description)", metadata: [
+                "plan": "\(options.planPath.lastPathComponent)"
+            ])
             onProgress?(.startingPhase(index: nextIndex, total: phases.count, description: phase.description))
 
             let phaseStart = Date()
+            let outputAccumulator = OutputAccumulator()
 
             let phaseResult: PhaseResult
             do {
@@ -135,25 +150,43 @@ public struct ExecutePlanUseCase: Sendable {
                     description: phase.description,
                     repoPath: options.repoPath,
                     repository: repository,
-                    onOutput: { text in onProgress?(.phaseOutput(text: text)) }
+                    onOutput: { text in
+                        outputAccumulator.append(text)
+                        onProgress?(.phaseOutput(text: text))
+                    }
                 )
             } catch {
                 let phaseElapsed = Int(Date().timeIntervalSince(phaseStart))
                 let totalElapsed = Int(Date().timeIntervalSince(scriptStart))
+                let logPath = writePhaseLog(output: outputAccumulator.content, phaseIndex: nextIndex, logDirectory: logDir)
+                logger.error("Phase \(nextIndex + 1) failed: \(error.localizedDescription)", metadata: [
+                    "plan": "\(options.planPath.lastPathComponent)",
+                    "logFile": "\(logPath?.path ?? "none")",
+                ])
                 onProgress?(.phaseFailed(index: nextIndex, description: phase.description, error: error.localizedDescription))
                 onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
-                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description)
+                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description, underlyingError: error.localizedDescription)
             }
 
             let phaseElapsed = Int(Date().timeIntervalSince(phaseStart))
             let totalElapsed = Int(Date().timeIntervalSince(scriptStart))
 
             if !phaseResult.success {
-                onProgress?(.phaseFailed(index: nextIndex, description: phase.description, error: "Phase reported failure"))
+                let logPath = writePhaseLog(output: outputAccumulator.content, phaseIndex: nextIndex, logDirectory: logDir)
+                let reason = "Phase reported failure"
+                logger.error("Phase \(nextIndex + 1) failed: \(reason)", metadata: [
+                    "plan": "\(options.planPath.lastPathComponent)",
+                    "logFile": "\(logPath?.path ?? "none")",
+                ])
+                onProgress?(.phaseFailed(index: nextIndex, description: phase.description, error: reason))
                 onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
-                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description)
+                throw ExecuteError.phaseFailed(index: nextIndex, description: phase.description, underlyingError: reason)
             }
 
+            writePhaseLog(output: outputAccumulator.content, phaseIndex: nextIndex, logDirectory: logDir)
+            logger.info("Phase \(nextIndex + 1) completed in \(phaseElapsed)s", metadata: [
+                "plan": "\(options.planPath.lastPathComponent)"
+            ])
             onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
             phasesExecuted += 1
 
@@ -266,6 +299,33 @@ public struct ExecutePlanUseCase: Sendable {
         return output.value
     }
 
+    // MARK: - Log Directory
+
+    public static func logDirectory(dataPath: URL, repoName: String, planURL: URL) -> URL {
+        let planName = planURL.deletingPathExtension().lastPathComponent
+        return dataPath
+            .appendingPathComponent(repoName)
+            .appendingPathComponent("plan-logs")
+            .appendingPathComponent(planName)
+    }
+
+    // MARK: - Logging
+
+    @discardableResult
+    private func writePhaseLog(output: String, phaseIndex: Int, logDirectory: URL?) -> URL? {
+        guard let logDirectory, !output.isEmpty else { return nil }
+        let fm = FileManager.default
+        do {
+            try fm.createDirectory(at: logDirectory, withIntermediateDirectories: true)
+            let filePath = logDirectory.appendingPathComponent("phase-\(phaseIndex + 1).stdout")
+            try output.write(to: filePath, atomically: true, encoding: .utf8)
+            return filePath
+        } catch {
+            logger.warning("Failed to write phase log: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     // MARK: - Completion Handling
 
     private func moveToCompleted(planPath: URL, completedDirectory: URL?) {
@@ -282,5 +342,22 @@ public struct ExecutePlanUseCase: Sendable {
         } catch {
             // Non-fatal: plan stays in proposed/
         }
+    }
+}
+
+private final class OutputAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var buffer = ""
+
+    var content: String {
+        lock.lock()
+        defer { lock.unlock() }
+        return buffer
+    }
+
+    func append(_ text: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        buffer += text
     }
 }

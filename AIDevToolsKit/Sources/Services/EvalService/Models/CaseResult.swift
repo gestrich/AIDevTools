@@ -5,6 +5,7 @@ public struct CaseResult: Codable, Sendable {
     public var passed: Bool
     public var errors: [String]
     public var skipped: [String]
+    public var skillChecks: [SkillCheckResult]
     public var task: String?
     public var input: String?
     public var expected: String?
@@ -18,6 +19,7 @@ public struct CaseResult: Codable, Sendable {
         passed: Bool,
         errors: [String] = [],
         skipped: [String] = [],
+        skillChecks: [SkillCheckResult] = [],
         task: String? = nil,
         input: String? = nil,
         expected: String? = nil,
@@ -30,6 +32,7 @@ public struct CaseResult: Codable, Sendable {
         self.passed = passed
         self.errors = errors
         self.skipped = skipped
+        self.skillChecks = skillChecks
         self.task = task
         self.input = input
         self.expected = expected

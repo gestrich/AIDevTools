@@ -26,7 +26,6 @@ let package = Package(
         .library(name: "PlanRunnerFeature", targets: ["PlanRunnerFeature"]),
         .library(name: "PlanRunnerService", targets: ["PlanRunnerService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
-        .library(name: "SlashCommandSDK", targets: ["SlashCommandSDK"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
         .library(name: "SkillScannerSDK", targets: ["SkillScannerSDK"]),
         .library(name: "SkillService", targets: ["SkillService"]),
@@ -61,8 +60,8 @@ let package = Package(
             name: "AIDevToolsKitMac",
             dependencies: [
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
-                "AnthropicChatFeature",
                 "AnthropicChatService",
+                "AnthropicSDK",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
                 "EvalFeature",
@@ -75,7 +74,6 @@ let package = Package(
                 "SkillBrowserFeature",
                 "SkillScannerSDK",
                 "SkillService",
-                "SlashCommandSDK",
             ],
             path: "Sources/Apps/AIDevToolsKitMac"
         ),
@@ -94,7 +92,7 @@ let package = Package(
             dependencies: [
                 "ClaudeCLISDK",
                 "ClaudeCodeChatService",
-                "SlashCommandSDK",
+                "SkillScannerSDK",
             ],
             path: "Sources/Features/ClaudeCodeChatFeature"
         ),
@@ -112,6 +110,7 @@ let package = Package(
             dependencies: [
                 "ClaudeCLISDK",
                 "GitSDK",
+                "LoggingSDK",
                 "PlanRunnerService",
                 "RepositorySDK",
             ],
@@ -154,7 +153,9 @@ let package = Package(
         ),
         .target(
             name: "SkillService",
-            dependencies: [],
+            dependencies: [
+                "SkillScannerSDK",
+            ],
             path: "Sources/Services/SkillService"
         ),
 
@@ -231,11 +232,6 @@ let package = Package(
             dependencies: [],
             path: "Sources/SDKs/SkillScannerSDK"
         ),
-        .target(
-            name: "SlashCommandSDK",
-            dependencies: [],
-            path: "Sources/SDKs/SlashCommandSDK"
-        ),
 
         // Test Targets (alphabetical)
         .testTarget(
@@ -244,7 +240,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClaudeCodeChatFeatureTests",
-            dependencies: ["ClaudeCodeChatFeature", "SlashCommandSDK"],
+            dependencies: ["ClaudeCodeChatFeature", "SkillScannerSDK"],
             path: "Tests/Features/ClaudeCodeChatFeatureTests"
         ),
         .testTarget(
@@ -315,11 +311,6 @@ let package = Package(
             name: "SkillScannerSDKTests",
             dependencies: ["SkillScannerSDK"],
             path: "Tests/SDKs/SkillScannerSDKTests"
-        ),
-        .testTarget(
-            name: "SlashCommandSDKTests",
-            dependencies: ["SlashCommandSDK"],
-            path: "Tests/SDKs/SlashCommandSDKTests"
         ),
     ],
     swiftLanguageModes: [.v5]

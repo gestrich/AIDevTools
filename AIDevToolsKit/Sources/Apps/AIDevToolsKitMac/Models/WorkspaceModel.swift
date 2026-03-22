@@ -18,6 +18,7 @@ final class WorkspaceModel {
     var repositories: [RepositoryInfo] = []
     var selectedRepository: RepositoryInfo?
     var skills: [Skill] = []
+    var isLoadingSkills: Bool = false
     var state: State = .idle
 
     private let repoStore: RepositoryStore
@@ -72,14 +73,20 @@ final class WorkspaceModel {
         }
     }
 
-    func selectRepository(_ repo: RepositoryInfo) {
+    func selectRepository(_ repo: RepositoryInfo) async {
         selectedRepository = repo
+        skills = []
+        isLoadingSkills = true
         do {
-            skills = try loadSkills.run(options: repo)
+            let loaded = try await loadSkills.run(options: repo)
+            guard self.selectedRepository?.id == repo.id else { return }
+            self.skills = loaded
         } catch {
-            skills = []
-            state = .error(error)
+            guard self.selectedRepository?.id == repo.id else { return }
+            self.skills = []
+            self.state = .error(error)
         }
+        self.isLoadingSkills = false
     }
 
     func addRepository(

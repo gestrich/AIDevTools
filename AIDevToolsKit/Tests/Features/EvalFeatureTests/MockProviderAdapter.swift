@@ -1,8 +1,10 @@
 import Foundation
 import EvalService
 import EvalSDK
+import SkillScannerSDK
 
 struct MockProviderAdapter: ProviderAdapterProtocol {
+    var invocationMethodResult: InvocationMethod?
     var providerCapabilities: ProviderCapabilities
     var result: ProviderResult
     var runHandler: (@Sendable (RunConfiguration) async throws -> ProviderResult)?
@@ -24,5 +26,9 @@ struct MockProviderAdapter: ProviderAdapterProtocol {
             return try await handler(configuration)
         }
         return result
+    }
+
+    func invocationMethod(for skillName: String, toolEvents: [ToolEvent], traceCommands: [String], skills: [SkillInfo], repoRoot: URL?) -> InvocationMethod? {
+        invocationMethodResult
     }
 }

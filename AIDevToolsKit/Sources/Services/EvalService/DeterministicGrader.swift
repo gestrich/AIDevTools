@@ -1,5 +1,16 @@
 import Foundation
-import SkillScannerSDK
+
+public struct DeterministicGradeResult: Sendable {
+    public var errors: [String]
+    public var skipped: [String]
+    public var skillChecks: [SkillCheckResult]
+
+    public init(errors: [String] = [], skipped: [String] = [], skillChecks: [SkillCheckResult] = []) {
+        self.errors = errors
+        self.skipped = skipped
+        self.skillChecks = skillChecks
+    }
+}
 
 public struct DeterministicGrader: Sendable {
 
@@ -13,11 +24,10 @@ public struct DeterministicGrader: Sendable {
         traceCommands: [String],
         toolEvents: [ToolEvent] = [],
         providerCapabilities: ProviderCapabilities,
-        repoRoot: URL? = nil,
-        skills: [SkillInfo] = []
-    ) -> (errors: [String], skipped: [String]) {
+        skillChecks: [SkillCheckResult] = []
+    ) -> DeterministicGradeResult {
         var errors: [String] = []
-        var skips: [String] = []
+        var skipped: [String] = []
         let normalizedResult = normalize(resultText)
 
         if let expected = evalCase.expected {
@@ -52,8 +62,8 @@ public struct DeterministicGrader: Sendable {
 
         if (!traceContains.isEmpty || !traceNotContains.isEmpty)
             && !providerCapabilities.supportsToolEventAssertions {
-            skips.append("tool-event assertions skipped: provider lacks support")
-            return (errors, skips)
+            skipped.append("tool-event assertions skipped: provider lacks support")
+            return DeterministicGradeResult(errors: errors, skipped: skipped, skillChecks: skillChecks)
         }
 
         for needle in traceContains {
@@ -70,7 +80,7 @@ public struct DeterministicGrader: Sendable {
 
         if let order = deterministic?.traceCommandOrder, !order.isEmpty {
             if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("trace command order check skipped: provider lacks support")
+                skipped.append("trace command order check skipped: provider lacks support")
             } else {
                 var searchFrom = 0
                 for needle in order {
@@ -87,7 +97,7 @@ public struct DeterministicGrader: Sendable {
 
         if let maxCommands = deterministic?.maxCommands {
             if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("max commands check skipped: provider lacks support")
+                skipped.append("max commands check skipped: provider lacks support")
             } else if traceCommands.count > maxCommands {
                 errors.append("exceeded max commands: \(traceCommands.count) > \(maxCommands)")
             }
@@ -95,7 +105,7 @@ public struct DeterministicGrader: Sendable {
 
         if let maxRepeated = deterministic?.maxRepeatedCommands {
             if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("max repeated commands check skipped: provider lacks support")
+                skipped.append("max repeated commands check skipped: provider lacks support")
             } else {
                 var consecutiveCount = 1
                 for i in 1..<traceCommands.count {
@@ -112,31 +122,30 @@ public struct DeterministicGrader: Sendable {
             }
         }
 
-        if let skillName = deterministic?.skillMustBeInvoked {
-            if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("skill invocation check skipped: provider lacks support")
-            } else {
-                let found = skillWasInvoked(skillName, toolEvents: toolEvents, traceCommands: traceCommands, skills: skills, repoRoot: repoRoot)
-                if !found {
+        for assertion in evalCase.skills ?? [] {
+            let skillName = assertion.skill
+            let check = skillChecks.first { check in
+                switch check {
+                case .invoked(let skill, _): return skill.name == skillName
+                case .notInvoked(let name): return name == skillName
+                case .skipped(let name, _): return name == skillName
+                }
+            }
+            if assertion.mustBeInvoked == true {
+                if let check, case .notInvoked = check {
                     errors.append("skill not invoked: \(quoted(skillName))")
                 }
             }
-        }
-
-        for skillName in deterministic?.skillMustNotBeInvoked ?? [] {
-            if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("skill must-not-invoke check skipped: provider lacks support")
-                break
-            }
-            let found = skillWasInvoked(skillName, toolEvents: toolEvents, traceCommands: traceCommands, skills: skills, repoRoot: repoRoot)
-            if found {
-                errors.append("skill should not have been invoked: \(quoted(skillName))")
+            if assertion.mustNotBeInvoked == true {
+                if let check, case .invoked = check {
+                    errors.append("skill should not have been invoked: \(quoted(skillName))")
+                }
             }
         }
 
         for needle in deterministic?.referenceFileMustBeRead ?? [] {
             if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("reference file read check skipped: provider lacks support")
+                skipped.append("reference file read check skipped: provider lacks support")
                 break
             }
             let foundInToolEvents = toolEvents.contains(where: { ($0.filePath ?? "").contains(needle) })
@@ -148,7 +157,7 @@ public struct DeterministicGrader: Sendable {
 
         for needle in deterministic?.referenceFileMustNotBeRead ?? [] {
             if !providerCapabilities.supportsToolEventAssertions {
-                skips.append("reference file must-not-read check skipped: provider lacks support")
+                skipped.append("reference file must-not-read check skipped: provider lacks support")
                 break
             }
             let foundInToolEvents = toolEvents.contains(where: { ($0.filePath ?? "").contains(needle) })
@@ -158,16 +167,18 @@ public struct DeterministicGrader: Sendable {
             }
         }
 
-        if let shouldTrigger = evalCase.shouldTrigger, evalCase.mode == .structured {
-            if shouldTrigger && (evalCase.mustInclude ?? []).isEmpty {
-                errors.append("invalid case: should_trigger=true must define must_include")
-            }
-            if !shouldTrigger && (evalCase.mustNotInclude ?? []).isEmpty {
-                errors.append("invalid case: should_trigger=false must define must_not_include")
+        if evalCase.mode == .structured {
+            for assertion in evalCase.skills ?? [] {
+                if assertion.shouldTrigger == true && (evalCase.mustInclude ?? []).isEmpty {
+                    errors.append("invalid case: should_trigger=true must define must_include")
+                }
+                if assertion.shouldTrigger == false && (evalCase.mustNotInclude ?? []).isEmpty {
+                    errors.append("invalid case: should_trigger=false must define must_not_include")
+                }
             }
         }
 
-        return (errors, skips)
+        return DeterministicGradeResult(errors: errors, skipped: skipped, skillChecks: skillChecks)
     }
 }
 
@@ -255,53 +266,6 @@ private func gradeExpectedDiff(_ expectedDiff: ExpectedDiff, diff: String) -> [S
     }
 
     return errors
-}
-
-private func skillWasInvoked(
-    _ skillName: String,
-    toolEvents: [ToolEvent],
-    traceCommands: [String],
-    skills: [SkillInfo],
-    repoRoot: URL?
-) -> Bool {
-    // Direct skill invocation: ToolEvent(name: "Skill", skillName: "map-layer")
-    if toolEvents.contains(where: { $0.skillName == skillName }) {
-        return true
-    }
-
-    // Skill file read via filePath — e.g. parent skill "ios-26" invokes a Read on
-    // a nested skill file, producing ToolEvent(name: "Read",
-    // filePath: "/Users/bill/repo/.claude/skills/ios-26/merge-insurance-policy.md")
-    let filePaths = toolEvents.compactMap(\.filePath)
-    if filePaths.contains(where: { matchesSkillPathByConvention($0, skillName: skillName) }) {
-        return true
-    }
-
-    // Bash trace command referencing a skill path:
-    // "sed -n '1,100p' .claude/skills/map-layer/SKILL.md"
-    return matchesSkillInTrace(skillName, skills: skills, traceCommands: traceCommands, repoRoot: repoRoot)
-}
-
-private func matchesSkillInTrace(
-    _ skillName: String,
-    skills: [SkillInfo],
-    traceCommands: [String],
-    repoRoot: URL?
-) -> Bool {
-    if let skillInfo = skills.first(where: { $0.name == skillName }), let repoRoot {
-        let relativePath = skillInfo.relativePath(to: repoRoot)
-        return traceCommands.contains(where: { $0.contains(relativePath) })
-    }
-    return traceCommands.contains(where: { matchesSkillPathByConvention($0, skillName: skillName) })
-}
-
-private let skillPathPrefixes = [".claude/skills/", ".agents/skills/"]
-
-private func matchesSkillPathByConvention(_ command: String, skillName: String) -> Bool {
-    skillPathPrefixes.contains { prefix in
-        guard command.contains(prefix) else { return false }
-        return command.contains("/\(skillName)/") || command.contains("/\(skillName).md")
-    }
 }
 
 private func normalize(_ value: String) -> String {

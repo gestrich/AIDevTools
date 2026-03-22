@@ -43,6 +43,7 @@ public struct CaseLoader: Sendable {
     public func filterCases(
         _ cases: [EvalCase],
         caseId: String? = nil,
+        skill: String? = nil,
         suite: String? = nil
     ) -> [EvalCase] {
         var filtered = cases
@@ -51,6 +52,11 @@ public struct CaseLoader: Sendable {
         }
         if let caseId {
             filtered = filtered.filter { $0.id == caseId }
+        }
+        if let skill {
+            filtered = filtered.filter { evalCase in
+                evalCase.skills?.contains { $0.skill == skill } ?? false
+            }
         }
         return filtered
     }

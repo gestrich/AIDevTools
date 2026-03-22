@@ -7,7 +7,7 @@ import RepositorySDK
 struct RunEvalsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "run-evals",
-        abstract: "Run skill evaluation cases against AI providers"
+        abstract: "Run evaluation cases against AI providers"
     )
 
     @Option(help: "Path to cases directory")
@@ -120,6 +120,9 @@ extension RunEvalsCommand {
                 for error in result.errors {
                     print("    \(error)")
                 }
+            }
+            for check in result.skillChecks {
+                print("    skill: \(check.displayDescription)")
             }
             for skip in result.skipped {
                 print("    skip: \(skip)")

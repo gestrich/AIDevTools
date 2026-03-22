@@ -31,24 +31,20 @@ public final class ClaudeCodeChatManager {
         self.sessionState = SessionState(workingDirectory: resolvedWorkingDir)
 
         if settings.resumeLastSession {
-            let sessions = listSessions()
-            if let mostRecent = sessions.first {
-                self.sessionState = SessionState(
-                    workingDirectory: resolvedWorkingDir,
-                    messages: [],
-                    sessionId: mostRecent.id,
-                    hasStartedSession: true
-                )
-                self.isLoadingHistory = true
-                let workDir = resolvedWorkingDir
-                let sid = mostRecent.id
-                Task {
-                    let messages = await Task.detached {
-                        Self.loadSessionMessages(sessionId: sid, workingDirectory: workDir)
-                    }.value
-                    self.sessionState.messages = messages
-                    self.isLoadingHistory = false
+            self.isLoadingHistory = true
+            let workDir = resolvedWorkingDir
+            Task {
+                let sessions = await Self.listSessionsFromDisk(workingDirectory: workDir)
+                if let mostRecent = sessions.first {
+                    let messages = await Self.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: workDir)
+                    self.sessionState = SessionState(
+                        workingDirectory: workDir,
+                        messages: messages,
+                        sessionId: mostRecent.id,
+                        hasStartedSession: true
+                    )
                 }
+                self.isLoadingHistory = false
             }
         }
     }
@@ -75,32 +71,27 @@ public final class ClaudeCodeChatManager {
         sessionState.messages.removeAll()
     }
 
-    public func setWorkingDirectory(_ path: String) {
+    public func setWorkingDirectory(_ path: String) async {
         let resolvedPath = Self.resolveSymlinks(in: path)
         guard resolvedPath != sessionState.workingDirectory else { return }
 
         self.sessionState = SessionState(workingDirectory: resolvedPath)
 
         if settings.resumeLastSession {
-            let sessions = listSessions()
+            self.isLoadingHistory = true
+            let sessions = await Self.listSessionsFromDisk(workingDirectory: resolvedPath)
+            guard self.sessionState.workingDirectory == resolvedPath else { return }
             if let mostRecent = sessions.first {
+                let messages = await Self.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: resolvedPath)
+                guard self.sessionState.workingDirectory == resolvedPath else { return }
                 self.sessionState = SessionState(
                     workingDirectory: resolvedPath,
-                    messages: [],
+                    messages: messages,
                     sessionId: mostRecent.id,
                     hasStartedSession: true
                 )
-                self.isLoadingHistory = true
-                let workDir = resolvedPath
-                let sid = mostRecent.id
-                Task {
-                    let messages = await Task.detached {
-                        Self.loadSessionMessages(sessionId: sid, workingDirectory: workDir)
-                    }.value
-                    self.sessionState.messages = messages
-                    self.isLoadingHistory = false
-                }
             }
+            self.isLoadingHistory = false
         }
     }
 
@@ -117,7 +108,7 @@ public final class ClaudeCodeChatManager {
         messageQueue.removeAll()
     }
 
-    public func resumeSession(_ sessionId: String) {
+    public func resumeSession(_ sessionId: String) async {
         let workDir = sessionState.workingDirectory
         self.sessionState = SessionState(
             workingDirectory: workDir,
@@ -126,13 +117,9 @@ public final class ClaudeCodeChatManager {
             hasStartedSession: true
         )
         self.isLoadingHistory = true
-        Task {
-            let messages = await Task.detached {
-                Self.loadSessionMessages(sessionId: sessionId, workingDirectory: workDir)
-            }.value
-            self.sessionState.messages = messages
-            self.isLoadingHistory = false
-        }
+        let messages = await Self.loadSessionMessages(sessionId: sessionId, workingDirectory: workDir)
+        self.sessionState.messages = messages
+        self.isLoadingHistory = false
     }
 
     public func cancelCurrentRequest() {
@@ -141,9 +128,19 @@ public final class ClaudeCodeChatManager {
         isProcessing = false
     }
 
-    public func listSessions() -> [ClaudeSession] {
+    public func listSessions() async -> [ClaudeSession] {
+        await Self.listSessionsFromDisk(workingDirectory: workingDirectory)
+    }
+
+    public nonisolated static func listSessionsFromDisk(workingDirectory: String) async -> [ClaudeSession] {
+        await Task.detached {
+            listSessionsSync(workingDirectory: workingDirectory)
+        }.value
+    }
+
+    private nonisolated static func listSessionsSync(workingDirectory: String) -> [ClaudeSession] {
         let projectsDir = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/projects")
-        let projectDirName = Self.projectDirName(from: workingDirectory)
+        let projectDirName = projectDirName(from: workingDirectory)
         let projectPath = (projectsDir as NSString).appendingPathComponent(projectDirName)
 
         guard FileManager.default.fileExists(atPath: projectPath) else { return [] }
@@ -363,7 +360,7 @@ public final class ClaudeCodeChatManager {
         return nil
     }
 
-    private func findSummaryInSessionFile(at filePath: String) -> String? {
+    private nonisolated static func findSummaryInSessionFile(at filePath: String) -> String? {
         guard let content = try? String(contentsOfFile: filePath, encoding: .utf8) else { return nil }
 
         let lines = content.components(separatedBy: "\n")
@@ -393,7 +390,13 @@ public final class ClaudeCodeChatManager {
 
     // MARK: - Session History Loading
 
-    private nonisolated static func loadSessionMessages(sessionId: String, workingDirectory: String) -> [ClaudeCodeChatMessage] {
+    private nonisolated static func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ClaudeCodeChatMessage] {
+        await Task.detached {
+            loadSessionMessagesSync(sessionId: sessionId, workingDirectory: workingDirectory)
+        }.value
+    }
+
+    private nonisolated static func loadSessionMessagesSync(sessionId: String, workingDirectory: String) -> [ClaudeCodeChatMessage] {
         let projectsDir = (NSHomeDirectory() as NSString).appendingPathComponent(".claude/projects")
         let projectDirName = projectDirName(from: workingDirectory)
         let filePath = (projectsDir as NSString)

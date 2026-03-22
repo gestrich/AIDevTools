@@ -2,6 +2,7 @@ import Foundation
 import CLISDK
 import ClaudeCLISDK
 import EvalService
+import SkillScannerSDK
 
 public struct ClaudeAdapter: ProviderAdapterProtocol {
 
@@ -21,6 +22,19 @@ public struct ClaudeAdapter: ProviderAdapterProtocol {
             supportsEventStream: true,
             supportsMetrics: true
         )
+    }
+
+    public func invocationMethod(for skillName: String, toolEvents: [ToolEvent], traceCommands: [String], skills: [SkillInfo], repoRoot: URL?) -> InvocationMethod? {
+        if toolEvents.contains(where: { $0.skillName == skillName }) { return .explicit }
+        let prefixes = [".claude/skills/", ".agents/skills/"]
+        let filePaths = toolEvents.compactMap(\.filePath)
+        let matches = filePaths.contains { path in
+            prefixes.contains { prefix in
+                guard path.contains(prefix) else { return false }
+                return path.contains("/\(skillName)/") || path.contains("/\(skillName).md")
+            }
+        }
+        return matches ? .discovered : nil
     }
 
     public func run(configuration: RunConfiguration, onOutput: (@Sendable (String) -> Void)? = nil) async throws -> ProviderResult {
@@ -69,4 +83,5 @@ public struct ClaudeAdapter: ProviderAdapterProtocol {
             configuration: configuration
         )
     }
+
 }

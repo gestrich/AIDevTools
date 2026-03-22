@@ -1,6 +1,7 @@
 import Foundation
 import CodexCLISDK
 import EvalService
+import SkillScannerSDK
 
 public struct CodexAdapter: ProviderAdapterProtocol {
 
@@ -18,6 +19,21 @@ public struct CodexAdapter: ProviderAdapterProtocol {
             supportsEventStream: true,
             supportsMetrics: false
         )
+    }
+
+    public func invocationMethod(for skillName: String, toolEvents: [ToolEvent], traceCommands: [String], skills: [SkillInfo], repoRoot: URL?) -> InvocationMethod? {
+        if let skillInfo = skills.first(where: { $0.name == skillName }), let repoRoot {
+            let relativePath = skillInfo.relativePath(to: repoRoot)
+            if traceCommands.contains(where: { $0.contains(relativePath) }) { return .inferred }
+        }
+        let prefixes = [".claude/skills/", ".agents/skills/"]
+        let matches = traceCommands.contains { cmd in
+            prefixes.contains { prefix in
+                guard cmd.contains(prefix) else { return false }
+                return cmd.contains("/\(skillName)/") || cmd.contains("/\(skillName).md")
+            }
+        }
+        return matches ? .inferred : nil
     }
 
     public func run(configuration: RunConfiguration, onOutput: (@Sendable (String) -> Void)? = nil) async throws -> ProviderResult {
@@ -78,4 +94,5 @@ public struct CodexAdapter: ProviderAdapterProtocol {
             configuration: configuration
         )
     }
+
 }

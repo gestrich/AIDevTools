@@ -12,24 +12,18 @@ struct PromptBuilderTests {
         #expect(result == "Do the thing.")
     }
 
-    @Test func taskInputExplicitSkill() throws {
-        let evalCase = EvalCase(id: "p2", skillHint: "explicit", task: "Migrate DK1 colors.", input: "Color.dkColor(.gray1)")
+    @Test func taskInputWithSkillShouldTrigger() throws {
+        let evalCase = EvalCase(id: "p2", skills: [SkillAssertion(skill: "design-kit", shouldTrigger: true)], task: "Migrate DK1 colors.", input: "Color.dkColor(.gray1)")
         let prompt = try builder.buildPrimaryPrompt(for: evalCase)
         #expect(prompt.contains("Migrate DK1 colors."))
         #expect(prompt.contains("Color.dkColor(.gray1)"))
-        #expect(prompt.contains("skill name exactly"))
-    }
-
-    @Test func taskInputImplicitSkill() throws {
-        let evalCase = EvalCase(id: "p3", skillHint: "implicit", task: "Fix this.", input: "broken code")
-        let prompt = try builder.buildPrimaryPrompt(for: evalCase)
         #expect(prompt.contains("most relevant repository skill"))
     }
 
-    @Test func taskInputNoHint() throws {
+    @Test func taskInputNoSkills() throws {
         let evalCase = EvalCase(id: "p4", task: "Fix this.", input: "broken code")
         let prompt = try builder.buildPrimaryPrompt(for: evalCase)
-        #expect(!prompt.contains("skill name"))
+        #expect(!prompt.contains("skill"))
         #expect(!prompt.contains("most relevant"))
     }
 
