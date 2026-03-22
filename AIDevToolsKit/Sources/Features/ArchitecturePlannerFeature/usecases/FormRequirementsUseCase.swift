@@ -45,7 +45,8 @@ public struct FormRequirementsUseCase: Sendable {
     public func run(
         _ options: Options,
         store: ArchitecturePlannerStore,
-        onProgress: (@Sendable (Progress) -> Void)? = nil
+        onProgress: (@Sendable (Progress) -> Void)? = nil,
+        onOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> Result {
         let context = store.createContext()
 
@@ -93,7 +94,8 @@ public struct FormRequirementsUseCase: Sendable {
         let output = try await claudeClient.runStructured(
             RequirementsResponse.self,
             command: command,
-            workingDirectory: options.repoPath
+            workingDirectory: options.repoPath,
+            onFormattedOutput: onOutput
         )
 
         let dtos = output.value.requirements

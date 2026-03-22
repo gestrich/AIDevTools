@@ -52,7 +52,8 @@ public struct CompileFollowupsUseCase: Sendable {
     public func run(
         _ options: Options,
         store: ArchitecturePlannerStore,
-        onProgress: (@Sendable (Progress) -> Void)? = nil
+        onProgress: (@Sendable (Progress) -> Void)? = nil,
+        onOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> Result {
         let context = store.createContext()
 
@@ -83,7 +84,7 @@ public struct CompileFollowupsUseCase: Sendable {
         onProgress?(.identifyingDeferredWork)
 
         // Use Claude to identify additional deferred work
-        let additionalCount = try await identifyDeferredWork(job: job, options: options)
+        let additionalCount = try await identifyDeferredWork(job: job, options: options, onOutput: onOutput)
         followupCount += additionalCount
 
         onProgress?(.identified(count: additionalCount))
@@ -102,7 +103,7 @@ public struct CompileFollowupsUseCase: Sendable {
     }
 
     @MainActor
-    private func identifyDeferredWork(job: PlanningJob, options: Options) async throws -> Int {
+    private func identifyDeferredWork(job: PlanningJob, options: Options, onOutput: (@Sendable (String) -> Void)?) async throws -> Int {
         let components = job.implementationComponents.sorted(by: { $0.sortOrder < $1.sortOrder })
         guard !components.isEmpty else { return 0 }
 
@@ -161,7 +162,8 @@ public struct CompileFollowupsUseCase: Sendable {
         let output = try await claudeClient.runStructured(
             FollowupsResponse.self,
             command: command,
-            workingDirectory: options.repoPath
+            workingDirectory: options.repoPath,
+            onFormattedOutput: onOutput
         )
 
         var count = 0

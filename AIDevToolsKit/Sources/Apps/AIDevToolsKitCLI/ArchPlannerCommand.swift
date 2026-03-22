@@ -6,6 +6,7 @@ struct ArchPlannerCommand: AsyncParsableCommand {
         abstract: "Architecture-driven planning and implementation",
         subcommands: [
             ArchPlannerCreateCommand.self,
+            ArchPlannerDeleteCommand.self,
             ArchPlannerExecuteCommand.self,
             ArchPlannerGuidelinesCommand.self,
             ArchPlannerInspectCommand.self,

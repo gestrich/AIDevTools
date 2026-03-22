@@ -62,37 +62,43 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         case "form-requirements":
             let useCase = FormRequirementsUseCase()
             let options = FormRequirementsUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .extracting: print("Extracting requirements...")
                 case .extracted(let count): print("Extracted \(count) requirements")
                 case .saved: print("Saved")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Requirements formed: \(result.requirements.count)")
 
         case "compile-arch-info":
             let useCase = CompileArchitectureInfoUseCase()
             let options = CompileArchitectureInfoUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .loadingGuidelines: print("Loading guidelines...")
                 case .identifyingLayers: print("Identifying layers...")
                 case .completed: print("Done")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Layers: \(result.layersSummary.prefix(200))")
 
         case "plan-across-layers":
             let useCase = PlanAcrossLayersUseCase()
             let options = PlanAcrossLayersUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .planning: print("Planning across layers...")
                 case .planned(let count): print("Planned \(count) components")
                 case .saved: print("Saved")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Components: \(result.componentCount)")
 
         case "checklist-validation":
@@ -112,13 +118,15 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         case "build-implementation-model", "score":
             let useCase = ScoreConformanceUseCase()
             let options = ScoreConformanceUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .scoring: print("Scoring conformance...")
                 case .scored(let count): print("Created \(count) mappings")
                 case .saved: print("Saved")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Average score: \(String(format: "%.1f", result.averageScore))/10")
             print("Mappings: \(result.mappingsCreated)")
 
@@ -144,7 +152,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         case "execute":
             let useCase = ExecuteImplementationUseCase()
             let options = ExecuteImplementationUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .startingPhase(let idx, let summary): print("Phase \(idx): \(summary)")
                 case .phaseOutput(let text): print(text)
@@ -152,7 +160,9 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
                 case .evaluating(let idx): print("Evaluating phase \(idx)...")
                 case .allCompleted: print("All phases completed")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Executed \(result.phasesExecuted) phases, \(result.decisionsRecorded) decisions recorded")
 
         case "report":
@@ -165,7 +175,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         case "followups":
             let useCase = CompileFollowupsUseCase()
             let options = CompileFollowupsUseCase.Options(jobId: jobId, repoPath: repoPath)
-            let result = try await useCase.run(options, store: store) { progress in
+            let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
                 case .collecting: print("Collecting followups...")
                 case .collected(let count): print("Found \(count) followup items from unclear flags")
@@ -173,7 +183,9 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
                 case .identified(let count): print("Found \(count) additional followup items")
                 case .saved: print("Saved")
                 }
-            }
+            }, onOutput: { text in
+                print(text, terminator: "")
+            })
             print("Followups created: \(result.followupsCreated)")
 
         default:

@@ -42,7 +42,8 @@ public struct CompileArchitectureInfoUseCase: Sendable {
     public func run(
         _ options: Options,
         store: ArchitecturePlannerStore,
-        onProgress: (@Sendable (Progress) -> Void)? = nil
+        onProgress: (@Sendable (Progress) -> Void)? = nil,
+        onOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> Result {
         let context = store.createContext()
 
@@ -132,7 +133,8 @@ public struct CompileArchitectureInfoUseCase: Sendable {
         let output = try await claudeClient.runStructured(
             ArchInfoResponse.self,
             command: command,
-            workingDirectory: options.repoPath
+            workingDirectory: options.repoPath,
+            onFormattedOutput: onOutput
         )
 
         // Update step with the full layers summary

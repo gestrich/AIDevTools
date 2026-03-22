@@ -13,6 +13,7 @@ final class ArchitecturePlannerModel {
     }
 
     var state: State = .idle
+    var currentOutput: String = ""
     var jobs: [PlanningJob] = []
     var selectedJob: PlanningJob?
     var selectedStepIndex: Int?
@@ -96,28 +97,35 @@ final class ArchitecturePlannerModel {
         guard let stepDef = ArchitecturePlannerStep(rawValue: stepIndex) else { return }
 
         state = .running(stepName: stepDef.name)
+        currentOutput = ""
+
+        let outputHandler: @Sendable (String) -> Void = { [weak self] text in
+            Task { @MainActor in
+                self?.currentOutput += text
+            }
+        }
 
         do {
             switch stepDef {
             case .formRequirements:
                 let options = FormRequirementsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await formRequirementsUseCase.run(options, store: store)
+                _ = try await formRequirementsUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .compileArchitectureInfo:
                 let options = CompileArchitectureInfoUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await compileArchInfoUseCase.run(options, store: store)
+                _ = try await compileArchInfoUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .planAcrossLayers:
                 let options = PlanAcrossLayersUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await planAcrossLayersUseCase.run(options, store: store)
+                _ = try await planAcrossLayersUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .buildImplementationModel, .checklistValidation:
                 let options = ScoreConformanceUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await scoreConformanceUseCase.run(options, store: store)
+                _ = try await scoreConformanceUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .executeImplementation:
                 let options = ExecuteImplementationUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await executeUseCase.run(options, store: store)
+                _ = try await executeUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .finalReport:
                 _ = try generateReportUseCase.run(
@@ -127,7 +135,7 @@ final class ArchitecturePlannerModel {
 
             case .followups:
                 let options = CompileFollowupsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                _ = try await compileFollowupsUseCase.run(options, store: store)
+                _ = try await compileFollowupsUseCase.run(options, store: store, onOutput: outputHandler)
 
             case .describeFeature, .reviewImplementationPlan:
                 break // These are interactive steps handled via UI
@@ -140,23 +148,23 @@ final class ArchitecturePlannerModel {
         }
     }
 
-    func goToStep(_ index: Int) async {
-        guard let job = selectedJob, let store else { return }
-        selectedStepIndex = index
-
-        // Mark subsequent steps stale if going back
-        if index < job.currentStepIndex {
-            do {
-                try manageGuidelinesUseCase.markSubsequentStepsStale(
-                    jobId: job.jobId,
-                    fromStepIndex: index,
-                    store: store
-                )
-                reloadSelectedJob()
-            } catch {
-                state = .error(error)
+    func deleteJob(_ job: PlanningJob) {
+        guard let store else { return }
+        do {
+            try manageGuidelinesUseCase.deleteJob(jobId: job.jobId, store: store)
+            if selectedJob?.jobId == job.jobId {
+                selectedJob = nil
             }
+            if let repoName = currentRepoName {
+                jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
+            }
+        } catch {
+            state = .error(error)
         }
+    }
+
+    func goToStep(_ index: Int) {
+        selectedStepIndex = index
     }
 
     func generateReport() -> String? {

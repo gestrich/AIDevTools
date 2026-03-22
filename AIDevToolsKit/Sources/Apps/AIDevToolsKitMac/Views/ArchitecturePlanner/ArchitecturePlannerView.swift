@@ -11,12 +11,14 @@ struct ArchitecturePlannerView: View {
 
             if let job = model.selectedJob {
                 ArchitecturePlannerDetailView(model: model, job: job)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ContentUnavailableView(
                     "No Job Selected",
                     systemImage: "doc.text.magnifyingglass",
                     description: Text("Select a planning job or create a new one")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -47,6 +49,11 @@ struct ArchitecturePlannerView: View {
                     }
                     .tag(job.jobId)
                     .padding(.vertical, 2)
+                    .contextMenu {
+                        Button("Delete", role: .destructive) {
+                            model.deleteJob(job)
+                        }
+                    }
                 }
             }
 

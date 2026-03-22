@@ -111,6 +111,18 @@ public struct ManageGuidelinesUseCase: Sendable {
         try context.save()
     }
 
+    // MARK: - Delete Planning Job
+
+    @MainActor
+    public func deleteJob(jobId: UUID, store: ArchitecturePlannerStore) throws {
+        let context = store.createContext()
+        let predicate = #Predicate<PlanningJob> { $0.jobId == jobId }
+        let descriptor = FetchDescriptor<PlanningJob>(predicate: predicate)
+        guard let job = try context.fetch(descriptor).first else { return }
+        context.delete(job)
+        try context.save()
+    }
+
     // MARK: - Load Planning Jobs
 
     @MainActor
