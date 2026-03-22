@@ -88,7 +88,7 @@ Two root causes were identified and already fixed in commit `40b9131`:
 | `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/PlanRunnerModel.swift` | Mac app `generate()` integration (lines 142–182) |
 | `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PlanRunnerPlanCommand.swift` | CLI plan command — always triggers matching (no `selectedRepository`) |
 
-## - [ ] Phase 2: Gather Architectural Guidance
+## - [x] Phase 2: Gather Architectural Guidance
 
 When executed, this phase will:
 - Read `AIDevToolsKit/ARCHITECTURE.md` to understand layer boundaries and module responsibilities
@@ -96,6 +96,40 @@ When executed, this phase will:
 - Review the `SkillService` module (skill configuration and repository settings) for its role in repo management
 - Check relevant skills and architecture docs for patterns around repository access
 - Summarize key architectural constraints that apply to this fix (e.g., which layer should own the matching logic, how to properly access the configured repo list without violating dependency rules)
+
+### Findings
+
+#### 4-Layer Architecture
+
+| Layer | May Depend On | Key Modules for This Fix |
+|-------|---------------|--------------------------|
+| **Apps** (CLI, Mac) | Features, Services, SDKs | `AIDevToolsKitCLI`, `AIDevToolsKitMac` — entry points that wire up use cases |
+| **Features** | Services, SDKs | `PlanRunnerFeature` — owns `GeneratePlanUseCase` and `matchRepo()` |
+| **Services** | SDKs | `SkillService` — skill data models; `PlanRunnerService` — plan settings |
+| **SDKs** | (none) | `RepositorySDK` — repo storage; `ClaudeCLISDK` — Claude CLI process management |
+
+#### RepositorySDK — Single Source of Truth for Repos
+
+- **Storage**: JSON file at `{dataPath}/repositories.json`, managed by `RepositoryStore`
+- **Model**: `RepositoryInfo` — id (UUID), path, name, plus optional metadata (description, skills, architectureDocs, verification, pullRequest config)
+- **Access**: `RepositoryStore.loadAll()` reads all configured repos; `find(byID:)` and `find(byPath:)` for lookups
+- **Constraint**: SDKs have no internal dependencies, so `RepositorySDK` cannot reference any higher layer
+
+#### SkillService — Read-Only Skill Discovery (No Repo Mutation)
+
+- Defines `Skill` and `ReferenceFile` data models
+- Skills are discovered dynamically from the filesystem by `SkillScannerSDK`, not stored in `RepositoryInfo` (though `RepositoryInfo.skills` can hold static references)
+- Does not own or manage the repository list — purely a consumer of `RepositoryInfo.path` for scanning
+- No direct involvement in the repo matching flow
+
+#### Architectural Constraints for This Fix
+
+1. **`matchRepo()` belongs in the Features layer** (`PlanRunnerFeature`). It orchestrates business logic (formatting repos, calling Claude CLI, validating output) — this is the correct layer per the architecture.
+2. **Repository list must come from `RepositoryStore`** (SDK layer). Both CLI and Mac app already source repos from `RepositoryStore.loadAll()` before passing them to `GeneratePlanUseCase.run()`. No alternative repo source should be introduced.
+3. **`matchRepo()` must not access the filesystem for repo discovery**. It receives `[RepositoryInfo]` as a parameter — it should never scan for repos itself. The fix in commit `40b9131` correctly removed filesystem access flags.
+4. **Caller-side validation is the safety net**. `GeneratePlanUseCase.run()` validates the returned `repoId` UUID exists in the passed array (`GenerateError.repoNotFound`). This catch remains important even with prompt constraints.
+5. **The `selectedRepository` bypass is architecturally sound**. When the Mac app provides a pre-selected repo, skipping `matchRepo()` entirely avoids an unnecessary Claude CLI call while staying within the same use case boundary.
+6. **No cross-layer shortcuts**. `GeneratePlanUseCase` (Features) correctly depends on `ClaudeCLISDK` and `RepositorySDK` (SDKs). It must not reach into Apps or Services for repo data.
 
 ## - [ ] Phase 3: Plan the Implementation
 
