@@ -124,12 +124,50 @@ struct PlanRunnerFeatureModelTests {
     func generatePlanOptions() {
         let repos: [RepositoryInfo] = []
         let options = GeneratePlanUseCase.Options(
-            voiceText: "add a button",
+            prompt: "add a button",
             repositories: repos,
             resolveProposedDirectory: { repo in repo.path.appendingPathComponent(PlanRepoSettings.defaultProposedDirectory) }
         )
-        #expect(options.voiceText == "add a button")
+        #expect(options.prompt == "add a button")
         #expect(options.repositories.isEmpty)
+    }
+
+    @Test("GeneratePlanUseCase.Options stores selectedRepository")
+    func generatePlanOptionsSelectedRepository() {
+        let repo = RepositoryInfo(path: URL(fileURLWithPath: "/tmp/my-repo"))
+        let options = GeneratePlanUseCase.Options(
+            prompt: "fix the bug",
+            repositories: [repo],
+            selectedRepository: repo,
+            resolveProposedDirectory: { $0.path.appendingPathComponent("docs/proposed") }
+        )
+        #expect(options.selectedRepository?.id == repo.id)
+        #expect(options.selectedRepository?.name == repo.name)
+    }
+
+    @Test("GeneratePlanUseCase.Options selectedRepository defaults to nil")
+    func generatePlanOptionsSelectedRepositoryDefault() {
+        let options = GeneratePlanUseCase.Options(
+            prompt: "add a feature",
+            repositories: [],
+            resolveProposedDirectory: { $0.path.appendingPathComponent("docs/proposed") }
+        )
+        #expect(options.selectedRepository == nil)
+    }
+
+    @Test("GenerateError.repoNotFound includes repo ID in description")
+    func generateErrorRepoNotFound() {
+        let bogusId = "not-a-valid-uuid"
+        let error = GeneratePlanUseCase.GenerateError.repoNotFound(bogusId)
+        #expect(error.localizedDescription.contains(bogusId))
+        #expect(error.localizedDescription.contains("not found"))
+    }
+
+    @Test("GenerateError.repoNotFound includes UUID when repo is not in configured list")
+    func generateErrorRepoNotFoundUUID() {
+        let unknownUUID = UUID().uuidString
+        let error = GeneratePlanUseCase.GenerateError.repoNotFound(unknownUUID)
+        #expect(error.localizedDescription.contains(unknownUUID))
     }
 
     // MARK: - ExecutePlanUseCase

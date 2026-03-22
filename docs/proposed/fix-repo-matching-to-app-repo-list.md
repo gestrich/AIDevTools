@@ -159,7 +159,7 @@ The core fix was applied in commit `40b9131` (prompt constraint + removal of fil
 
 Generated `fix-repo-matching-to-app-repo-list-architecture.json` — maps all affected files to their modules and layers per `ARCHITECTURE.md`.
 
-## - [ ] Phase 4: Add Unit Tests for matchRepo Constraints
+## - [x] Phase 4: Add Unit Tests for matchRepo Constraints
 
 When executed, this phase will:
 - Add a test verifying `GenerateError.repoNotFound` produces the correct error message for unrecognized repo IDs
@@ -174,6 +174,19 @@ When executed, this phase will:
 **Acceptance criteria:**
 - All new tests pass via `swift test --filter PlanRunnerFeatureTests`
 - Tests cover the error path (`repoNotFound`) and the bypass path (`selectedRepository`)
+
+### Completed
+
+Added 4 tests to `PlanRunnerFeatureTests.swift`:
+
+| Test | What it verifies |
+|------|-----------------|
+| `generatePlanOptionsSelectedRepository` | `Options.selectedRepository` stores the provided repo |
+| `generatePlanOptionsSelectedRepositoryDefault` | `Options.selectedRepository` defaults to `nil` when omitted |
+| `generateErrorRepoNotFound` | `GenerateError.repoNotFound` error message contains the repo ID and "not found" |
+| `generateErrorRepoNotFoundUUID` | `GenerateError.repoNotFound` includes the full UUID string in the error |
+
+All 18 tests pass via `swift test --filter PlanRunnerFeatureTests`.
 
 ## - [ ] Phase 5: Build and Run Tests
 
