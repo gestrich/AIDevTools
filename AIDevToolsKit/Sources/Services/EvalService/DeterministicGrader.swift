@@ -264,44 +264,15 @@ private func skillWasInvoked(
     skills: [SkillInfo],
     repoRoot: URL?
 ) -> Bool {
-    // Direct skill invocation: ToolEvent(name: "Skill", skillName: "map-layer")
-    if toolEvents.contains(where: { $0.skillName == skillName }) {
-        return true
-    }
-
-    // Skill file read via filePath — e.g. parent skill "ios-26" invokes a Read on
-    // a nested skill file, producing ToolEvent(name: "Read",
-    // filePath: "/Users/bill/repo/.claude/skills/ios-26/merge-insurance-policy.md")
-    let filePaths = toolEvents.compactMap(\.filePath)
-    if filePaths.contains(where: { matchesSkillPathByConvention($0, skillName: skillName) }) {
-        return true
-    }
-
-    // Bash trace command referencing a skill path:
-    // "sed -n '1,100p' .claude/skills/map-layer/SKILL.md"
-    return matchesSkillInTrace(skillName, skills: skills, traceCommands: traceCommands, repoRoot: repoRoot)
-}
-
-private func matchesSkillInTrace(
-    _ skillName: String,
-    skills: [SkillInfo],
-    traceCommands: [String],
-    repoRoot: URL?
-) -> Bool {
-    if let skillInfo = skills.first(where: { $0.name == skillName }), let repoRoot {
-        let relativePath = skillInfo.relativePath(to: repoRoot)
-        return traceCommands.contains(where: { $0.contains(relativePath) })
-    }
-    return traceCommands.contains(where: { matchesSkillPathByConvention($0, skillName: skillName) })
-}
-
-private let skillPathPrefixes = [".claude/skills/", ".agents/skills/"]
-
-private func matchesSkillPathByConvention(_ command: String, skillName: String) -> Bool {
-    skillPathPrefixes.contains { prefix in
-        guard command.contains(prefix) else { return false }
-        return command.contains("/\(skillName)/") || command.contains("/\(skillName).md")
-    }
+    // Only check for genuine skill invocation via the Skill tool.
+    // ToolEvent(name: "Skill", skillName: "map-layer") is produced when the AI
+    // proactively invokes a skill based on its front matter description.
+    //
+    // We intentionally do NOT check file reads or bash trace commands, because
+    // the AI may encounter skill files accidentally during codebase exploration
+    // (e.g. grepping for related terms, listing directories). That is NOT
+    // genuine invocation — it's incidental discovery.
+    return toolEvents.contains(where: { $0.skillName == skillName })
 }
 
 private func normalize(_ value: String) -> String {
