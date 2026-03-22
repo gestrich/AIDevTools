@@ -46,14 +46,15 @@ struct RunEvalsCommand: AsyncParsableCommand {
         let resolvedOutputDir: URL
         let resolvedRepoRoot: URL
 
+        let resolvedDataPath = RepositoryStore.cliDataPath(from: dataPath)
+
         if let casesDir {
             resolvedCasesDir = URL(fileURLWithPath: casesDir)
             resolvedRepoRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             if let outputDir {
                 resolvedOutputDir = URL(fileURLWithPath: outputDir)
             } else {
-                let store = RepositoryStore.fromCLI(dataPath: dataPath)
-                resolvedOutputDir = store.dataPath
+                resolvedOutputDir = resolvedDataPath
             }
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
@@ -61,7 +62,7 @@ struct RunEvalsCommand: AsyncParsableCommand {
             let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
             let evalSettingsStore = EvalRepoSettingsStore.fromCLI(dataPath: dataPath)
             resolvedCasesDir = try evalSettingsStore.casesDirectory(forRepo: repoConfig)
-            resolvedOutputDir = try repoStore.outputDirectory(forRepoAt: repoURL)
+            resolvedOutputDir = try repoStore.outputDirectory(forRepoAt: repoURL, dataPath: resolvedDataPath)
             resolvedRepoRoot = repoURL
         } else {
             throw ValidationError("Must specify either --cases-dir or --repo")

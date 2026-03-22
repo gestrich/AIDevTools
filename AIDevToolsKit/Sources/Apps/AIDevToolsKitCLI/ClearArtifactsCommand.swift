@@ -35,7 +35,8 @@ struct ClearArtifactsCommand: ParsableCommand {
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
             let store = RepositoryStore.fromCLI(dataPath: dataPath)
-            resolvedOutputDir = try store.outputDirectory(forRepoAt: repoURL)
+            let resolvedDataPath = RepositoryStore.cliDataPath(from: dataPath)
+            resolvedOutputDir = try store.outputDirectory(forRepoAt: repoURL, dataPath: resolvedDataPath)
         } else {
             throw ValidationError("Must specify either --output-dir or --repo")
         }

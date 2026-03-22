@@ -21,6 +21,7 @@ final class WorkspaceModel {
     var isLoadingSkills: Bool = false
     var state: State = .idle
 
+    private let dataPath: URL
     private let repoStore: RepositoryStore
     private let evalSettingsStore: EvalRepoSettingsStore
     private let planSettingsStore: PlanRepoSettingsStore
@@ -31,6 +32,7 @@ final class WorkspaceModel {
     private let updateRepository: UpdateRepositoryUseCase
 
     init(
+        dataPath: URL,
         repoStore: RepositoryStore,
         evalSettingsStore: EvalRepoSettingsStore,
         planSettingsStore: PlanRepoSettingsStore,
@@ -40,6 +42,7 @@ final class WorkspaceModel {
         removeRepository: RemoveRepositoryUseCase,
         updateRepository: UpdateRepositoryUseCase
     ) {
+        self.dataPath = dataPath
         self.repoStore = repoStore
         self.evalSettingsStore = evalSettingsStore
         self.planSettingsStore = planSettingsStore
@@ -54,7 +57,7 @@ final class WorkspaceModel {
         guard let settings = try? evalSettingsStore.settings(forRepoId: repo.id) else { return nil }
         return RepositoryEvalConfig(
             casesDirectory: settings.resolvedCasesDirectory(repoPath: repo.path),
-            outputDirectory: repoStore.outputDirectory(for: repo),
+            outputDirectory: dataPath.appendingPathComponent(repo.name),
             repoRoot: repo.path
         )
     }

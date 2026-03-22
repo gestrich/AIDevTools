@@ -2,15 +2,17 @@ import Foundation
 import RepositorySDK
 
 extension RepositoryStore {
-    static func fromCLI(dataPath: String?) -> RepositoryStore {
-        let config: RepositoryStoreConfiguration
-        let resolvedPath = if let dataPath {
-            URL(filePath: dataPath)
+    static func cliDataPath(from option: String?) -> URL {
+        if let option {
+            URL(filePath: option)
         } else {
             URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
         }
-        config = RepositoryStoreConfiguration(dataPath: resolvedPath)
-        return RepositoryStore(configuration: config)
+    }
+
+    static func fromCLI(dataPath: String?) -> RepositoryStore {
+        let resolvedPath = cliDataPath(from: dataPath)
+        return RepositoryStore(repositoriesFile: resolvedPath.appending(path: "repositories.json"))
     }
 
     func repoConfig(forRepoAt repoPath: URL) throws -> RepositoryInfo {
@@ -21,9 +23,9 @@ extension RepositoryStore {
         return repoConfig
     }
 
-    func outputDirectory(forRepoAt repoPath: URL) throws -> URL {
+    func outputDirectory(forRepoAt repoPath: URL, dataPath: URL) throws -> URL {
         let repo = try repoConfig(forRepoAt: repoPath)
-        return outputDirectory(for: repo)
+        return dataPath.appendingPathComponent(repo.name)
     }
 }
 

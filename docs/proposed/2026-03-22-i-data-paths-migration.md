@@ -53,12 +53,14 @@ This forces callers (Mac app, CLI) to explicitly provide the path, making it cle
 
 **Completed:** Removed the default parameter `URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")` from `RepositoryStoreConfiguration.init`. Callers that relied on the implicit default (`RepositoryStore+CLI`, `PlanRepoSettingsStore+CLI`, `EvalRepoSettingsStore+CLI`, `ExecutePlanUseCase`) now inline the default path directly. The Mac app and tests already passed explicit paths and required no changes.
 
-## - [ ] Phase 3: Migrate RepositoryStore
+## - [x] Phase 3: Migrate RepositoryStore
 
 - `RepositoryStore` currently stores `repositories.json` at `dataPath/repositories.json`. Update it to accept a `repositoriesFile: URL` in its initializer instead of deriving it from `RepositoryStoreConfiguration`.
 - The app layer will use `DataPathsService.path(for: .repositories)` to get the directory and pass it in.
 - Remove `RepositoryStoreConfiguration` if it becomes unnecessary (it currently just wraps a single URL).
 - Update `outputDirectory(for:)` to accept a base URL or remove it — the app layer will use `DataPathsService.path(for: .repoOutput(repo.name))`.
+
+**Completed:** Changed `RepositoryStore.init` to accept `repositoriesFile: URL` directly instead of `RepositoryStoreConfiguration`. Deleted `RepositoryStoreConfiguration` entirely. Removed `dataPath` property and `outputDirectory(for:)` from `RepositoryStore` — output directory computation moved to callers: `WorkspaceModel` now takes a `dataPath: URL` init parameter, and the CLI extension's `outputDirectory(forRepoAt:dataPath:)` takes an explicit data path. Added `cliDataPath(from:)` helper to the CLI extension for resolving the data path option. Updated `RunEvalsCommand`, `ShowOutputCommand`, `ClearArtifactsCommand`, both Mac entry views, and tests. Removed the `outputDirectoryUsesRepoName` test since the method no longer exists on the store.
 
 ## - [ ] Phase 4: Migrate EvalRepoSettingsStore and PlanRepoSettingsStore
 

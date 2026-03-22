@@ -6,8 +6,7 @@ struct RepositoryStoreTests {
     private func makeTempStore() throws -> (RepositoryStore, URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        let config = RepositoryStoreConfiguration(dataPath: tempDir)
-        return (RepositoryStore(configuration: config), tempDir)
+        return (RepositoryStore(repositoriesFile: tempDir.appending(path: "repositories.json")), tempDir)
     }
 
     private func cleanup(_ url: URL) {
@@ -141,19 +140,5 @@ struct RepositoryStoreTests {
         // Assert
         #expect(found?.name == "Target")
         #expect(notFound == nil)
-    }
-
-    @Test func outputDirectoryUsesRepoName() throws {
-        // Arrange
-        let (store, tempDir) = try makeTempStore()
-        defer { cleanup(tempDir) }
-        let repo = RepositoryInfo(path: URL(filePath: "/tmp/repo"), name: "my-project")
-
-        // Act
-        let output = store.outputDirectory(for: repo)
-
-        // Assert
-        #expect(output.lastPathComponent == "my-project")
-        #expect(output.path(percentEncoded: false).hasPrefix(tempDir.path(percentEncoded: false)))
     }
 }
