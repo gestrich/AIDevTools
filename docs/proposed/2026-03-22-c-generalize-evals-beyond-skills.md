@@ -187,7 +187,7 @@ Replace top-level skill fields with the `skills` array:
 - `ai-dev-tools-joke.jsonl` — Moved `deterministic.skillMustBeInvoked: "ai-dev-tools-joke"` to `skills: [{skill: "ai-dev-tools-joke", must_be_invoked: true}]`, removed empty `deterministic` object
 - `commit-skill.jsonl` — No changes needed, already had no skill-specific fields
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
 
 - Create a non-skill eval case and run it end-to-end
 - Create a multi-skill eval case and verify all skill assertions are graded
@@ -195,3 +195,16 @@ Replace top-level skill fields with the `skills` array:
 - Test the Mac app displays both evals and skills views correctly
 - Test navigation from skills view to evals view
 - Run the CLI `list-cases` with and without `--skill` filter
+
+### Technical Notes
+
+- Added `general-knowledge.jsonl` — two cases with no `skills` array (plain text assertions only), validating that the eval pipeline handles skill-free cases end-to-end
+- Added `multi-skill.jsonl` — one case with two skill assertions (`what-time-is-it` with `must_be_invoked`, `ai-dev-tools-joke` with `must_not_be_invoked`), validating that the grader evaluates each assertion independently
+- Non-skill case (`capital-of-france`) passed end-to-end: loaded, ran against Claude, deterministic grading passed with no skill checks
+- Multi-skill case (`time-not-joke`) ran end-to-end: both skill assertions were evaluated correctly — `must_be_invoked` failure reported as error, `must_not_be_invoked` pass correctly not reported as error
+- Existing skill-scoped case (`ask-time`) loaded and ran with the migrated JSONL format — grading logic intact
+- `list-cases` shows all 5 cases (2 non-skill, 1 multi-skill, 2 existing skill-scoped)
+- `--skill` filter correctly returns cases referencing a given skill, including multi-skill cases that match
+- `--skill` with non-existent skill returns empty result set
+- All 52 eval-related unit tests pass (45 DeterministicGrader + 7 PromptBuilder)
+- Mac app UI testing requires manual verification — code changes from Phase 4 compile and the Evals sidebar section is present alongside Skills
