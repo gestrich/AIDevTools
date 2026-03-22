@@ -114,6 +114,13 @@ struct PlanDetailView: View {
             }
 
             Button {
+                completePlan()
+            } label: {
+                Label("Complete", systemImage: "checkmark.circle")
+            }
+            .disabled(isBusy)
+
+            Button {
                 Task {
                     await planRunnerModel.execute(plan: plan, repository: repository)
                 }
@@ -161,8 +168,14 @@ struct PlanDetailView: View {
 
             ForEach(localPhases) { phase in
                 HStack(spacing: 8) {
-                    Image(systemName: phase.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(phase.isCompleted ? .green : .secondary)
+                    Button {
+                        togglePhase(at: phase.index)
+                    } label: {
+                        Image(systemName: phase.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(phase.isCompleted ? .green : .secondary)
+                    }
+                    .buttonStyle(.plain)
+
                     Text(phase.description)
                         .font(.body)
                         .strikethrough(phase.isCompleted, color: .secondary)
@@ -255,6 +268,26 @@ struct PlanDetailView: View {
         }
         .padding(10)
         .background(.red.opacity(0.1))
+    }
+
+    // MARK: - Actions
+
+    private func togglePhase(at index: Int) {
+        do {
+            let updatedContent = try planRunnerModel.togglePhase(plan: plan, phaseIndex: index)
+            planContent = updatedContent
+            localPhases = PlanRunnerModel.parsePhases(from: updatedContent)
+        } catch {
+            planRunnerModel.state = .error(error)
+        }
+    }
+
+    private func completePlan() {
+        do {
+            try planRunnerModel.completePlan(plan, repository: repository)
+        } catch {
+            planRunnerModel.state = .error(error)
+        }
     }
 
     // MARK: - Helpers
