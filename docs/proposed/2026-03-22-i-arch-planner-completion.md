@@ -139,7 +139,7 @@ The FollowupItem model exists but nothing creates followup items. Add:
 - Added `compileFollowupsUseCase` as an injected dependency in `ArchitecturePlannerModel`
 - CLI progress reporting updated with new `.identifyingDeferredWork` and `.identified(count:)` progress states
 
-## - [ ] Phase 7: End-to-End CLI Validation
+## - [x] Phase 7: End-to-End CLI Validation
 
 **Skills to read**: `ai-dev-tools-debug`
 
@@ -179,3 +179,13 @@ Success criteria:
 - Requirements, components, guideline mappings, conformance scores, decisions, and followups are all populated
 - The report includes real content at every section (not empty/placeholder)
 - Guidelines referenced in the report match real guidelines from the seeded set
+
+**Completed.** Technical notes:
+- Full end-to-end flow validated against AIDevTools repo with feature request "Add a settings toggle for architecture planner guideline auto-seeding"
+- 14 guidelines seeded (6 architecture, 8 SwiftUI)
+- All 10 steps completed without errors: describe-feature, form-requirements, compile-arch-info, plan-across-layers, checklist-validation, build-implementation-model, review-implementation-plan, execute, report, followups
+- Results: 8 requirements extracted, 4 implementation components planned, 19 guideline mappings scored (avg 7.9/10), 19 phase decisions recorded, 3 unclear flags identified, 8 followup items compiled
+- Report contains real content in every section with specific guideline references, conformance scores with rationale, tradeoff analysis, and implementation decisions
+- `score` step is an alias for `build-implementation-model` (both run the same scoring logic)
+- `review-implementation-plan` auto-approves since interactive review is not yet implemented
+- No code changes required — this phase was purely validation of the existing implementation from Phases 1-6
