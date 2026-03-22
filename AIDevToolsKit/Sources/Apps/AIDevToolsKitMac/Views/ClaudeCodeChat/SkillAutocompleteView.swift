@@ -20,6 +20,10 @@ struct SkillAutocompleteView: View {
                                 .fontDesign(.monospaced)
                                 .foregroundStyle(index == selectedSkillIndex ? .white : .primary)
 
+                            Text(skill.source.rawValue)
+                                .font(.caption2)
+                                .foregroundStyle(index == selectedSkillIndex ? .white.opacity(0.7) : .secondary)
+
                             Spacer()
 
                             if index == selectedSkillIndex {

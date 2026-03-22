@@ -2,8 +2,9 @@ import ArgumentParser
 import Foundation
 import RepositorySDK
 import SkillBrowserFeature
+import SkillScannerSDK
 
-struct SkillsCommand: ParsableCommand {
+struct SkillsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "skills",
         abstract: "List skills for a repository"
@@ -24,7 +25,7 @@ struct SkillsCommand: ParsableCommand {
             return
         }
         for skill in skills {
-            print(skill.name)
+            print("\(skill.name) (\(skill.source.rawValue))")
         }
     }
 

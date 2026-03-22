@@ -10,11 +10,21 @@ struct MessageInputWithAutocomplete: View {
     @State private var filteredSkills: [SkillInfo] = []
     @State private var selectedSkillIndex: Int = 0
     @State private var showAutocomplete: Bool = false
+    @State private var scanError: String?
 
     private let skillScanner = SkillScanner()
 
     var body: some View {
         VStack(spacing: 0) {
+            if let scanError {
+                Text(scanError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                Divider()
+            }
+
             if showAutocomplete {
                 SkillAutocompleteView(
                     filteredSkills: filteredSkills,
@@ -48,9 +58,13 @@ struct MessageInputWithAutocomplete: View {
 
     private func scanSkills() {
         let repoURL = URL(filePath: workingDirectory)
-        let globalCommandsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/commands")
-        availableSkills = (try? skillScanner.scanSkills(at: repoURL, globalCommandsDirectory: globalCommandsDir)) ?? []
+        do {
+            availableSkills = try skillScanner.scanSkills(at: repoURL)
+            scanError = nil
+        } catch {
+            availableSkills = []
+            scanError = "Failed to scan skills: \(error.localizedDescription)"
+        }
     }
 
     private func updateAutocomplete(for text: String) {

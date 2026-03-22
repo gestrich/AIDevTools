@@ -21,9 +21,7 @@ public struct ScanSkillsUseCase: Sendable {
 
     public func run(_ options: Options) throws -> [SkillInfo] {
         let repoURL = URL(filePath: options.workingDirectory)
-        let globalCommandsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/commands")
-        let skills = try scanner.scanSkills(at: repoURL, globalCommandsDirectory: globalCommandsDir)
+        let skills = try scanner.scanSkills(at: repoURL)
         if let query = options.query, !query.isEmpty {
             return scanner.filterSkills(skills, query: query)
         }

@@ -19,7 +19,8 @@ public struct LoadSkillsUseCase: Sendable {
                     path: info.path,
                     referenceFiles: info.referenceFiles.map { ref in
                         ReferenceFile(name: ref.name, url: ref.url)
-                    }
+                    },
+                    source: info.source
                 )
             }
         }.value

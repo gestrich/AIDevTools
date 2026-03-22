@@ -96,8 +96,9 @@ public struct ExecutePlanUseCase: Sendable {
 
         let repository = options.repository
         let completedDirectory = options.completedDirectory
-        let logDir: URL? = if let dataPath = options.dataPath, let repoName = repository?.name {
-            Self.logDirectory(dataPath: dataPath, repoName: repoName, planURL: options.planPath)
+        let resolvedDataPath = options.dataPath ?? RepositoryStoreConfiguration().dataPath
+        let logDir: URL? = if let repoName = repository?.name {
+            Self.logDirectory(dataPath: resolvedDataPath, repoName: repoName, planURL: options.planPath)
         } else {
             nil
         }

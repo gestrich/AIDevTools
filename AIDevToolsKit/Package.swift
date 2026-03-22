@@ -153,7 +153,9 @@ let package = Package(
         ),
         .target(
             name: "SkillService",
-            dependencies: [],
+            dependencies: [
+                "SkillScannerSDK",
+            ],
             path: "Sources/Services/SkillService"
         ),
 

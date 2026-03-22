@@ -7,14 +7,17 @@ public struct SkillScanner: Sendable {
     static let commandsDirectories = [".agents/commands", ".claude/commands"]
     static let skillsDirectories = [".agents/skills", ".claude/skills"]
 
+    public static let defaultGlobalCommandsDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".claude/commands")
+
     public func scanSkills(
         at repositoryPath: URL,
-        globalCommandsDirectory: URL? = nil
+        globalCommandsDirectory: URL? = defaultGlobalCommandsDirectory
     ) throws -> [SkillInfo] {
-        var skillsByName: [String: SkillInfo] = [:]
+        var skills: [SkillInfo] = []
         var visited: Set<String> = []
 
-        // Skills directories (highest priority — scanned first, first wins)
+        // Skills directories (project)
         for relative in Self.skillsDirectories {
             let skillsDirectory = repositoryPath.appendingPathComponent(relative)
             guard FileManager.default.fileExists(atPath: skillsDirectory.path) else { continue }
@@ -33,21 +36,17 @@ public struct SkillScanner: Sendable {
                     let skillFile = item.appendingPathComponent("SKILL.md")
                     if FileManager.default.fileExists(atPath: skillFile.path) {
                         let name = item.lastPathComponent
-                        if skillsByName[name] == nil {
-                            let refs = findReferenceFiles(in: item)
-                            skillsByName[name] = SkillInfo(name: name, path: item, referenceFiles: refs)
-                        }
+                        let refs = findReferenceFiles(in: item)
+                        skills.append(SkillInfo(name: name, path: item, referenceFiles: refs, source: .project))
                     }
                 } else if item.pathExtension == "md" {
                     let name = item.deletingPathExtension().lastPathComponent
-                    if skillsByName[name] == nil {
-                        skillsByName[name] = SkillInfo(name: name, path: item)
-                    }
+                    skills.append(SkillInfo(name: name, path: item, source: .project))
                 }
             }
         }
 
-        // Local commands directories (lower priority than skills)
+        // Local commands directories (project)
         for relative in Self.commandsDirectories {
             let commandsDirectory = repositoryPath.appendingPathComponent(relative)
             guard FileManager.default.fileExists(atPath: commandsDirectory.path) else { continue }
@@ -55,27 +54,19 @@ public struct SkillScanner: Sendable {
             let resolved = commandsDirectory.resolvingSymlinksInPath()
             guard visited.insert(resolved.path).inserted else { continue }
 
-            for info in scanCommandsDirectory(resolved) {
-                if skillsByName[info.name] == nil {
-                    skillsByName[info.name] = info
-                }
-            }
+            skills.append(contentsOf: scanCommandsDirectory(resolved, source: .project))
         }
 
-        // Global commands directory (lowest priority)
+        // Global commands directory (user)
         if let globalDir = globalCommandsDirectory,
            FileManager.default.fileExists(atPath: globalDir.path) {
             let resolved = globalDir.resolvingSymlinksInPath()
             if visited.insert(resolved.path).inserted {
-                for info in scanCommandsDirectory(resolved) {
-                    if skillsByName[info.name] == nil {
-                        skillsByName[info.name] = info
-                    }
-                }
+                skills.append(contentsOf: scanCommandsDirectory(resolved, source: .user))
             }
         }
 
-        return skillsByName.values.sorted { $0.name < $1.name }
+        return skills.sorted { $0.name < $1.name }
     }
 
     public func filterSkills(_ skills: [SkillInfo], query: String) -> [SkillInfo] {
@@ -126,7 +117,7 @@ public struct SkillScanner: Sendable {
         return bestScore
     }
 
-    private func scanCommandsDirectory(_ directory: URL) -> [SkillInfo] {
+    private func scanCommandsDirectory(_ directory: URL, source: SkillSource) -> [SkillInfo] {
         let resolved = directory.resolvingSymlinksInPath()
         guard let enumerator = FileManager.default.enumerator(
             at: resolved,
@@ -143,7 +134,7 @@ public struct SkillScanner: Sendable {
             let resolvedFile = fileURL.resolvingSymlinksInPath()
             let relativePath = resolvedFile.path.replacingOccurrences(of: basePath, with: "")
             let name = (relativePath as NSString).deletingPathExtension
-            results.append(SkillInfo(name: name, path: resolvedFile))
+            results.append(SkillInfo(name: name, path: resolvedFile, source: source))
         }
 
         return results

@@ -1,14 +1,17 @@
 import Foundation
+import SkillScannerSDK
 
 public struct Skill: Codable, Sendable {
     public let name: String
     public let path: URL
     public let referenceFiles: [ReferenceFile]
+    public let source: SkillSource
 
-    public init(name: String, path: URL, referenceFiles: [ReferenceFile] = []) {
+    public init(name: String, path: URL, referenceFiles: [ReferenceFile] = [], source: SkillSource = .project) {
         self.name = name
         self.path = path
         self.referenceFiles = referenceFiles
+        self.source = source
     }
 }
 
