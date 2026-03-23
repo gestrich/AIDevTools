@@ -52,6 +52,7 @@ let package = Package(
                 "ClaudeCodeChatFeature",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
+                "DataPathsService",
                 "EvalFeature",
                 "EvalService",
                 "LoggingSDK",

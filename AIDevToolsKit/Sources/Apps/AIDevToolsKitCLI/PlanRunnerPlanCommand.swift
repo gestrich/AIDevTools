@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import Foundation
 import PlanRunnerFeature
 import PlanRunnerService
@@ -20,9 +21,10 @@ struct PlanRunnerPlanCommand: AsyncParsableCommand {
     var dataPath: String?
 
     func run() async throws {
-        let store = ReposCommand.makeStore(dataPath: dataPath)
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+        let store = try ReposCommand.makeStore(service)
         let repos = try store.loadAll()
-        let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
+        let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
         let useCase = GeneratePlanUseCase(
             resolveProposedDirectory: { repo in

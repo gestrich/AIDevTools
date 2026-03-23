@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import EvalFeature
 import EvalService
 import Foundation
@@ -46,7 +47,7 @@ struct RunEvalsCommand: AsyncParsableCommand {
         let resolvedOutputDir: URL
         let resolvedRepoRoot: URL
 
-        let resolvedDataPath = RepositoryStore.cliDataPath(from: dataPath)
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
 
         if let casesDir {
             resolvedCasesDir = URL(fileURLWithPath: casesDir)
@@ -54,15 +55,15 @@ struct RunEvalsCommand: AsyncParsableCommand {
             if let outputDir {
                 resolvedOutputDir = URL(fileURLWithPath: outputDir)
             } else {
-                resolvedOutputDir = resolvedDataPath
+                resolvedOutputDir = DataPathsService.cliDefaultRootPath
             }
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let repoStore = RepositoryStore.fromCLI(dataPath: dataPath)
+            let repoStore = try ReposCommand.makeStore(service)
             let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
-            let evalSettingsStore = EvalRepoSettingsStore.fromCLI(dataPath: dataPath)
+            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
             resolvedCasesDir = try evalSettingsStore.casesDirectory(forRepo: repoConfig)
-            resolvedOutputDir = try repoStore.outputDirectory(forRepoAt: repoURL, dataPath: resolvedDataPath)
+            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
             resolvedRepoRoot = repoURL
         } else {
             throw ValidationError("Must specify either --cases-dir or --repo")

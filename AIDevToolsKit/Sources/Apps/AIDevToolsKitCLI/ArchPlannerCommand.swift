@@ -1,4 +1,7 @@
 import ArgumentParser
+import ArchitecturePlannerService
+import DataPathsService
+import Foundation
 
 struct ArchPlannerCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,4 +18,13 @@ struct ArchPlannerCommand: AsyncParsableCommand {
             ArchPlannerUpdateCommand.self,
         ]
     )
+
+    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    var dataPath: String?
+
+    static func makeStore(dataPath: String?, repoName: String) throws -> ArchitecturePlannerStore {
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+        let archDir = try service.path(for: "architecture-planner", subdirectory: repoName)
+        return try ArchitecturePlannerStore(directoryURL: archDir)
+    }
 }

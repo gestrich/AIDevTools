@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import EvalFeature
 import Foundation
 import RepositorySDK
@@ -34,9 +35,10 @@ struct ClearArtifactsCommand: ParsableCommand {
             resolvedOutputDir = URL(fileURLWithPath: outputDir)
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let store = RepositoryStore.fromCLI(dataPath: dataPath)
-            let resolvedDataPath = RepositoryStore.cliDataPath(from: dataPath)
-            resolvedOutputDir = try store.outputDirectory(forRepoAt: repoURL, dataPath: resolvedDataPath)
+            let service = try DataPathsService.fromCLI(dataPath: dataPath)
+            let store = try ReposCommand.makeStore(service)
+            let repoConfig = try store.repoConfig(forRepoAt: repoURL)
+            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
         } else {
             throw ValidationError("Must specify either --output-dir or --repo")
         }

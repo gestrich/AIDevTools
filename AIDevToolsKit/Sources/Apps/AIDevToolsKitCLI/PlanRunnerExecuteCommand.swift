@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import Foundation
 import PlanRunnerFeature
 import PlanRunnerService
@@ -33,8 +34,9 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
 
         let repoPath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
-        let store = ReposCommand.makeStore(dataPath: dataPath)
-        let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+        let store = try ReposCommand.makeStore(service)
+        let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
         let repos = try store.loadAll()
 

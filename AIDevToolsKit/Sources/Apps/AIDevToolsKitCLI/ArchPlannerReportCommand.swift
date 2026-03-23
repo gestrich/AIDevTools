@@ -9,6 +9,8 @@ struct ArchPlannerReportCommand: AsyncParsableCommand {
         abstract: "Generate a final report for a planning job"
     )
 
+    @OptionGroup var parent: ArchPlannerCommand
+
     @Option(name: .long, help: "Repository name")
     var repoName: String
 
@@ -21,7 +23,7 @@ struct ArchPlannerReportCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
+        let store = try ArchPlannerCommand.makeStore(dataPath: parent.dataPath, repoName: repoName)
         let useCase = GenerateReportUseCase()
         let result = try await MainActor.run {
             try useCase.run(GenerateReportUseCase.Options(jobId: uuid), store: store)

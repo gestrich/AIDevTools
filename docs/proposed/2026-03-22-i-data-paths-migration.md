@@ -106,12 +106,14 @@ In `AIDevToolsKitMacEntryView.init()`:
 
 **Completed:** Added `DataPathsService` as a dependency of `AIDevToolsKitMac` in `Package.swift`. Both `AIDevToolsKitMacEntryView.init()` and `AIDevToolsSettingsView.init()` now create a `DataPathsService(rootPath: settingsModel.dataPath)` and use it to resolve directory paths for the three stores: `RepositoryStore` gets `repositories/repositories.json`, `EvalRepoSettingsStore` gets `eval/settings/eval-settings.json`, and `PlanRepoSettingsStore` gets `plan/settings/plan-settings.json`. The `dataPath` is still passed directly to `WorkspaceModel` and `PlanRunnerModel` for repo output directory resolution. `DataPathsService` init and `path(for:)` calls use `try!` since these are essential paths for app startup — directory creation failure at this level is unrecoverable.
 
-## - [ ] Phase 8: Update CLI initialization
+## - [x] Phase 8: Update CLI initialization
 
 - `ReposCommand` — create `DataPathsService(rootPath:)` from the `--data-path` option (or default)
 - Replace `RepositoryStore.fromCLI()`, `EvalRepoSettingsStore.fromCLI()`, `PlanRepoSettingsStore.fromCLI()` with construction via `DataPathsService`
 - Remove the `+CLI` extension files once their logic is consolidated
 - Update architecture planner CLI commands to create `ArchitecturePlannerStore` with a `DataPathsService`-resolved path
+
+**Completed:** Added `DataPathsService` as a dependency of `AIDevToolsKitCLI` in `Package.swift`. Created `DataPathsService+CLI.swift` with `fromCLI(dataPath:)` factory and `cliDefaultRootPath` constant for resolving the `--data-path` option (defaulting to `~/Desktop/ai-dev-tools`). Updated `ReposCommand` with `makeDataPathsService(dataPath:)`, `makeStore(_:)`, `makeEvalSettingsStore(_:)`, and `makePlanSettingsStore(_:)` factory methods that accept `DataPathsService`. All CLI commands (`RunEvalsCommand`, `ShowOutputCommand`, `ClearArtifactsCommand`, `ListCasesCommand`, `PlanRunnerPlanCommand`, `PlanRunnerExecuteCommand`, `PlanRunnerDeleteCommand`, `SkillsCommand`) now create a `DataPathsService` and use it for store construction. Output directory resolution uses `service.path(for: .repoOutput(repoName))` instead of the old `outputDirectory(forRepoAt:dataPath:)` method. Added `--data-path` option to `ArchPlannerCommand` with `makeStore(dataPath:repoName:)` factory; all 11 arch planner subcommands now use `@OptionGroup` to inherit the option and construct stores via `DataPathsService.path(for: "architecture-planner", subdirectory: repoName)`. Removed `fromCLI` from `RepositoryStore+CLI.swift`, `EvalRepoSettingsStore+CLI.swift`, and `PlanRepoSettingsStore+CLI.swift`; removed `cliDataPath(from:)` and `outputDirectory(forRepoAt:dataPath:)` from `RepositoryStore+CLI.swift`; deleted `ArchitecturePlannerStore+CLI.swift` entirely. The remaining +CLI files retain only non-path helper methods (`repoConfig`, `casesDirectory`, `resolvedProposedDirectory`, `resolvedCompletedDirectory`).
 
 ## - [ ] Phase 9: Move existing data to new structure
 
