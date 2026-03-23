@@ -92,7 +92,7 @@ Use cases that need data paths should receive them in their initializer, not per
 
 **Completed:** Moved data path parameters from `run()` methods to initializers across four use cases. `LoadPlansUseCase` now takes `proposedDirectory` at init (run takes no params). `CompletePlanUseCase` takes `completedDirectory` at init (run only takes `planURL`). `ExecutePlanUseCase` takes `dataPath` and `completedDirectory` at init (removed from `Options`). `GeneratePlanUseCase` takes `resolveProposedDirectory` closure at init (removed from `Options`). `DeletePlanUseCase` unchanged — `planURL` is per-invocation, not a data path. In `PlanRunnerModel`, removed the four affected use cases as stored properties; they are now created on-the-fly in each method with the resolved paths. CLI commands updated to construct use cases with data paths before calling `run()`. All tests updated and passing.
 
-## - [ ] Phase 7: Update Mac app initialization
+## - [x] Phase 7: Update Mac app initialization
 
 In `AIDevToolsKitMacEntryView.init()`:
 
@@ -103,6 +103,8 @@ In `AIDevToolsKitMacEntryView.init()`:
    - `PlanRepoSettingsStore(filePath: dataPathsService.path(for: .planSettings).appending("plan-settings.json"))`
 3. Same for `AIDevToolsSettingsView.init()`
 4. Pass resolved paths to use cases via initializers where needed
+
+**Completed:** Added `DataPathsService` as a dependency of `AIDevToolsKitMac` in `Package.swift`. Both `AIDevToolsKitMacEntryView.init()` and `AIDevToolsSettingsView.init()` now create a `DataPathsService(rootPath: settingsModel.dataPath)` and use it to resolve directory paths for the three stores: `RepositoryStore` gets `repositories/repositories.json`, `EvalRepoSettingsStore` gets `eval/settings/eval-settings.json`, and `PlanRepoSettingsStore` gets `plan/settings/plan-settings.json`. The `dataPath` is still passed directly to `WorkspaceModel` and `PlanRunnerModel` for repo output directory resolution. `DataPathsService` init and `path(for:)` calls use `try!` since these are essential paths for app startup — directory creation failure at this level is unrecoverable.
 
 ## - [ ] Phase 8: Update CLI initialization
 

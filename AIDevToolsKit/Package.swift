@@ -72,6 +72,7 @@ let package = Package(
                 "AnthropicSDK",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
+                "DataPathsService",
                 "EvalFeature",
                 "EvalSDK",
                 "EvalService",
