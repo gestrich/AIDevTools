@@ -12,8 +12,6 @@ public struct ExecutePlanUseCase: Sendable {
         public let repoPath: URL?
         public let maxMinutes: Int
         public let repository: RepositoryInfo?
-        public let completedDirectory: URL?
-        public let dataPath: URL?
         public let stopAfterArchitectureDiagram: Bool
         public let useWorktree: Bool
 
@@ -22,8 +20,6 @@ public struct ExecutePlanUseCase: Sendable {
             repoPath: URL? = nil,
             maxMinutes: Int = 90,
             repository: RepositoryInfo? = nil,
-            completedDirectory: URL? = nil,
-            dataPath: URL? = nil,
             stopAfterArchitectureDiagram: Bool = false,
             useWorktree: Bool = false
         ) {
@@ -31,8 +27,6 @@ public struct ExecutePlanUseCase: Sendable {
             self.repoPath = repoPath
             self.maxMinutes = maxMinutes
             self.repository = repository
-            self.completedDirectory = completedDirectory
-            self.dataPath = dataPath
             self.stopAfterArchitectureDiagram = stopAfterArchitectureDiagram
             self.useWorktree = useWorktree
         }
@@ -86,14 +80,20 @@ public struct ExecutePlanUseCase: Sendable {
     }
 
     private let claudeClient: ClaudeCLIClient
+    private let completedDirectory: URL?
+    private let dataPath: URL?
     private let gitClient: GitClient
     private let logger = Logger(label: "PlanRunner")
 
     public init(
         claudeClient: ClaudeCLIClient = ClaudeCLIClient(),
+        completedDirectory: URL? = nil,
+        dataPath: URL? = nil,
         gitClient: GitClient = GitClient()
     ) {
         self.claudeClient = claudeClient
+        self.completedDirectory = completedDirectory
+        self.dataPath = dataPath
         self.gitClient = gitClient
     }
 
@@ -106,8 +106,7 @@ public struct ExecutePlanUseCase: Sendable {
         }
 
         let repository = options.repository
-        let completedDirectory = options.completedDirectory
-        let resolvedDataPath = options.dataPath ?? URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
+        let resolvedDataPath = dataPath ?? URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
         let logDir: URL? = if let repoName = repository?.name {
             Self.logDirectory(dataPath: resolvedDataPath, repoName: repoName, planURL: options.planPath)
         } else {

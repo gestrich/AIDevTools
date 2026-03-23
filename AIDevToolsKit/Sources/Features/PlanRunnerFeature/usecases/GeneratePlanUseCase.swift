@@ -8,18 +8,15 @@ public struct GeneratePlanUseCase: Sendable {
         public let prompt: String
         public let repositories: [RepositoryInfo]
         public let selectedRepository: RepositoryInfo?
-        public let resolveProposedDirectory: @Sendable (RepositoryInfo) throws -> URL
 
         public init(
             prompt: String,
             repositories: [RepositoryInfo],
-            selectedRepository: RepositoryInfo? = nil,
-            resolveProposedDirectory: @escaping @Sendable (RepositoryInfo) throws -> URL
+            selectedRepository: RepositoryInfo? = nil
         ) {
             self.prompt = prompt
             self.repositories = repositories
             self.selectedRepository = selectedRepository
-            self.resolveProposedDirectory = resolveProposedDirectory
         }
     }
 
@@ -61,9 +58,14 @@ public struct GeneratePlanUseCase: Sendable {
     }
 
     private let claudeClient: ClaudeCLIClient
+    private let resolveProposedDirectory: @Sendable (RepositoryInfo) throws -> URL
 
-    public init(claudeClient: ClaudeCLIClient = ClaudeCLIClient()) {
+    public init(
+        claudeClient: ClaudeCLIClient = ClaudeCLIClient(),
+        resolveProposedDirectory: @escaping @Sendable (RepositoryInfo) throws -> URL
+    ) {
         self.claudeClient = claudeClient
+        self.resolveProposedDirectory = resolveProposedDirectory
     }
 
     public func run(
@@ -100,7 +102,7 @@ public struct GeneratePlanUseCase: Sendable {
         onProgress?(.generatedPlan(filename: plan.filename))
 
         onProgress?(.writingPlan)
-        let proposedDir = try options.resolveProposedDirectory(repo)
+        let proposedDir = try resolveProposedDirectory(repo)
         let planURL = try writePlan(plan, to: proposedDir)
         onProgress?(.completed(planURL: planURL, repository: repo))
 

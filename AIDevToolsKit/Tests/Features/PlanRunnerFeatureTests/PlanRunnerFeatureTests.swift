@@ -125,8 +125,7 @@ struct PlanRunnerFeatureModelTests {
         let repos: [RepositoryInfo] = []
         let options = GeneratePlanUseCase.Options(
             prompt: "add a button",
-            repositories: repos,
-            resolveProposedDirectory: { repo in repo.path.appendingPathComponent(PlanRepoSettings.defaultProposedDirectory) }
+            repositories: repos
         )
         #expect(options.prompt == "add a button")
         #expect(options.repositories.isEmpty)
@@ -138,8 +137,7 @@ struct PlanRunnerFeatureModelTests {
         let options = GeneratePlanUseCase.Options(
             prompt: "fix the bug",
             repositories: [repo],
-            selectedRepository: repo,
-            resolveProposedDirectory: { $0.path.appendingPathComponent("docs/proposed") }
+            selectedRepository: repo
         )
         #expect(options.selectedRepository?.id == repo.id)
         #expect(options.selectedRepository?.name == repo.name)
@@ -149,8 +147,7 @@ struct PlanRunnerFeatureModelTests {
     func generatePlanOptionsSelectedRepositoryDefault() {
         let options = GeneratePlanUseCase.Options(
             prompt: "add a feature",
-            repositories: [],
-            resolveProposedDirectory: { $0.path.appendingPathComponent("docs/proposed") }
+            repositories: []
         )
         #expect(options.selectedRepository == nil)
     }
@@ -180,7 +177,6 @@ struct PlanRunnerFeatureModelTests {
         #expect(options.maxMinutes == 90)
         #expect(options.repoPath == nil)
         #expect(options.repository == nil)
-        #expect(options.completedDirectory == nil)
         #expect(!options.useWorktree)
     }
 

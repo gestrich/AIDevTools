@@ -52,14 +52,16 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
         let repository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
         let completedDirectory = try repository.map { try planSettings.resolvedCompletedDirectory(forRepo: $0) }
 
-        let result = try await ExecutePlanUseCase().run(
+        let useCase = ExecutePlanUseCase(
+            completedDirectory: completedDirectory,
+            dataPath: dataPath.map { URL(filePath: $0) }
+        )
+        let result = try await useCase.run(
             ExecutePlanUseCase.Options(
                 planPath: planURL,
                 repoPath: repoPath,
                 maxMinutes: maxMinutes,
-                repository: repository,
-                completedDirectory: completedDirectory,
-                dataPath: dataPath.map { URL(filePath: $0) }
+                repository: repository
             )
         ) { progress in
             Self.handleProgress(progress, timer: timer)

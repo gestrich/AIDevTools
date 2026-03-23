@@ -24,13 +24,15 @@ struct PlanRunnerPlanCommand: AsyncParsableCommand {
         let repos = try store.loadAll()
         let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
 
-        let result = try await GeneratePlanUseCase().run(
+        let useCase = GeneratePlanUseCase(
+            resolveProposedDirectory: { repo in
+                try planSettings.resolvedProposedDirectory(forRepo: repo)
+            }
+        )
+        let result = try await useCase.run(
             GeneratePlanUseCase.Options(
                 prompt: text,
-                repositories: repos,
-                resolveProposedDirectory: { repo in
-                    try planSettings.resolvedProposedDirectory(forRepo: repo)
-                }
+                repositories: repos
             )
         ) { progress in
             Self.printProgress(progress)

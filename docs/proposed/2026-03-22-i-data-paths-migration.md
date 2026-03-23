@@ -81,7 +81,7 @@ Currently builds its own path: `~/.ai-dev-tools/{repoName}/architecture-planner/
 
 **Completed:** Changed `ArchitecturePlannerStore.init(repoName:)` to `init(directoryURL:)` — the store no longer builds its own path from `~/.ai-dev-tools/{repoName}/architecture-planner/`. Removed the comment describing the old path convention. Added `ArchitecturePlannerStore+CLI.swift` with a `cliDirectoryURL(repoName:)` helper that constructs the old path for CLI callers. Updated all 11 CLI call sites (create, delete, execute, inspect, update, score, report, and 4 guidelines subcommands), the Mac app's `ArchitecturePlannerModel.loadJobs`, and all 6 test call sites to pass `directoryURL` instead of `repoName`. Tests now use `FileManager.default.temporaryDirectory` instead of writing to `~/.ai-dev-tools/`.
 
-## - [ ] Phase 6: Update use case initializers
+## - [x] Phase 6: Update use case initializers
 
 Use cases that need data paths should receive them in their initializer, not per-method.
 
@@ -89,6 +89,8 @@ Use cases that need data paths should receive them in their initializer, not per
 - `LoadPlansUseCase` — currently takes `proposedDirectory: URL` in `run()`. Move this to the initializer.
 - `CompletePlanUseCase`, `DeletePlanUseCase`, `ExecutePlanUseCase`, `GeneratePlanUseCase` — audit each; if they take a path per-method, move to initializer.
 - `LoadRepositoriesUseCase`, `AddRepositoryUseCase`, etc. — already take `store` in init. No change needed.
+
+**Completed:** Moved data path parameters from `run()` methods to initializers across four use cases. `LoadPlansUseCase` now takes `proposedDirectory` at init (run takes no params). `CompletePlanUseCase` takes `completedDirectory` at init (run only takes `planURL`). `ExecutePlanUseCase` takes `dataPath` and `completedDirectory` at init (removed from `Options`). `GeneratePlanUseCase` takes `resolveProposedDirectory` closure at init (removed from `Options`). `DeletePlanUseCase` unchanged — `planURL` is per-invocation, not a data path. In `PlanRunnerModel`, removed the four affected use cases as stored properties; they are now created on-the-fly in each method with the resolved paths. CLI commands updated to construct use cases with data paths before calling `run()`. All tests updated and passing.
 
 ## - [ ] Phase 7: Update Mac app initialization
 
