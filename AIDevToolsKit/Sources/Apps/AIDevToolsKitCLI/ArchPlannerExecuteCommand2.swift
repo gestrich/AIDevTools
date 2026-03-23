@@ -27,7 +27,7 @@ struct ArchPlannerExecuteCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = ExecuteImplementationUseCase()
         let options = ExecuteImplementationUseCase.Options(
             jobId: uuid,

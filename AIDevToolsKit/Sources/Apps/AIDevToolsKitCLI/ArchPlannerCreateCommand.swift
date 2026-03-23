@@ -19,7 +19,7 @@ struct ArchPlannerCreateCommand: AsyncParsableCommand {
     var description: String
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = CreatePlanningJobUseCase()
         let options = CreatePlanningJobUseCase.Options(
             repoName: repoName,

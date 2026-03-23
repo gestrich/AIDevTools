@@ -21,7 +21,7 @@ struct ArchPlannerReportCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = GenerateReportUseCase()
         let result = try await MainActor.run {
             try useCase.run(GenerateReportUseCase.Options(jobId: uuid), store: store)

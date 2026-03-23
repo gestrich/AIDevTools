@@ -1,23 +1,16 @@
 import Foundation
 import SwiftData
 
-/// Provides SwiftData persistence for architecture planning models.
-/// Store is per-repo at ~/.ai-dev-tools/{repo-name}/architecture-planner/
 public final class ArchitecturePlannerStore: Sendable {
 
     private let modelContainer: ModelContainer
 
     public var container: ModelContainer { modelContainer }
 
-    public init(repoName: String) throws {
-        let basePath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".ai-dev-tools")
-            .appendingPathComponent(repoName)
-            .appendingPathComponent("architecture-planner")
+    public init(directoryURL: URL) throws {
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
 
-        try FileManager.default.createDirectory(at: basePath, withIntermediateDirectories: true)
-
-        let storeURL = basePath.appendingPathComponent("store.sqlite")
+        let storeURL = directoryURL.appendingPathComponent("store.sqlite")
 
         let schema = Schema([
             ArchitectureRequest.self,

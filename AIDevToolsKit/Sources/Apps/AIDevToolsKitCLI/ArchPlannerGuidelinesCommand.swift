@@ -21,7 +21,7 @@ struct GuidelinesListCommand: AsyncParsableCommand {
     var repoName: String
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = ManageGuidelinesUseCase()
         let guidelines = try await MainActor.run { try useCase.listGuidelines(repoName: repoName, store: store) }
 
@@ -61,7 +61,7 @@ struct GuidelinesAddCommand: AsyncParsableCommand {
     var fileGlobs: String = ""
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = ManageGuidelinesUseCase()
 
         let catNames = categories.isEmpty ? [] : categories.split(separator: ",").map { String($0.trimmingCharacters(in: .whitespaces)) }
@@ -102,7 +102,7 @@ struct GuidelinesDeleteCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = ManageGuidelinesUseCase()
         try await MainActor.run { try useCase.deleteGuideline(guidelineId: uuid, store: store) }
         print("Deleted guideline: \(guidelineId)")
@@ -122,7 +122,7 @@ struct GuidelinesSeedCommand: AsyncParsableCommand {
     var repoPath: String
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = SeedGuidelinesUseCase()
         let result = try await MainActor.run {
             try useCase.run(

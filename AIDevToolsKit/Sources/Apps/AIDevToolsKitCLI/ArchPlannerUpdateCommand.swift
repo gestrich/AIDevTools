@@ -28,7 +28,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let stepName = step ?? "next"
 
         if stepName == "all" {

@@ -72,12 +72,14 @@ Both stores currently take `dataPath: URL` and derive their file path.
 
 **Completed:** Changed both `EvalRepoSettingsStore.init(dataPath:)` and `PlanRepoSettingsStore.init(dataPath:)` to accept `filePath: URL` directly — the stores no longer derive the JSON filename internally. Callers now pass the full file URL: the Mac app entry views append `eval-settings.json` / `plan-settings.json` to `settingsModel.dataPath`, the CLI `fromCLI` extensions use `RepositoryStore.cliDataPath(from:)` to resolve the base path then append the filename, and tests pass a temp directory path with the filename appended.
 
-## - [ ] Phase 5: Migrate ArchitecturePlannerStore
+## - [x] Phase 5: Migrate ArchitecturePlannerStore
 
 Currently builds its own path: `~/.ai-dev-tools/{repoName}/architecture-planner/store.sqlite`.
 
 - Change `init` to accept a `directoryURL: URL` instead of `repoName: String`.
 - The app layer resolves the path via `DataPathsService.path(for: .architecturePlanner)` combined with the repo name, and passes the URL.
+
+**Completed:** Changed `ArchitecturePlannerStore.init(repoName:)` to `init(directoryURL:)` — the store no longer builds its own path from `~/.ai-dev-tools/{repoName}/architecture-planner/`. Removed the comment describing the old path convention. Added `ArchitecturePlannerStore+CLI.swift` with a `cliDirectoryURL(repoName:)` helper that constructs the old path for CLI callers. Updated all 11 CLI call sites (create, delete, execute, inspect, update, score, report, and 4 guidelines subcommands), the Mac app's `ArchitecturePlannerModel.loadJobs`, and all 6 test call sites to pass `directoryURL` instead of `repoName`. Tests now use `FileManager.default.temporaryDirectory` instead of writing to `~/.ai-dev-tools/`.
 
 ## - [ ] Phase 6: Update use case initializers
 

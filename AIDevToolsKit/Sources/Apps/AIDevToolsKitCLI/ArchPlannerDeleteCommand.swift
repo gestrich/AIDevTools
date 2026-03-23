@@ -21,7 +21,7 @@ struct ArchPlannerDeleteCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: ArchitecturePlannerStore.cliDirectoryURL(repoName: repoName))
         let useCase = ManageGuidelinesUseCase()
 
         guard try await MainActor.run(body: { try useCase.getJob(jobId: uuid, store: store) }) != nil else {

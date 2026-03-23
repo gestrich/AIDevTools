@@ -61,7 +61,11 @@ final class ArchitecturePlannerModel {
         currentRepoPath = repoPath
 
         do {
-            let store = try ArchitecturePlannerStore(repoName: repoName)
+            let directoryURL = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".ai-dev-tools")
+                .appendingPathComponent(repoName)
+                .appendingPathComponent("architecture-planner")
+            let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
             self.store = store
             self.jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
         } catch {
