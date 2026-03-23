@@ -115,7 +115,7 @@ In `AIDevToolsKitMacEntryView.init()`:
 
 **Completed:** Added `DataPathsService` as a dependency of `AIDevToolsKitCLI` in `Package.swift`. Created `DataPathsService+CLI.swift` with `fromCLI(dataPath:)` factory and `cliDefaultRootPath` constant for resolving the `--data-path` option (defaulting to `~/Desktop/ai-dev-tools`). Updated `ReposCommand` with `makeDataPathsService(dataPath:)`, `makeStore(_:)`, `makeEvalSettingsStore(_:)`, and `makePlanSettingsStore(_:)` factory methods that accept `DataPathsService`. All CLI commands (`RunEvalsCommand`, `ShowOutputCommand`, `ClearArtifactsCommand`, `ListCasesCommand`, `PlanRunnerPlanCommand`, `PlanRunnerExecuteCommand`, `PlanRunnerDeleteCommand`, `SkillsCommand`) now create a `DataPathsService` and use it for store construction. Output directory resolution uses `service.path(for: .repoOutput(repoName))` instead of the old `outputDirectory(forRepoAt:dataPath:)` method. Added `--data-path` option to `ArchPlannerCommand` with `makeStore(dataPath:repoName:)` factory; all 11 arch planner subcommands now use `@OptionGroup` to inherit the option and construct stores via `DataPathsService.path(for: "architecture-planner", subdirectory: repoName)`. Removed `fromCLI` from `RepositoryStore+CLI.swift`, `EvalRepoSettingsStore+CLI.swift`, and `PlanRepoSettingsStore+CLI.swift`; removed `cliDataPath(from:)` and `outputDirectory(forRepoAt:dataPath:)` from `RepositoryStore+CLI.swift`; deleted `ArchitecturePlannerStore+CLI.swift` entirely. The remaining +CLI files retain only non-path helper methods (`repoConfig`, `casesDirectory`, `resolvedProposedDirectory`, `resolvedCompletedDirectory`).
 
-## - [ ] Phase 9: Move existing data to new structure
+## - [x] Phase 9: Move existing data to new structure
 
 Since we are not maintaining backwards compatibility, write a one-time migration that runs on first launch:
 
@@ -125,6 +125,8 @@ Since we are not maintaining backwards compatibility, write a one-time migration
 4. Optionally: leave old files in place but don't read from them (user can delete manually)
 
 This can be a `MigrateDataPathsUseCase` that runs once at app startup.
+
+**Completed:** Created `MigrateDataPathsUseCase` in the `DataPathsService` target. Made `rootPath` public on `DataPathsService` so the migration can locate old files. The migration copies three settings files from the old root-level locations to DataPathsService-managed paths: `repositories.json` → `repositories/repositories.json`, `eval-settings.json` → `eval/settings/eval-settings.json`, `plan-settings.json` → `plan/settings/plan-settings.json`. It also migrates architecture planner data from `~/.ai-dev-tools/{repoName}/architecture-planner/` to `{rootPath}/architecture-planner/{repoName}/`. Migration is idempotent — existing files at new locations are skipped. Old files are left in place for manual cleanup. Uses `os.Logger` for migration logging. Called from both Mac app entry views (`AIDevToolsKitMacEntryView.init()` and `AIDevToolsSettingsView.init()`) and from `DataPathsService.fromCLI(dataPath:)` so all CLI commands also trigger migration.
 
 ## - [ ] Phase 10: Validation
 

@@ -6,6 +6,8 @@ extension DataPathsService {
 
     static func fromCLI(dataPath: String?) throws -> DataPathsService {
         let rootPath = dataPath.map { URL(filePath: $0) } ?? cliDefaultRootPath
-        return try DataPathsService(rootPath: rootPath)
+        let service = try DataPathsService(rootPath: rootPath)
+        try MigrateDataPathsUseCase(dataPathsService: service).run()
+        return service
     }
 }

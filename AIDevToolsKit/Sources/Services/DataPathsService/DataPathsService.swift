@@ -41,7 +41,7 @@ public enum ServicePath {
 }
 
 public final class DataPathsService: @unchecked Sendable {
-    private let rootPath: URL
+    public let rootPath: URL
     private let fileManager: FileManager
 
     public init(rootPath: URL) throws {

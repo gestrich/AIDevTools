@@ -25,6 +25,8 @@ public struct AIDevToolsKitMacEntryView: View {
         // swiftlint:disable:next force_try
         let dataPathsService = try! DataPathsService(rootPath: settingsModel.dataPath)
         // swiftlint:disable:next force_try
+        try! MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
+        // swiftlint:disable:next force_try
         let store = RepositoryStore(repositoriesFile: try! dataPathsService.path(for: .repositories).appending(path: "repositories.json"))
         // swiftlint:disable:next force_try
         let evalSettingsStore = EvalRepoSettingsStore(filePath: try! dataPathsService.path(for: .evalSettings).appending(path: "eval-settings.json"))
@@ -65,6 +67,8 @@ public struct AIDevToolsSettingsView: View {
         let settingsModel = SettingsModel()
         // swiftlint:disable:next force_try
         let dataPathsService = try! DataPathsService(rootPath: settingsModel.dataPath)
+        // swiftlint:disable:next force_try
+        try! MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
         // swiftlint:disable:next force_try
         let store = RepositoryStore(repositoriesFile: try! dataPathsService.path(for: .repositories).appending(path: "repositories.json"))
         // swiftlint:disable:next force_try
