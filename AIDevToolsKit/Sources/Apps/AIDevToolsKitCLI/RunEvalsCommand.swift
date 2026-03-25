@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import EvalFeature
 import EvalService
 import Foundation
@@ -19,7 +20,7 @@ struct RunEvalsCommand: AsyncParsableCommand {
     @Option(help: "Repository path to resolve directories from stored config")
     var repo: String?
 
-    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
     @Option var caseId: String?
@@ -46,22 +47,23 @@ struct RunEvalsCommand: AsyncParsableCommand {
         let resolvedOutputDir: URL
         let resolvedRepoRoot: URL
 
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+
         if let casesDir {
             resolvedCasesDir = URL(fileURLWithPath: casesDir)
             resolvedRepoRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             if let outputDir {
                 resolvedOutputDir = URL(fileURLWithPath: outputDir)
             } else {
-                let store = RepositoryStore.fromCLI(dataPath: dataPath)
-                resolvedOutputDir = store.dataPath
+                resolvedOutputDir = service.rootPath
             }
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let repoStore = RepositoryStore.fromCLI(dataPath: dataPath)
+            let repoStore = try ReposCommand.makeStore(service)
             let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
-            let evalSettingsStore = EvalRepoSettingsStore.fromCLI(dataPath: dataPath)
+            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
             resolvedCasesDir = try evalSettingsStore.casesDirectory(forRepo: repoConfig)
-            resolvedOutputDir = try repoStore.outputDirectory(forRepoAt: repoURL)
+            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
             resolvedRepoRoot = repoURL
         } else {
             throw ValidationError("Must specify either --cases-dir or --repo")

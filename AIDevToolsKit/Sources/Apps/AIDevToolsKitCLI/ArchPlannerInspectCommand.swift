@@ -1,6 +1,7 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
+import DataPathsService
 import Foundation
 
 struct ArchPlannerInspectCommand: AsyncParsableCommand {
@@ -9,6 +10,8 @@ struct ArchPlannerInspectCommand: AsyncParsableCommand {
         abstract: "Inspect a planning job's current state"
     )
 
+    @OptionGroup var dataPathOptions: ArchPlannerCommand
+
     @Option(name: .long, help: "Repository name")
     var repoName: String
 
@@ -16,7 +19,7 @@ struct ArchPlannerInspectCommand: AsyncParsableCommand {
     var jobId: String?
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
         let useCase = ManageGuidelinesUseCase()
 
         if let jobIdStr = jobId, let uuid = UUID(uuidString: jobIdStr) {

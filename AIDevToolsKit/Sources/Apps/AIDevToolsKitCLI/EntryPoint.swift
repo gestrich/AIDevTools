@@ -8,7 +8,7 @@ struct AIDevToolsKit: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "ai-dev-tools-kit",
         abstract: "Developer tools for AI-assisted workflows",
-        subcommands: [ArchPlannerCommand.self, ChatCommand.self, ClaudeChatCommand.self, ClearArtifactsCommand.self, ListCasesCommand.self, PlanRunnerCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self]
+        subcommands: [ArchPlannerCommand.self, ChatCommand.self, ClaudeChatCommand.self, ClearArtifactsCommand.self, ConfigCommand.self, ListCasesCommand.self, PlanRunnerCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self]
     )
 
     mutating func validate() throws {

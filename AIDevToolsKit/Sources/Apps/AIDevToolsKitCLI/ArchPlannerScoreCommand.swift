@@ -1,6 +1,7 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
+import DataPathsService
 import Foundation
 
 struct ArchPlannerScoreCommand: AsyncParsableCommand {
@@ -8,6 +9,8 @@ struct ArchPlannerScoreCommand: AsyncParsableCommand {
         commandName: "score",
         abstract: "Score implementation components against guidelines"
     )
+
+    @OptionGroup var dataPathOptions: ArchPlannerCommand
 
     @Option(name: .long, help: "Repository name")
     var repoName: String
@@ -24,7 +27,7 @@ struct ArchPlannerScoreCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
         let useCase = ScoreConformanceUseCase()
         let options = ScoreConformanceUseCase.Options(jobId: uuid, repoPath: repoPath)
 

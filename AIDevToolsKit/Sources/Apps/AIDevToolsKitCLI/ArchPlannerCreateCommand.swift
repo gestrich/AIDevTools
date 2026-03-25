@@ -1,6 +1,7 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
+import DataPathsService
 import Foundation
 
 struct ArchPlannerCreateCommand: AsyncParsableCommand {
@@ -8,6 +9,8 @@ struct ArchPlannerCreateCommand: AsyncParsableCommand {
         commandName: "create",
         abstract: "Create a new architecture planning job"
     )
+
+    @OptionGroup var dataPathOptions: ArchPlannerCommand
 
     @Option(name: .long, help: "Repository name")
     var repoName: String
@@ -19,7 +22,7 @@ struct ArchPlannerCreateCommand: AsyncParsableCommand {
     var description: String
 
     mutating func run() async throws {
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
         let useCase = CreatePlanningJobUseCase()
         let options = CreatePlanningJobUseCase.Options(
             repoName: repoName,

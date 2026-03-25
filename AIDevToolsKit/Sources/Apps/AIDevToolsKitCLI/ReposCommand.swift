@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import EvalService
 import Foundation
 import PlanRunnerService
@@ -12,19 +13,23 @@ struct ReposCommand: ParsableCommand {
         subcommands: [AddRepo.self, ListRepos.self, RemoveRepo.self, UpdateRepo.self]
     )
 
-    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
-    static func makeStore(dataPath: String?) -> RepositoryStore {
-        .fromCLI(dataPath: dataPath)
+    static func makeDataPathsService(dataPath: String?) throws -> DataPathsService {
+        try .fromCLI(dataPath: dataPath)
     }
 
-    static func makeEvalSettingsStore(dataPath: String?) -> EvalRepoSettingsStore {
-        .fromCLI(dataPath: dataPath)
+    static func makeStore(_ service: DataPathsService) throws -> RepositoryStore {
+        RepositoryStore(repositoriesFile: try service.path(for: .repositories).appending(path: "repositories.json"))
     }
 
-    static func makePlanSettingsStore(dataPath: String?) -> PlanRepoSettingsStore {
-        .fromCLI(dataPath: dataPath)
+    static func makeEvalSettingsStore(_ service: DataPathsService) throws -> EvalRepoSettingsStore {
+        EvalRepoSettingsStore(filePath: try service.path(for: .evalSettings).appending(path: "eval-settings.json"))
+    }
+
+    static func makePlanSettingsStore(_ service: DataPathsService) throws -> PlanRepoSettingsStore {
+        PlanRepoSettingsStore(filePath: try service.path(for: .planSettings).appending(path: "plan-settings.json"))
     }
 }
 
@@ -34,12 +39,13 @@ struct ListRepos: ParsableCommand {
         abstract: "List configured repositories"
     )
 
-    @OptionGroup var parent: ReposCommand
+    @OptionGroup var dataPathOptions: ReposCommand
 
     func run() throws {
-        let store = ReposCommand.makeStore(dataPath: parent.dataPath)
-        let evalSettingsStore = ReposCommand.makeEvalSettingsStore(dataPath: parent.dataPath)
-        let planSettingsStore = ReposCommand.makePlanSettingsStore(dataPath: parent.dataPath)
+        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
+        let store = try ReposCommand.makeStore(service)
+        let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
+        let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
         let repos = try LoadRepositoriesUseCase(store: store).run()
         if repos.isEmpty {
             print("No repositories configured.")
@@ -62,7 +68,7 @@ struct AddRepo: ParsableCommand {
         abstract: "Add a repository"
     )
 
-    @OptionGroup var parent: ReposCommand
+    @OptionGroup var dataPathOptions: ReposCommand
 
     @Argument(help: "Path to the repository")
     var path: String
@@ -81,14 +87,15 @@ struct AddRepo: ParsableCommand {
 
     func run() throws {
         let url = URL(filePath: path, relativeTo: URL(filePath: FileManager.default.currentDirectoryPath))
-        let store = ReposCommand.makeStore(dataPath: parent.dataPath)
+        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
+        let store = try ReposCommand.makeStore(service)
         let repo = try AddRepositoryUseCase(store: store).run(path: url, name: name)
         if let casesDir {
-            let evalSettingsStore = ReposCommand.makeEvalSettingsStore(dataPath: parent.dataPath)
+            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
             try evalSettingsStore.update(repoId: repo.id, casesDirectory: casesDir)
         }
         if completedDir != nil || proposedDir != nil {
-            let planSettingsStore = ReposCommand.makePlanSettingsStore(dataPath: parent.dataPath)
+            let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
             try planSettingsStore.update(repoId: repo.id, proposedDirectory: proposedDir, completedDirectory: completedDir)
         }
         print("Added repository: \(repo.name) (\(repo.id))")
@@ -101,7 +108,7 @@ struct RemoveRepo: ParsableCommand {
         abstract: "Remove a repository by ID"
     )
 
-    @OptionGroup var parent: ReposCommand
+    @OptionGroup var dataPathOptions: ReposCommand
 
     @Argument(help: "UUID of the repository to remove")
     var id: String
@@ -110,9 +117,10 @@ struct RemoveRepo: ParsableCommand {
         guard let uuid = UUID(uuidString: id) else {
             throw ValidationError("Invalid UUID: \(id)")
         }
-        let store = ReposCommand.makeStore(dataPath: parent.dataPath)
-        let evalSettingsStore = ReposCommand.makeEvalSettingsStore(dataPath: parent.dataPath)
-        let planSettingsStore = ReposCommand.makePlanSettingsStore(dataPath: parent.dataPath)
+        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
+        let store = try ReposCommand.makeStore(service)
+        let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
+        let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
         try RemoveRepositoryUseCase(store: store).run(id: uuid)
         try evalSettingsStore.remove(repoId: uuid)
         try planSettingsStore.remove(repoId: uuid)
@@ -126,7 +134,7 @@ struct UpdateRepo: ParsableCommand {
         abstract: "Update a repository configuration"
     )
 
-    @OptionGroup var parent: ReposCommand
+    @OptionGroup var dataPathOptions: ReposCommand
 
     @Argument(help: "UUID of the repository to update")
     var id: String
@@ -183,7 +191,8 @@ struct UpdateRepo: ParsableCommand {
         guard let uuid = UUID(uuidString: id) else {
             throw ValidationError("Invalid UUID: \(id)")
         }
-        let store = ReposCommand.makeStore(dataPath: parent.dataPath)
+        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
+        let store = try ReposCommand.makeStore(service)
         let repos = try LoadRepositoriesUseCase(store: store).run()
         guard var repo = repos.first(where: { $0.id == uuid }) else {
             throw ValidationError("Repository not found: \(id)")
@@ -228,12 +237,12 @@ struct UpdateRepo: ParsableCommand {
         try UpdateRepositoryUseCase(store: store).run(repo)
 
         if let casesDir {
-            let evalSettingsStore = ReposCommand.makeEvalSettingsStore(dataPath: parent.dataPath)
+            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
             try evalSettingsStore.update(repoId: uuid, casesDirectory: casesDir)
         }
 
         if completedDir != nil || proposedDir != nil {
-            let planSettingsStore = ReposCommand.makePlanSettingsStore(dataPath: parent.dataPath)
+            let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
             try planSettingsStore.update(repoId: uuid, proposedDirectory: proposedDir, completedDirectory: completedDir)
         }
 

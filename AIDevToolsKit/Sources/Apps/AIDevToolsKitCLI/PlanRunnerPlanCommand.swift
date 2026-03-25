@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import Foundation
 import PlanRunnerFeature
 import PlanRunnerService
@@ -16,21 +17,24 @@ struct PlanRunnerPlanCommand: AsyncParsableCommand {
     @Flag(help: "Execute the plan immediately after generating it")
     var execute = false
 
-    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
     func run() async throws {
-        let store = ReposCommand.makeStore(dataPath: dataPath)
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+        let store = try ReposCommand.makeStore(service)
         let repos = try store.loadAll()
-        let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
+        let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
-        let result = try await GeneratePlanUseCase().run(
+        let useCase = GeneratePlanUseCase(
+            resolveProposedDirectory: { repo in
+                try planSettings.resolvedProposedDirectory(forRepo: repo)
+            }
+        )
+        let result = try await useCase.run(
             GeneratePlanUseCase.Options(
                 prompt: text,
-                repositories: repos,
-                resolveProposedDirectory: { repo in
-                    try planSettings.resolvedProposedDirectory(forRepo: repo)
-                }
+                repositories: repos
             )
         ) { progress in
             Self.printProgress(progress)

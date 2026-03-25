@@ -1,6 +1,7 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
+import DataPathsService
 import Foundation
 
 struct ArchPlannerDeleteCommand: AsyncParsableCommand {
@@ -8,6 +9,8 @@ struct ArchPlannerDeleteCommand: AsyncParsableCommand {
         commandName: "delete",
         abstract: "Delete a planning job"
     )
+
+    @OptionGroup var dataPathOptions: ArchPlannerCommand
 
     @Option(name: .long, help: "Repository name")
     var repoName: String
@@ -21,7 +24,7 @@ struct ArchPlannerDeleteCommand: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
         let useCase = ManageGuidelinesUseCase()
 
         guard try await MainActor.run(body: { try useCase.getJob(jobId: uuid, store: store) }) != nil else {

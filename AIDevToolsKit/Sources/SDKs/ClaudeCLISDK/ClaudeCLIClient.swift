@@ -175,7 +175,7 @@ public struct ClaudeCLIClient: Sendable {
                         onFormattedOutput: onFormattedOutput
                     )
                 )
-                return try parser.parse(type, from: result.stdout)
+                return try parser.parse(type, from: result)
             } catch let error as ClaudeCLIError {
                 guard case .inactivityTimeout = error,
                       retryCount < maxTimeoutRetries,

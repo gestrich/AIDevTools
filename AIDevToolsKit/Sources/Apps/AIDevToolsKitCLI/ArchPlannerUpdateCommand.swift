@@ -1,6 +1,7 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
+import DataPathsService
 import Foundation
 import SwiftData
 
@@ -9,6 +10,8 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         commandName: "update",
         abstract: "Run the next step or a specific step in a planning job"
     )
+
+    @OptionGroup var dataPathOptions: ArchPlannerCommand
 
     @Option(name: .long, help: "Repository name")
     var repoName: String
@@ -28,7 +31,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             return
         }
 
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
         let stepName = step ?? "next"
 
         if stepName == "all" {

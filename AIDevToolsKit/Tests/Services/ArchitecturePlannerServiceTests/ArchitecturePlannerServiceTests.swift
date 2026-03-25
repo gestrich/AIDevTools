@@ -138,7 +138,8 @@ struct ArchitecturePlannerModelTests {
 struct ArchitecturePlannerStoreTests {
 
     @Test func storeCreation() throws {
-        let store = try ArchitecturePlannerStore(repoName: "test-store-\(UUID().uuidString.prefix(8))")
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-store-\(UUID().uuidString.prefix(8))")
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         #expect(store.container.schema.entities.count > 0)
     }
 }

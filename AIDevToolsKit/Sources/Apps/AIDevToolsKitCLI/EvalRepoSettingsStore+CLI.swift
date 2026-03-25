@@ -3,16 +3,6 @@ import Foundation
 import RepositorySDK
 
 extension EvalRepoSettingsStore {
-    static func fromCLI(dataPath: String?) -> EvalRepoSettingsStore {
-        let path: URL
-        if let dataPath {
-            path = URL(filePath: dataPath)
-        } else {
-            path = RepositoryStoreConfiguration().dataPath
-        }
-        return EvalRepoSettingsStore(dataPath: path)
-    }
-
     func casesDirectory(forRepo repo: RepositoryInfo) throws -> URL {
         guard let settings = try settings(forRepoId: repo.id) else {
             throw EvalRepoSettingsError.casesDirectoryNotConfigured(repo.name)

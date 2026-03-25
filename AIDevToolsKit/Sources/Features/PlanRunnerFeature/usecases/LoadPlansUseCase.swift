@@ -3,11 +3,16 @@ import PlanRunnerService
 
 public struct LoadPlansUseCase: Sendable {
 
-    public init() {}
+    private let proposedDirectory: URL
 
-    public func run(proposedDirectory: URL) async -> [PlanEntry] {
-        await Task.detached {
-            self.loadFromDisk(proposedDirectory: proposedDirectory)
+    public init(proposedDirectory: URL) {
+        self.proposedDirectory = proposedDirectory
+    }
+
+    public func run() async -> [PlanEntry] {
+        let dir = proposedDirectory
+        return await Task.detached {
+            self.loadFromDisk(proposedDirectory: dir)
         }.value
     }
 

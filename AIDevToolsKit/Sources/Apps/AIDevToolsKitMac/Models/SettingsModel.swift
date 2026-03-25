@@ -1,3 +1,4 @@
+import DataPathsService
 import Foundation
 
 @MainActor @Observable
@@ -5,19 +6,15 @@ final class SettingsModel {
 
     var dataPath: URL {
         didSet {
-            UserDefaults.standard.set(dataPath.path(), forKey: Self.dataPathKey)
+            ResolveDataPathUseCase().save(dataPath)
         }
     }
 
-    private static let dataPathKey = "AIDevTools.dataPath"
-    private static let defaultDataPath = URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
-
     init() {
-        if let stored = UserDefaults.standard.string(forKey: Self.dataPathKey) {
-            self.dataPath = URL(filePath: stored)
-        } else {
-            self.dataPath = Self.defaultDataPath
-        }
+        let useCase = ResolveDataPathUseCase()
+        let resolved = useCase.resolve()
+        self.dataPath = resolved.path
+        useCase.save(resolved.path)
     }
 
     func updateDataPath(_ newPath: URL) {

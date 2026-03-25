@@ -6,7 +6,7 @@ struct EvalRepoSettingsStoreTests {
     private func makeTempStore() -> (EvalRepoSettingsStore, URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        return (EvalRepoSettingsStore(dataPath: tempDir), tempDir)
+        return (EvalRepoSettingsStore(filePath: tempDir.appending(path: "eval-settings.json")), tempDir)
     }
 
     private func cleanup(_ url: URL) {

@@ -1,5 +1,6 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
+import DataPathsService
 import Foundation
 
 @MainActor @Observable
@@ -24,6 +25,7 @@ final class ArchitecturePlannerModel {
 
     private var store: ArchitecturePlannerStore?
 
+    private let dataPathsService: DataPathsService
     private let createJobUseCase: CreatePlanningJobUseCase
     private let compileArchInfoUseCase: CompileArchitectureInfoUseCase
     private let compileFollowupsUseCase: CompileFollowupsUseCase
@@ -35,6 +37,7 @@ final class ArchitecturePlannerModel {
     private let scoreConformanceUseCase: ScoreConformanceUseCase
 
     init(
+        dataPathsService: DataPathsService,
         compileArchInfoUseCase: CompileArchitectureInfoUseCase = CompileArchitectureInfoUseCase(),
         compileFollowupsUseCase: CompileFollowupsUseCase = CompileFollowupsUseCase(),
         createJobUseCase: CreatePlanningJobUseCase = CreatePlanningJobUseCase(),
@@ -45,6 +48,7 @@ final class ArchitecturePlannerModel {
         planAcrossLayersUseCase: PlanAcrossLayersUseCase = PlanAcrossLayersUseCase(),
         scoreConformanceUseCase: ScoreConformanceUseCase = ScoreConformanceUseCase()
     ) {
+        self.dataPathsService = dataPathsService
         self.compileArchInfoUseCase = compileArchInfoUseCase
         self.compileFollowupsUseCase = compileFollowupsUseCase
         self.createJobUseCase = createJobUseCase
@@ -61,7 +65,8 @@ final class ArchitecturePlannerModel {
         currentRepoPath = repoPath
 
         do {
-            let store = try ArchitecturePlannerStore(repoName: repoName)
+            let directoryURL = try dataPathsService.path(for: "architecture-planner", subdirectory: repoName)
+            let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
             self.store = store
             self.jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
         } catch {

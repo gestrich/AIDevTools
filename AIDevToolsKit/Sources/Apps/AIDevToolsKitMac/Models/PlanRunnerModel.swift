@@ -44,32 +44,20 @@ final class PlanRunnerModel {
     var phaseCompleteCount: Int = 0
     private(set) var currentRepository: RepositoryInfo?
 
-    private let completePlanUseCase: CompletePlanUseCase
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
-    private let executePlan: ExecutePlanUseCase
-    private let generatePlan: GeneratePlanUseCase
-    private let loadPlansUseCase: LoadPlansUseCase
     private let logger = Logger(label: "PlanRunnerModel")
     private let planSettingsStore: PlanRepoSettingsStore
     private let togglePhaseUseCase: TogglePhaseUseCase
 
     init(
-        completePlanUseCase: CompletePlanUseCase = CompletePlanUseCase(),
         dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
-        executePlan: ExecutePlanUseCase = ExecutePlanUseCase(),
-        generatePlan: GeneratePlanUseCase = GeneratePlanUseCase(),
-        loadPlansUseCase: LoadPlansUseCase = LoadPlansUseCase(),
         planSettingsStore: PlanRepoSettingsStore,
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
     ) {
-        self.completePlanUseCase = completePlanUseCase
         self.dataPath = dataPath
         self.deletePlanUseCase = deletePlanUseCase
-        self.executePlan = executePlan
-        self.generatePlan = generatePlan
-        self.loadPlansUseCase = loadPlansUseCase
         self.planSettingsStore = planSettingsStore
         self.togglePhaseUseCase = togglePhaseUseCase
     }
@@ -80,7 +68,7 @@ final class PlanRunnerModel {
         isLoadingPlans = true
         do {
             let proposedDir = try resolvedProposedDirectory(for: repo)
-            let loaded = await loadPlansUseCase.run(proposedDirectory: proposedDir)
+            let loaded = await LoadPlansUseCase(proposedDirectory: proposedDir).run()
             guard self.currentRepository?.id == repo.id else { return }
             self.plans = loaded
         } catch {
@@ -106,11 +94,10 @@ final class PlanRunnerModel {
         return updatedContent
     }
 
-    /// Moves a plan from proposed to completed directory and refreshes the plan list.
     func completePlan(_ plan: PlanEntry, repository: RepositoryInfo) throws {
         let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? PlanRepoSettings(repoId: repository.id)
         let completedDir = settings.resolvedCompletedDirectory(repoPath: repository.path)
-        try completePlanUseCase.run(planURL: plan.planURL, completedDirectory: completedDir)
+        try CompletePlanUseCase(completedDirectory: completedDir).run(planURL: plan.planURL)
         Task { await reloadPlans() }
     }
 
@@ -120,15 +107,17 @@ final class PlanRunnerModel {
 
         do {
             let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? PlanRepoSettings(repoId: repository.id)
+            let useCase = ExecutePlanUseCase(
+                completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
+                dataPath: dataPath
+            )
             let options = ExecutePlanUseCase.Options(
                 planPath: plan.planURL,
                 repoPath: repository.path,
                 repository: repository,
-                completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
-                dataPath: dataPath,
                 stopAfterArchitectureDiagram: stopAfterArchitectureDiagram
             )
-            let result = try await executePlan.run(options) { [weak self] progress in
+            let result = try await useCase.run(options) { [weak self] progress in
                 guard let self else { return }
                 Task { @MainActor in
                     self.handleExecutionProgress(progress)
@@ -146,18 +135,20 @@ final class PlanRunnerModel {
         state = .generating(step: selectedRepository != nil ? "Generating plan..." : "Matching repository...")
 
         let settingsStore = planSettingsStore
-        let options = GeneratePlanUseCase.Options(
-            prompt: prompt,
-            repositories: repositories,
-            selectedRepository: selectedRepository,
+        let useCase = GeneratePlanUseCase(
             resolveProposedDirectory: { repo in
                 let settings = try settingsStore.settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
             }
         )
+        let options = GeneratePlanUseCase.Options(
+            prompt: prompt,
+            repositories: repositories,
+            selectedRepository: selectedRepository
+        )
 
         do {
-            let result = try await generatePlan.run(options) { [weak self] progress in
+            let result = try await useCase.run(options) { [weak self] progress in
                 guard let self else { return }
                 Task { @MainActor in
                     switch progress {

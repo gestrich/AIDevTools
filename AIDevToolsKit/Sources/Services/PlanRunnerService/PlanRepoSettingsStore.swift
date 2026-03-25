@@ -3,8 +3,8 @@ import Foundation
 public struct PlanRepoSettingsStore: Sendable {
     private let filePath: URL
 
-    public init(dataPath: URL) {
-        self.filePath = dataPath.appending(path: "plan-settings.json")
+    public init(filePath: URL) {
+        self.filePath = filePath
     }
 
     public func loadAll() throws -> [PlanRepoSettings] {

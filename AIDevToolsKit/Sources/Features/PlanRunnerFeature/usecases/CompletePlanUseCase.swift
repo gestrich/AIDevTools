@@ -16,15 +16,14 @@ public struct CompletePlanUseCase: Sendable {
         }
     }
 
-    public init() {}
+    private let completedDirectory: URL
 
-    /// Moves a plan file from the proposed directory to the completed directory.
-    /// - Parameters:
-    ///   - planURL: Path to the plan file in the proposed directory
-    ///   - completedDirectory: Path to the completed directory
-    /// - Returns: The URL of the moved file in the completed directory
+    public init(completedDirectory: URL) {
+        self.completedDirectory = completedDirectory
+    }
+
     @discardableResult
-    public func run(planURL: URL, completedDirectory: URL) throws -> URL {
+    public func run(planURL: URL) throws -> URL {
         let fm = FileManager.default
 
         guard fm.fileExists(atPath: planURL.path) else {

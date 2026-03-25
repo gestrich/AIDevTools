@@ -8,7 +8,8 @@ import Testing
 struct CreatePlanningJobUseCaseTests {
 
     @Test @MainActor func createJob() throws {
-        let store = try ArchitecturePlannerStore(repoName: "test-create-\(UUID().uuidString.prefix(8))")
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-create-\(UUID().uuidString.prefix(8))")
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let useCase = CreatePlanningJobUseCase()
 
         let options = CreatePlanningJobUseCase.Options(
@@ -41,7 +42,8 @@ struct ManageGuidelinesUseCaseTests {
 
     @Test @MainActor func createAndListGuidelines() throws {
         let repoName = "test-guidelines-\(UUID().uuidString.prefix(8))"
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent(repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let useCase = ManageGuidelinesUseCase()
 
         // Initially empty
@@ -72,7 +74,8 @@ struct ManageGuidelinesUseCaseTests {
 
     @Test @MainActor func deleteGuideline() throws {
         let repoName = "test-delete-\(UUID().uuidString.prefix(8))"
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent(repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let useCase = ManageGuidelinesUseCase()
 
         let options = ManageGuidelinesUseCase.CreateGuidelineOptions(
@@ -88,7 +91,8 @@ struct ManageGuidelinesUseCaseTests {
 
     @Test @MainActor func listJobsAndGetJob() throws {
         let repoName = "test-jobs-\(UUID().uuidString.prefix(8))"
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent(repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let createUseCase = CreatePlanningJobUseCase()
         let manageUseCase = ManageGuidelinesUseCase()
 
@@ -111,7 +115,8 @@ struct ManageGuidelinesUseCaseTests {
 
     @Test @MainActor func markStepsStale() throws {
         let repoName = "test-stale-\(UUID().uuidString.prefix(8))"
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent(repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let createUseCase = CreatePlanningJobUseCase()
         let manageUseCase = ManageGuidelinesUseCase()
 
@@ -151,7 +156,8 @@ struct GenerateReportUseCaseTests {
 
     @Test @MainActor func generateReport() throws {
         let repoName = "test-report-\(UUID().uuidString.prefix(8))"
-        let store = try ArchitecturePlannerStore(repoName: repoName)
+        let directoryURL = FileManager.default.temporaryDirectory.appendingPathComponent(repoName)
+        let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
         let createUseCase = CreatePlanningJobUseCase()
         let reportUseCase = GenerateReportUseCase()
 

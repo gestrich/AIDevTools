@@ -1,3 +1,4 @@
+import CLISDK
 import Testing
 @testable import ClaudeCLISDK
 
@@ -8,6 +9,10 @@ struct TestOutput: Codable, Sendable {
 
 struct SimpleResult: Codable, Sendable {
     let result: String
+}
+
+private func makeResult(stdout: String, exitCode: Int32 = 0, stderr: String = "") -> ExecutionResult {
+    ExecutionResult(exitCode: exitCode, stdout: stdout, stderr: stderr, duration: 0)
 }
 
 @Suite("ClaudeStructuredOutputParser")
@@ -48,7 +53,7 @@ struct ClaudeStructuredOutputParserTests {
     // MARK: - parse() success
 
     @Test func parseStructuredOutputSuccess() throws {
-        let output = try parser.parse(TestOutput.self, from: Self.successWithStructuredOutput)
+        let output = try parser.parse(TestOutput.self, from: makeResult(stdout: Self.successWithStructuredOutput))
         #expect(output.value.repoId == "my-app")
         #expect(output.value.interpretedRequest == "Fix the login bug")
         #expect(output.resultEvent.isError == false)
@@ -58,7 +63,7 @@ struct ClaudeStructuredOutputParserTests {
     }
 
     @Test func parseSimpleResult() throws {
-        let output = try parser.parse(SimpleResult.self, from: Self.successSimpleResult)
+        let output = try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.successSimpleResult))
         #expect(output.value.result == "PROBE_STRUCTURED_OK")
         #expect(output.resultEvent.totalCostUsd != nil)
         let cost = output.resultEvent.totalCostUsd!
@@ -69,25 +74,25 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func parseThrowsOnErrorResult() {
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(SimpleResult.self, from: Self.errorMaxRetries)
+            try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.errorMaxRetries))
         }
     }
 
     @Test func parseThrowsOnExecutionError() {
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(SimpleResult.self, from: Self.errorDuringExecution)
+            try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.errorDuringExecution))
         }
     }
 
     @Test func parseThrowsOnNoResultEvent() {
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(SimpleResult.self, from: Self.noResultEvent)
+            try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.noResultEvent))
         }
     }
 
     @Test func parseThrowsOnMissingStructuredOutput() {
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(SimpleResult.self, from: Self.resultWithoutStructuredOutput)
+            try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.resultWithoutStructuredOutput))
         }
     }
 
@@ -96,7 +101,7 @@ struct ClaudeStructuredOutputParserTests {
         {"type":"result","subtype":"success","is_error":false,"structured_output":{"unexpected":"fields"}}
         """
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(TestOutput.self, from: wrongType)
+            try parser.parse(TestOutput.self, from: makeResult(stdout: wrongType))
         }
     }
 
@@ -105,7 +110,7 @@ struct ClaudeStructuredOutputParserTests {
         {"type":"result","is_error":false,"structured_output":{"result":"ok"}}
         """
         #expect(throws: ClaudeStructuredOutputError.self) {
-            try parser.parse(SimpleResult.self, from: noSubtype)
+            try parser.parse(SimpleResult.self, from: makeResult(stdout: noSubtype))
         }
     }
 
@@ -148,7 +153,7 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func errorResultPreservesSubtype() throws {
         do {
-            _ = try parser.parse(SimpleResult.self, from: Self.errorMaxRetries)
+            _ = try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.errorMaxRetries))
             Issue.record("Expected error to be thrown")
         } catch let error as ClaudeStructuredOutputError {
             if case .resultError(let resultEvent) = error {
@@ -161,7 +166,7 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func errorResultPreservesErrors() throws {
         do {
-            _ = try parser.parse(SimpleResult.self, from: Self.errorMaxRetries)
+            _ = try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.errorMaxRetries))
             Issue.record("Expected error to be thrown")
         } catch let error as ClaudeStructuredOutputError {
             if case .resultError(let resultEvent) = error {
@@ -176,12 +181,34 @@ struct ClaudeStructuredOutputParserTests {
 
     @Test func errorResultIncludesDiagnostics() throws {
         do {
-            _ = try parser.parse(SimpleResult.self, from: Self.errorMaxRetries)
+            _ = try parser.parse(SimpleResult.self, from: makeResult(stdout: Self.errorMaxRetries))
             Issue.record("Expected error to be thrown")
         } catch let error as ClaudeStructuredOutputError {
             let description = error.errorDescription ?? ""
             #expect(description.contains("turns=9"))
             #expect(description.contains("is_error=true"))
+        }
+    }
+
+    @Test func noResultEventIncludesProcessDiagnostics() throws {
+        do {
+            _ = try parser.parse(
+                SimpleResult.self,
+                from: ExecutionResult(
+                    exitCode: 137,
+                    stdout: Self.noResultEvent,
+                    stderr: "killed by signal 9",
+                    duration: 5.0
+                )
+            )
+            Issue.record("Expected error to be thrown")
+        } catch let error as ClaudeStructuredOutputError {
+            let description = error.errorDescription ?? ""
+            #expect(description.contains("exit=137"))
+            #expect(description.contains("killed by signal 9"))
+            #expect(description.contains("stdout="))
+        } catch {
+            Issue.record("Unexpected error type: \(error)")
         }
     }
 
@@ -191,7 +218,7 @@ struct ClaudeStructuredOutputParserTests {
         let raw = """
             {"type":"result","subtype":"success","is_error":false,"structured_output":{"result":"ok"}}
         """
-        let output = try parser.parse(SimpleResult.self, from: raw)
+        let output = try parser.parse(SimpleResult.self, from: makeResult(stdout: raw))
         #expect(output.value.result == "ok")
     }
 
@@ -207,7 +234,7 @@ struct ClaudeStructuredOutputParserTests {
         let raw = """
         {"type":"result","subtype":"success","is_error":false,"structured_output":{"phases":[{"description":"Setup","status":"completed"},{"description":"Build","status":"pending"}]}}
         """
-        let output = try parser.parse(Nested.self, from: raw)
+        let output = try parser.parse(Nested.self, from: makeResult(stdout: raw))
         #expect(output.value.phases.count == 2)
         #expect(output.value.phases[0].description == "Setup")
         #expect(output.value.phases[0].status == "completed")

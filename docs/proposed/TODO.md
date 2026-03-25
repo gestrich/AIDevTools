@@ -4,3 +4,4 @@
     Allow to be interrupted so I can "join" the chat with discussions
 - AI frameworks
     Allow SDKs and CLI agents to be swappable
+    Log all AI outputs to consistently places despite where triggered

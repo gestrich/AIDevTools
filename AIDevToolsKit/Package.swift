@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "ClaudePythonSDK", targets: ["ClaudePythonSDK"]),
         .library(name: "CodexCLISDK", targets: ["CodexCLISDK"]),
         .library(name: "ConcurrencySDK", targets: ["ConcurrencySDK"]),
+        .library(name: "DataPathsService", targets: ["DataPathsService"]),
         .library(name: "EnvironmentSDK", targets: ["EnvironmentSDK"]),
         .library(name: "EvalFeature", targets: ["EvalFeature"]),
         .library(name: "EvalSDK", targets: ["EvalSDK"]),
@@ -51,6 +52,7 @@ let package = Package(
                 "ClaudeCodeChatFeature",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
+                "DataPathsService",
                 "EvalFeature",
                 "EvalService",
                 "LoggingSDK",
@@ -71,6 +73,7 @@ let package = Package(
                 "AnthropicSDK",
                 "ClaudeCodeChatService",
                 "ClaudeCLISDK",
+                "DataPathsService",
                 "EvalFeature",
                 "EvalSDK",
                 "EvalService",
@@ -161,6 +164,11 @@ let package = Package(
                 "ClaudeCLISDK",
             ],
             path: "Sources/Services/ClaudeCodeChatService"
+        ),
+        .target(
+            name: "DataPathsService",
+            dependencies: [],
+            path: "Sources/Services/DataPathsService"
         ),
         .target(
             name: "EvalService",
@@ -290,6 +298,11 @@ let package = Package(
             name: "ClaudePythonSDKTests",
             dependencies: ["ClaudePythonSDK"],
             path: "Tests/SDKs/ClaudePythonSDKTests"
+        ),
+        .testTarget(
+            name: "DataPathsServiceTests",
+            dependencies: ["DataPathsService"],
+            path: "Tests/Services/DataPathsServiceTests"
         ),
         .testTarget(
             name: "EnvironmentSDKTests",

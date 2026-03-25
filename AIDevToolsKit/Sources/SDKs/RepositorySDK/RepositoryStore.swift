@@ -2,11 +2,9 @@ import Foundation
 
 public struct RepositoryStore: Sendable {
     private let filePath: URL
-    public let dataPath: URL
 
-    public init(configuration: RepositoryStoreConfiguration) {
-        self.dataPath = configuration.dataPath
-        self.filePath = configuration.dataPath.appending(path: "repositories.json")
+    public init(repositoriesFile: URL) {
+        self.filePath = repositoriesFile
     }
 
     public func loadAll() throws -> [RepositoryInfo] {
@@ -52,10 +50,6 @@ public struct RepositoryStore: Sendable {
 
     public func find(byPath path: URL) throws -> RepositoryInfo? {
         try loadAll().first { $0.path == path }
-    }
-
-    public func outputDirectory(for repo: RepositoryInfo) -> URL {
-        dataPath.appendingPathComponent(repo.name)
     }
 
     private func ensureDirectoryExists() throws {

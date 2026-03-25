@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import Foundation
 import PlanRunnerFeature
 import PlanRunnerService
@@ -16,7 +17,7 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
     @Option(help: "Maximum runtime in minutes")
     var maxMinutes: Int = 90
 
-    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
     func run() async throws {
@@ -33,8 +34,9 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
 
         let repoPath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
-        let store = ReposCommand.makeStore(dataPath: dataPath)
-        let planSettings = PlanRepoSettingsStore.fromCLI(dataPath: dataPath)
+        let service = try DataPathsService.fromCLI(dataPath: dataPath)
+        let store = try ReposCommand.makeStore(service)
+        let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
         let repos = try store.loadAll()
 
@@ -52,14 +54,17 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
         let repository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
         let completedDirectory = try repository.map { try planSettings.resolvedCompletedDirectory(forRepo: $0) }
 
-        let result = try await ExecutePlanUseCase().run(
+        let resolvedDataPath = ResolveDataPathUseCase().resolve(explicit: dataPath).path
+        let useCase = ExecutePlanUseCase(
+            completedDirectory: completedDirectory,
+            dataPath: resolvedDataPath
+        )
+        let result = try await useCase.run(
             ExecutePlanUseCase.Options(
                 planPath: planURL,
                 repoPath: repoPath,
                 maxMinutes: maxMinutes,
-                repository: repository,
-                completedDirectory: completedDirectory,
-                dataPath: dataPath.map { URL(filePath: $0) }
+                repository: repository
             )
         ) { progress in
             Self.handleProgress(progress, timer: timer)

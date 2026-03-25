@@ -1,3 +1,4 @@
+import CLISDK
 import Foundation
 import Logging
 
@@ -6,16 +7,47 @@ public struct ClaudeStructuredOutput<T: Sendable>: Sendable {
     public let resultEvent: ClaudeResultEvent
 }
 
+public struct ProcessDiagnostics: Sendable {
+    public let exitCode: Int32
+    public let stderrSnippet: String
+    public let stdoutLineCount: Int
+    public let stdoutByteCount: Int
+
+    public init(exitCode: Int32, stderr: String, stdout: String) {
+        self.exitCode = exitCode
+        let lines = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: "\n")
+            .suffix(5)
+        self.stderrSnippet = lines.joined(separator: "\n")
+        self.stdoutLineCount = stdout.components(separatedBy: "\n").count
+        self.stdoutByteCount = stdout.utf8.count
+    }
+
+    public var summary: String {
+        var parts = ["exit=\(exitCode)", "stdout=\(stdoutLineCount) lines/\(stdoutByteCount) bytes"]
+        if !stderrSnippet.isEmpty {
+            parts.append("stderr: \(stderrSnippet.prefix(300))")
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
 public enum ClaudeStructuredOutputError: Error, LocalizedError {
-    case noResultEvent
+    case noResultEvent(ProcessDiagnostics?)
     case resultError(resultEvent: ClaudeResultEvent)
     case missingStructuredOutput(resultEvent: ClaudeResultEvent)
     case decodingFailed(Error, resultEvent: ClaudeResultEvent)
 
     public var errorDescription: String? {
         switch self {
-        case .noResultEvent:
-            return "Claude CLI returned no result event. The process may have exited early or produced no output."
+        case .noResultEvent(let diagnostics):
+            var message = "Claude CLI returned no result event."
+            if let diagnostics {
+                message += " Process diagnostics: \(diagnostics.summary)"
+            } else {
+                message += " The process may have exited early or produced no output."
+            }
+            return message
         case .resultError(let resultEvent):
             var parts = ["Claude CLI returned an error"]
             if let subtype = resultEvent.subtype { parts.append("(\(subtype))") }
@@ -36,8 +68,9 @@ public struct ClaudeStructuredOutputParser: Sendable {
 
     public init() {}
 
-    public func parse<T: Decodable & Sendable>(_ type: T.Type, from stdout: String) throws -> ClaudeStructuredOutput<T> {
-        let resultEvent = try findResultEvent(in: stdout)
+    public func parse<T: Decodable & Sendable>(_ type: T.Type, from result: ExecutionResult) throws -> ClaudeStructuredOutput<T> {
+        let diagnostics = ProcessDiagnostics(exitCode: result.exitCode, stderr: result.stderr, stdout: result.stdout)
+        let resultEvent = try findResultEvent(in: result.stdout, diagnostics: diagnostics)
 
         // Use subtype as the authoritative success signal, matching claude-code-action behavior.
         // The is_error field should align with subtype but is not the primary indicator.
@@ -58,7 +91,7 @@ public struct ClaudeStructuredOutputParser: Sendable {
         }
     }
 
-    public func findResultEvent(in stdout: String) throws -> ClaudeResultEvent {
+    public func findResultEvent(in stdout: String, diagnostics: ProcessDiagnostics? = nil) throws -> ClaudeResultEvent {
         let decoder = JSONDecoder()
         var lastResult: ClaudeResultEvent?
 
@@ -89,7 +122,7 @@ public struct ClaudeStructuredOutputParser: Sendable {
         }
 
         guard let result = lastResult else {
-            throw ClaudeStructuredOutputError.noResultEvent
+            throw ClaudeStructuredOutputError.noResultEvent(diagnostics)
         }
         return result
     }

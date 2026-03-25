@@ -1,4 +1,5 @@
 import ArgumentParser
+import Foundation
 
 struct ArchPlannerCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,4 +16,7 @@ struct ArchPlannerCommand: AsyncParsableCommand {
             ArchPlannerUpdateCommand.self,
         ]
     )
+
+    @Option(help: "Data directory path (overrides app settings)")
+    var dataPath: String?
 }

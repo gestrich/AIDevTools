@@ -3,8 +3,8 @@ import Foundation
 public struct EvalRepoSettingsStore: Sendable {
     private let filePath: URL
 
-    public init(dataPath: URL) {
-        self.filePath = dataPath.appending(path: "eval-settings.json")
+    public init(filePath: URL) {
+        self.filePath = filePath
     }
 
     public func loadAll() throws -> [EvalRepoSettings] {

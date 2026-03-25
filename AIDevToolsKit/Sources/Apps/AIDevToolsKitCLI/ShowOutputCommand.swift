@@ -1,4 +1,5 @@
 import ArgumentParser
+import DataPathsService
 import EvalFeature
 import EvalService
 import Foundation
@@ -16,7 +17,7 @@ struct ShowOutputCommand: ParsableCommand {
     @Option(help: "Repository path to resolve output directory from stored config")
     var repo: String?
 
-    @Option(help: "Data directory path (default: ~/Desktop/ai-dev-tools)")
+    @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
     @Option(help: "The eval case ID (e.g. feature-flags.add-bool-flag-structured)")
@@ -44,8 +45,10 @@ struct ShowOutputCommand: ParsableCommand {
             resolvedOutputDir = URL(fileURLWithPath: outputDir)
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let store = RepositoryStore.fromCLI(dataPath: dataPath)
-            resolvedOutputDir = try store.outputDirectory(forRepoAt: repoURL)
+            let service = try DataPathsService.fromCLI(dataPath: dataPath)
+            let store = try ReposCommand.makeStore(service)
+            let repoConfig = try store.repoConfig(forRepoAt: repoURL)
+            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
         } else {
             throw ValidationError("Must specify either --output-dir or --repo")
         }
