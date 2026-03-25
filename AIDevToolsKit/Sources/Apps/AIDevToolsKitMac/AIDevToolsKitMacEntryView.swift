@@ -21,35 +21,27 @@ public struct AIDevToolsKitMacEntryView: View {
 
     public init() {
         AIDevToolsLogging.bootstrap()
-        let settingsModel = SettingsModel()
-        // swiftlint:disable:next force_try
-        let dataPathsService = try! DataPathsService(rootPath: settingsModel.dataPath)
-        // swiftlint:disable:next force_try
-        try! MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
-        // swiftlint:disable:next force_try
-        let store = RepositoryStore(repositoriesFile: try! dataPathsService.path(for: .repositories).appending(path: "repositories.json"))
-        // swiftlint:disable:next force_try
-        let evalSettingsStore = EvalRepoSettingsStore(filePath: try! dataPathsService.path(for: .evalSettings).appending(path: "eval-settings.json"))
-        // swiftlint:disable:next force_try
-        let planSettingsStore = PlanRepoSettingsStore(filePath: try! dataPathsService.path(for: .planSettings).appending(path: "plan-settings.json"))
-        _settingsModel = State(initialValue: settingsModel)
+        guard let root = try? CompositionRoot.create() else {
+            fatalError("Failed to initialize app services. Check data directory permissions.")
+        }
+        _settingsModel = State(initialValue: root.settingsModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
-            dataPath: settingsModel.dataPath,
-            repoStore: store,
-            evalSettingsStore: evalSettingsStore,
-            planSettingsStore: planSettingsStore,
-            loadRepositories: LoadRepositoriesUseCase(store: store),
+            dataPath: root.settingsModel.dataPath,
+            repoStore: root.repositoryStore,
+            evalSettingsStore: root.evalSettingsStore,
+            planSettingsStore: root.planSettingsStore,
+            loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
             loadSkills: LoadSkillsUseCase(),
-            addRepository: AddRepositoryUseCase(store: store),
-            removeRepository: RemoveRepositoryUseCase(store: store),
-            updateRepository: UpdateRepositoryUseCase(store: store)
+            addRepository: AddRepositoryUseCase(store: root.repositoryStore),
+            removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore),
+            updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
         ))
         _planRunnerModel = State(initialValue: PlanRunnerModel(
-            dataPath: settingsModel.dataPath,
-            planSettingsStore: planSettingsStore
+            dataPath: root.settingsModel.dataPath,
+            planSettingsStore: root.planSettingsStore
         ))
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
-            dataPathsService: dataPathsService
+            dataPathsService: root.dataPathsService
         ))
     }
 
@@ -63,32 +55,24 @@ public struct AIDevToolsKitMacEntryView: View {
 }
 
 public struct AIDevToolsSettingsView: View {
-    @State private var settingsModel = SettingsModel()
+    @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
 
     public init() {
-        let settingsModel = SettingsModel()
-        // swiftlint:disable:next force_try
-        let dataPathsService = try! DataPathsService(rootPath: settingsModel.dataPath)
-        // swiftlint:disable:next force_try
-        try! MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
-        // swiftlint:disable:next force_try
-        let store = RepositoryStore(repositoriesFile: try! dataPathsService.path(for: .repositories).appending(path: "repositories.json"))
-        // swiftlint:disable:next force_try
-        let evalSettingsStore = EvalRepoSettingsStore(filePath: try! dataPathsService.path(for: .evalSettings).appending(path: "eval-settings.json"))
-        // swiftlint:disable:next force_try
-        let planSettingsStore = PlanRepoSettingsStore(filePath: try! dataPathsService.path(for: .planSettings).appending(path: "plan-settings.json"))
-        _settingsModel = State(initialValue: settingsModel)
+        guard let root = try? CompositionRoot.create() else {
+            fatalError("Failed to initialize app services. Check data directory permissions.")
+        }
+        _settingsModel = State(initialValue: root.settingsModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
-            dataPath: settingsModel.dataPath,
-            repoStore: store,
-            evalSettingsStore: evalSettingsStore,
-            planSettingsStore: planSettingsStore,
-            loadRepositories: LoadRepositoriesUseCase(store: store),
+            dataPath: root.settingsModel.dataPath,
+            repoStore: root.repositoryStore,
+            evalSettingsStore: root.evalSettingsStore,
+            planSettingsStore: root.planSettingsStore,
+            loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
             loadSkills: LoadSkillsUseCase(),
-            addRepository: AddRepositoryUseCase(store: store),
-            removeRepository: RemoveRepositoryUseCase(store: store),
-            updateRepository: UpdateRepositoryUseCase(store: store)
+            addRepository: AddRepositoryUseCase(store: root.repositoryStore),
+            removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore),
+            updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
         ))
     }
 
