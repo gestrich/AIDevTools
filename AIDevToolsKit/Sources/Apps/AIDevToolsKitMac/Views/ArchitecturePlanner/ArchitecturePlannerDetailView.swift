@@ -211,31 +211,8 @@ struct ArchitecturePlannerDetailView: View {
     // MARK: - Output Panel
 
     private var outputPanel: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Live Output")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(model.currentOutput)
-                        .font(.caption.monospaced())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .textSelection(.enabled)
-                    Color.clear
-                        .frame(height: 1)
-                        .id("output-bottom")
-                }
-                .onChange(of: model.currentOutput) {
-                    proxy.scrollTo("output-bottom", anchor: .bottom)
-                }
-            }
-            .frame(minHeight: 150, maxHeight: 300)
-            .background(.background)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .padding()
+        OutputPanel(title: "Live Output", text: model.currentOutput, autoScroll: true)
+            .padding()
     }
 
     // MARK: - Components Sidebar (Layer View)

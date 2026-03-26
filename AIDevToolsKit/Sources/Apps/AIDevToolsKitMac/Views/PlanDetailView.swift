@@ -238,22 +238,7 @@ struct PlanDetailView: View {
     // MARK: - Output Panel
 
     private func outputPanel(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Live Output")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-
-            ScrollView {
-                Text(text)
-                    .font(.caption.monospaced())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                    .textSelection(.enabled)
-            }
-            .frame(minHeight: 200, maxHeight: 400)
-            .background(.background)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
+        OutputPanel(title: "Live Output", text: text, autoScroll: true)
     }
 
     // MARK: - Completion / Error
