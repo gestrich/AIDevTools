@@ -10,6 +10,10 @@ extension CodexCLIClient: AIClient {
         var command = Codex.Exec(prompt: prompt)
         command.fullAuto = options.dangerouslySkipPermissions
         command.model = options.model
+        if let jsonSchema = options.jsonSchema {
+            command.json = true
+            command.outputSchema = jsonSchema
+        }
         let result = try await run(
             command: command,
             workingDirectory: options.workingDirectory,

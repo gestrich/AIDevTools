@@ -1,19 +1,17 @@
 import AIOutputSDK
-import CLISDK
-import ClaudeCLISDK
 import EvalService
 import Foundation
 import SkillScannerSDK
 
 public struct ClaudeAdapter: ProviderAdapterProtocol {
 
-    private let claudeClient: ClaudeCLIClient
+    private let client: any AIClient
     private let parser = ClaudeOutputParser()
     private let outputService = OutputService()
     private let debug: Bool
 
-    public init(client: CLIClient = CLIClient(), debug: Bool = false) {
-        self.claudeClient = ClaudeCLIClient(client: client)
+    public init(client: any AIClient, debug: Bool = false) {
+        self.client = client
         self.debug = debug
     }
 
@@ -49,44 +47,36 @@ public struct ClaudeAdapter: ProviderAdapterProtocol {
         let compactData = try JSONSerialization.data(withJSONObject: schemaObject, options: [.sortedKeys])
         let schemaJSON = String(data: compactData, encoding: .utf8) ?? ""
 
-        var command = Claude(prompt: configuration.prompt)
-        command.printMode = true
-        command.dangerouslySkipPermissions = configuration.evalMode == .edit
-        command.outputFormat = ClaudeOutputFormat.streamJSON.rawValue
-        command.jsonSchema = schemaJSON
-        command.verbose = true
-        command.model = configuration.model
+        let options = AIClientOptions(
+            dangerouslySkipPermissions: configuration.evalMode == .edit,
+            jsonSchema: schemaJSON,
+            model: configuration.model,
+            workingDirectory: configuration.workingDirectory?.path
+        )
 
-        if debug {
-            print("[DEBUG] Claude command arguments:")
-            for (i, arg) in command.commandArguments.enumerated() {
-                print("  [\(i)]: \(arg.debugDescription)")
-            }
-        }
+        let store = AIOutputStore(baseDirectory: configuration.artifactsDirectory.appendingPathComponent("raw"))
+        let session = AIRunSession(
+            key: "\(configuration.provider.rawValue)/\(configuration.caseId)",
+            store: store,
+            client: client
+        )
 
-        let executionResult = try await claudeClient.run(
-            command: command,
-            workingDirectory: configuration.workingDirectory?.path,
-            onFormattedOutput: onOutput
+        let result = try await session.run(
+            prompt: configuration.prompt,
+            options: options,
+            onOutput: onOutput
         )
 
         if debug {
-            print("[DEBUG] Exit code: \(executionResult.exitCode)")
-            print("[DEBUG] Stderr: \(executionResult.stderr)")
-            print("[DEBUG] Stdout (first 500 chars): \(String(executionResult.stdout.prefix(500)))")
+            print("[DEBUG] Exit code: \(result.exitCode)")
+            print("[DEBUG] Stderr: \(result.stderr)")
+            print("[DEBUG] Stdout (first 500 chars): \(String(result.stdout.prefix(500)))")
         }
 
-        let session = OutputService.makeSession(
-            artifactsDirectory: configuration.artifactsDirectory,
-            provider: configuration.provider.rawValue,
-            caseId: configuration.caseId
-        )
-        try session.store.write(output: executionResult.stdout, key: session.key)
-
-        let result = parser.buildResult(from: executionResult.stdout)
+        let providerResult = parser.buildResult(from: result.stdout)
         return try outputService.writeArtifacts(
-            result: result,
-            stderr: executionResult.stderr,
+            result: providerResult,
+            stderr: result.stderr,
             session: session,
             configuration: configuration
         )

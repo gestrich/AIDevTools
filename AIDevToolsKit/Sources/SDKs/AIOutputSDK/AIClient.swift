@@ -3,17 +3,20 @@ import Foundation
 public struct AIClientOptions: Sendable {
     public var dangerouslySkipPermissions: Bool
     public var environment: [String: String]?
+    public var jsonSchema: String?
     public var model: String?
     public var workingDirectory: String?
 
     public init(
         dangerouslySkipPermissions: Bool = false,
         environment: [String: String]? = nil,
+        jsonSchema: String? = nil,
         model: String? = nil,
         workingDirectory: String? = nil
     ) {
         self.dangerouslySkipPermissions = dangerouslySkipPermissions
         self.environment = environment
+        self.jsonSchema = jsonSchema
         self.model = model
         self.workingDirectory = workingDirectory
     }

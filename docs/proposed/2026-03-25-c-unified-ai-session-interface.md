@@ -269,7 +269,10 @@ Remove the old `run(onOutput:work:)` closure-based method. All callers were migr
   - `loadOutput()` returns persisted output after execution
   - Session without client can still `loadOutput()` / `deleteOutput()`
 
-## - [ ] Phase 4: Migrate eval `ClaudeAdapter` to use session execution
+## - [x] Phase 4: Migrate eval `ClaudeAdapter` to use session execution
+
+**Skills used**: `swift-architecture`, `ai-dev-tools-debug`
+**Principles applied**: Added `jsonSchema` to `AIClientOptions` so `run()` supports structured output mode while returning raw stdout for custom parsing; separated default init into extension file to decouple `ClaudeAdapter` from concrete `ClaudeCLIClient`
 
 **Skills to read**: `swift-architecture`, `ai-dev-tools-debug`
 

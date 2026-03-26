@@ -9,6 +9,12 @@ extension ClaudeCLIClient: AIClient {
         var command = Claude(prompt: prompt)
         command.dangerouslySkipPermissions = options.dangerouslySkipPermissions
         command.model = options.model
+        if let jsonSchema = options.jsonSchema {
+            command.jsonSchema = jsonSchema
+            command.outputFormat = ClaudeOutputFormat.streamJSON.rawValue
+            command.printMode = true
+            command.verbose = true
+        }
         let result = try await run(
             command: command,
             workingDirectory: options.workingDirectory,
