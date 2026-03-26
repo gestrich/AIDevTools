@@ -1,6 +1,7 @@
-import Foundation
+import AIOutputSDK
 import CodexCLISDK
 import EvalService
+import Foundation
 import SkillScannerSDK
 
 public struct CodexAdapter: ProviderAdapterProtocol {
@@ -57,6 +58,13 @@ public struct CodexAdapter: ProviderAdapterProtocol {
             onFormattedOutput: onOutput
         )
 
+        let session = OutputService.makeSession(
+            artifactsDirectory: configuration.artifactsDirectory,
+            provider: configuration.provider.rawValue,
+            caseId: configuration.caseId
+        )
+        try session.store.write(output: executionResult.stdout, key: session.key)
+
         guard executionResult.isSuccess else {
             let trimmedStderr = executionResult.stderr.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
             let trimmedStdout = executionResult.stdout.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
@@ -65,10 +73,10 @@ public struct CodexAdapter: ProviderAdapterProtocol {
                 provider: .codex,
                 error: ProviderError(message: errorMessage, subtype: ProviderErrorSubtype.execFailed)
             )
-            return try outputService.write(
+            return try outputService.writeArtifacts(
                 result: errorResult,
-                stdout: executionResult.stdout,
                 stderr: executionResult.stderr,
+                session: session,
                 configuration: configuration
             )
         }
@@ -87,10 +95,10 @@ public struct CodexAdapter: ProviderAdapterProtocol {
             )
         }
 
-        return try outputService.write(
+        return try outputService.writeArtifacts(
             result: result,
-            stdout: executionResult.stdout,
             stderr: executionResult.stderr,
+            session: session,
             configuration: configuration
         )
     }

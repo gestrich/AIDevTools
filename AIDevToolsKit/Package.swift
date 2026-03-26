@@ -333,7 +333,7 @@ let package = Package(
         ),
         .testTarget(
             name: "EvalSDKTests",
-            dependencies: ["EvalSDK"],
+            dependencies: ["AIOutputSDK", "EvalSDK"],
             path: "Tests/SDKs/EvalSDKTests"
         ),
         .testTarget(

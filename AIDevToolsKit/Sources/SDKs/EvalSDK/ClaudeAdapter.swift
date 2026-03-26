@@ -1,7 +1,8 @@
-import Foundation
+import AIOutputSDK
 import CLISDK
 import ClaudeCLISDK
 import EvalService
+import Foundation
 import SkillScannerSDK
 
 public struct ClaudeAdapter: ProviderAdapterProtocol {
@@ -75,11 +76,18 @@ public struct ClaudeAdapter: ProviderAdapterProtocol {
             print("[DEBUG] Stdout (first 500 chars): \(String(executionResult.stdout.prefix(500)))")
         }
 
+        let session = OutputService.makeSession(
+            artifactsDirectory: configuration.artifactsDirectory,
+            provider: configuration.provider.rawValue,
+            caseId: configuration.caseId
+        )
+        try session.store.write(output: executionResult.stdout, key: session.key)
+
         let result = parser.buildResult(from: executionResult.stdout)
-        return try outputService.write(
+        return try outputService.writeArtifacts(
             result: result,
-            stdout: executionResult.stdout,
             stderr: executionResult.stderr,
+            session: session,
             configuration: configuration
         )
     }

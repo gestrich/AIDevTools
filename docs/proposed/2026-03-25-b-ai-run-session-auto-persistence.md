@@ -111,7 +111,7 @@ The accumulator must be `Sendable` since `outputHandler` is marked `@Sendable`. 
   - `deleteOutput()` removes stored output
   - `run()` return value matches accumulated output
 
-## - [ ] Phase 2: Migrate eval `ClaudeAdapter` to use `AIRunSession`
+## - [x] Phase 2: Migrate eval `ClaudeAdapter` to use `AIRunSession`
 
 **Skills to read**: `swift-architecture`, `ai-dev-tools-debug`
 

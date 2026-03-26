@@ -18,47 +18,38 @@ public struct OutputService: Sendable {
         artifactsDirectory.appendingPathComponent(provider)
     }
 
-    private static func outputStore(artifactsDirectory: URL) -> AIOutputStore {
-        AIOutputStore(baseDirectory: artifactsDirectory.appendingPathComponent("raw"))
-    }
+    // MARK: - Session Factory
 
-    private static func stdoutKey(provider: String, caseId: String) -> String {
-        "\(provider)/\(caseId)"
-    }
-
-    private static func stderrPath(artifactsDirectory: URL, provider: String, caseId: String) -> URL {
-        artifactsDirectory
-            .appendingPathComponent("raw")
-            .appendingPathComponent(provider)
-            .appendingPathComponent("\(caseId).stderr")
+    public static func makeSession(
+        artifactsDirectory: URL,
+        provider: String,
+        caseId: String
+    ) -> AIRunSession {
+        let store = AIOutputStore(baseDirectory: artifactsDirectory.appendingPathComponent("raw"))
+        return AIRunSession(key: "\(provider)/\(caseId)", store: store)
     }
 
     // MARK: - Writing
 
-    public func write(
+    public func writeArtifacts(
         result: ProviderResult,
-        stdout: String,
         stderr: String,
+        session: AIRunSession,
         configuration: RunConfiguration
     ) throws -> ProviderResult {
         var result = result
 
-        let store = Self.outputStore(artifactsDirectory: configuration.artifactsDirectory)
-        let key = Self.stdoutKey(provider: configuration.provider.rawValue, caseId: configuration.caseId)
-        try store.write(output: stdout, key: key)
+        result.rawStdoutPath = session.store.url(for: session.key)
 
-        let stderrPath = Self.stderrPath(
-            artifactsDirectory: configuration.artifactsDirectory,
-            provider: configuration.provider.rawValue,
-            caseId: configuration.caseId
-        )
+        let stderrPath = configuration.artifactsDirectory
+            .appendingPathComponent("raw")
+            .appendingPathComponent(configuration.provider.rawValue)
+            .appendingPathComponent("\(configuration.caseId).stderr")
         try FileManager.default.createDirectory(
             at: stderrPath.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
         try stderr.write(to: stderrPath, atomically: true, encoding: .utf8)
-
-        result.rawStdoutPath = store.url(for: key)
         result.rawStderrPath = stderrPath
 
         let providerDir = configuration.providerDirectory
@@ -91,18 +82,25 @@ public struct OutputService: Sendable {
         outputDirectory: URL
     ) throws -> FormattedOutput {
         let artifactsDir = Self.artifactsDirectory(outputDirectory: outputDirectory)
-        let store = Self.outputStore(artifactsDirectory: artifactsDir)
-        let key = Self.stdoutKey(provider: provider.rawValue, caseId: caseId)
+        let session = Self.makeSession(
+            artifactsDirectory: artifactsDir,
+            provider: provider.rawValue,
+            caseId: caseId
+        )
 
-        guard let rawStdout = store.read(key: key) else {
-            throw OutputServiceError.stdoutNotFound(store.url(for: key))
+        guard let rawStdout = session.loadOutput() else {
+            throw OutputServiceError.stdoutNotFound(session.store.url(for: session.key))
         }
 
         let mainOutput = format(rawStdout, provider: provider)
 
-        let rubricKey = Self.stdoutKey(provider: provider.rawValue, caseId: "\(caseId).rubric")
+        let rubricSession = Self.makeSession(
+            artifactsDirectory: artifactsDir,
+            provider: provider.rawValue,
+            caseId: "\(caseId).rubric"
+        )
         var rubricOutput: String?
-        if let rawRubric = store.read(key: rubricKey) {
+        if let rawRubric = rubricSession.loadOutput() {
             rubricOutput = ClaudeStreamFormatter().format(rawRubric)
         }
 
