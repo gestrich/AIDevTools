@@ -345,7 +345,10 @@ Currently calls `claudeClient.runStructured()` directly and manages its own `Out
 - Verify architecture planner streams live output and loads historical output
 - Verify plan runner executes phases and writes logs correctly
 
-## - [ ] Phase 6: Clean up and validation
+## - [x] Phase 6: Clean up and validation
+
+**Skills used**: `swift-testing`, `ai-dev-tools-debug`
+**Principles applied**: Updated OutputService.makeSession() factory to accept optional AIClient; ClaudeAdapter now uses factory instead of manual session creation; added jsonSchema test coverage. Deprecated `run(onOutput:work:)` and its Accumulator retained — still called by ArchitecturePlannerModel (Apps layer). OutputAccumulator in ExecutePlanUseCase retained for error-resilient log writing. StdoutAccumulator in ClaudeCLIClient retained for timeout retry logic.
 
 **Skills to read**: `swift-testing`, `ai-dev-tools-debug`
 

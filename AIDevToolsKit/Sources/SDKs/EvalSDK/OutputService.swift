@@ -23,10 +23,15 @@ public struct OutputService: Sendable {
     public static func makeSession(
         artifactsDirectory: URL,
         provider: String,
-        caseId: String
+        caseId: String,
+        client: (any AIClient)? = nil
     ) -> AIRunSession {
         let store = AIOutputStore(baseDirectory: artifactsDirectory.appendingPathComponent("raw"))
-        return AIRunSession(key: "\(provider)/\(caseId)", store: store)
+        let key = "\(provider)/\(caseId)"
+        if let client {
+            return AIRunSession(key: key, store: store, client: client)
+        }
+        return AIRunSession(key: key, store: store)
     }
 
     // MARK: - Writing

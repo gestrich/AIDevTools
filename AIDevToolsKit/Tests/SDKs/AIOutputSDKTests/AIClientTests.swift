@@ -10,6 +10,7 @@ import Testing
         let options = AIClientOptions()
         #expect(options.dangerouslySkipPermissions == false)
         #expect(options.environment == nil)
+        #expect(options.jsonSchema == nil)
         #expect(options.model == nil)
         #expect(options.workingDirectory == nil)
     }
@@ -18,11 +19,13 @@ import Testing
         let options = AIClientOptions(
             dangerouslySkipPermissions: true,
             environment: ["KEY": "VALUE"],
+            jsonSchema: "{\"type\":\"object\"}",
             model: "opus",
             workingDirectory: "/tmp"
         )
         #expect(options.dangerouslySkipPermissions == true)
         #expect(options.environment == ["KEY": "VALUE"])
+        #expect(options.jsonSchema == "{\"type\":\"object\"}")
         #expect(options.model == "opus")
         #expect(options.workingDirectory == "/tmp")
     }

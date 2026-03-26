@@ -54,10 +54,10 @@ public struct ClaudeAdapter: ProviderAdapterProtocol {
             workingDirectory: configuration.workingDirectory?.path
         )
 
-        let store = AIOutputStore(baseDirectory: configuration.artifactsDirectory.appendingPathComponent("raw"))
-        let session = AIRunSession(
-            key: "\(configuration.provider.rawValue)/\(configuration.caseId)",
-            store: store,
+        let session = OutputService.makeSession(
+            artifactsDirectory: configuration.artifactsDirectory,
+            provider: configuration.provider.rawValue,
+            caseId: configuration.caseId,
             client: client
         )
 
