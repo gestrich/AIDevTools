@@ -80,7 +80,7 @@ Tasks:
 - Live streaming `currentOutput` stays the same for in-progress steps — persistence happens on completion
 - Also persist on failure (partial output is valuable for debugging)
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
 **Skills to read**: `swift-testing`
 
