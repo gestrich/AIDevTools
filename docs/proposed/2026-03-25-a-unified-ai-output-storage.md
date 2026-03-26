@@ -50,7 +50,7 @@ Tasks:
 - Uses `atomically: true` for writes
 - Add unit tests for write/read/delete round-trip and `nil` on missing key
 
-## - [ ] Phase 3: Migrate eval `OutputService` raw output to use `AIOutputStore`
+## - [x] Phase 3: Migrate eval `OutputService` raw output to use `AIOutputStore`
 
 **Skills to read**: `swift-architecture`, `ai-dev-tools-debug`
 

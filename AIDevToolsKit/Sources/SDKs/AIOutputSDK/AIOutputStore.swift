@@ -30,7 +30,7 @@ public struct AIOutputStore: Sendable {
         }
     }
 
-    private func url(for key: String) -> URL {
+    public func url(for key: String) -> URL {
         baseDirectory.appendingPathComponent("\(key).stdout")
     }
 }

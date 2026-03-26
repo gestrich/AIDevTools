@@ -1,7 +1,8 @@
-import Foundation
+import AIOutputSDK
 import ClaudeCLISDK
 import CodexCLISDK
 import EvalService
+import Foundation
 
 public struct OutputService: Sendable {
 
@@ -13,29 +14,23 @@ public struct OutputService: Sendable {
         outputDirectory.appendingPathComponent("artifacts")
     }
 
-    static func rawDirectory(artifactsDirectory: URL, provider: String) -> URL {
-        artifactsDirectory
-            .appendingPathComponent("raw")
-            .appendingPathComponent(provider)
-    }
-
-    static func rawDirectory(outputDirectory: URL, provider: String) -> URL {
-        rawDirectory(
-            artifactsDirectory: artifactsDirectory(outputDirectory: outputDirectory),
-            provider: provider
-        )
-    }
-
     static func providerDirectory(artifactsDirectory: URL, provider: String) -> URL {
         artifactsDirectory.appendingPathComponent(provider)
     }
 
-    static func stdoutPath(rawDirectory: URL, caseId: String) -> URL {
-        rawDirectory.appendingPathComponent("\(caseId).stdout")
+    private static func outputStore(artifactsDirectory: URL) -> AIOutputStore {
+        AIOutputStore(baseDirectory: artifactsDirectory.appendingPathComponent("raw"))
     }
 
-    static func stderrPath(rawDirectory: URL, caseId: String) -> URL {
-        rawDirectory.appendingPathComponent("\(caseId).stderr")
+    private static func stdoutKey(provider: String, caseId: String) -> String {
+        "\(provider)/\(caseId)"
+    }
+
+    private static func stderrPath(artifactsDirectory: URL, provider: String, caseId: String) -> URL {
+        artifactsDirectory
+            .appendingPathComponent("raw")
+            .appendingPathComponent(provider)
+            .appendingPathComponent("\(caseId).stderr")
     }
 
     // MARK: - Writing
@@ -48,14 +43,22 @@ public struct OutputService: Sendable {
     ) throws -> ProviderResult {
         var result = result
 
-        let rawDir = Self.rawDirectory(artifactsDirectory: configuration.artifactsDirectory, provider: configuration.provider.rawValue)
-        try FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true)
+        let store = Self.outputStore(artifactsDirectory: configuration.artifactsDirectory)
+        let key = Self.stdoutKey(provider: configuration.provider.rawValue, caseId: configuration.caseId)
+        try store.write(output: stdout, key: key)
 
-        let stdoutPath = Self.stdoutPath(rawDirectory: rawDir, caseId: configuration.caseId)
-        let stderrPath = Self.stderrPath(rawDirectory: rawDir, caseId: configuration.caseId)
-        try stdout.write(to: stdoutPath, atomically: true, encoding: .utf8)
+        let stderrPath = Self.stderrPath(
+            artifactsDirectory: configuration.artifactsDirectory,
+            provider: configuration.provider.rawValue,
+            caseId: configuration.caseId
+        )
+        try FileManager.default.createDirectory(
+            at: stderrPath.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         try stderr.write(to: stderrPath, atomically: true, encoding: .utf8)
-        result.rawStdoutPath = stdoutPath
+
+        result.rawStdoutPath = store.url(for: key)
         result.rawStderrPath = stderrPath
 
         let providerDir = configuration.providerDirectory
@@ -87,20 +90,19 @@ public struct OutputService: Sendable {
         provider: Provider,
         outputDirectory: URL
     ) throws -> FormattedOutput {
-        let rawDir = Self.rawDirectory(outputDirectory: outputDirectory, provider: provider.rawValue)
+        let artifactsDir = Self.artifactsDirectory(outputDirectory: outputDirectory)
+        let store = Self.outputStore(artifactsDirectory: artifactsDir)
+        let key = Self.stdoutKey(provider: provider.rawValue, caseId: caseId)
 
-        let stdoutPath = Self.stdoutPath(rawDirectory: rawDir, caseId: caseId)
-        guard FileManager.default.fileExists(atPath: stdoutPath.path) else {
-            throw OutputServiceError.stdoutNotFound(stdoutPath)
+        guard let rawStdout = store.read(key: key) else {
+            throw OutputServiceError.stdoutNotFound(store.url(for: key))
         }
 
-        let rawStdout = try String(contentsOf: stdoutPath, encoding: .utf8)
         let mainOutput = format(rawStdout, provider: provider)
 
-        let rubricStdoutPath = Self.stdoutPath(rawDirectory: rawDir, caseId: "\(caseId).rubric")
+        let rubricKey = Self.stdoutKey(provider: provider.rawValue, caseId: "\(caseId).rubric")
         var rubricOutput: String?
-        if FileManager.default.fileExists(atPath: rubricStdoutPath.path) {
-            let rawRubric = try String(contentsOf: rubricStdoutPath, encoding: .utf8)
+        if let rawRubric = store.read(key: rubricKey) {
             rubricOutput = ClaudeStreamFormatter().format(rawRubric)
         }
 

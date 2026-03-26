@@ -239,6 +239,7 @@ let package = Package(
             name: "EvalSDK",
             dependencies: [
                 .product(name: "CLISDK", package: "SwiftCLI"),
+                "AIOutputSDK",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
                 "EvalService",
