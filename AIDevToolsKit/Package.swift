@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "ArchitecturePlannerFeature", targets: ["ArchitecturePlannerFeature"]),
         .library(name: "ArchitecturePlannerService", targets: ["ArchitecturePlannerService"]),
         .library(name: "AnthropicChatFeature", targets: ["AnthropicChatFeature"]),
+        .library(name: "AIOutputSDK", targets: ["AIOutputSDK"]),
         .library(name: "AnthropicChatService", targets: ["AnthropicChatService"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
         .library(name: "ClaudeCodeChatFeature", targets: ["ClaudeCodeChatFeature"]),
@@ -190,6 +191,11 @@ let package = Package(
 
         // SDKs Layer
         .target(
+            name: "AIOutputSDK",
+            dependencies: [],
+            path: "Sources/SDKs/AIOutputSDK"
+        ),
+        .target(
             name: "AnthropicSDK",
             dependencies: [
                 "SwiftAnthropic",
@@ -265,6 +271,11 @@ let package = Package(
         ),
 
         // Test Targets (alphabetical)
+        .testTarget(
+            name: "AIOutputSDKTests",
+            dependencies: ["AIOutputSDK"],
+            path: "Tests/SDKs/AIOutputSDKTests"
+        ),
         .testTarget(
             name: "AIDevToolsKitCLITests",
             dependencies: ["AIDevToolsKitCLI"]

@@ -33,7 +33,7 @@ Tasks:
 - Update `ArchitecturePlannerDetailView` to use the extracted `OutputPanel` instead of its inline version
 - Verify both UIs render identically after the extraction
 
-## - [ ] Phase 2: Create `AIOutputStore` concrete struct
+## - [x] Phase 2: Create `AIOutputStore` concrete struct
 
 **Skills to read**: `swift-architecture`
 
