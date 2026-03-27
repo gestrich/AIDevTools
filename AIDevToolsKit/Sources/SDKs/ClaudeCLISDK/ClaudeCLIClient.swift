@@ -21,7 +21,7 @@ public struct ClaudeCLIClient: Sendable {
 
     private let client: CLIClient
 
-    public init(client: CLIClient = CLIClient()) {
+    public init(client: CLIClient = CLIClient(printOutput: false)) {
         self.client = client
     }
 

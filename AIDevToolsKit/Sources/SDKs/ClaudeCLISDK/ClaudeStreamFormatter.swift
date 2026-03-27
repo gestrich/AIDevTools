@@ -42,10 +42,7 @@ public final class ClaudeStreamFormatter: Sendable {
         do {
             envelope = try decoder.decode(ClaudeEventEnvelope.self, from: data)
         } catch {
-            logger.error("Failed to decode event envelope: \(error.localizedDescription)", metadata: [
-                "line": "\(rawLine.prefix(200))"
-            ])
-            return nil
+            return rawLine + "\n"
         }
 
         let lineMetadata: Logger.Metadata = ["type": "\(envelope.type)", "line": "\(rawLine.prefix(200))"]
