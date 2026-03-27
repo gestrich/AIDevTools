@@ -1,7 +1,6 @@
-import AnthropicSDK
+import AIOutputSDK
 import AnthropicChatService
 import Foundation
-@preconcurrency import SwiftAnthropic
 import SwiftData
 
 struct ChatMessageUI: Identifiable, Sendable {
@@ -25,47 +24,29 @@ final class ChatViewModel {
 
     // MARK: - Dependencies
 
-    private let apiClient: AnthropicAPIClient
-    private let chatSimpleService: ChatSimpleService
-    private let chatStreamingService: ChatStreamingService
+    private let client: any AIClient
     private let conversationManager: ConversationManager
 
     private var currentStreamTask: Task<Void, Never>?
+    private var sessionId: String?
     private var systemPrompt: String
-    private var tools: [MessageParameter.Tool]?
-    private var toolHandler: ToolExecutionHandler?
 
     // MARK: - Initialization
 
     init(
-        apiKey: String,
+        client: any AIClient,
         modelContext: ModelContext,
-        systemPrompt: String = MessageBuilder.defaultSystemPrompt(),
-        tools: [MessageParameter.Tool]? = nil,
-        toolHandler: ToolExecutionHandler? = nil
+        systemPrompt: String = "You are a helpful AI assistant."
     ) {
-        self.apiClient = AnthropicAPIClient(apiKey: apiKey)
-        self.chatSimpleService = ChatSimpleService(apiClient: apiClient)
-        self.chatStreamingService = ChatStreamingService(apiClient: apiClient)
+        self.client = client
         self.conversationManager = ConversationManager(modelContext: modelContext)
         self.systemPrompt = systemPrompt
-        self.tools = tools
-        self.toolHandler = toolHandler
     }
 
     // MARK: - Configuration
 
-    func updateAPIKey(_ newKey: String) async {
-        await apiClient.updateAPIKey(newKey)
-    }
-
     func updateSystemPrompt(_ prompt: String) {
         self.systemPrompt = prompt
-    }
-
-    func updateTools(_ tools: [MessageParameter.Tool]?, handler: ToolExecutionHandler?) {
-        self.tools = tools
-        self.toolHandler = handler
     }
 
     // MARK: - Messaging
@@ -73,41 +54,31 @@ final class ChatViewModel {
     func sendMessage(_ content: String) async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        do {
-            try await apiClient.validateAPIKey()
-        } catch {
-            errorMessage = error.localizedDescription
-            return
-        }
-
         addMessage(content, isUser: true)
         isLoading = true
         errorMessage = nil
 
-        let apiMessages = convertToAPIMessages()
+        let options = AIClientOptions(
+            sessionId: sessionId,
+            systemPrompt: systemPrompt
+        )
 
         do {
-            let response = try await chatSimpleService.sendMessage(
-                content,
-                history: apiMessages,
-                tools: tools,
-                systemPrompt: systemPrompt,
-                toolHandler: toolHandler
+            let result = try await client.run(
+                prompt: content,
+                options: options,
+                onOutput: nil
             )
 
-            if !response.textContent.isEmpty {
-                addMessage(response.textContent, isUser: false)
-            }
+            sessionId = result.sessionId ?? sessionId
 
-            for result in response.toolResults {
-                addMessage(result, isUser: false)
+            if !result.stdout.isEmpty {
+                addMessage(result.stdout, isUser: false)
             }
 
             await checkAndGenerateTitle()
-        } catch let error as AnthropicError {
-            errorMessage = error.localizedDescription
         } catch {
-            errorMessage = "Error: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
 
         isLoading = false
@@ -115,13 +86,6 @@ final class ChatViewModel {
 
     func streamMessage(_ content: String) async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-
-        do {
-            try await apiClient.validateAPIKey()
-        } catch {
-            errorMessage = error.localizedDescription
-            return
-        }
 
         addMessage(content, isUser: true)
         isLoading = true
@@ -132,67 +96,37 @@ final class ChatViewModel {
         currentStreamTask?.cancel()
 
         let task = Task {
+            let options = AIClientOptions(
+                sessionId: sessionId,
+                systemPrompt: systemPrompt
+            )
+
             do {
-                let apiMessages = convertToAPIMessages()
-
-                let eventStream = try await chatStreamingService.streamMessage(
-                    content,
-                    history: apiMessages,
-                    tools: tools,
-                    systemPrompt: systemPrompt,
-                    toolHandler: toolHandler
-                )
-
-                var fullText = ""
-
-                for await event in eventStream {
-                    if Task.isCancelled { break }
-
-                    switch event {
-                    case .text(let text):
-                        streamingMessage += text
-                        fullText += text
-
-                    case .toolUse(let name, _):
-                        addMessage("Using tool: \(name)", isUser: false)
-
-                    case .toolResult(let result):
-                        addMessage(result, isUser: false)
-
-                    case .completed:
-                        isStreaming = false
-                        streamingMessage = ""
-
-                        if !fullText.isEmpty {
-                            addMessage(fullText, isUser: false)
-                        }
-
-                        await checkAndGenerateTitle()
-
-                    case .error(let error):
-                        isStreaming = false
-                        streamingMessage = ""
-
-                        if let anthropicError = error as? AnthropicError {
-                            errorMessage = anthropicError.localizedDescription
-                        } else {
-                            errorMessage = error.localizedDescription
+                let result = try await client.run(
+                    prompt: content,
+                    options: options,
+                    onOutput: { @Sendable [weak self] chunk in
+                        Task { @MainActor in
+                            self?.streamingMessage += chunk
                         }
                     }
+                )
+
+                sessionId = result.sessionId ?? sessionId
+                isStreaming = false
+                streamingMessage = ""
+
+                if !result.stdout.isEmpty {
+                    addMessage(result.stdout, isUser: false)
                 }
+
+                await checkAndGenerateTitle()
             } catch {
                 isStreaming = false
                 streamingMessage = ""
 
-                if error is CancellationError {
-                    return
-                }
-
-                if let anthropicError = error as? AnthropicError {
-                    errorMessage = anthropicError.localizedDescription
-                } else {
-                    errorMessage = error.localizedDescription
-                }
+                if error is CancellationError { return }
+                errorMessage = error.localizedDescription
             }
 
             isLoading = false
@@ -203,6 +137,7 @@ final class ChatViewModel {
 
     func clearConversation() {
         messages.removeAll()
+        sessionId = nil
         errorMessage = nil
     }
 
@@ -210,6 +145,7 @@ final class ChatViewModel {
 
     func loadConversation(_ conversation: ChatConversation) {
         currentConversation = conversation
+        sessionId = nil
         messages.removeAll()
 
         let chatMessages = conversationManager.loadMessages(from: conversation)
@@ -225,6 +161,7 @@ final class ChatViewModel {
         let conversation = conversationManager.createConversation(title: title)
         if let conversation {
             currentConversation = conversation
+            sessionId = nil
             messages.removeAll()
         }
         return conversation
@@ -257,21 +194,12 @@ final class ChatViewModel {
         }
     }
 
-    private func convertToAPIMessages() -> [MessageParameter.Message] {
-        messages.map { msg in
-            MessageParameter.Message(
-                role: msg.isUser ? .user : .assistant,
-                content: .text(msg.content)
-            )
-        }
-    }
-
     private func checkAndGenerateTitle() async {
         guard let conversation = currentConversation,
               conversationManager.shouldGenerateTitle(for: conversation) else {
             return
         }
 
-        await conversationManager.generateTitle(for: conversation, using: apiClient)
+        await conversationManager.generateTitle(for: conversation, using: client)
     }
 }

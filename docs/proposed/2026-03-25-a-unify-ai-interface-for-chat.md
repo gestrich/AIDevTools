@@ -378,7 +378,10 @@ ClaudeCodeChatModel (App layer, @Observable) → ChatSessionManager.send() → A
 - Update the Mac app's chat model to use `ChatSessionManager` instead of `ClaudeCodeChatManager` directly
 - Verify: send a message, see streaming response, send follow-up (multi-turn via --resume), load previous sessions
 
-## - [ ] Phase 5: Migrate AnthropicChat to unified ChatService
+## - [x] Phase 5: Migrate AnthropicChat to unified ChatService
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Concrete AnthropicAIClient injected at App layer; feature and service layers depend only on AIOutputSDK protocol. Tool calling dropped per spec recommendation — can be re-added via AIClient extension. Removed 4 unused service files (ChatModels, ChatOrchestrator, ChatSimpleService, ChatStreamingService).
 
 **Skills to read**: `swift-architecture`
 

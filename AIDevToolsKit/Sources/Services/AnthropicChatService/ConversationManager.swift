@@ -1,4 +1,4 @@
-import AnthropicSDK
+import AIOutputSDK
 import Foundation
 import SwiftData
 
@@ -70,7 +70,7 @@ public final class ConversationManager {
         }
     }
 
-    public func generateTitle(for conversation: ChatConversation, using apiClient: AnthropicAPIClient) async {
+    public func generateTitle(for conversation: ChatConversation, using client: any AIClient) async {
         let messages = (conversation.messages ?? []).sorted { $0.timestamp < $1.timestamp }
         guard messages.count >= 2 else { return }
 
@@ -81,16 +81,14 @@ public final class ConversationManager {
         }
         prompt += "Title:"
 
-        do {
-            let title = try await apiClient.createSimpleMessage(
-                prompt: prompt,
-                systemPrompt: "Generate a concise, descriptive title (3-5 words) that captures the main topic of the conversation. Do not use quotes or special characters.",
-                model: .other("claude-sonnet-4-20250514"),
-                maxTokens: 50,
-                temperature: 0.3
-            )
+        let options = AIClientOptions(
+            systemPrompt: "Generate a concise, descriptive title (3-5 words) that captures the main topic of the conversation. Do not use quotes or special characters."
+        )
 
-            let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            let result = try await client.run(prompt: prompt, options: options, onOutput: nil)
+
+            let cleanTitle = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\"", with: "")
                 .replacingOccurrences(of: "'", with: "")
 

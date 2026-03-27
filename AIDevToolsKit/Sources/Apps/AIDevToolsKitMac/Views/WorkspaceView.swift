@@ -1,4 +1,5 @@
 import AnthropicChatService
+import AnthropicSDK
 import ArchitecturePlannerService
 import ClaudeCLISDK
 import ClaudeCodeChatService
@@ -305,8 +306,9 @@ struct WorkspaceView: View {
             chatViewModel = nil
             return
         }
+        let anthropicClient = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: apiKey))
         chatViewModel = ChatViewModel(
-            apiKey: apiKey,
+            client: anthropicClient,
             modelContext: modelContext,
             systemPrompt: buildSystemPrompt()
         )

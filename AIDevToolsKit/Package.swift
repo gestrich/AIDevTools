@@ -49,6 +49,7 @@ let package = Package(
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 "AnthropicChatFeature",
+                "AnthropicSDK",
                 "ArchitecturePlannerFeature",
                 "ArchitecturePlannerService",
                 "ClaudeCodeChatFeature",
@@ -105,8 +106,7 @@ let package = Package(
         .target(
             name: "AnthropicChatFeature",
             dependencies: [
-                "AnthropicChatService",
-                "AnthropicSDK",
+                "AIOutputSDK",
             ],
             path: "Sources/Features/AnthropicChatFeature"
         ),
@@ -154,7 +154,7 @@ let package = Package(
         .target(
             name: "AnthropicChatService",
             dependencies: [
-                "AnthropicSDK",
+                "AIOutputSDK",
             ],
             path: "Sources/Services/AnthropicChatService"
         ),

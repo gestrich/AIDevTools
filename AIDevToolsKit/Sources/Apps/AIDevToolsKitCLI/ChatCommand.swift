@@ -1,8 +1,7 @@
+import AnthropicChatFeature
 import AnthropicSDK
 import ArgumentParser
-import AnthropicChatFeature
 import Foundation
-@preconcurrency import SwiftAnthropic
 
 struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -27,11 +26,12 @@ struct ChatCommand: AsyncParsableCommand {
 
     func run() async throws {
         let key = resolvedAPIKey!
+        let client = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: key))
 
         if let message {
-            try await sendSingleMessage(message, apiKey: key)
+            try await sendSingleMessage(message, client: client)
         } else {
-            try await runInteractive(apiKey: key)
+            try await runInteractive(client: client)
         }
     }
 
@@ -41,11 +41,10 @@ struct ChatCommand: AsyncParsableCommand {
         apiKey ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
     }
 
-    private func sendSingleMessage(_ text: String, apiKey: String) async throws {
-        let useCase = SendChatMessageUseCase()
+    private func sendSingleMessage(_ text: String, client: AnthropicAIClient) async throws {
+        let useCase = SendChatMessageUseCase(client: client)
         let options = SendChatMessageUseCase.Options(
             message: text,
-            apiKey: apiKey,
             systemPrompt: systemPrompt
         )
 
@@ -54,20 +53,18 @@ struct ChatCommand: AsyncParsableCommand {
             case .textDelta(let text):
                 print(text, terminator: "")
                 fflush(stdout)
-            case .toolUse(let name):
-                print("\n[Using tool: \(name)]", terminator: "")
             case .completed:
                 print()
             }
         }
     }
 
-    private func runInteractive(apiKey: String) async throws {
+    private func runInteractive(client: AnthropicAIClient) async throws {
         print("Chat with Claude (type 'exit' or Ctrl-D to quit)")
         print("─────────────────────────────────────────────────")
 
-        let useCase = SendChatMessageUseCase()
-        var history: [MessageParameter.Message] = []
+        let useCase = SendChatMessageUseCase(client: client)
+        var sessionId: String?
 
         while true {
             print("\nYou: ", terminator: "")
@@ -84,7 +81,7 @@ struct ChatCommand: AsyncParsableCommand {
 
             let options = SendChatMessageUseCase.Options(
                 message: input,
-                apiKey: apiKey,
+                sessionId: sessionId,
                 systemPrompt: systemPrompt
             )
 
@@ -92,20 +89,16 @@ struct ChatCommand: AsyncParsableCommand {
             fflush(stdout)
 
             do {
-                let response = try await useCase.run(options, history: history) { progress in
+                let result = try await useCase.run(options) { progress in
                     switch progress {
                     case .textDelta(let text):
                         print(text, terminator: "")
                         fflush(stdout)
-                    case .toolUse(let name):
-                        print("\n[Using tool: \(name)]", terminator: "")
                     case .completed:
                         print()
                     }
                 }
-
-                history.append(MessageParameter.Message(role: .user, content: .text(input)))
-                history.append(MessageParameter.Message(role: .assistant, content: .text(response)))
+                sessionId = result.sessionId ?? sessionId
             } catch {
                 print("\nError: \(error.localizedDescription)")
             }
