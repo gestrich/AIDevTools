@@ -3,70 +3,62 @@ import ChatFeature
 import Foundation
 import Observation
 
-public struct QueuedMessage: Identifiable, Sendable {
-    public let id: UUID
-    public let content: String
-    public let images: [ImageAttachment]
-    public let timestamp: Date
-
-    public init(id: UUID = UUID(), content: String, images: [ImageAttachment] = [], timestamp: Date = Date()) {
-        self.id = id
-        self.content = content
-        self.images = images
-        self.timestamp = timestamp
-    }
-}
-
 @Observable
 @MainActor
 public final class ChatModel {
     public private(set) var messages: [ChatMessage] = []
-    public private(set) var isProcessing: Bool = false
-    public private(set) var isLoadingHistory: Bool = false
+    public private(set) var state: ModelState = .idle
     public private(set) var messageQueue: [QueuedMessage] = []
     public let providerDisplayName: String
+    public let providerName: String
     public let settings: ChatSettings
     public private(set) var workingDirectory: String
     public private(set) var currentStreamingMessageId: UUID?
 
     public var currentSessionId: String? { sessionId }
-    public var providerName: String { client.name }
+    public var isLoadingHistory: Bool { state == .loadingHistory }
+    public var isProcessing: Bool { state == .processing }
 
+    private let getSessionDetailsUseCase: GetSessionDetailsUseCase
+    private let listSessionsUseCase: ListSessionsUseCase
+    private let loadSessionMessagesUseCase: LoadSessionMessagesUseCase
     private let sendMessageUseCase: SendChatMessageUseCase
-    private let client: any AIClient
     private let systemPrompt: String?
-    private var sessionId: String?
     private var currentTask: Task<Void, Never>?
     private var hasStartedSession: Bool = false
+    private var sessionId: String?
 
     public init(
+        getSessionDetailsUseCase: GetSessionDetailsUseCase,
+        listSessionsUseCase: ListSessionsUseCase,
+        loadSessionMessagesUseCase: LoadSessionMessagesUseCase,
         sendMessageUseCase: SendChatMessageUseCase,
-        client: any AIClient,
+        providerDisplayName: String,
+        providerName: String,
         workingDirectory: String?,
         settings: ChatSettings = ChatSettings(),
         systemPrompt: String? = nil
     ) {
+        self.getSessionDetailsUseCase = getSessionDetailsUseCase
+        self.listSessionsUseCase = listSessionsUseCase
+        self.loadSessionMessagesUseCase = loadSessionMessagesUseCase
         self.sendMessageUseCase = sendMessageUseCase
-        self.client = client
         self.settings = settings
-        self.providerDisplayName = client.displayName
+        self.providerDisplayName = providerDisplayName
+        self.providerName = providerName
         self.systemPrompt = systemPrompt
 
         let rawWorkingDir = workingDirectory ?? FileManager.default.currentDirectoryPath
         self.workingDirectory = Self.resolveSymlinks(in: rawWorkingDir)
 
         if settings.resumeLastSession {
-            self.isLoadingHistory = true
+            self.state = .loadingHistory
             let workDir = self.workingDirectory
             Task {
-                let sessions = await client.listSessions(workingDirectory: workDir)
-                if let mostRecent = sessions.first {
-                    let sessionMessages = await client.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: workDir)
-                    self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
-                    self.sessionId = mostRecent.id
-                    self.hasStartedSession = true
+                await resumeLatestSession(workingDirectory: workDir)
+                if self.workingDirectory == workDir {
+                    self.state = .idle
                 }
-                self.isLoadingHistory = false
             }
         }
     }
@@ -99,7 +91,7 @@ public final class ChatModel {
     public func cancelCurrentRequest() {
         currentTask?.cancel()
         currentTask = nil
-        isProcessing = false
+        state = .idle
     }
 
     public func clearMessages() {
@@ -167,22 +159,22 @@ public final class ChatModel {
     // MARK: - Session Management
 
     public func listSessions() async -> [ChatSession] {
-        return await client.listSessions(workingDirectory: workingDirectory)
+        await listSessionsUseCase.run(.init(workingDirectory: workingDirectory))
     }
 
     public nonisolated func loadSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
-        return client.getSessionDetails(sessionId: sessionId, summary: summary, lastModified: lastModified, workingDirectory: workingDirectory)
+        getSessionDetailsUseCase.run(.init(sessionId: sessionId, summary: summary, lastModified: lastModified, workingDirectory: workingDirectory))
     }
 
     public func resumeSession(_ sessionId: String) async {
         self.messages = []
         self.sessionId = sessionId
         self.hasStartedSession = true
-        self.isLoadingHistory = true
+        self.state = .loadingHistory
 
-        let sessionMessages = await client.loadSessionMessages(sessionId: sessionId, workingDirectory: workingDirectory)
-        self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
-        self.isLoadingHistory = false
+        let messages = await loadSessionMessagesUseCase.run(.init(sessionId: sessionId, workingDirectory: workingDirectory))
+        self.messages = messages
+        self.state = .idle
     }
 
     public func setWorkingDirectory(_ path: String) async {
@@ -195,17 +187,10 @@ public final class ChatModel {
         self.hasStartedSession = false
 
         if settings.resumeLastSession {
-            self.isLoadingHistory = true
-            let sessions = await client.listSessions(workingDirectory: resolvedPath)
+            self.state = .loadingHistory
+            await resumeLatestSession(workingDirectory: resolvedPath)
             guard self.workingDirectory == resolvedPath else { return }
-            if let mostRecent = sessions.first {
-                let sessionMessages = await client.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: resolvedPath)
-                guard self.workingDirectory == resolvedPath else { return }
-                self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
-                self.sessionId = mostRecent.id
-                self.hasStartedSession = true
-            }
-            self.isLoadingHistory = false
+            self.state = .idle
         }
     }
 
@@ -215,7 +200,7 @@ public final class ChatModel {
         let userMessage = ChatMessage(role: .user, content: content, images: images, isComplete: true)
         await MainActor.run {
             messages.append(userMessage)
-            isProcessing = true
+            state = .processing
         }
 
         let resumeId = await MainActor.run {
@@ -233,30 +218,6 @@ public final class ChatModel {
 
         await MainActor.run {
             messages.append(placeholderMessage)
-        }
-
-        actor StreamAccumulator {
-            var blocks: [AIContentBlock] = []
-
-            func apply(_ event: AIStreamEvent) -> [AIContentBlock] {
-                switch event {
-                case .textDelta(let chunk):
-                    if case .text(let existing) = blocks.last {
-                        blocks[blocks.count - 1] = .text(existing + chunk)
-                    } else {
-                        blocks.append(.text(chunk))
-                    }
-                case .thinking(let content):
-                    blocks.append(.thinking(content))
-                case .toolUse(let name, let detail):
-                    blocks.append(.toolUse(name: name, detail: detail))
-                case .toolResult(let name, let summary, let isError):
-                    blocks.append(.toolResult(name: name, summary: summary, isError: isError))
-                case .metrics(let duration, let cost, let turns):
-                    blocks.append(.metrics(duration: duration, cost: cost, turns: turns))
-                }
-                return blocks
-            }
         }
 
         let accumulator = StreamAccumulator()
@@ -328,7 +289,7 @@ public final class ChatModel {
                         )
                     }
                 }
-                isProcessing = false
+                state = .idle
             }
         } catch {
             await MainActor.run {
@@ -341,7 +302,7 @@ public final class ChatModel {
                         isComplete: true
                     )
                 }
-                isProcessing = false
+                state = .idle
             }
         }
 
@@ -358,6 +319,18 @@ public final class ChatModel {
         }
 
         await sendMessageInternal(queuedMessage.content, images: queuedMessage.images)
+    }
+
+    private func resumeLatestSession(workingDirectory: String) async {
+        let sessions = await listSessionsUseCase.run(.init(workingDirectory: workingDirectory))
+        guard self.workingDirectory == workingDirectory else { return }
+        if let mostRecent = sessions.first {
+            let messages = await loadSessionMessagesUseCase.run(.init(sessionId: mostRecent.id, workingDirectory: workingDirectory))
+            guard self.workingDirectory == workingDirectory else { return }
+            self.messages = messages
+            self.sessionId = mostRecent.id
+            self.hasStartedSession = true
+        }
     }
 
     // MARK: - Helpers
@@ -382,5 +355,51 @@ public final class ChatModel {
         }
 
         return resolvedComponents.joined(separator: "/").replacingOccurrences(of: "//", with: "/")
+    }
+
+    // MARK: - Types
+
+    public enum ModelState {
+        case idle
+        case loadingHistory
+        case processing
+    }
+}
+
+public struct QueuedMessage: Identifiable, Sendable {
+    public let id: UUID
+    public let content: String
+    public let images: [ImageAttachment]
+    public let timestamp: Date
+
+    public init(id: UUID = UUID(), content: String, images: [ImageAttachment] = [], timestamp: Date = Date()) {
+        self.id = id
+        self.content = content
+        self.images = images
+        self.timestamp = timestamp
+    }
+}
+
+private actor StreamAccumulator {
+    var blocks: [AIContentBlock] = []
+
+    func apply(_ event: AIStreamEvent) -> [AIContentBlock] {
+        switch event {
+        case .textDelta(let chunk):
+            if case .text(let existing) = blocks.last {
+                blocks[blocks.count - 1] = .text(existing + chunk)
+            } else {
+                blocks.append(.text(chunk))
+            }
+        case .thinking(let content):
+            blocks.append(.thinking(content))
+        case .toolUse(let name, let detail):
+            blocks.append(.toolUse(name: name, detail: detail))
+        case .toolResult(let name, let summary, let isError):
+            blocks.append(.toolResult(name: name, summary: summary, isError: isError))
+        case .metrics(let duration, let cost, let turns):
+            blocks.append(.metrics(duration: duration, cost: cost, turns: turns))
+        }
+        return blocks
     }
 }

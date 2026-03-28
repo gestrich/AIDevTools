@@ -33,9 +33,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ArchitecturePlannerModel.swift`
 - Save the review output to `reviews/apps-ArchitecturePlannerModel.md`
 
-## - [ ] Phase 3: Review and fix ChatModel.swift
+## - [x] Phase 3: Review and fix ChatModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Replaced direct AIClient calls with GetSessionDetailsUseCase, ListSessionsUseCase, and LoadSessionMessagesUseCase; introduced ModelState enum replacing scattered isProcessing/isLoadingHistory booleans; extracted StreamAccumulator actor to file-level; deduplicated session resume logic into resumeLatestSession helper
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ChatModel.swift`
 - Save the review output to `reviews/apps-ChatModel.md`

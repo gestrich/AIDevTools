@@ -236,8 +236,12 @@ final class MarkdownPlannerModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
         return ChatModel(
+            getSessionDetailsUseCase: GetSessionDetailsUseCase(client: activeClient),
+            listSessionsUseCase: ListSessionsUseCase(client: activeClient),
+            loadSessionMessagesUseCase: LoadSessionMessagesUseCase(client: activeClient),
             sendMessageUseCase: SendChatMessageUseCase(client: activeClient),
-            client: activeClient,
+            providerDisplayName: activeClient.displayName,
+            providerName: activeClient.name,
             workingDirectory: workingDirectory,
             settings: settings,
             systemPrompt: systemPrompt
