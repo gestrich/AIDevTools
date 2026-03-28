@@ -281,7 +281,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ChatFeatureTests",
-            dependencies: ["ChatFeature", "SkillScannerSDK"],
+            dependencies: ["AIOutputSDK", "ChatFeature", "SkillScannerSDK"],
             path: "Tests/Features/ChatFeatureTests"
         ),
         .testTarget(

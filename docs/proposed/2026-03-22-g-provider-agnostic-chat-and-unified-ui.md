@@ -54,7 +54,10 @@ Replace the two chat views with a single `ChatView` that works with the chat pro
 
 Remove the old separate chat views and models. Update `WorkspaceView` to use the unified chat view. Remove any dead code from the consolidation.
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
+
+**Skills used**: none
+**Principles applied**: Added comprehensive validation tests for the unified chat system. Created AIClientChatAdapterTests covering adapter properties, factory detection, message forwarding, option mapping, stream event forwarding, image attachment prompt augmentation, and session delegation (list/load/details) for both SessionListable and plain AIClient. Created ChatModelTests as integration-style tests validating full send/receive flow, streaming event delivery, session persistence across messages, image attachment forwarding, session history listing/loading, provider switching with distinct properties and results, ChatSettings defaults/mutability, and end-to-end conversation flows with both session-aware and plain providers. Added AIOutputSDK as explicit test dependency.
 
 - Test API chat: send messages, verify streaming, check conversation persistence
 - Test Claude Code chat: send messages, verify session history, test image attachments
