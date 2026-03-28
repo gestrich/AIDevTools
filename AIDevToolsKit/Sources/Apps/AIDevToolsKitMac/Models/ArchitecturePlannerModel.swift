@@ -11,12 +11,11 @@ final class ArchitecturePlannerModel {
     enum State {
         case idle
         case loading
-        case running(stepName: String)
+        case running(stepName: String, output: String)
         case error(Error)
     }
 
     var state: State = .idle
-    var currentOutput: String = ""
     var jobs: [PlanningJob] = []
     var selectedJob: PlanningJob?
     var selectedStepIndex: Int?
@@ -25,7 +24,7 @@ final class ArchitecturePlannerModel {
     var selectedProviderName: String {
         didSet {
             if oldValue != selectedProviderName {
-                rebuildUseCases()
+                rebuildRunStepUseCase()
             }
         }
     }
@@ -34,23 +33,23 @@ final class ArchitecturePlannerModel {
         providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
     }
 
+    var currentOutput: String {
+        if case .running(_, let output) = state { return output }
+        return ""
+    }
+
     private(set) var currentRepoName: String?
     private(set) var currentRepoPath: String?
 
     private var outputStore: AIOutputStore?
     private var store: ArchitecturePlannerStore?
 
-    private let providerRegistry: ProviderRegistry
-    private let dataPathsService: DataPathsService
     private let createJobUseCase: CreatePlanningJobUseCase
-    private var compileArchInfoUseCase: CompileArchitectureInfoUseCase
-    private var compileFollowupsUseCase: CompileFollowupsUseCase
-    private var executeUseCase: ExecuteImplementationUseCase
-    private var formRequirementsUseCase: FormRequirementsUseCase
+    private let dataPathsService: DataPathsService
     private let generateReportUseCase: GenerateReportUseCase
     private let manageGuidelinesUseCase: ManageGuidelinesUseCase
-    private var planAcrossLayersUseCase: PlanAcrossLayersUseCase
-    private var scoreConformanceUseCase: ScoreConformanceUseCase
+    private let providerRegistry: ProviderRegistry
+    private var runStepUseCase: RunPlanningStepUseCase
 
     init(
         dataPathsService: DataPathsService,
@@ -64,25 +63,15 @@ final class ArchitecturePlannerModel {
             ?? providerRegistry.defaultClient!
         self.selectedProviderName = client.name
 
-        self.compileArchInfoUseCase = CompileArchitectureInfoUseCase(client: client)
-        self.compileFollowupsUseCase = CompileFollowupsUseCase(client: client)
         self.createJobUseCase = CreatePlanningJobUseCase()
-        self.executeUseCase = ExecuteImplementationUseCase(client: client)
-        self.formRequirementsUseCase = FormRequirementsUseCase(client: client)
         self.generateReportUseCase = GenerateReportUseCase()
         self.manageGuidelinesUseCase = ManageGuidelinesUseCase()
-        self.planAcrossLayersUseCase = PlanAcrossLayersUseCase(client: client)
-        self.scoreConformanceUseCase = ScoreConformanceUseCase(client: client)
+        self.runStepUseCase = RunPlanningStepUseCase(client: client)
     }
 
-    private func rebuildUseCases() {
+    private func rebuildRunStepUseCase() {
         guard let client = providerRegistry.client(named: selectedProviderName) else { return }
-        compileArchInfoUseCase = CompileArchitectureInfoUseCase(client: client)
-        compileFollowupsUseCase = CompileFollowupsUseCase(client: client)
-        executeUseCase = ExecuteImplementationUseCase(client: client)
-        formRequirementsUseCase = FormRequirementsUseCase(client: client)
-        planAcrossLayersUseCase = PlanAcrossLayersUseCase(client: client)
-        scoreConformanceUseCase = ScoreConformanceUseCase(client: client)
+        runStepUseCase = RunPlanningStepUseCase(client: client)
     }
 
     func loadJobs(repoName: String, repoPath: String) {
@@ -90,11 +79,10 @@ final class ArchitecturePlannerModel {
         currentRepoPath = repoPath
 
         do {
-            let directoryURL = try dataPathsService.path(for: "architecture-planner", subdirectory: repoName)
-            self.outputStore = AIOutputStore(baseDirectory: directoryURL.appendingPathComponent("output"))
-            let store = try ArchitecturePlannerStore(directoryURL: directoryURL)
-            self.store = store
-            self.jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
+            let workspace = try ArchitecturePlannerWorkspace(dataPathsService: dataPathsService, repoName: repoName)
+            self.outputStore = workspace.outputStore
+            self.store = workspace.plannerStore
+            self.jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: workspace.plannerStore)
         } catch {
             state = .error(error)
         }
@@ -104,7 +92,7 @@ final class ArchitecturePlannerModel {
         guard let repoName = currentRepoName, let repoPath = currentRepoPath, let store else { return }
         guard !featureDescription.isEmpty else { return }
 
-        state = .running(stepName: "Creating job...")
+        state = .running(stepName: "Creating job...", output: "")
         do {
             let options = CreatePlanningJobUseCase.Options(
                 repoName: repoName,
@@ -123,63 +111,22 @@ final class ArchitecturePlannerModel {
 
     func runNextStep() async {
         guard let job = selectedJob, let store, let repoPath = currentRepoPath else { return }
+        guard let stepDef = ArchitecturePlannerStep(rawValue: job.currentStepIndex) else { return }
 
-        let stepIndex = job.currentStepIndex
-        guard let stepDef = ArchitecturePlannerStep(rawValue: stepIndex) else { return }
-
-        state = .running(stepName: stepDef.name)
-        currentOutput = ""
-
-        let session = makeSession(jobId: job.jobId, stepIndex: stepIndex)
+        state = .running(stepName: stepDef.name, output: "")
+        let session = makeSession(jobId: job.jobId, stepIndex: job.currentStepIndex)
+        let options = RunPlanningStepUseCase.Options(jobId: job.jobId, repoPath: repoPath, step: stepDef)
 
         do {
-            switch stepDef {
-            case .finalReport:
-                _ = try generateReportUseCase.run(
-                    GenerateReportUseCase.Options(jobId: job.jobId),
-                    store: store
-                )
-
-            case .describeFeature, .reviewImplementationPlan:
-                break
-
-            default:
-                try await session?.run(onOutput: { [weak self] text in
-                    Task { @MainActor in
-                        self?.currentOutput += text
-                    }
+            if let session {
+                try await session.run(onOutput: { [weak self] text in
+                    Task { @MainActor in self?.appendOutput(text) }
                 }) { outputHandler in
-                    switch stepDef {
-                    case .formRequirements:
-                        let options = FormRequirementsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.formRequirementsUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    case .compileArchitectureInfo:
-                        let options = CompileArchitectureInfoUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.compileArchInfoUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    case .planAcrossLayers:
-                        let options = PlanAcrossLayersUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.planAcrossLayersUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    case .buildImplementationModel, .checklistValidation:
-                        let options = ScoreConformanceUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.scoreConformanceUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    case .executeImplementation:
-                        let options = ExecuteImplementationUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.executeUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    case .followups:
-                        let options = CompileFollowupsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
-                        _ = try await self.compileFollowupsUseCase.run(options, store: store, onOutput: outputHandler)
-
-                    default:
-                        break
-                    }
+                    try await self.runStepUseCase.run(options, store: store, onOutput: outputHandler)
                 }
+            } else {
+                try await runStepUseCase.run(options, store: store)
             }
-
             reloadSelectedJob()
             state = .idle
         } catch {
@@ -237,6 +184,11 @@ final class ArchitecturePlannerModel {
     }
 
     // MARK: - Private
+
+    private func appendOutput(_ text: String) {
+        guard case .running(let stepName, let output) = state else { return }
+        state = .running(stepName: stepName, output: output + text)
+    }
 
     private func makeSession(jobId: UUID, stepIndex: Int) -> AIRunSession? {
         guard let outputStore else { return nil }

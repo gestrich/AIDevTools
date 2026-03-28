@@ -98,6 +98,7 @@ let package = Package(
             dependencies: [
                 "AIOutputSDK",
                 "ArchitecturePlannerService",
+                "DataPathsService",
                 "RepositorySDK",
             ],
             path: "Sources/Features/ArchitecturePlannerFeature"

@@ -312,7 +312,7 @@ struct ArchitecturePlannerDetailView: View {
                 storedProviderName = newName
             }
 
-            if case .running(let stepName) = model.state {
+            if case .running(let stepName, _) = model.state {
                 ProgressView()
                     .controlSize(.small)
                 Text(stepName)

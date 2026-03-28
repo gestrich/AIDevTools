@@ -17,16 +17,18 @@ Each phase reviews one file. The review output (markdown) should be saved to `re
 
 ## Phases
 
-## - [ ] Phase 1: Review ActivePlanModel.swift
+## - [x] Phase 1: Review ActivePlanModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Extracted orchestration into WatchPlanUseCase, added enum-based ModelState, moved PlanPhase and parsePhases to MarkdownPlannerFeature
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ActivePlanModel.swift`
 - Save the review output to `reviews/apps-ActivePlanModel.md`
 
-## - [ ] Phase 2: Review ArchitecturePlannerModel.swift
+## - [x] Phase 2: Review ArchitecturePlannerModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Extracted step dispatch into RunPlanningStepUseCase, moved currentOutput into State enum, extracted store construction into ArchitecturePlannerWorkspace, consolidated 6 client-dependent use cases into single RunPlanningStepUseCase
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ArchitecturePlannerModel.swift`
 - Save the review output to `reviews/apps-ArchitecturePlannerModel.md`
