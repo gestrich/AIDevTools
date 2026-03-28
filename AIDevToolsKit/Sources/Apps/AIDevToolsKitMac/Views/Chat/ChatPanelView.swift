@@ -1,9 +1,10 @@
+import AIOutputSDK
 import AppKit
-import ClaudeCodeChatService
+import ChatManagerService
 import SwiftUI
 
-struct ClaudeCodeChatView: View {
-    @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
+struct ChatPanelView: View {
+    @Environment(ChatManager.self) private var chatManager: ChatManager
     @State private var messageText: String = ""
     @State private var pastedImages: [ImageAttachment] = []
     @State private var showingQueueViewer: Bool = false
@@ -20,7 +21,7 @@ struct ClaudeCodeChatView: View {
             messageInputView
         }
         .sheet(isPresented: $showingQueueViewer) {
-            ClaudeCodeQueueViewerSheet()
+            ChatQueueViewerSheet()
         }
     }
 
@@ -48,7 +49,7 @@ struct ClaudeCodeChatView: View {
                             .listRowInsets(EdgeInsets())
                     } else {
                         ForEach(chatManager.messages) { message in
-                            ClaudeCodeChatMessageRow(message: message)
+                            ChatMessageRow(message: message)
                                 .id(message.id)
                                 .listRowSeparator(.hidden)
                                 .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
@@ -303,9 +304,9 @@ struct ClaudeCodeChatView: View {
 
 // MARK: - Message Row
 
-struct ClaudeCodeChatMessageRow: View {
-    let message: ClaudeCodeChatMessage
-    @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager?
+struct ChatMessageRow: View {
+    let message: ChatMessage
+    @Environment(ChatManager.self) private var chatManager: ChatManager?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -356,7 +357,7 @@ struct ClaudeCodeChatMessageRow: View {
                         }
 
                         if !message.content.isEmpty {
-                            ClaudeCodeFormattedContent(message: message, isProcessing: chatManager?.isProcessing ?? false)
+                            ChatFormattedContent(message: message, isProcessing: chatManager?.isProcessing ?? false)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -385,8 +386,8 @@ struct ClaudeCodeChatMessageRow: View {
 
 // MARK: - Formatted Content
 
-struct ClaudeCodeFormattedContent: View {
-    let message: ClaudeCodeChatMessage
+struct ChatFormattedContent: View {
+    let message: ChatMessage
     let isProcessing: Bool
     @State private var showThinkingAndTools = true
 

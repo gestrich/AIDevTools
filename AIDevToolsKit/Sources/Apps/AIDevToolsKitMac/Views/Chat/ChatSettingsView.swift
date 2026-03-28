@@ -1,8 +1,8 @@
-import ClaudeCodeChatService
+import ChatManagerService
 import SwiftUI
 
-struct ClaudeCodeChatSettingsView: View {
-    @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
+struct ChatSettingsView: View {
+    @Environment(ChatManager.self) private var chatManager: ChatManager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -13,7 +13,7 @@ struct ClaudeCodeChatSettingsView: View {
                         get: { chatManager.settings.enableStreaming },
                         set: { chatManager.settings.enableStreaming = $0 }
                     ))
-                    .help("Show Claude's response as it's being generated")
+                    .help("Show response as it's being generated")
 
                     Toggle("Resume Last Session", isOn: Binding(
                         get: { chatManager.settings.resumeLastSession },
@@ -29,7 +29,7 @@ struct ClaudeCodeChatSettingsView: View {
                         get: { chatManager.settings.verboseMode },
                         set: { chatManager.settings.verboseMode = $0 }
                     ))
-                    .help("Show Claude's thinking process and intermediate steps")
+                    .help("Show thinking process and intermediate steps")
 
                     HStack {
                         Text("Max Thinking Tokens")
@@ -45,7 +45,7 @@ struct ClaudeCodeChatSettingsView: View {
                 } header: {
                     Text("Thinking & Reasoning")
                 } footer: {
-                    Text("Verbose mode shows Claude's internal reasoning. Thinking tokens must be at least 1024.")
+                    Text("Verbose mode shows internal reasoning. Thinking tokens must be at least 1024.")
                 }
 
                 Section {
@@ -56,12 +56,17 @@ struct ClaudeCodeChatSettingsView: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
+
+                    LabeledContent("Provider") {
+                        Text(chatManager.providerDisplayName)
+                            .font(.caption)
+                    }
                 } header: {
                     Text("Context")
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle("Claude Code Settings")
+            .navigationTitle("Chat Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

@@ -3,7 +3,6 @@ import AnthropicChatFeature
 import AnthropicSDK
 import ArgumentParser
 import ClaudeCodeChatFeature
-import ClaudeCodeChatService
 import ClaudeCLISDK
 import Foundation
 import ProviderRegistryService
@@ -133,10 +132,8 @@ struct ChatCommand: AsyncParsableCommand {
     private func sendCLIMessage(_ text: String, workingDirectory: String, client: any AIClient) async throws {
         let useCase = SendClaudeCodeMessageUseCase(client: client)
         var sessionId: String?
-        if resume {
-            let sessions = await ListClaudeCodeSessionsUseCase().run(
-                .init(workingDirectory: workingDirectory)
-            )
+        if resume, let listable = client as? SessionListable {
+            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
         }
 
@@ -164,10 +161,8 @@ struct ChatCommand: AsyncParsableCommand {
         let useCase = SendClaudeCodeMessageUseCase(client: client)
         var sessionId: String?
 
-        if resume {
-            let sessions = await ListClaudeCodeSessionsUseCase().run(
-                .init(workingDirectory: workingDirectory)
-            )
+        if resume, let listable = client as? SessionListable {
+            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
             if let sessionId {
                 print("Resuming session: \(sessionId)")

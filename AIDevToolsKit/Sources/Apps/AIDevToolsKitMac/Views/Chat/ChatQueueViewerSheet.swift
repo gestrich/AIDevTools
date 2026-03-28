@@ -1,8 +1,8 @@
-import ClaudeCodeChatService
+import ChatManagerService
 import SwiftUI
 
-struct ClaudeCodeQueueViewerSheet: View {
-    @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
+struct ChatQueueViewerSheet: View {
+    @Environment(ChatManager.self) private var chatManager: ChatManager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -18,7 +18,7 @@ struct ClaudeCodeQueueViewerSheet: View {
                             .font(.title2)
                             .fontWeight(.semibold)
 
-                        Text("Messages sent while Claude is processing will appear here")
+                        Text("Messages sent while processing will appear here")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

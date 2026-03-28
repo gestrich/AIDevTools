@@ -1,5 +1,4 @@
 import AIOutputSDK
-import ClaudeCodeChatService
 import Foundation
 
 public struct SendClaudeCodeMessageUseCase: Sendable {

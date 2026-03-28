@@ -1,4 +1,4 @@
-import ClaudeCodeChatService
+import AIOutputSDK
 import Foundation
 
 public struct ListClaudeCodeSessionsUseCase: Sendable {
@@ -11,9 +11,13 @@ public struct ListClaudeCodeSessionsUseCase: Sendable {
         }
     }
 
-    public init() {}
+    private let client: any AIClient & SessionListable
 
-    public func run(_ options: Options) async -> [ClaudeSession] {
-        await ClaudeCodeChatManager.listSessionsFromDisk(workingDirectory: options.workingDirectory)
+    public init(client: any AIClient & SessionListable) {
+        self.client = client
+    }
+
+    public func run(_ options: Options) async -> [ChatSession] {
+        await client.listSessions(workingDirectory: options.workingDirectory)
     }
 }

@@ -21,20 +21,43 @@ public struct QueuedMessage: Identifiable, Sendable {
 public final class ChatManager {
     public private(set) var messages: [ChatMessage] = []
     public private(set) var isProcessing: Bool = false
+    public private(set) var isLoadingHistory: Bool = false
     public private(set) var messageQueue: [QueuedMessage] = []
     public let providerDisplayName: String
+    public let settings: ChatSettings
 
     private let client: any AIClient
     private var sessionId: String?
-    private let workingDirectory: String?
+    public private(set) var workingDirectory: String
     private var currentTask: Task<Void, Never>?
+    private var hasStartedSession: Bool = false
 
+    public var currentSessionId: String? { sessionId }
     public var providerName: String { client.name }
+    public var supportsSessionHistory: Bool { client is SessionListable }
 
-    public init(client: any AIClient, workingDirectory: String?) {
+    public init(client: any AIClient, workingDirectory: String?, settings: ChatSettings = ChatSettings()) {
         self.client = client
-        self.workingDirectory = workingDirectory
+        self.settings = settings
         self.providerDisplayName = client.displayName
+
+        let rawWorkingDir = workingDirectory ?? FileManager.default.currentDirectoryPath
+        self.workingDirectory = Self.resolveSymlinks(in: rawWorkingDir)
+
+        if settings.resumeLastSession, let listable = client as? SessionListable {
+            self.isLoadingHistory = true
+            let workDir = self.workingDirectory
+            Task {
+                let sessions = await listable.listSessions(workingDirectory: workDir)
+                if let mostRecent = sessions.first {
+                    let sessionMessages = await listable.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: workDir)
+                    self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
+                    self.sessionId = mostRecent.id
+                    self.hasStartedSession = true
+                }
+                self.isLoadingHistory = false
+            }
+        }
     }
 
     // MARK: - Public API
@@ -58,6 +81,7 @@ public final class ChatManager {
     public func startNewConversation() {
         messages.removeAll()
         sessionId = nil
+        hasStartedSession = false
         messageQueue.removeAll()
     }
 
@@ -79,6 +103,53 @@ public final class ChatManager {
         messageQueue.removeAll()
     }
 
+    // MARK: - Session Management
+
+    public func listSessions() async -> [ChatSession] {
+        guard let listable = client as? SessionListable else { return [] }
+        return await listable.listSessions(workingDirectory: workingDirectory)
+    }
+
+    public func resumeSession(_ sessionId: String) async {
+        self.messages = []
+        self.sessionId = sessionId
+        self.hasStartedSession = true
+        self.isLoadingHistory = true
+
+        guard let listable = client as? SessionListable else {
+            self.isLoadingHistory = false
+            return
+        }
+
+        let sessionMessages = await listable.loadSessionMessages(sessionId: sessionId, workingDirectory: workingDirectory)
+        self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
+        self.isLoadingHistory = false
+    }
+
+    public func setWorkingDirectory(_ path: String) async {
+        let resolvedPath = Self.resolveSymlinks(in: path)
+        guard resolvedPath != workingDirectory else { return }
+
+        self.workingDirectory = resolvedPath
+        self.messages = []
+        self.sessionId = nil
+        self.hasStartedSession = false
+
+        if settings.resumeLastSession, let listable = client as? SessionListable {
+            self.isLoadingHistory = true
+            let sessions = await listable.listSessions(workingDirectory: resolvedPath)
+            guard self.workingDirectory == resolvedPath else { return }
+            if let mostRecent = sessions.first {
+                let sessionMessages = await listable.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: resolvedPath)
+                guard self.workingDirectory == resolvedPath else { return }
+                self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
+                self.sessionId = mostRecent.id
+                self.hasStartedSession = true
+            }
+            self.isLoadingHistory = false
+        }
+    }
+
     // MARK: - Internal
 
     private nonisolated func sendMessageInternal(_ content: String, images: [ImageAttachment] = []) async {
@@ -87,6 +158,11 @@ public final class ChatManager {
             messages.append(userMessage)
             isProcessing = true
         }
+
+        let resumeId = await MainActor.run {
+            settings.resumeLastSession && hasStartedSession ? sessionId : nil
+        }
+        let workingDir = await MainActor.run { workingDirectory }
 
         var promptText = content
         var imagePaths: [String] = []
@@ -136,13 +212,11 @@ public final class ChatManager {
         }
 
         let accumulator = StreamAccumulator()
-        let currentSessionId = await MainActor.run { sessionId }
-        let workDir = await MainActor.run { workingDirectory }
 
         let options = AIClientOptions(
             dangerouslySkipPermissions: true,
-            sessionId: currentSessionId,
-            workingDirectory: workDir
+            sessionId: resumeId,
+            workingDirectory: workingDir
         )
 
         do {
@@ -168,6 +242,7 @@ public final class ChatManager {
 
             await MainActor.run {
                 if result.exitCode == 0 {
+                    hasStartedSession = true
                     if let newSessionId = result.sessionId {
                         sessionId = newSessionId
                     }
@@ -236,5 +311,29 @@ public final class ChatManager {
         }
 
         await sendMessageInternal(queuedMessage.content, images: queuedMessage.images)
+    }
+
+    // MARK: - Helpers
+
+    private static func resolveSymlinks(in path: String) -> String {
+        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
+        if realpath(path, &buffer) != nil {
+            return String(cString: buffer)
+        }
+
+        let url = URL(fileURLWithPath: path)
+        let components = url.pathComponents
+        var resolvedComponents: [String] = []
+
+        for component in components {
+            resolvedComponents.append(component)
+            let partialPath = resolvedComponents.joined(separator: "/").replacingOccurrences(of: "//", with: "/")
+            if realpath(partialPath, &buffer) != nil {
+                let resolved = String(cString: buffer)
+                resolvedComponents = URL(fileURLWithPath: resolved).pathComponents
+            }
+        }
+
+        return resolvedComponents.joined(separator: "/").replacingOccurrences(of: "//", with: "/")
     }
 }

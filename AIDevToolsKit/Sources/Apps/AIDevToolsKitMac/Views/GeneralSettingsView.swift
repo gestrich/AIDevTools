@@ -1,11 +1,11 @@
-import ClaudeCodeChatService
+import ChatManagerService
 import SwiftUI
 
 struct GeneralSettingsView: View {
     @Environment(ProviderModel.self) private var providerModel
     @Environment(SettingsModel.self) private var settingsModel
     @AppStorage("anthropicAPIKey") private var apiKey = ""
-    @State private var claudeCodeSettings = ClaudeCodeChatSettings()
+    @State private var chatSettings = ChatSettings()
 
     var body: some View {
         Form {
@@ -19,34 +19,34 @@ struct GeneralSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Claude Code CLI") {
+            Section("Chat Settings") {
                 Toggle("Enable Streaming", isOn: Binding(
-                    get: { claudeCodeSettings.enableStreaming },
-                    set: { claudeCodeSettings.enableStreaming = $0 }
+                    get: { chatSettings.enableStreaming },
+                    set: { chatSettings.enableStreaming = $0 }
                 ))
 
                 Toggle("Resume Last Session", isOn: Binding(
-                    get: { claudeCodeSettings.resumeLastSession },
-                    set: { claudeCodeSettings.resumeLastSession = $0 }
+                    get: { chatSettings.resumeLastSession },
+                    set: { chatSettings.resumeLastSession = $0 }
                 ))
 
                 Toggle("Verbose Mode", isOn: Binding(
-                    get: { claudeCodeSettings.verboseMode },
-                    set: { claudeCodeSettings.verboseMode = $0 }
+                    get: { chatSettings.verboseMode },
+                    set: { chatSettings.verboseMode = $0 }
                 ))
 
                 HStack {
                     Text("Max Thinking Tokens")
                     Spacer()
                     TextField("Tokens", value: Binding(
-                        get: { claudeCodeSettings.maxThinkingTokens },
-                        set: { claudeCodeSettings.maxThinkingTokens = max($0, 1024) }
+                        get: { chatSettings.maxThinkingTokens },
+                        set: { chatSettings.maxThinkingTokens = max($0, 1024) }
                     ), format: .number)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 100)
                 }
 
-                Text("Settings for Claude Code CLI chat mode. Requires the claude CLI installed.")
+                Text("Settings for chat mode. These apply to all providers.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

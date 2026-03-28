@@ -1,12 +1,14 @@
-import ClaudeCodeChatService
+import AIOutputSDK
+import ChatManagerService
+import ClaudeCLISDK
 import SwiftUI
 
-struct ClaudeCodeSessionPickerView: View {
-    @Environment(ClaudeCodeChatManager.self) private var chatManager: ClaudeCodeChatManager
+struct ChatSessionPickerView: View {
+    @Environment(ChatManager.self) private var chatManager: ChatManager
     @Environment(\.dismiss) private var dismiss
-    @State private var sessions: [ClaudeSession] = []
+    @State private var sessions: [ChatSession] = []
     @State private var isLoading = true
-    @State private var selectedSessionForDetail: ClaudeSession?
+    @State private var selectedSessionForDetail: ChatSession?
 
     var body: some View {
         NavigationStack {
@@ -94,7 +96,7 @@ struct ClaudeCodeSessionPickerView: View {
                 isLoading = false
             }
             .sheet(item: $selectedSessionForDetail) { session in
-                ClaudeCodeSessionDetailView(session: session)
+                ChatSessionDetailView(session: session)
                     .environment(chatManager)
             }
         }

@@ -1,4 +1,3 @@
-import AnthropicChatService
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import DataPathsService
@@ -11,7 +10,6 @@ import RepositorySDK
 import SkillBrowserFeature
 import SkillScannerSDK
 import SkillService
-import SwiftData
 import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
@@ -58,7 +56,7 @@ public struct AIDevToolsKitMacEntryView: View {
             .environment(planRunnerModel)
             .environment(providerModel)
             .environment(workspaceModel)
-            .modelContainer(for: [ChatConversation.self, ChatMessage.self])
+            .frame(minWidth: 800, minHeight: 600)
     }
 }
 

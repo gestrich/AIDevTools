@@ -1,11 +1,9 @@
-import AIOutputSDK
 import ArchitecturePlannerService
-import ClaudeCodeChatService
+import ChatManagerService
 import PlanRunnerService
 import ProviderRegistryService
 import RepositorySDK
 import SkillService
-import SwiftData
 import SwiftUI
 
 enum WorkspaceItem: Hashable {
@@ -29,14 +27,12 @@ struct WorkspaceView: View {
     @AppStorage("selectedPlanName") private var storedPlanName: String?
     @AppStorage("selectedSkillName") private var storedSkillName: String?
     @AppStorage("anthropicAPIKey") private var apiKey = ""
-    @Environment(\.modelContext) private var modelContext
     @AppStorage("chatPanelVisible") private var chatPanelVisible = false
+    @AppStorage("chatProviderName") private var chatProviderName: String = "claude"
     @State private var selectedRepoID: UUID?
     @State private var selectedItem: WorkspaceItem?
     @State private var showGenerateSheet = false
-    @State private var chatViewModel: ChatViewModel?
-    @AppStorage("chatProviderName") private var chatProviderName: String = "claude"
-    @State private var claudeCodeChatManager: ClaudeCodeChatManager?
+    @State private var chatManager: ChatManager?
     @State private var showingChatSettings = false
     @State private var showingSessionPicker = false
 
@@ -56,8 +52,7 @@ struct WorkspaceView: View {
                     }
                     architecturePlannerModel.loadJobs(repoName: repo.name, repoPath: repo.path.path())
                 }
-                rebuildChatViewModel()
-                rebuildClaudeCodeChatManager()
+                rebuildChatManager()
             }
         } content: {
             if model.selectedRepository != nil {
@@ -156,9 +151,9 @@ struct WorkspaceView: View {
                 }
             }
             .sheet(isPresented: $showingChatSettings) {
-                if let claudeCodeChatManager {
-                    ClaudeCodeChatSettingsView()
-                        .environment(claudeCodeChatManager)
+                if let chatManager {
+                    ChatSettingsView()
+                        .environment(chatManager)
                 }
             }
         }
@@ -180,12 +175,11 @@ struct WorkspaceView: View {
                     selectedItem = .skill(skillName)
                 }
             }
-            rebuildChatViewModel()
-            rebuildClaudeCodeChatManager()
+            rebuildChatManager()
         }
         .onChange(of: apiKey) { _, _ in
             providerModel.refreshProviders()
-            rebuildChatViewModel()
+            rebuildChatManager()
         }
     }
 
@@ -205,22 +199,21 @@ struct WorkspaceView: View {
             .pickerStyle(.segmented)
             .frame(maxWidth: 200)
             .onChange(of: chatProviderName) { _, _ in
-                rebuildChatViewModel()
-                rebuildClaudeCodeChatManager()
+                rebuildChatManager()
             }
 
             Spacer()
 
-            if let claudeCodeChatManager {
-                if claudeCodeChatManager.supportsSessionHistory {
+            if let chatManager {
+                if chatManager.supportsSessionHistory {
                     Button(action: { showingSessionPicker = true }) {
                         Image(systemName: "clock.arrow.circlepath")
                     }
                     .buttonStyle(.plain)
                     .help("Session history")
                     .popover(isPresented: $showingSessionPicker) {
-                        ClaudeCodeSessionPickerView()
-                            .environment(claudeCodeChatManager)
+                        ChatSessionPickerView()
+                            .environment(chatManager)
                             .frame(minWidth: 300, minHeight: 400)
                     }
                 }
@@ -291,55 +284,27 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var chatPanelView: some View {
-        if chatProviderName == "anthropic-api" {
-            if let chatViewModel {
-                ChatView(viewModel: chatViewModel)
-            } else {
-                ContentUnavailableView("API Key Required", systemImage: "key", description: Text("Set your Anthropic API key in Settings to use API chat."))
-            }
+        if let chatManager {
+            ChatPanelView()
+                .environment(chatManager)
         } else {
-            if let claudeCodeChatManager {
-                ClaudeCodeChatView()
-                    .environment(claudeCodeChatManager)
-            } else {
-                ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Select a repository to start chat."))
-            }
+            ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Select a repository to start chat."))
         }
     }
 
-    private func rebuildChatViewModel() {
-        guard let client = providerModel.providerRegistry.client(named: "anthropic-api"),
-              model.selectedRepository != nil else {
-            chatViewModel = nil
-            return
-        }
-        chatViewModel = ChatViewModel(
-            client: client,
-            modelContext: modelContext,
-            systemPrompt: buildSystemPrompt()
-        )
-    }
-
-    private func rebuildClaudeCodeChatManager() {
+    private func rebuildChatManager() {
         guard let repo = model.selectedRepository else {
-            claudeCodeChatManager = nil
+            chatManager = nil
             return
         }
         guard let client = providerModel.providerRegistry.client(named: chatProviderName) else {
-            claudeCodeChatManager = nil
+            chatManager = nil
             return
         }
-        claudeCodeChatManager = ClaudeCodeChatManager(
-            workingDirectory: repo.path.path(),
-            client: client
+        chatManager = ChatManager(
+            client: client,
+            workingDirectory: repo.path.path()
         )
-    }
-
-    private func buildSystemPrompt() -> String {
-        guard let repo = model.selectedRepository else {
-            return "You are a helpful AI assistant."
-        }
-        return "You are a helpful AI assistant. The user is working in the repository '\(repo.name)' located at \(repo.path.path())."
     }
 
     // MARK: - Plan List Content
