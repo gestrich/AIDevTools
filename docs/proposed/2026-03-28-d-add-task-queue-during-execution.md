@@ -45,7 +45,10 @@ Create a new use case in `Sources/Features/MarkdownPlannerFeature/usecases/Integ
 - Returns a simple success/failure result
 - Use `dangerouslySkipPermissions: true` since this runs during automated execution
 
-## - [ ] Phase 3: Add between-phases hook to ExecutePlanUseCase
+## - [x] Phase 3: Add between-phases hook to ExecutePlanUseCase
+
+**Skills used**: none
+**Principles applied**: Minimal change — added optional `betweenPhases` closure with default `nil` so all existing call sites remain unchanged. Placed the call after the `.next` early return and architecture diagram check but before `getPhaseStatus`, so the closure can modify the plan file and the subsequent status fetch picks up changes.
 
 Modify `ExecutePlanUseCase` to support a callback between phases:
 

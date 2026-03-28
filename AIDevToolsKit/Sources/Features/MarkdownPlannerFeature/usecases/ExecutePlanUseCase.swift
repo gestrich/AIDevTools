@@ -108,7 +108,8 @@ public struct ExecutePlanUseCase: Sendable {
 
     public func run(
         _ options: Options,
-        onProgress: (@Sendable (Progress) -> Void)? = nil
+        onProgress: (@Sendable (Progress) -> Void)? = nil,
+        betweenPhases: (@Sendable () async throws -> Void)? = nil
     ) async throws -> Result {
         guard FileManager.default.fileExists(atPath: options.planPath.path) else {
             throw ExecuteError.planNotFound(options.planPath.path)
@@ -233,6 +234,8 @@ public struct ExecutePlanUseCase: Sendable {
                     totalSeconds: totalSeconds
                 )
             }
+
+            try await betweenPhases?()
 
             onProgress?(.fetchingStatus)
             statusResponse = try await getPhaseStatus(
