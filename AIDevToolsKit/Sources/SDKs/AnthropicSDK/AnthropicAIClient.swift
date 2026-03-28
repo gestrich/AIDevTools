@@ -2,15 +2,17 @@ import AIOutputSDK
 import Foundation
 @preconcurrency import SwiftAnthropic
 
-public actor AnthropicAIClient: AIClient {
+public actor AnthropicAIClient: AIClient, SessionListable {
     public nonisolated var name: String { "anthropic-api" }
     public nonisolated var displayName: String { "Anthropic API" }
 
     private let apiClient: AnthropicAPIClient
+    private let storage: AnthropicSessionStorage
     private var conversations: [String: [MessageParameter.Message]] = [:]
 
-    public init(apiClient: AnthropicAPIClient) {
+    public init(apiClient: AnthropicAPIClient, storageDirectory: URL? = nil) {
         self.apiClient = apiClient
+        self.storage = AnthropicSessionStorage(baseDirectory: storageDirectory)
     }
 
     public func run(
@@ -19,6 +21,19 @@ public actor AnthropicAIClient: AIClient {
         onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIClientResult {
         let sessionId = options.sessionId ?? UUID().uuidString
+
+        if conversations[sessionId] == nil {
+            let persisted = await storage.loadPersistedMessages(sessionId: sessionId)
+            if !persisted.isEmpty {
+                conversations[sessionId] = persisted.map { msg in
+                    MessageParameter.Message(
+                        role: msg.role == "user" ? .user : .assistant,
+                        content: .text(msg.content)
+                    )
+                }
+            }
+        }
+
         var history = conversations[sessionId] ?? []
 
         let userMessage = MessageParameter.Message(role: .user, content: .text(prompt))
@@ -55,6 +70,22 @@ public actor AnthropicAIClient: AIClient {
         history.append(assistantMessage)
         conversations[sessionId] = history
 
+        let messageTuples = history.map { msg -> (role: String, content: String) in
+            let role = msg.role == "user" ? "user" : "assistant"
+            let content: String
+            switch msg.content {
+            case .text(let text):
+                content = text
+            case .list(let objects):
+                content = objects.compactMap { obj -> String? in
+                    if case .text(let text) = obj { return text }
+                    return nil
+                }.joined(separator: "\n")
+            }
+            return (role: role, content: content)
+        }
+        try? await storage.save(sessionId: sessionId, messages: messageTuples)
+
         return AIClientResult(exitCode: 0, sessionId: sessionId, stderr: "", stdout: fullResponse)
     }
 
@@ -80,5 +111,15 @@ public actor AnthropicAIClient: AIClient {
         let value = try JSONDecoder().decode(T.self, from: data)
 
         return AIStructuredResult(rawOutput: result.stdout, sessionId: result.sessionId, stderr: "", value: value)
+    }
+
+    // MARK: - SessionListable
+
+    public func listSessions(workingDirectory: String) async -> [ChatSession] {
+        await storage.listSessions()
+    }
+
+    public func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] {
+        await storage.loadMessages(sessionId: sessionId)
     }
 }

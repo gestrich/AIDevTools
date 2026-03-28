@@ -22,7 +22,7 @@ struct ChatCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Working directory (defaults to current directory)")
     var workingDir: String?
 
-    @Flag(name: .long, help: "Resume the last session (claude provider only)")
+    @Flag(name: .long, help: "Resume the last session")
     var resume: Bool = false
 
     @Argument(help: "Single message to send (omit for interactive mode)")
@@ -55,8 +55,16 @@ struct ChatCommand: AsyncParsableCommand {
 
     private func sendAnthropicMessage(_ text: String, client: any AIClient) async throws {
         let useCase = SendChatMessageUseCase(client: client)
+        var sessionId: String?
+        if resume, let listable = client as? SessionListable {
+            let dir = workingDir ?? FileManager.default.currentDirectoryPath
+            let sessions = await listable.listSessions(workingDirectory: dir)
+            sessionId = sessions.first?.id
+        }
+
         let options = SendChatMessageUseCase.Options(
             message: text,
+            sessionId: sessionId,
             systemPrompt: systemPrompt
         )
 
@@ -72,11 +80,20 @@ struct ChatCommand: AsyncParsableCommand {
     }
 
     private func runAnthropicInteractive(client: any AIClient) async throws {
-        print("Chat with Claude (type 'exit' or Ctrl-D to quit)")
+        print("Anthropic API Chat (type 'exit' or Ctrl-D to quit)")
         print("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}")
 
         let useCase = SendChatMessageUseCase(client: client)
         var sessionId: String?
+
+        if resume, let listable = client as? SessionListable {
+            let dir = workingDir ?? FileManager.default.currentDirectoryPath
+            let sessions = await listable.listSessions(workingDirectory: dir)
+            sessionId = sessions.first?.id
+            if let sessionId {
+                print("Resuming session: \(sessionId)")
+            }
+        }
 
         while true {
             print("\nYou: ", terminator: "")

@@ -342,9 +342,10 @@ Update `Package.swift` to remove dead targets and add new ones.
 - CLI: `ai-dev-tools-kit chat --provider codex "hello"` — still works
 - CLI: `ai-dev-tools-kit chat --provider anthropic-api "hello"` — still works (reads from .env)
 
-## - [ ] Phase 7: Anthropic API session persistence
+## - [x] Phase 7: Anthropic API session persistence
 
-**Skills to read**: `swift-architecture`
+**Skills used**: `swift-architecture`
+**Principles applied**: JSON file persistence in `~/.aidevtools/anthropic/sessions/` owned by `AnthropicAIClient`; actor-isolated `AnthropicSessionStorage` handles reads/writes; conforms to `SessionListable` so session picker appears automatically; lazy-loads persisted history on session resume
 
 `AnthropicAIClient` currently holds conversation history in-memory (`conversations` dictionary keyed by `sessionId`). Sessions are lost on app restart. Add SwiftData persistence to `AnthropicAIClient` itself so it owns its storage.
 
