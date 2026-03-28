@@ -169,7 +169,10 @@ public struct FileWatcher: Sendable {
 **Files to create**:
 - `AIOutputSDK/FileWatcher.swift` (or create a small `FileWatcherSDK` package if `AIOutputSDK` shouldn't own file I/O)
 
-## - [ ] Phase 4: Embeddable read-only chat view
+## - [x] Phase 4: Embeddable read-only chat view
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Extracted the scrollable message list (with scroll-to-bottom tracking, unseen count badge, empty state) into a standalone `ChatMessagesView` that reads `ChatModel` from the environment. `ChatPanelView` now composes `ChatMessagesView` + `messageInputView`, keeping the interactive input separate. Feature views can embed `ChatMessagesView` directly for read-only streaming output.
 
 **Skills to read**: `swift-architecture`
 
