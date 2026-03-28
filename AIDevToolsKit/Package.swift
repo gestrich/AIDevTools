@@ -136,6 +136,8 @@ let package = Package(
         .target(
             name: "SkillBrowserFeature",
             dependencies: [
+                "EvalService",
+                "MarkdownPlannerService",
                 "RepositorySDK",
                 "SkillScannerSDK",
                 "SkillService",

@@ -89,15 +89,18 @@ struct AddRepo: ParsableCommand {
         let url = URL(filePath: path, relativeTo: URL(filePath: FileManager.default.currentDirectoryPath))
         let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
         let store = try ReposCommand.makeStore(service)
-        let repo = try AddRepositoryUseCase(store: store).run(path: url, name: name)
-        if let casesDir {
-            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
-            try evalSettingsStore.update(repoId: repo.id, casesDirectory: casesDir)
-        }
-        if completedDir != nil || proposedDir != nil {
-            let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
-            try planSettingsStore.update(repoId: repo.id, proposedDirectory: proposedDir, completedDirectory: completedDir)
-        }
+        let useCase = ConfigureNewRepositoryUseCase(
+            addRepository: AddRepositoryUseCase(store: store),
+            evalSettingsStore: try ReposCommand.makeEvalSettingsStore(service),
+            planSettingsStore: try ReposCommand.makePlanSettingsStore(service),
+            updateRepository: UpdateRepositoryUseCase(store: store)
+        )
+        let repo = try useCase.run(
+            repository: RepositoryInfo(path: url, name: name),
+            casesDirectory: casesDir,
+            completedDirectory: completedDir,
+            proposedDirectory: proposedDir
+        )
         print("Added repository: \(repo.name) (\(repo.id))")
     }
 }
@@ -119,11 +122,12 @@ struct RemoveRepo: ParsableCommand {
         }
         let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
         let store = try ReposCommand.makeStore(service)
-        let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
-        let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
-        try RemoveRepositoryUseCase(store: store).run(id: uuid)
-        try evalSettingsStore.remove(repoId: uuid)
-        try planSettingsStore.remove(repoId: uuid)
+        let useCase = RemoveRepositoryWithSettingsUseCase(
+            evalSettingsStore: try ReposCommand.makeEvalSettingsStore(service),
+            planSettingsStore: try ReposCommand.makePlanSettingsStore(service),
+            removeRepository: RemoveRepositoryUseCase(store: store)
+        )
+        try useCase.run(id: uuid)
         print("Removed repository: \(uuid)")
     }
 }

@@ -103,9 +103,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 10: Review and fix WorkspaceModel.swift
+## - [x] Phase 10: Review and fix WorkspaceModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Extracted multi-step add/remove orchestration into ConfigureNewRepositoryUseCase and RemoveRepositoryWithSettingsUseCase (shared by model and CLI, eliminating duplication); tightened access control on repositories, selectedRepository, skills, isLoadingSkills to private(set)
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/WorkspaceModel.swift`
 - Save the review output to `reviews/apps-WorkspaceModel.md`

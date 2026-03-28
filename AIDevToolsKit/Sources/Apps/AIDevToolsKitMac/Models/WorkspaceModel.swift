@@ -15,41 +15,38 @@ final class WorkspaceModel {
         case error(Error)
     }
 
-    var repositories: [RepositoryInfo] = []
-    var selectedRepository: RepositoryInfo?
-    var skills: [Skill] = []
-    var isLoadingSkills: Bool = false
+    private(set) var repositories: [RepositoryInfo] = []
+    private(set) var selectedRepository: RepositoryInfo?
+    private(set) var skills: [Skill] = []
+    private(set) var isLoadingSkills: Bool = false
     var state: State = .idle
 
     private let dataPath: URL
-    private let repoStore: RepositoryStore
     private let evalSettingsStore: EvalRepoSettingsStore
     private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let loadRepositories: LoadRepositoriesUseCase
     private let loadSkills: LoadSkillsUseCase
-    private let addRepository: AddRepositoryUseCase
-    private let removeRepository: RemoveRepositoryUseCase
+    private let configureNewRepository: ConfigureNewRepositoryUseCase
+    private let removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase
     private let updateRepository: UpdateRepositoryUseCase
 
     init(
         dataPath: URL,
-        repoStore: RepositoryStore,
         evalSettingsStore: EvalRepoSettingsStore,
         planSettingsStore: MarkdownPlannerRepoSettingsStore,
         loadRepositories: LoadRepositoriesUseCase,
         loadSkills: LoadSkillsUseCase,
-        addRepository: AddRepositoryUseCase,
-        removeRepository: RemoveRepositoryUseCase,
+        configureNewRepository: ConfigureNewRepositoryUseCase,
+        removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase,
         updateRepository: UpdateRepositoryUseCase
     ) {
         self.dataPath = dataPath
-        self.repoStore = repoStore
         self.evalSettingsStore = evalSettingsStore
         self.planSettingsStore = planSettingsStore
         self.loadRepositories = loadRepositories
         self.loadSkills = loadSkills
-        self.addRepository = addRepository
-        self.removeRepository = removeRepository
+        self.configureNewRepository = configureNewRepository
+        self.removeRepositoryWithSettings = removeRepositoryWithSettings
         self.updateRepository = updateRepository
     }
 
@@ -99,18 +96,12 @@ final class WorkspaceModel {
         proposedDirectory: String? = nil
     ) {
         do {
-            let added = try addRepository.run(path: repo.path, name: repo.name)
-            try updateRepository.run(repo.with(id: added.id))
-            if let casesDirectory {
-                try evalSettingsStore.update(repoId: added.id, casesDirectory: casesDirectory)
-            }
-            if completedDirectory != nil || proposedDirectory != nil {
-                try planSettingsStore.update(
-                    repoId: added.id,
-                    proposedDirectory: proposedDirectory,
-                    completedDirectory: completedDirectory
-                )
-            }
+            _ = try configureNewRepository.run(
+                repository: repo,
+                casesDirectory: casesDirectory,
+                completedDirectory: completedDirectory,
+                proposedDirectory: proposedDirectory
+            )
             load()
         } catch {
             state = .error(error)
@@ -131,9 +122,7 @@ final class WorkspaceModel {
 
     func removeRepository(id: UUID) {
         do {
-            try removeRepository.run(id: id)
-            try evalSettingsStore.remove(repoId: id)
-            try planSettingsStore.remove(repoId: id)
+            try removeRepositoryWithSettings.run(id: id)
             if selectedRepository?.id == id {
                 selectedRepository = nil
                 skills = []
