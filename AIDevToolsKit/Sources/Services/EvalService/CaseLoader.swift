@@ -31,9 +31,8 @@ public struct CaseLoader: Sendable {
                 guard !trimmed.isEmpty else { continue }
                 guard let data = trimmed.data(using: .utf8) else { continue }
 
-                var evalCase = try decoder.decode(EvalCase.self, from: data)
-                evalCase.suite = suite
-                cases.append(evalCase)
+                let evalCase = try decoder.decode(EvalCase.self, from: data)
+                cases.append(evalCase.withSuite(suite))
             }
         }
 

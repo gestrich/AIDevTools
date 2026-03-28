@@ -123,9 +123,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 12: Review and fix EvalCase.swift
+## - [x] Phase 12: Review and fix EvalCase.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Changed `suite` from `var` to `let` and added `withSuite(_:)` copy method to eliminate post-decode mutation; updated CaseLoader to use the copy method instead of direct property mutation
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/EvalCase.swift`
 - Save the review output to `reviews/services-EvalCase.md`

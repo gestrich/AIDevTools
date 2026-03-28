@@ -22,7 +22,7 @@ public struct SkillAssertion: Codable, Sendable {
 
 public struct EvalCase: Codable, Sendable {
     public let id: String
-    public var suite: String?
+    public let suite: String?
     public let mode: EvalMode
     public let skills: [SkillAssertion]?
     public let task: String?
@@ -60,6 +60,23 @@ public struct EvalCase: Codable, Sendable {
         self.mustNotInclude = mustNotInclude
         self.deterministic = deterministic
         self.rubric = rubric
+    }
+
+    public func withSuite(_ suite: String) -> EvalCase {
+        EvalCase(
+            id: id,
+            suite: suite,
+            mode: mode,
+            skills: skills,
+            task: task,
+            input: input,
+            prompt: prompt,
+            expected: expected,
+            mustInclude: mustInclude,
+            mustNotInclude: mustNotInclude,
+            deterministic: deterministic,
+            rubric: rubric
+        )
     }
 
     public var qualifiedId: String {
