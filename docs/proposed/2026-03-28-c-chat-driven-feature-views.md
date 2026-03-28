@@ -354,7 +354,10 @@ This research phase can run in parallel with earlier phases since it's informati
 
 **Output**: A document or code comments capturing the mapping from each provider's raw stream events to `AIContentBlock` cases.
 
-## - [ ] Phase 8: Validation
+## - [x] Phase 8: Validation
+
+**Skills used**: `swift-testing`
+**Principles applied**: Build verified clean. Added `ClaudeStreamFormatterTests` (12 tests) covering `formatStructured()` for all event types — text delta, thinking, tool use (Bash/Read), tool result (success/error), metrics, multi-block, multi-line chunks, and edge cases. Added `FileWatcherTests` (3 tests) covering non-existent file (stream finishes immediately), write detection (emits updated content after 200ms debounce), and cancellation (stream terminates without hanging). `ChatMessage` contentBlocks tests already existed in `ChatFeatureTests` from prior phases. Pre-existing `SkillScannerSDKTests` failures are unrelated (they pick up `~/.claude/commands` entries in isolation mode).
 
 **Skills to read**: `swift-testing`
 
