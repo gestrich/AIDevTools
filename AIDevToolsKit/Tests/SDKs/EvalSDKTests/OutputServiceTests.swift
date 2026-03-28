@@ -17,7 +17,7 @@ private struct PassthroughFormatter: StreamFormatter {
             .appendingPathComponent("OutputServiceTests-\(UUID().uuidString)")
     }
 
-    private func makeConfiguration(outputDir: URL, provider: Provider = .claude, caseId: String = "test-case") -> RunConfiguration {
+    private func makeConfiguration(outputDir: URL, provider: Provider = Provider(rawValue: "claude"), caseId: String = "test-case") -> RunConfiguration {
         RunConfiguration(
             prompt: "test prompt",
             outputSchemaPath: outputDir.appendingPathComponent("schema.json"),
@@ -51,7 +51,7 @@ private struct PassthroughFormatter: StreamFormatter {
         let outputDir = makeTempDir()
         defer { try? FileManager.default.removeItem(at: outputDir) }
         let config = makeConfiguration(outputDir: outputDir)
-        let result = ProviderResult(provider: .claude)
+        let result = ProviderResult(provider: Provider(rawValue: "claude"))
 
         let updated = try writeWithSession(result: result, stdout: "hello stdout", stderr: "hello stderr", configuration: config)
         let rawContents = try String(contentsOf: updated.rawStdoutPath!, encoding: .utf8)
@@ -63,7 +63,7 @@ private struct PassthroughFormatter: StreamFormatter {
         let outputDir = makeTempDir()
         defer { try? FileManager.default.removeItem(at: outputDir) }
         let config = makeConfiguration(outputDir: outputDir)
-        let result = ProviderResult(provider: .claude)
+        let result = ProviderResult(provider: Provider(rawValue: "claude"))
 
         let updated = try writeWithSession(result: result, stdout: "out", stderr: "err", configuration: config)
 
@@ -76,8 +76,8 @@ private struct PassthroughFormatter: StreamFormatter {
     @Test func stdoutPathUsesExpectedLayout() throws {
         let outputDir = makeTempDir()
         defer { try? FileManager.default.removeItem(at: outputDir) }
-        let config = makeConfiguration(outputDir: outputDir, provider: .claude, caseId: "my-suite.my-case")
-        let result = ProviderResult(provider: .claude)
+        let config = makeConfiguration(outputDir: outputDir, provider: Provider(rawValue: "claude"), caseId: "my-suite.my-case")
+        let result = ProviderResult(provider: Provider(rawValue: "claude"))
 
         let updated = try writeWithSession(result: result, stdout: "content", stderr: "", configuration: config)
 
@@ -91,7 +91,7 @@ private struct PassthroughFormatter: StreamFormatter {
         defer { try? FileManager.default.removeItem(at: outputDir) }
 
         #expect(throws: OutputServiceError.self) {
-            try service.readFormattedOutput(caseId: "missing", provider: .claude, outputDirectory: outputDir, formatter: PassthroughFormatter(), rubricFormatter: PassthroughFormatter())
+            try service.readFormattedOutput(caseId: "missing", provider: Provider(rawValue: "claude"), outputDirectory: outputDir, formatter: PassthroughFormatter(), rubricFormatter: PassthroughFormatter())
         }
     }
 
@@ -99,7 +99,7 @@ private struct PassthroughFormatter: StreamFormatter {
         let outputDir = makeTempDir()
         defer { try? FileManager.default.removeItem(at: outputDir) }
         let config = makeConfiguration(outputDir: outputDir)
-        let result = ProviderResult(provider: .claude)
+        let result = ProviderResult(provider: Provider(rawValue: "claude"))
 
         _ = try writeWithSession(result: result, stdout: "first", stderr: "", configuration: config)
         let updated = try writeWithSession(result: result, stdout: "second", stderr: "", configuration: config)

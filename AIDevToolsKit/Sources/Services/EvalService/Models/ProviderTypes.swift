@@ -6,9 +6,6 @@ public struct Provider: RawRepresentable, Codable, Sendable, Hashable, CustomStr
     public init(rawValue: String) { self.rawValue = rawValue }
 
     public var description: String { rawValue }
-
-    public static let claude = Provider(rawValue: "claude")
-    public static let codex = Provider(rawValue: "codex")
 }
 
 import AIOutputSDK

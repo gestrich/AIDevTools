@@ -11,7 +11,7 @@ struct MockProviderAdapter: ProviderAdapterProtocol {
 
     init(
         capabilities: ProviderCapabilities = ProviderCapabilities(),
-        result: ProviderResult = ProviderResult(provider: .claude)
+        result: ProviderResult = ProviderResult(provider: Provider(rawValue: "claude"))
     ) {
         self.providerCapabilities = capabilities
         self.result = result

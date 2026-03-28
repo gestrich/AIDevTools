@@ -1,7 +1,6 @@
 import AIOutputSDK
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
-import ClaudeCLISDK
 import DataPathsService
 import Foundation
 
@@ -41,26 +40,27 @@ final class ArchitecturePlannerModel {
 
     init(
         dataPathsService: DataPathsService,
-        compileArchInfoUseCase: CompileArchitectureInfoUseCase = CompileArchitectureInfoUseCase(client: ClaudeCLIClient()),
-        compileFollowupsUseCase: CompileFollowupsUseCase = CompileFollowupsUseCase(client: ClaudeCLIClient()),
+        client: any AIClient,
+        compileArchInfoUseCase: CompileArchitectureInfoUseCase? = nil,
+        compileFollowupsUseCase: CompileFollowupsUseCase? = nil,
         createJobUseCase: CreatePlanningJobUseCase = CreatePlanningJobUseCase(),
-        executeUseCase: ExecuteImplementationUseCase = ExecuteImplementationUseCase(client: ClaudeCLIClient()),
-        formRequirementsUseCase: FormRequirementsUseCase = FormRequirementsUseCase(client: ClaudeCLIClient()),
+        executeUseCase: ExecuteImplementationUseCase? = nil,
+        formRequirementsUseCase: FormRequirementsUseCase? = nil,
         generateReportUseCase: GenerateReportUseCase = GenerateReportUseCase(),
         manageGuidelinesUseCase: ManageGuidelinesUseCase = ManageGuidelinesUseCase(),
-        planAcrossLayersUseCase: PlanAcrossLayersUseCase = PlanAcrossLayersUseCase(client: ClaudeCLIClient()),
-        scoreConformanceUseCase: ScoreConformanceUseCase = ScoreConformanceUseCase(client: ClaudeCLIClient())
+        planAcrossLayersUseCase: PlanAcrossLayersUseCase? = nil,
+        scoreConformanceUseCase: ScoreConformanceUseCase? = nil
     ) {
         self.dataPathsService = dataPathsService
-        self.compileArchInfoUseCase = compileArchInfoUseCase
-        self.compileFollowupsUseCase = compileFollowupsUseCase
+        self.compileArchInfoUseCase = compileArchInfoUseCase ?? CompileArchitectureInfoUseCase(client: client)
+        self.compileFollowupsUseCase = compileFollowupsUseCase ?? CompileFollowupsUseCase(client: client)
         self.createJobUseCase = createJobUseCase
-        self.executeUseCase = executeUseCase
-        self.formRequirementsUseCase = formRequirementsUseCase
+        self.executeUseCase = executeUseCase ?? ExecuteImplementationUseCase(client: client)
+        self.formRequirementsUseCase = formRequirementsUseCase ?? FormRequirementsUseCase(client: client)
         self.generateReportUseCase = generateReportUseCase
         self.manageGuidelinesUseCase = manageGuidelinesUseCase
-        self.planAcrossLayersUseCase = planAcrossLayersUseCase
-        self.scoreConformanceUseCase = scoreConformanceUseCase
+        self.planAcrossLayersUseCase = planAcrossLayersUseCase ?? PlanAcrossLayersUseCase(client: client)
+        self.scoreConformanceUseCase = scoreConformanceUseCase ?? ScoreConformanceUseCase(client: client)
     }
 
     func loadJobs(repoName: String, repoPath: String) {

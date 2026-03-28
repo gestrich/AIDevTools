@@ -1,38 +1,20 @@
+import AIOutputSDK
 import EvalSDK
 import EvalService
+import ProviderRegistryService
 import SwiftUI
-
-enum ProviderSelection: String, CaseIterable {
-    case claude
-    case codex
-    case both
-
-    var label: String {
-        switch self {
-        case .claude: "Claude"
-        case .codex: "Codex"
-        case .both: "Both"
-        }
-    }
-
-    var providers: [Provider] {
-        switch self {
-        case .claude: [.claude]
-        case .codex: [.codex]
-        case .both: [.claude, .codex]
-        }
-    }
-}
 
 struct EvalResultsView: View {
     let config: RepositoryEvalConfig
     let skillName: String?
+    let registry: EvalProviderRegistry
     @State private var evalRunnerModel: EvalRunnerModel
 
-    init(config: RepositoryEvalConfig, skillName: String? = nil) {
+    init(config: RepositoryEvalConfig, skillName: String? = nil, registry: EvalProviderRegistry) {
         self.config = config
         self.skillName = skillName
-        _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName))
+        self.registry = registry
+        _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName, registry: registry))
     }
 
     @State private var showDirtyRepoAlert = false
@@ -96,7 +78,7 @@ struct EvalResultsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(evalRunnerModel.displayedCases, id: \.id) { evalCase in
-                            EvalCaseRow(evalCase: evalCase)
+                            EvalCaseRow(evalCase: evalCase, registry: registry)
                         }
                     }
                     .padding()
@@ -147,11 +129,11 @@ struct EvalResultsView: View {
             }
             .disabled(isRunning || evalRunnerModel.lastResults.isEmpty)
 
-            RunEvalMenu { provider in
+            RunEvalMenu(providers: registry.entries) { providerFilter in
                 runWithDirtyCheck(suite: activeSuite) {
                     Task {
                         await evalRunnerModel.run(
-                            providers: provider.providers,
+                            providerFilter: providerFilter,
                             suite: activeSuite
                         )
                     }
@@ -183,24 +165,28 @@ struct EvalResultsView: View {
 // MARK: - Run Eval Menu (play button with provider disclosure)
 
 private struct RunEvalMenu: View {
-    let onRun: (ProviderSelection) -> Void
+    let providers: [EvalProviderEntry]
+    let onRun: ([String]?) -> Void
 
     var body: some View {
         Menu {
-            Button { onRun(.claude) } label: {
-                Label("Claude", systemImage: "play.fill")
+            ForEach(providers, id: \.name) { entry in
+                Button { onRun([entry.name]) } label: {
+                    Label(entry.displayName, systemImage: "play.fill")
+                }
             }
-            Button { onRun(.codex) } label: {
-                Label("Codex", systemImage: "play.fill")
-            }
-            Divider()
-            Button { onRun(.both) } label: {
-                Label("Both", systemImage: "play.fill")
+            if providers.count > 1 {
+                Divider()
+                Button { onRun(nil) } label: {
+                    Label("All", systemImage: "play.fill")
+                }
             }
         } label: {
             Label("Run", systemImage: "play.fill")
         } primaryAction: {
-            onRun(.claude)
+            if let first = providers.first {
+                onRun([first.name])
+            }
         }
         .buttonStyle(.borderedProminent)
         .menuIndicator(.visible)
@@ -208,25 +194,29 @@ private struct RunEvalMenu: View {
 }
 
 private struct RunEvalMenuCompact: View {
-    let onRun: (ProviderSelection) -> Void
+    let providers: [EvalProviderEntry]
+    let onRun: ([String]?) -> Void
 
     var body: some View {
         Menu {
-            Button { onRun(.claude) } label: {
-                Label("Claude", systemImage: "play.fill")
+            ForEach(providers, id: \.name) { entry in
+                Button { onRun([entry.name]) } label: {
+                    Label(entry.displayName, systemImage: "play.fill")
+                }
             }
-            Button { onRun(.codex) } label: {
-                Label("Codex", systemImage: "play.fill")
-            }
-            Divider()
-            Button { onRun(.both) } label: {
-                Label("Both", systemImage: "play.fill")
+            if providers.count > 1 {
+                Divider()
+                Button { onRun(nil) } label: {
+                    Label("All", systemImage: "play.fill")
+                }
             }
         } label: {
             Image(systemName: "play.fill")
                 .font(.callout)
         } primaryAction: {
-            onRun(.claude)
+            if let first = providers.first {
+                onRun([first.name])
+            }
         }
         .buttonStyle(.borderless)
         .menuIndicator(.visible)
@@ -238,6 +228,7 @@ private struct RunEvalMenuCompact: View {
 private struct EvalCaseRow: View {
     @Environment(EvalRunnerModel.self) var evalRunnerModel
     let evalCase: EvalCase
+    let registry: EvalProviderRegistry
 
     @State private var isExpanded = false
     @State private var expandedOutputs: Set<String> = []
@@ -292,13 +283,13 @@ private struct EvalCaseRow: View {
                 }
                 Spacer()
                 providerResultBadges
-                RunEvalMenuCompact { provider in
+                RunEvalMenuCompact(providers: registry.entries) { providerFilter in
                     let caseSuite = evalRunnerModel.suites.first { $0.name == evalCase.suite }
                     let suite = evalRunnerModel.selectedSuite ?? caseSuite
                     let action: () -> Void = {
                         Task {
                             await evalRunnerModel.run(
-                                providers: provider.providers,
+                                providerFilter: providerFilter,
                                 suite: suite,
                                 evalCase: evalCase
                             )
@@ -619,7 +610,7 @@ private struct EvalCaseRow: View {
                 DetailSection(label: "Trace Must Not Contain", content: cmds.joined(separator: "\n"))
             }
             if let order = det.traceCommandOrder, !order.isEmpty {
-                DetailSection(label: "Trace Command Order", content: order.joined(separator: " → "))
+                DetailSection(label: "Trace Command Order", content: order.joined(separator: " \u{2192} "))
             }
             if let max = det.maxCommands {
                 DetailSection(label: "Max Commands", content: "\(max)")

@@ -4,6 +4,7 @@ import ClaudeCLISDK
 import CodexCLISDK
 import DataPathsService
 import EvalFeature
+import EvalSDK
 import EvalService
 import Foundation
 import RepositorySDK
@@ -26,8 +27,8 @@ struct ShowOutputCommand: ParsableCommand {
     @Option(help: "The eval case ID (e.g. feature-flags.add-bool-flag-structured)")
     var caseId: String
 
-    @Option(help: "Provider used for the run (codex or claude)")
-    var provider: ProviderChoice
+    @Option(help: "Provider name (e.g. claude, codex)")
+    var provider: String
 
     func validate() throws {
         if outputDir != nil && repo != nil {
@@ -35,9 +36,6 @@ struct ShowOutputCommand: ParsableCommand {
         }
         if outputDir == nil && repo == nil {
             throw ValidationError("Must specify either --output-dir or --repo")
-        }
-        if provider == .both {
-            throw ValidationError("Must specify a single provider (codex or claude), not both")
         }
     }
 
@@ -56,7 +54,7 @@ struct ShowOutputCommand: ParsableCommand {
             throw ValidationError("Must specify either --output-dir or --repo")
         }
 
-        let resolvedProvider = provider.resolved[0]
+        let resolvedProvider = Provider(rawValue: provider)
         let options = ReadCaseOutputUseCase.Options(
             caseId: caseId,
             formatter: Self.formatter(for: resolvedProvider),
@@ -75,9 +73,8 @@ struct ShowOutputCommand: ParsableCommand {
     }
 
     private static func formatter(for provider: Provider) -> any StreamFormatter {
-        switch provider {
-        case .claude: ClaudeStreamFormatter()
-        case .codex: CodexStreamFormatter()
+        switch provider.rawValue {
+        case "codex": CodexStreamFormatter()
         default: ClaudeStreamFormatter()
         }
     }

@@ -3,6 +3,8 @@ import Foundation
 @testable import EvalFeature
 @testable import EvalService
 @testable import EvalSDK
+@testable import ProviderRegistryService
+import AIOutputSDK
 
 @Suite("RunEvalsUseCase")
 struct RunEvalsUseCaseTests {
@@ -36,19 +38,21 @@ struct RunEvalsUseCaseTests {
         ])
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
+        let client = MockAIClient(name: "claude")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "hello"
         ))
-        let useCase = RunEvalsUseCase(providers: [
-            .init(provider: .claude, adapter: adapter)
+        let registry = EvalProviderRegistry(entries: [
+            EvalProviderEntry(client: client, adapter: adapter)
         ])
+        let useCase = RunEvalsUseCase(registry: registry)
 
         var progressUpdates: [RunEvalsUseCase.Progress] = []
         let options = RunEvalsUseCase.Options(
             casesDirectory: casesDir,
             outputDirectory: outputDir,
-            providers: [.claude],
+            providerFilter: ["claude"],
             repoRoot: tempDir
         )
 
@@ -90,18 +94,20 @@ struct RunEvalsUseCaseTests {
         ])
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
+        let client = MockAIClient(name: "claude")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "match"
         ))
-        let useCase = RunEvalsUseCase(providers: [
-            .init(provider: .claude, adapter: adapter)
+        let registry = EvalProviderRegistry(entries: [
+            EvalProviderEntry(client: client, adapter: adapter)
         ])
+        let useCase = RunEvalsUseCase(registry: registry)
 
         let options = RunEvalsUseCase.Options(
             casesDirectory: casesDir,
             outputDirectory: outputDir,
-            providers: [.claude],
+            providerFilter: ["claude"],
             repoRoot: tempDir
         )
 
@@ -120,19 +126,21 @@ struct RunEvalsUseCaseTests {
         ])
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
+        let client = MockAIClient(name: "claude")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "ok"
         ))
-        let useCase = RunEvalsUseCase(providers: [
-            .init(provider: .claude, adapter: adapter)
+        let registry = EvalProviderRegistry(entries: [
+            EvalProviderEntry(client: client, adapter: adapter)
         ])
+        let useCase = RunEvalsUseCase(registry: registry)
 
         let options = RunEvalsUseCase.Options(
             casesDirectory: casesDir,
             outputDirectory: outputDir,
             suite: "nonexistent-suite",
-            providers: [.claude],
+            providerFilter: ["claude"],
             repoRoot: tempDir
         )
 

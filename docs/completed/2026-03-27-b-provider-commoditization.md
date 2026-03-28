@@ -58,7 +58,10 @@ App layer (CLI / Mac)
 
 ## Phases
 
-## - [ ] Phase 1: Add identity to AIClient and make Provider extensible
+## - [x] Phase 1: Add identity to AIClient and make Provider extensible
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added identity at the SDK protocol level so providers self-describe; converted Provider to extensible struct with backward-compatible static constants
 
 **Skills to read**: `swift-architecture`
 
@@ -117,7 +120,7 @@ This preserves backward compatibility: existing JSON artifacts with `"claude"` o
 
 `CaseIterable` goes away. Any code doing `Provider.allCases` will break intentionally — those sites must be migrated to use the registry in later phases.
 
-## - [ ] Phase 2: Create ProviderRegistry service
+## - [x] Phase 2: Create ProviderRegistry service
 
 **Skills to read**: `swift-architecture`
 
@@ -181,7 +184,7 @@ public struct EvalProviderRegistry: Sendable {
 
 The registry is a simple value type, not a singleton. The App layer creates it and injects it into features. This follows the existing DI pattern (same as how `DataPathsService` is created at the App layer and threaded through).
 
-## - [ ] Phase 3: Update EvalFeature and EvalSDK to use registry
+## - [x] Phase 3: Update EvalFeature and EvalSDK to use registry
 
 **Skills to read**: `swift-architecture`
 
@@ -225,7 +228,7 @@ Update `ProviderAdapterProtocol` so adapters self-describe via their `AIClient`:
 
 `OutputService` uses `provider.rawValue` for directory names. Since `Provider` is now a struct with string `rawValue`, and `AIClient.name` returns the same strings (`"claude"`, `"codex"`), existing artifact directories are compatible.
 
-## - [ ] Phase 4: Update CLI commands to use registry
+## - [x] Phase 4: Update CLI commands to use registry
 
 **Skills to read**: `swift-architecture`
 
@@ -298,7 +301,7 @@ func makeRegistry() -> ProviderRegistry {
 
 The `AnthropicAIClient` requires an API key, so it may be conditionally registered (only when the key is available).
 
-## - [ ] Phase 5: Update Mac app to use registry
+## - [x] Phase 5: Update Mac app to use registry
 
 **Skills to read**: `swift-architecture`
 
@@ -395,7 +398,7 @@ The two chat views (`ChatView` for Anthropic API and `ClaudeCodeChatView` for CL
 
 Recommend **Option A** for this spec — keep the views, but the picker is driven by the registry instead of a hardcoded enum. A full chat unification can be a follow-up.
 
-## - [ ] Phase 6: Clean up Provider enum usage across codebase
+## - [x] Phase 6: Clean up Provider enum usage across codebase
 
 **Skills to read**: `swift-architecture`
 
@@ -422,7 +425,7 @@ This stays as `Provider` (struct). It's already set from adapter results. Verify
 - `OutputService.swift` — provider directory naming (should work unchanged since `rawValue` is the same)
 - Any test files that reference `Provider.claude` or `Provider.codex` — update to use `Provider(rawValue: "claude")` or construct from test clients
 
-## - [ ] Phase 7: Validation
+## - [x] Phase 7: Validation
 
 **Skills to read**: `ai-dev-tools-debug`
 

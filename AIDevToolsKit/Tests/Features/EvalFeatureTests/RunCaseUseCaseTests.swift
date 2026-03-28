@@ -16,7 +16,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("result.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rubric.json"),
             artifactsDirectory: tempDir.appendingPathComponent("artifacts"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -26,7 +26,7 @@ struct RunCaseUseCaseTests {
     @Test func passingCaseWithExactMatch() async throws {
         let evalCase = EvalCase(id: "exact-1", suite: "suite", task: "task", input: "input", expected: "hello world")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "hello world"
         ))
         let useCase = RunCaseUseCase(adapter: adapter)
@@ -35,7 +35,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -49,7 +49,7 @@ struct RunCaseUseCaseTests {
     @Test func passingCaseWithMustInclude() async throws {
         let evalCase = EvalCase(id: "mi-1", suite: "s", task: "task", input: "input", mustInclude: ["Button", "action"])
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "Button(action: { })"
         ))
         let useCase = RunCaseUseCase(adapter: adapter)
@@ -58,7 +58,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -73,7 +73,7 @@ struct RunCaseUseCaseTests {
     @Test func failingExactMatch() async throws {
         let evalCase = EvalCase(id: "fail-1", suite: "s", task: "task", input: "input", expected: "Color.gray1")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "Color.blue5"
         ))
         let useCase = RunCaseUseCase(adapter: adapter)
@@ -82,7 +82,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -95,7 +95,7 @@ struct RunCaseUseCaseTests {
     @Test func failingMustNotInclude() async throws {
         let evalCase = EvalCase(id: "fail-2", suite: "s", task: "task", input: "input", mustNotInclude: ["dkColor"])
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "let c = dkColor(.gray)"
         ))
         let useCase = RunCaseUseCase(adapter: adapter)
@@ -104,7 +104,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -118,7 +118,7 @@ struct RunCaseUseCaseTests {
 
     @Test func providerErrorReturnsFailure() async throws {
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             error: ProviderError(message: "CLI process exited with code 1")
         ))
         let useCase = RunCaseUseCase(adapter: adapter)
@@ -135,7 +135,7 @@ struct RunCaseUseCaseTests {
     @Test func tracesWrittenWhenKeepTracesEnabled() async throws {
         let artifactsDir = tempDir.appendingPathComponent("trace-test")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "ok",
             events: [["type": .string("assistant")]]
         ))
@@ -145,7 +145,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: artifactsDir,
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             keepTraces: true,
             repoRoot: tempDir
         )
@@ -159,7 +159,7 @@ struct RunCaseUseCaseTests {
     @Test func tracesNotWrittenWhenKeepTracesDisabled() async throws {
         let artifactsDir = tempDir.appendingPathComponent("no-trace-test")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "ok",
             events: [["type": .string("assistant")]]
         ))
@@ -169,7 +169,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: artifactsDir,
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             keepTraces: false,
             repoRoot: tempDir
         )
@@ -188,10 +188,10 @@ struct RunCaseUseCaseTests {
         adapter.runHandler = { config in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "migrated code")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "migrated code")
             } else {
                 return ProviderResult(
-                    provider: .claude,
+                    provider: Provider(rawValue: "claude"),
                     structuredOutput: [
                         "overall_pass": .bool(true),
                         "score": .int(9),
@@ -220,7 +220,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -236,10 +236,10 @@ struct RunCaseUseCaseTests {
         adapter.runHandler = { config in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "bad code")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "bad code")
             } else {
                 return ProviderResult(
-                    provider: .claude,
+                    provider: Provider(rawValue: "claude"),
                     structuredOutput: [
                         "overall_pass": .bool(false),
                         "score": .int(2),
@@ -262,7 +262,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -278,10 +278,10 @@ struct RunCaseUseCaseTests {
         adapter.runHandler = { config in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "some result")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "some result")
             } else {
                 return ProviderResult(
-                    provider: .claude,
+                    provider: Provider(rawValue: "claude"),
                     error: ProviderError(message: "rubric CLI failed")
                 )
             }
@@ -300,7 +300,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -314,14 +314,14 @@ struct RunCaseUseCaseTests {
 
     @Test func caseIdIncludesSuiteAndId() async throws {
         let evalCase = EvalCase(id: "my-case", suite: "my-suite", task: "task", input: "input")
-        let adapter = MockProviderAdapter(result: ProviderResult(provider: .claude, resultText: "ok"))
+        let adapter = MockProviderAdapter(result: ProviderResult(provider: Provider(rawValue: "claude"), resultText: "ok"))
         let useCase = RunCaseUseCase(adapter: adapter)
         let options = RunCaseUseCase.Options(
             evalCase: evalCase,
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -332,14 +332,14 @@ struct RunCaseUseCaseTests {
 
     @Test func caseIdUsesUnknownWhenNoSuite() async throws {
         let evalCase = EvalCase(id: "orphan", task: "task", input: "input")
-        let adapter = MockProviderAdapter(result: ProviderResult(provider: .claude, resultText: "ok"))
+        let adapter = MockProviderAdapter(result: ProviderResult(provider: Provider(rawValue: "claude"), resultText: "ok"))
         let useCase = RunCaseUseCase(adapter: adapter)
         let options = RunCaseUseCase.Options(
             evalCase: evalCase,
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 
@@ -360,7 +360,7 @@ struct RunCaseUseCaseTests {
         )
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: false),
-            result: ProviderResult(provider: .claude, resultText: "ok")
+            result: ProviderResult(provider: Provider(rawValue: "claude"), resultText: "ok")
         )
         let useCase = RunCaseUseCase(adapter: adapter)
         let options = RunCaseUseCase.Options(
@@ -368,7 +368,7 @@ struct RunCaseUseCaseTests {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
 

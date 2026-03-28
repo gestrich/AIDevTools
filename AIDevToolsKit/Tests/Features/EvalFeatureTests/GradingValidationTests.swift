@@ -20,7 +20,7 @@ struct OutputMatchingValidation {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -33,7 +33,7 @@ struct OutputMatchingValidation {
             expected: "// Copyright © Acme Corp, LLC. All rights reserved.\n\nimport Foundation"
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// Copyright © Acme Corp, LLC. All rights reserved.\n\nimport Foundation"
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -47,7 +47,7 @@ struct OutputMatchingValidation {
             expected: "// Copyright © Acme Corp, LLC. All rights reserved.\n\nimport Foundation"
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// Wrong header\n\nimport Foundation"
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -63,7 +63,7 @@ struct OutputMatchingValidation {
             mustInclude: ["Copyright", "Acme Corp"]
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// Copyright © Acme Corp, LLC. All rights reserved."
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -76,7 +76,7 @@ struct OutputMatchingValidation {
             mustInclude: ["Copyright", "Acme Corp"]
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// Some other header with no relevant keywords"
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -93,7 +93,7 @@ struct OutputMatchingValidation {
             mustNotInclude: ["TODO", "FIXME"]
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// Copyright © Acme Corp, LLC."
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -106,7 +106,7 @@ struct OutputMatchingValidation {
             mustNotInclude: ["TODO", "FIXME"]
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "// TODO: Add copyright header\n// FIXME: wrong format"
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -128,7 +128,7 @@ struct ToolEventValidation {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -143,7 +143,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file.swift"),
@@ -163,7 +163,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "echo hello")
@@ -185,7 +185,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [ToolEvent(name: "bash", command: "cat file.swift")]
             )
@@ -202,7 +202,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [ToolEvent(name: "bash", command: "rm -rf /tmp/test")]
             )
@@ -222,7 +222,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file.swift"),
@@ -243,7 +243,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file.swift"),
@@ -266,7 +266,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat"),
@@ -286,7 +286,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat"),
@@ -311,7 +311,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file.swift"),
@@ -332,7 +332,7 @@ struct ToolEventValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "ok",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file.swift"),
@@ -359,7 +359,7 @@ struct ToolEventValidation {
         )
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: false),
-            result: ProviderResult(provider: .claude, resultText: "ok")
+            result: ProviderResult(provider: Provider(rawValue: "claude"), resultText: "ok")
         )
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
         #expect(result.passed, "Should pass since tool assertions are skipped")
@@ -379,7 +379,7 @@ struct RubricGradingValidation {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -390,10 +390,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "good output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "good output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(8),
@@ -415,10 +415,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "bad output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "bad output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(false),
                     "score": .int(3),
@@ -441,10 +441,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(8),
@@ -466,10 +466,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(3),
@@ -492,10 +492,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(9),
@@ -523,10 +523,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(7),
@@ -554,10 +554,10 @@ struct RubricGradingValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 structuredOutput: [
                     "overall_pass": .bool(true),
                     "score": .int(5),
@@ -592,7 +592,7 @@ struct ProviderErrorValidation {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -600,7 +600,7 @@ struct ProviderErrorValidation {
     @Test func providerErrorCaptured() async throws {
         let evalCase = EvalCase(id: "pe-neg", suite: "validation", task: "task", input: "input")
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             error: ProviderError(message: "CLI exited with code 1")
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -614,10 +614,10 @@ struct ProviderErrorValidation {
         adapter.runHandler = { _ in
             callCount += 1
             if callCount == 1 {
-                return ProviderResult(provider: .claude, resultText: "output")
+                return ProviderResult(provider: Provider(rawValue: "claude"), resultText: "output")
             }
             return ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 error: ProviderError(message: "rubric CLI timeout")
             )
         }
@@ -643,7 +643,7 @@ struct CombinedFailureValidation {
             resultSchemaPath: tempDir.appendingPathComponent("r.json"),
             rubricSchemaPath: tempDir.appendingPathComponent("rub.json"),
             artifactsDirectory: tempDir.appendingPathComponent("art"),
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             repoRoot: tempDir
         )
     }
@@ -656,7 +656,7 @@ struct CombinedFailureValidation {
             mustNotInclude: ["TODO"]
         )
         let adapter = MockProviderAdapter(result: ProviderResult(
-            provider: .claude,
+            provider: Provider(rawValue: "claude"),
             resultText: "TODO: wrong output"
         ))
         let result = try await RunCaseUseCase(adapter: adapter).run(makeOptions(evalCase))
@@ -679,7 +679,7 @@ struct CombinedFailureValidation {
         let adapter = MockProviderAdapter(
             capabilities: ProviderCapabilities(supportsToolEventAssertions: true),
             result: ProviderResult(
-                provider: .claude,
+                provider: Provider(rawValue: "claude"),
                 resultText: "// Copyright header",
                 toolEvents: [
                     ToolEvent(name: "bash", command: "cat file"),

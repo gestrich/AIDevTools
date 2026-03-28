@@ -5,6 +5,7 @@ import EvalFeature
 import EvalSDK
 import EvalService
 import Foundation
+import ProviderRegistryService
 
 private let debugLogURL: URL = {
     let url = URL(fileURLWithPath: "/tmp/eval_runner_debug.log")
@@ -50,6 +51,7 @@ final class EvalRunnerModel {
     var displayedCases: [EvalCase] = []
 
     let evalConfig: RepositoryEvalConfig
+    let registry: EvalProviderRegistry
 
     private let runEvals: RunEvalsUseCase
     private let listSuites: ListEvalSuitesUseCase
@@ -57,17 +59,12 @@ final class EvalRunnerModel {
     init(
         config: RepositoryEvalConfig,
         skillName: String? = nil,
-        runEvals: RunEvalsUseCase = RunEvalsUseCase(adapterFactory: { provider, debug in
-            switch provider {
-            case .codex: CodexAdapter(client: CodexCLIClient())
-            case .claude: ClaudeAdapter(client: ClaudeCLIClient(), debug: debug)
-            default: ClaudeAdapter(client: ClaudeCLIClient(), debug: debug)
-            }
-        }),
+        registry: EvalProviderRegistry,
         listSuites: ListEvalSuitesUseCase = ListEvalSuitesUseCase()
     ) {
         self.evalConfig = config
-        self.runEvals = runEvals
+        self.registry = registry
+        self.runEvals = RunEvalsUseCase(registry: registry)
         self.listSuites = listSuites
 
         let options = ListEvalSuitesUseCase.Options(
@@ -111,17 +108,17 @@ final class EvalRunnerModel {
     }
 
     func run(
-        providers: [Provider],
+        providerFilter: [String]? = nil,
         suite: EvalSuite? = nil,
         evalCase: EvalCase? = nil
     ) async {
         let suiteName = suite?.name
         let caseId = evalCase?.id
-        debugLog("run() called — providers=\(providers.map(\.rawValue)), suite=\(suiteName ?? "nil"), caseId=\(caseId ?? "nil")")
+        debugLog("run() called — providerFilter=\(providerFilter ?? ["all"]), suite=\(suiteName ?? "nil"), caseId=\(caseId ?? "nil")")
         state = .running(progress: RunProgress(
             completedCases: 0,
             totalCases: 0,
-            provider: providers.first?.rawValue ?? "",
+            provider: providerFilter?.first ?? registry.entries.first?.name ?? "",
             currentCaseId: caseId
         ))
         debugLog("state -> .running (initial)")
@@ -131,7 +128,7 @@ final class EvalRunnerModel {
             outputDirectory: evalConfig.outputDirectory,
             caseId: caseId,
             suite: suiteName,
-            providers: providers,
+            providerFilter: providerFilter,
             repoRoot: evalConfig.repoRoot
         )
 
@@ -226,7 +223,7 @@ final class EvalRunnerModel {
     }
 
     func loadCaseOutput(for evalCase: EvalCase, provider: String) -> FormattedOutput? {
-        let providerEnum = Provider(rawValue: provider)
+        let providerValue = Provider(rawValue: provider)
 
         let qualifiedId: String
         if let matchedResult = lastResults
@@ -237,20 +234,22 @@ final class EvalRunnerModel {
             qualifiedId = evalCase.qualifiedId
         }
 
+        let formatter: any StreamFormatter = registry.entries.first(where: { $0.name == provider })
+            .flatMap { _ in formatterForProvider(provider) } ?? ClaudeStreamFormatter()
+
         let options = ReadCaseOutputUseCase.Options(
             caseId: qualifiedId,
-            formatter: Self.formatter(for: providerEnum),
-            provider: providerEnum,
+            formatter: formatter,
+            provider: providerValue,
             outputDirectory: evalConfig.outputDirectory,
             rubricFormatter: ClaudeStreamFormatter()
         )
         return try? ReadCaseOutputUseCase().run(options)
     }
 
-    private static func formatter(for provider: Provider) -> any StreamFormatter {
-        switch provider {
-        case .claude: ClaudeStreamFormatter()
-        case .codex: CodexStreamFormatter()
+    private func formatterForProvider(_ name: String) -> any StreamFormatter {
+        switch name {
+        case "codex": CodexStreamFormatter()
         default: ClaudeStreamFormatter()
         }
     }
@@ -263,9 +262,9 @@ final class EvalRunnerModel {
         let decoder = JSONDecoder()
         var summaries: [EvalSummary] = []
 
-        for provider in [Provider.claude, .codex] {
+        for entry in registry.entries {
             let summaryFile = artifactsDir
-                .appendingPathComponent(provider.rawValue)
+                .appendingPathComponent(entry.name)
                 .appendingPathComponent("summary.json")
             guard let data = try? Data(contentsOf: summaryFile),
                   let summary = try? decoder.decode(EvalSummary.self, from: data) else {

@@ -4,6 +4,7 @@ import DataPathsService
 import Foundation
 import PlanRunnerFeature
 import PlanRunnerService
+import ProviderRegistryService
 import RepositorySDK
 
 struct PlanRunnerExecuteCommand: AsyncParsableCommand {
@@ -17,6 +18,9 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
 
     @Option(help: "Maximum runtime in minutes")
     var maxMinutes: Int = 90
+
+    @Option(help: "Provider to use (default: first registered)")
+    var provider: String?
 
     @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
@@ -55,9 +59,12 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
         let repository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
         let completedDirectory = try repository.map { try planSettings.resolvedCompletedDirectory(forRepo: $0) }
 
+        let registry = makeProviderRegistry()
+        let client = provider.flatMap { registry.client(named: $0) } ?? registry.providers.first!
+
         let resolvedDataPath = ResolveDataPathUseCase().resolve(explicit: dataPath).path
         let useCase = ExecutePlanUseCase(
-            client: ClaudeCLIClient(),
+            client: client,
             completedDirectory: completedDirectory,
             dataPath: resolvedDataPath
         )

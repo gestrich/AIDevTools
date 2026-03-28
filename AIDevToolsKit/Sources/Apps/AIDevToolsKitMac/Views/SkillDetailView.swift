@@ -1,10 +1,12 @@
 import MarkdownUI
+import ProviderRegistryService
 import SkillService
 import SwiftUI
 
 struct SkillDetailView: View {
     let skill: Skill
     let evalConfig: RepositoryEvalConfig?
+    let evalRegistry: EvalProviderRegistry?
     var onNavigateToEvals: (() -> Void)?
 
     @AppStorage("skillDetailTab") private var selectedTab: DetailTab = .skill
@@ -58,7 +60,7 @@ struct SkillDetailView: View {
                             }
                             .padding([.horizontal, .top])
                         }
-                        EvalResultsView(config: evalConfig, skillName: skill.name)
+                        EvalResultsView(config: evalConfig, skillName: skill.name, registry: evalRegistry!)
                             .id(skill.name)
                     }
                 }

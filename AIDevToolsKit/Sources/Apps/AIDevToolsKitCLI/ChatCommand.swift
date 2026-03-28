@@ -2,47 +2,75 @@ import AIOutputSDK
 import AnthropicChatFeature
 import AnthropicSDK
 import ArgumentParser
+import ClaudeCodeChatFeature
+import ClaudeCodeChatService
+import ClaudeCLISDK
 import Foundation
+import ProviderRegistryService
 
 struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "chat",
-        abstract: "Chat with Claude via the Anthropic API"
+        abstract: "Chat with an AI provider"
     )
 
-    @Option(name: .long, help: "Anthropic API key (or set ANTHROPIC_API_KEY env var)")
+    @Option(name: .long, help: "Provider to use for chat (default: claude)")
+    var provider: String = "claude"
+
+    @Option(name: .long, help: "Anthropic API key (required for anthropic-api provider, or set ANTHROPIC_API_KEY env var)")
     var apiKey: String?
 
-    @Option(name: .long, help: "System prompt to configure Claude's behavior")
+    @Option(name: .long, help: "System prompt to configure the AI's behavior")
     var systemPrompt: String?
+
+    @Option(name: .long, help: "Working directory (defaults to current directory)")
+    var workingDir: String?
+
+    @Flag(name: .long, help: "Resume the last session (claude provider only)")
+    var resume: Bool = false
 
     @Argument(help: "Single message to send (omit for interactive mode)")
     var message: String?
 
     func validate() throws {
-        if resolvedAPIKey == nil {
-            throw ValidationError("API key required. Use --api-key or set ANTHROPIC_API_KEY.")
+        if provider == "anthropic-api" && resolvedAPIKey == nil {
+            throw ValidationError("API key required for anthropic-api provider. Use --api-key or set ANTHROPIC_API_KEY.")
         }
     }
 
     func run() async throws {
-        let key = resolvedAPIKey!
-        let client = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: key))
+        let registry = makeProviderRegistry()
 
-        if let message {
-            try await sendSingleMessage(message, client: client)
-        } else {
-            try await runInteractive(client: client)
+        switch provider {
+        case "anthropic-api":
+            let key = resolvedAPIKey!
+            let client = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: key))
+            try await runAnthropicChat(client: client)
+
+        default:
+            guard let client = registry.client(named: provider) else {
+                print("Unknown provider '\(provider)'. Available: \(registry.providerNames.joined(separator: ", ")), anthropic-api")
+                throw ExitCode.failure
+            }
+            try await runCLIChat(client: client)
         }
     }
 
-    // MARK: - Private
+    // MARK: - Anthropic API Chat
 
     private var resolvedAPIKey: String? {
         apiKey ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
     }
 
-    private func sendSingleMessage(_ text: String, client: any AIClient) async throws {
+    private func runAnthropicChat(client: any AIClient) async throws {
+        if let message {
+            try await sendAnthropicMessage(message, client: client)
+        } else {
+            try await runAnthropicInteractive(client: client)
+        }
+    }
+
+    private func sendAnthropicMessage(_ text: String, client: any AIClient) async throws {
         let useCase = SendChatMessageUseCase(client: client)
         let options = SendChatMessageUseCase.Options(
             message: text,
@@ -60,9 +88,9 @@ struct ChatCommand: AsyncParsableCommand {
         }
     }
 
-    private func runInteractive(client: any AIClient) async throws {
+    private func runAnthropicInteractive(client: any AIClient) async throws {
         print("Chat with Claude (type 'exit' or Ctrl-D to quit)")
-        print("─────────────────────────────────────────────────")
+        print("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}")
 
         let useCase = SendChatMessageUseCase(client: client)
         var sessionId: String?
@@ -87,6 +115,101 @@ struct ChatCommand: AsyncParsableCommand {
             )
 
             print("\nClaude: ", terminator: "")
+            fflush(stdout)
+
+            do {
+                let result = try await useCase.run(options) { progress in
+                    switch progress {
+                    case .textDelta(let text):
+                        print(text, terminator: "")
+                        fflush(stdout)
+                    case .completed:
+                        print()
+                    }
+                }
+                sessionId = result.sessionId ?? sessionId
+            } catch {
+                print("\nError: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - CLI Chat (Claude, Codex, etc.)
+
+    private func runCLIChat(client: any AIClient) async throws {
+        let dir = workingDir ?? FileManager.default.currentDirectoryPath
+
+        if let message {
+            try await sendCLIMessage(message, workingDirectory: dir, client: client)
+        } else {
+            try await runCLIInteractive(workingDirectory: dir, client: client)
+        }
+    }
+
+    private func sendCLIMessage(_ text: String, workingDirectory: String, client: any AIClient) async throws {
+        let useCase = SendClaudeCodeMessageUseCase(client: client)
+        var sessionId: String?
+        if resume {
+            let sessions = await ListClaudeCodeSessionsUseCase().run(
+                .init(workingDirectory: workingDirectory)
+            )
+            sessionId = sessions.first?.id
+        }
+
+        let options = SendClaudeCodeMessageUseCase.Options(
+            message: text,
+            workingDirectory: workingDirectory,
+            sessionId: sessionId
+        )
+
+        _ = try await useCase.run(options) { progress in
+            switch progress {
+            case .textDelta(let text):
+                print(text, terminator: "")
+                fflush(stdout)
+            case .completed:
+                print()
+            }
+        }
+    }
+
+    private func runCLIInteractive(workingDirectory: String, client: any AIClient) async throws {
+        print("\(client.displayName) Chat (type 'exit' or Ctrl-D to quit)")
+        print("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}")
+
+        let useCase = SendClaudeCodeMessageUseCase(client: client)
+        var sessionId: String?
+
+        if resume {
+            let sessions = await ListClaudeCodeSessionsUseCase().run(
+                .init(workingDirectory: workingDirectory)
+            )
+            sessionId = sessions.first?.id
+            if let sessionId {
+                print("Resuming session: \(sessionId)")
+            }
+        }
+
+        while true {
+            print("\nYou: ", terminator: "")
+            fflush(stdout)
+
+            guard let line = readLine(strippingNewline: true) else {
+                print()
+                break
+            }
+
+            let input = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if input.isEmpty { continue }
+            if input.lowercased() == "exit" { break }
+
+            let options = SendClaudeCodeMessageUseCase.Options(
+                message: input,
+                workingDirectory: workingDirectory,
+                sessionId: sessionId
+            )
+
+            print("\n\(client.displayName): ", terminator: "")
             fflush(stdout)
 
             do {

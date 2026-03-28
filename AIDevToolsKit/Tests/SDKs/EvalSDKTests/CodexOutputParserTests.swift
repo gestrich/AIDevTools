@@ -86,16 +86,16 @@ struct CodexOutputParserTests {
     // MARK: - buildResult()
 
     @Test func buildResultFromStructuredSuccess() {
-        let result = parser.buildResult(from: Self.structuredSuccess, provider: .codex)
-        #expect(result.provider == .codex)
+        let result = parser.buildResult(from: Self.structuredSuccess, provider: Provider(rawValue: "codex"))
+        #expect(result.provider == Provider(rawValue: "codex"))
         #expect(result.events.count >= 3)
         #expect(result.toolEvents.isEmpty)
         #expect(result.error == nil)
     }
 
     @Test func buildResultFromToolUsing() {
-        let result = parser.buildResult(from: Self.toolUsing, provider: .codex)
-        #expect(result.provider == .codex)
+        let result = parser.buildResult(from: Self.toolUsing, provider: Provider(rawValue: "codex"))
+        #expect(result.provider == Provider(rawValue: "codex"))
         #expect(result.toolEvents.count == 1)
     }
 
@@ -150,7 +150,7 @@ struct CodexOutputParserTests {
     }
 
     @Test func buildResultIncludesToolCallSummary() {
-        let result = parser.buildResult(from: Self.toolUsing, provider: .codex)
+        let result = parser.buildResult(from: Self.toolUsing, provider: Provider(rawValue: "codex"))
         #expect(result.toolCallSummary != nil)
         #expect(result.toolCallSummary?.attempted == 1)
         #expect(result.toolCallSummary?.succeeded == 1)

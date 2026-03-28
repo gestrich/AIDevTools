@@ -4,6 +4,7 @@ import ArgumentParser
 import ClaudeCLISDK
 import DataPathsService
 import Foundation
+import ProviderRegistryService
 
 struct ArchPlannerExecuteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -22,6 +23,9 @@ struct ArchPlannerExecuteCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Job ID (UUID)")
     var jobId: String
 
+    @Option(name: .long, help: "Provider to use (default: first registered)")
+    var provider: String?
+
     @Flag(name: .long, help: "Use separate AI sessions per phase")
     var separateSessions: Bool = false
 
@@ -32,7 +36,9 @@ struct ArchPlannerExecuteCommand: AsyncParsableCommand {
         }
 
         let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
-        let useCase = ExecuteImplementationUseCase(client: ClaudeCLIClient())
+        let registry = makeProviderRegistry()
+        let client = provider.flatMap { registry.client(named: $0) } ?? registry.providers.first!
+        let useCase = ExecuteImplementationUseCase(client: client)
         let options = ExecuteImplementationUseCase.Options(
             jobId: uuid,
             repoPath: repoPath,

@@ -6,6 +6,7 @@ import EvalFeature
 import EvalSDK
 import EvalService
 import Foundation
+import ProviderRegistryService
 import RepositorySDK
 
 struct RunEvalsCommand: AsyncParsableCommand {
@@ -32,7 +33,8 @@ struct RunEvalsCommand: AsyncParsableCommand {
     @Flag var keepTraces = false
     @Flag(help: "Print debug info (e.g. exact CLI arguments passed to providers)")
     var debug = false
-    @Option var provider: ProviderChoice = .codex
+    @Option(help: "Provider name(s), comma-separated, or 'all' (default: all)")
+    var provider: String = "all"
     @Option var resultSchema: String?
     @Option var rubricSchema: String?
 
@@ -72,19 +74,16 @@ struct RunEvalsCommand: AsyncParsableCommand {
             throw ValidationError("Must specify either --cases-dir or --repo")
         }
 
-        let summaries = try await RunEvalsUseCase(adapterFactory: { provider, debug in
-            switch provider {
-            case .codex: CodexAdapter(client: CodexCLIClient())
-            case .claude: ClaudeAdapter(client: ClaudeCLIClient(), debug: debug)
-            default: ClaudeAdapter(client: ClaudeCLIClient(), debug: debug)
-            }
-        }).run(
+        let registry = makeEvalRegistry(debug: debug)
+        let providerFilter: [String]? = provider == "all" ? nil : provider.split(separator: ",").map(String.init)
+
+        let summaries = try await RunEvalsUseCase(registry: registry).run(
             RunEvalsUseCase.Options(
                 casesDirectory: resolvedCasesDir,
                 outputDirectory: resolvedOutputDir,
                 caseId: caseId,
                 suite: suite,
-                providers: provider.resolved,
+                providerFilter: providerFilter,
                 resultSchemaPath: resultSchema.map { URL(fileURLWithPath: $0) },
                 rubricSchemaPath: rubricSchema.map { URL(fileURLWithPath: $0) },
                 model: model,
@@ -141,20 +140,6 @@ extension RunEvalsCommand {
 
         case .completedProvider(let summary):
             print("\n[\(summary.provider)] Done: \(summary.passed) passed, \(summary.failed) failed, \(summary.skipped) skipped / \(summary.total) total")
-        }
-    }
-}
-
-enum ProviderChoice: String, ExpressibleByArgument, Sendable, Decodable {
-    case codex
-    case claude
-    case both
-
-    var resolved: [Provider] {
-        switch self {
-        case .codex: return [.codex]
-        case .claude: return [.claude]
-        case .both: return [.codex, .claude]
         }
     }
 }

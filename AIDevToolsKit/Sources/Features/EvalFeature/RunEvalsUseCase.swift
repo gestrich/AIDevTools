@@ -1,6 +1,7 @@
 import Foundation
 import EvalService
 import EvalSDK
+import ProviderRegistryService
 import SkillScannerSDK
 
 public struct RunEvalsUseCase: Sendable {
@@ -10,7 +11,7 @@ public struct RunEvalsUseCase: Sendable {
         public let outputDirectory: URL
         public let caseId: String?
         public let suite: String?
-        public let providers: [Provider]
+        public let providerFilter: [String]?
         public let resultSchemaPath: URL?
         public let rubricSchemaPath: URL?
         public let model: String?
@@ -23,7 +24,7 @@ public struct RunEvalsUseCase: Sendable {
             outputDirectory: URL,
             caseId: String? = nil,
             suite: String? = nil,
-            providers: [Provider],
+            providerFilter: [String]? = nil,
             resultSchemaPath: URL? = nil,
             rubricSchemaPath: URL? = nil,
             model: String? = nil,
@@ -35,7 +36,7 @@ public struct RunEvalsUseCase: Sendable {
             self.outputDirectory = outputDirectory
             self.caseId = caseId
             self.suite = suite
-            self.providers = providers
+            self.providerFilter = providerFilter
             self.resultSchemaPath = resultSchemaPath
             self.rubricSchemaPath = rubricSchemaPath
             self.model = model
@@ -45,47 +46,20 @@ public struct RunEvalsUseCase: Sendable {
         }
     }
 
-    public struct ProviderEntry: Sendable {
-        public let provider: Provider
-        public let adapter: any ProviderAdapterProtocol
-
-        public init(provider: Provider, adapter: any ProviderAdapterProtocol) {
-            self.provider = provider
-            self.adapter = adapter
-        }
-    }
-
-    private let adapterFactory: (@Sendable (Provider, Bool) -> any ProviderAdapterProtocol)?
-    private let overrideEntries: [ProviderEntry]?
+    private let registry: EvalProviderRegistry
     private let caseLoader: CaseLoader
     private let gitClient: GitClient
     private let deterministicGrader: DeterministicGrader
     private let rubricEvaluator: RubricEvaluator
 
     public init(
-        adapterFactory: @escaping @Sendable (Provider, Bool) -> any ProviderAdapterProtocol,
+        registry: EvalProviderRegistry,
         caseLoader: CaseLoader = CaseLoader(),
         gitClient: GitClient = GitClient(),
         deterministicGrader: DeterministicGrader = DeterministicGrader(),
         rubricEvaluator: RubricEvaluator = RubricEvaluator()
     ) {
-        self.adapterFactory = adapterFactory
-        self.overrideEntries = nil
-        self.caseLoader = caseLoader
-        self.gitClient = gitClient
-        self.deterministicGrader = deterministicGrader
-        self.rubricEvaluator = rubricEvaluator
-    }
-
-    public init(
-        providers: [ProviderEntry],
-        caseLoader: CaseLoader = CaseLoader(),
-        gitClient: GitClient = GitClient(),
-        deterministicGrader: DeterministicGrader = DeterministicGrader(),
-        rubricEvaluator: RubricEvaluator = RubricEvaluator()
-    ) {
-        self.adapterFactory = nil
-        self.overrideEntries = providers
+        self.registry = registry
         self.caseLoader = caseLoader
         self.gitClient = gitClient
         self.deterministicGrader = deterministicGrader
@@ -120,16 +94,7 @@ public struct RunEvalsUseCase: Sendable {
 
         let skills = try SkillScanner().scanSkills(at: options.repoRoot)
 
-        let entries: [ProviderEntry]
-        if let overrideEntries {
-            entries = overrideEntries
-        } else if let adapterFactory {
-            entries = options.providers.map { provider in
-                ProviderEntry(provider: provider, adapter: adapterFactory(provider, options.debug))
-            }
-        } else {
-            preconditionFailure("RunEvalsUseCase requires either adapterFactory or providers")
-        }
+        let entries = registry.filtered(by: options.providerFilter)
 
         var summaries: [EvalSummary] = []
 
@@ -164,7 +129,7 @@ public struct RunEvalsUseCase: Sendable {
     }
 
     private func runProvider(
-        entry: ProviderEntry,
+        entry: EvalProviderEntry,
         artifactsDirectory: URL,
         cases: [EvalCase],
         resultSchemaPath: URL,
@@ -175,7 +140,7 @@ public struct RunEvalsUseCase: Sendable {
     ) async throws -> EvalSummary {
         let runCase = RunCaseUseCase(adapter: entry.adapter)
         var results: [CaseResult] = []
-        let providerName = entry.provider.rawValue
+        let providerName = entry.name
 
         onProgress?(.startingProvider(provider: providerName, caseCount: cases.count))
 
@@ -204,7 +169,7 @@ public struct RunEvalsUseCase: Sendable {
             }
 
             if let summary = result.toolCallSummary, summary.rejected > 0 {
-                let warning = "⚠ \(summary.rejected) tool call(s) rejected (permissions)"
+                let warning = "\u{26A0} \(summary.rejected) tool call(s) rejected (permissions)"
                 result.errors.append(warning)
             }
 

@@ -30,6 +30,7 @@ let package = Package(
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
         .library(name: "PlanRunnerFeature", targets: ["PlanRunnerFeature"]),
         .library(name: "PlanRunnerService", targets: ["PlanRunnerService"]),
+        .library(name: "ProviderRegistryService", targets: ["ProviderRegistryService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
         .library(name: "SkillScannerSDK", targets: ["SkillScannerSDK"]),
@@ -64,6 +65,7 @@ let package = Package(
                 "LoggingSDK",
                 "PlanRunnerFeature",
                 "PlanRunnerService",
+                "ProviderRegistryService",
                 "RepositorySDK",
                 "SkillBrowserFeature",
             ],
@@ -88,6 +90,7 @@ let package = Package(
                 "LoggingSDK",
                 "PlanRunnerFeature",
                 "PlanRunnerService",
+                "ProviderRegistryService",
                 "RepositorySDK",
                 "SkillBrowserFeature",
                 "SkillScannerSDK",
@@ -127,6 +130,7 @@ let package = Package(
             dependencies: [
                 "EvalSDK",
                 "EvalService",
+                "ProviderRegistryService",
                 "SkillScannerSDK",
             ],
             path: "Sources/Features/EvalFeature"
@@ -193,6 +197,11 @@ let package = Package(
             name: "PlanRunnerService",
             dependencies: [],
             path: "Sources/Services/PlanRunnerService"
+        ),
+        .target(
+            name: "ProviderRegistryService",
+            dependencies: ["AIOutputSDK", "EvalSDK", "EvalService"],
+            path: "Sources/Services/ProviderRegistryService"
         ),
         .target(
             name: "SkillService",
@@ -342,7 +351,7 @@ let package = Package(
         ),
         .testTarget(
             name: "EvalFeatureTests",
-            dependencies: ["EvalFeature", "EvalSDK", "EvalService"],
+            dependencies: ["AIOutputSDK", "EvalFeature", "EvalSDK", "EvalService", "ProviderRegistryService"],
             path: "Tests/Features/EvalFeatureTests"
         ),
         .testTarget(

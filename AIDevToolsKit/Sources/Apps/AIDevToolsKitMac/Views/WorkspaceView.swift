@@ -1,18 +1,15 @@
+import AIOutputSDK
 import AnthropicChatService
 import AnthropicSDK
 import ArchitecturePlannerService
 import ClaudeCLISDK
 import ClaudeCodeChatService
 import PlanRunnerService
+import ProviderRegistryService
 import RepositorySDK
 import SkillService
 import SwiftData
 import SwiftUI
-
-enum ChatMode: String, CaseIterable {
-    case anthropicAPI = "API"
-    case claudeCode = "CLI"
-}
 
 enum WorkspaceItem: Hashable {
     case architecturePlanner
@@ -26,6 +23,9 @@ struct WorkspaceView: View {
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
 
+    let providerRegistry: ProviderRegistry
+    let evalProviderRegistry: EvalProviderRegistry
+
     @AppStorage("selectedArchPlanner") private var storedArchPlanner = false
     @AppStorage("selectedEvalsView") private var storedEvalsView = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
@@ -38,7 +38,7 @@ struct WorkspaceView: View {
     @State private var selectedItem: WorkspaceItem?
     @State private var showGenerateSheet = false
     @State private var chatViewModel: ChatViewModel?
-    @AppStorage("chatMode") private var chatMode: ChatMode = .claudeCode
+    @AppStorage("chatProviderName") private var chatProviderName: String = "claude"
     @State private var claudeCodeChatManager: ClaudeCodeChatManager?
     @State private var showingChatSettings = false
     @State private var showingSessionPicker = false
@@ -193,19 +193,31 @@ struct WorkspaceView: View {
 
     // MARK: - Chat
 
+    private var chatProviders: [(name: String, displayName: String)] {
+        var result = providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
+        if !apiKey.isEmpty {
+            result.append((name: "anthropic-api", displayName: "Anthropic API"))
+        }
+        return result
+    }
+
     private var chatToolbar: some View {
         HStack(spacing: 8) {
-            Picker("", selection: $chatMode) {
-                ForEach(ChatMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue).tag(mode)
+            Picker("", selection: $chatProviderName) {
+                ForEach(chatProviders, id: \.name) { entry in
+                    Text(entry.displayName).tag(entry.name)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 100)
+            .frame(maxWidth: 200)
+            .onChange(of: chatProviderName) { _, _ in
+                rebuildChatViewModel()
+                rebuildClaudeCodeChatManager()
+            }
 
             Spacer()
 
-            if chatMode == .claudeCode, claudeCodeChatManager != nil {
+            if chatProviderName != "anthropic-api", claudeCodeChatManager != nil {
                 Button(action: { showingSessionPicker = true }) {
                     Image(systemName: "clock.arrow.circlepath")
                 }
@@ -223,7 +235,7 @@ struct WorkspaceView: View {
                     Image(systemName: "gear")
                 }
                 .buttonStyle(.plain)
-                .help("Claude Code settings")
+                .help("Chat settings")
             }
 
             Button {
@@ -263,7 +275,7 @@ struct WorkspaceView: View {
                 ArchitecturePlannerView(model: architecturePlannerModel)
             case .evals:
                 if let config = model.evalConfig(for: repo) {
-                    EvalResultsView(config: config)
+                    EvalResultsView(config: config, registry: evalProviderRegistry)
                 }
             case .plan(let name):
                 if let plan = planRunnerModel.plans.first(where: { $0.name == name }) {
@@ -273,7 +285,8 @@ struct WorkspaceView: View {
                 if let skill = model.skills.first(where: { $0.name == name }) {
                     SkillDetailView(
                         skill: skill,
-                        evalConfig: model.evalConfig(for: repo)
+                        evalConfig: model.evalConfig(for: repo),
+                        evalRegistry: evalProviderRegistry
                     ) { selectedItem = .evals }
                 }
             case nil:
@@ -284,19 +297,18 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var chatPanelView: some View {
-        switch chatMode {
-        case .anthropicAPI:
+        if chatProviderName == "anthropic-api" {
             if let chatViewModel {
                 ChatView(viewModel: chatViewModel)
             } else {
                 ContentUnavailableView("API Key Required", systemImage: "key", description: Text("Set your Anthropic API key in Settings to use API chat."))
             }
-        case .claudeCode:
+        } else {
             if let claudeCodeChatManager {
                 ClaudeCodeChatView()
                     .environment(claudeCodeChatManager)
             } else {
-                ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Select a repository to start Claude Code chat."))
+                ContentUnavailableView("Select a Repository", systemImage: "folder", description: Text("Select a repository to start chat."))
             }
         }
     }
@@ -319,9 +331,13 @@ struct WorkspaceView: View {
             claudeCodeChatManager = nil
             return
         }
+        guard let client = providerRegistry.client(named: chatProviderName) else {
+            claudeCodeChatManager = nil
+            return
+        }
         claudeCodeChatManager = ClaudeCodeChatManager(
             workingDirectory: repo.path.path(),
-            client: ClaudeCLIClient()
+            client: client
         )
     }
 
@@ -422,7 +438,7 @@ private struct PlanListRow: View {
                 HStack(spacing: 4) {
                     Text("\(plan.completedPhases)/\(plan.totalPhases) phases")
                     if let date = plan.creationDate {
-                        Text("·")
+                        Text("\u{00B7}")
                         Text(date, style: .date)
                     }
                 }

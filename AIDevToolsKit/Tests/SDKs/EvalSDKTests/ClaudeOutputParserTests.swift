@@ -192,7 +192,7 @@ struct ClaudeOutputParserTests {
     }
 
     @Test func buildResultIncludesToolCallSummary() {
-        let result = parser.buildResult(from: Self.toolUsing, provider: .claude)
+        let result = parser.buildResult(from: Self.toolUsing, provider: Provider(rawValue: "claude"))
         #expect(result.toolCallSummary != nil)
         #expect(result.toolCallSummary?.attempted == 1)
         #expect(result.toolCallSummary?.succeeded == 1)
@@ -283,8 +283,8 @@ struct ClaudeOutputParserTests {
     // MARK: - buildResult()
 
     @Test func buildResultStructuredSuccess() {
-        let result = parser.buildResult(from: Self.structuredSuccess, provider: .claude)
-        #expect(result.provider == .claude)
+        let result = parser.buildResult(from: Self.structuredSuccess, provider: Provider(rawValue: "claude"))
+        #expect(result.provider == Provider(rawValue: "claude"))
         #expect(result.error == nil)
         #expect(result.structuredOutput?["result"]?.stringValue == "PROBE_STRUCTURED_OK")
         #expect(result.resultText == "PROBE_STRUCTURED_OK")
@@ -293,8 +293,8 @@ struct ClaudeOutputParserTests {
     }
 
     @Test func buildResultErrorSetsProviderError() {
-        let result = parser.buildResult(from: Self.errorImpossibleSchema, provider: .claude)
-        #expect(result.provider == .claude)
+        let result = parser.buildResult(from: Self.errorImpossibleSchema, provider: Provider(rawValue: "claude"))
+        #expect(result.provider == Provider(rawValue: "claude"))
         #expect(result.error != nil)
         #expect(result.error?.subtype == "error_max_structured_output_retries")
     }
@@ -304,7 +304,7 @@ struct ClaudeOutputParserTests {
         {"type":"system"}
         {"type":"assistant","message":{"content":[]}}
         """
-        let result = parser.buildResult(from: raw, provider: .claude)
+        let result = parser.buildResult(from: raw, provider: Provider(rawValue: "claude"))
         #expect(result.error != nil)
         #expect(result.error?.subtype == "missing_result")
     }

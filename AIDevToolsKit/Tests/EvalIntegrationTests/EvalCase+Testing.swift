@@ -33,11 +33,12 @@ private func createEvalTempDirectory() throws -> URL {
     return tempDir
 }
 
-func runEval(_ eval: EvalCase, provider: Provider = .claude) async throws {
-    let adapter: any ProviderAdapterProtocol = switch provider {
-    case .claude: ClaudeAdapter(client: ClaudeCLIClient())
-    case .codex: CodexAdapter(client: CodexCLIClient())
-    default: ClaudeAdapter(client: ClaudeCLIClient())
+func runEval(_ eval: EvalCase, provider: Provider = Provider(rawValue: "claude")) async throws {
+    let adapter: any ProviderAdapterProtocol
+    if provider.rawValue == "codex" {
+        adapter = CodexAdapter(client: CodexCLIClient())
+    } else {
+        adapter = ClaudeAdapter(client: ClaudeCLIClient())
     }
 
     let tempDir = try createEvalTempDirectory()
@@ -58,11 +59,12 @@ func runEval(_ eval: EvalCase, provider: Provider = .claude) async throws {
     #expect(result.passed, "Case \(eval.id) failed: \(result.errors.joined(separator: ", "))")
 }
 
-func runEvalExpectingFailure(_ eval: EvalCase, provider: Provider = .claude) async throws {
-    let adapter: any ProviderAdapterProtocol = switch provider {
-    case .claude: ClaudeAdapter(client: ClaudeCLIClient())
-    case .codex: CodexAdapter(client: CodexCLIClient())
-    default: ClaudeAdapter(client: ClaudeCLIClient())
+func runEvalExpectingFailure(_ eval: EvalCase, provider: Provider = Provider(rawValue: "claude")) async throws {
+    let adapter: any ProviderAdapterProtocol
+    if provider.rawValue == "codex" {
+        adapter = CodexAdapter(client: CodexCLIClient())
+    } else {
+        adapter = ClaudeAdapter(client: ClaudeCLIClient())
     }
 
     let tempDir = try createEvalTempDirectory()

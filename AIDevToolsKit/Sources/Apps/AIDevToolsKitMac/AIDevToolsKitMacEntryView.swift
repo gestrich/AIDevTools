@@ -6,6 +6,7 @@ import EvalService
 import LoggingSDK
 import PlanRunnerFeature
 import PlanRunnerService
+import ProviderRegistryService
 import RepositorySDK
 import SkillBrowserFeature
 import SkillScannerSDK
@@ -18,6 +19,8 @@ public struct AIDevToolsKitMacEntryView: View {
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
     @State private var planRunnerModel: PlanRunnerModel
+    private let providerRegistry: ProviderRegistry
+    private let evalProviderRegistry: EvalProviderRegistry
 
     public init() {
         AIDevToolsLogging.bootstrap()
@@ -40,13 +43,17 @@ public struct AIDevToolsKitMacEntryView: View {
             dataPath: root.settingsModel.dataPath,
             planSettingsStore: root.planSettingsStore
         ))
+        let defaultClient = root.providerRegistry.providers.first!
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
-            dataPathsService: root.dataPathsService
+            dataPathsService: root.dataPathsService,
+            client: defaultClient
         ))
+        providerRegistry = root.providerRegistry
+        evalProviderRegistry = root.evalProviderRegistry
     }
 
     public var body: some View {
-        WorkspaceView()
+        WorkspaceView(providerRegistry: providerRegistry, evalProviderRegistry: evalProviderRegistry)
             .environment(architecturePlannerModel)
             .environment(planRunnerModel)
             .environment(workspaceModel)
