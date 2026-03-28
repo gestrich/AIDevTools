@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import ClaudeChainService
 
 public struct DiscoverCommand: ParsableCommand {

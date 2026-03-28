@@ -1,6 +1,6 @@
 import ArgumentParser
 import ClaudeChainService
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import Foundation
 
 public struct RunActionScriptCommand: ParsableCommand {

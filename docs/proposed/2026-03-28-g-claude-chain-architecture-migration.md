@@ -60,7 +60,10 @@ ClaudeChainMain → ClaudeChainCLI → ClaudeChainFeature → ClaudeChainService
 5. Update all dependency references in `Package.swift` from `"ClaudeChainDomain"` → `"ClaudeChainService"`
 6. Build to verify: `swift build --target ClaudeChainService`
 
-## - [ ] Phase 2: Move ClaudeChainInfrastructure → ClaudeChainSDK (SDKs layer)
+## - [x] Phase 2: Move ClaudeChainInfrastructure → ClaudeChainSDK (SDKs layer)
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Placed stateless CLI/git/GitHub wrappers in SDKs layer per 4-layer architecture. Updated all imports and Package.swift references.
 
 **Skills to read**: `swift-architecture`
 

@@ -1,5 +1,5 @@
 import ArgumentParser
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import Foundation
 
 /// Parse Claude Code execution result.

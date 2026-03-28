@@ -6,7 +6,7 @@
  */
 
 import ClaudeChainService
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import Foundation
 
 public class TaskService {

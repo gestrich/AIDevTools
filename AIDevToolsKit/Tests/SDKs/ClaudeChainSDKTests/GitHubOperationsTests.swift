@@ -1,5 +1,5 @@
 import XCTest
-@testable import ClaudeChainInfrastructure
+@testable import ClaudeChainSDK
 @testable import ClaudeChainService
 import Foundation
 

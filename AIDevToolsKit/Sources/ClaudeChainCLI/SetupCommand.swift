@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 import ClaudeChainService
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 
 public struct SetupCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(

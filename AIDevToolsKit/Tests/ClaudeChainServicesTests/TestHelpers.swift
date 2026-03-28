@@ -7,7 +7,7 @@
 import Foundation
 import ClaudeChainService
 import ClaudeChainServices
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import XCTest
 
 /// Protocol for PR service functionality used in tests

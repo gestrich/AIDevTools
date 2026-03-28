@@ -10,7 +10,7 @@
 import XCTest
 @testable import ClaudeChainServices
 @testable import ClaudeChainService
-@testable import ClaudeChainInfrastructure
+@testable import ClaudeChainSDK
 
 final class AssigneeServiceTests: XCTestCase {
     

@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
 import ClaudeChainService
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import ClaudeChainServices
 
 public struct AutoStartCommand: ParsableCommand {

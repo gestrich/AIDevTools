@@ -1,6 +1,6 @@
 import ArgumentParser
 import Foundation
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 
 public struct AutoStartSummaryCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(

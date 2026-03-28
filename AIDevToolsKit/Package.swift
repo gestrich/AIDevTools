@@ -14,7 +14,7 @@ let package = Package(
         .library(name: "ChatService", targets: ["ChatService"]),
         .library(name: "ClaudeChainCLI", targets: ["ClaudeChainCLI"]),
         .library(name: "ClaudeChainService", targets: ["ClaudeChainService"]),
-        .library(name: "ClaudeChainInfrastructure", targets: ["ClaudeChainInfrastructure"]),
+        .library(name: "ClaudeChainSDK", targets: ["ClaudeChainSDK"]),
         .library(name: "ClaudeChainServices", targets: ["ClaudeChainServices"]),
         .executable(name: "claude-chain", targets: ["ClaudeChainMain"]),
         .library(name: "ClaudeCLISDK", targets: ["ClaudeCLISDK"]),
@@ -279,7 +279,7 @@ let package = Package(
         .target(
             name: "ClaudeChainCLI",
             dependencies: [
-                "ClaudeChainInfrastructure",
+                "ClaudeChainSDK",
                 "ClaudeChainService",
                 "ClaudeChainServices",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -287,9 +287,9 @@ let package = Package(
             path: "Sources/ClaudeChainCLI"
         ),
         .target(
-            name: "ClaudeChainInfrastructure",
+            name: "ClaudeChainSDK",
             dependencies: ["ClaudeChainService"],
-            path: "Sources/ClaudeChainInfrastructure"
+            path: "Sources/SDKs/ClaudeChainSDK"
         ),
         .executableTarget(
             name: "ClaudeChainMain",
@@ -305,7 +305,7 @@ let package = Package(
         ),
         .target(
             name: "ClaudeChainServices",
-            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService"],
+            dependencies: ["ClaudeChainSDK", "ClaudeChainService"],
             path: "Sources/ClaudeChainServices"
         ),
 
@@ -335,9 +335,9 @@ let package = Package(
             path: "Tests/ClaudeChainCLITests"
         ),
         .testTarget(
-            name: "ClaudeChainInfrastructureTests",
-            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService"],
-            path: "Tests/ClaudeChainInfrastructureTests"
+            name: "ClaudeChainSDKTests",
+            dependencies: ["ClaudeChainSDK", "ClaudeChainService"],
+            path: "Tests/SDKs/ClaudeChainSDKTests"
         ),
         .testTarget(
             name: "ClaudeChainServiceTests",
@@ -346,7 +346,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClaudeChainServicesTests",
-            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService", "ClaudeChainServices"],
+            dependencies: ["ClaudeChainSDK", "ClaudeChainService", "ClaudeChainServices"],
             path: "Tests/ClaudeChainServicesTests"
         ),
         .testTarget(

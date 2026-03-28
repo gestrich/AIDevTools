@@ -1,6 +1,6 @@
 import ArgumentParser
 import ClaudeChainService
-import ClaudeChainInfrastructure
+import ClaudeChainSDK
 import Foundation
 
 /// TaskMetadata for artifact creation (matches Python domain model)
