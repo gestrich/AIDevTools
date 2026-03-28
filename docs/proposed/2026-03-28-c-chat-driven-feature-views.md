@@ -134,7 +134,10 @@ Replace the emoji-prefix-based `ContentLine` parsing with the two-type model fro
 - `Apps/AIDevToolsKitMac/Models/ChatModel.swift` — accumulate `[AIContentBlock]` from stream events
 - `Apps/AIDevToolsKitMac/Views/Chat/ChatPanelView.swift` — update `ChatFormattedContent` to render block types
 
-## - [ ] Phase 3: File system observer async sequence
+## - [x] Phase 3: File system observer async sequence
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Placed `FileWatcher` in `AIOutputSDK` (SDKs layer) as a stateless `Sendable` struct per architecture guidelines. Uses `DispatchSource.makeFileSystemObjectSource` with a dedicated serial queue and `O_EVTONLY` flag. Debounces writes by 200ms via a `Task.sleep` + cancellation pattern using a private `DebounceState` class to hold mutable task reference. Stream terminates via `continuation.onTermination` which cancels the debounce task and the dispatch source, closing the file descriptor via the source's cancel handler.
 
 **Skills to read**: `swift-architecture`
 
