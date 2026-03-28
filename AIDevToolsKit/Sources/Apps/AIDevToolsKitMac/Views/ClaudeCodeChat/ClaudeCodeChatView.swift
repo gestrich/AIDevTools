@@ -142,17 +142,17 @@ struct ClaudeCodeChatView: View {
                 .font(.system(size: 60))
                 .foregroundStyle(.blue)
 
-            Text("Claude Code Chat")
+            Text("\(chatManager.providerDisplayName) Chat")
                 .font(.title)
                 .fontWeight(.bold)
 
             VStack(spacing: 8) {
-                Text("Chat with Claude via the Claude Code CLI")
+                Text("Chat with \(chatManager.providerDisplayName)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                if chatManager.settings.resumeLastSession {
+                if chatManager.supportsSessionHistory && chatManager.settings.resumeLastSession {
                     Label("Will resume last session on startup", systemImage: "arrow.triangle.branch")
                         .font(.caption)
                         .foregroundStyle(.green)
@@ -321,7 +321,7 @@ struct ClaudeCodeChatMessageRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(message.role == .user ? "You" : "Claude")
+                    Text(message.role == .user ? "You" : (chatManager?.providerDisplayName ?? "Assistant"))
                         .font(.headline)
                     Spacer()
                     Text(message.timestamp, style: .time)

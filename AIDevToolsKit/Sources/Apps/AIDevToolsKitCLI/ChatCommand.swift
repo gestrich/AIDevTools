@@ -17,9 +17,6 @@ struct ChatCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Provider to use for chat (default: claude)")
     var provider: String = "claude"
 
-    @Option(name: .long, help: "Anthropic API key (required for anthropic-api provider, or set ANTHROPIC_API_KEY env var)")
-    var apiKey: String?
-
     @Option(name: .long, help: "System prompt to configure the AI's behavior")
     var systemPrompt: String?
 
@@ -32,35 +29,22 @@ struct ChatCommand: AsyncParsableCommand {
     @Argument(help: "Single message to send (omit for interactive mode)")
     var message: String?
 
-    func validate() throws {
-        if provider == "anthropic-api" && resolvedAPIKey == nil {
-            throw ValidationError("API key required for anthropic-api provider. Use --api-key or set ANTHROPIC_API_KEY.")
-        }
-    }
-
     func run() async throws {
         let registry = makeProviderRegistry()
 
-        switch provider {
-        case "anthropic-api":
-            let key = resolvedAPIKey!
-            let client = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: key))
-            try await runAnthropicChat(client: client)
+        guard let client = registry.client(named: provider) else {
+            print("Unknown provider '\(provider)'. Available: \(registry.providerNames.joined(separator: ", "))")
+            throw ExitCode.failure
+        }
 
-        default:
-            guard let client = registry.client(named: provider) else {
-                print("Unknown provider '\(provider)'. Available: \(registry.providerNames.joined(separator: ", ")), anthropic-api")
-                throw ExitCode.failure
-            }
+        if client is AnthropicAIClient {
+            try await runAnthropicChat(client: client)
+        } else {
             try await runCLIChat(client: client)
         }
     }
 
     // MARK: - Anthropic API Chat
-
-    private var resolvedAPIKey: String? {
-        apiKey ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
-    }
 
     private func runAnthropicChat(client: any AIClient) async throws {
         if let message {

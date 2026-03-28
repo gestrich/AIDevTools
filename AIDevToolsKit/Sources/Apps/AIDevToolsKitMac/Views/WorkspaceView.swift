@@ -217,14 +217,14 @@ struct WorkspaceView: View {
 
             Spacer()
 
-            if chatProviderName != "anthropic-api", claudeCodeChatManager != nil {
-                Button(action: { showingSessionPicker = true }) {
-                    Image(systemName: "clock.arrow.circlepath")
-                }
-                .buttonStyle(.plain)
-                .help("Session history")
-                .popover(isPresented: $showingSessionPicker) {
-                    if let claudeCodeChatManager {
+            if let claudeCodeChatManager {
+                if claudeCodeChatManager.supportsSessionHistory {
+                    Button(action: { showingSessionPicker = true }) {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Session history")
+                    .popover(isPresented: $showingSessionPicker) {
                         ClaudeCodeSessionPickerView()
                             .environment(claudeCodeChatManager)
                             .frame(minWidth: 300, minHeight: 400)

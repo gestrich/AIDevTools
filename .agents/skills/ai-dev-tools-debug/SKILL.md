@@ -24,6 +24,10 @@ swift build
 swift run ai-dev-tools-kit <subcommand>
 ```
 
+### Environment setup
+
+The CLI loads environment variables from a `.env` file (searched from `AIDevToolsKit/` upward). Provider commands that use the Anthropic API require `ANTHROPIC_API_KEY`. Check that `AIDevToolsKit/.env` exists and contains the key before running commands with `--provider anthropic-api`.
+
 ## Step 2: Discover Configured Repositories
 
 The user's repository configurations live in `repositories.json` inside their **data path** (default: `~/Desktop/ai-dev-tools/`). List them:

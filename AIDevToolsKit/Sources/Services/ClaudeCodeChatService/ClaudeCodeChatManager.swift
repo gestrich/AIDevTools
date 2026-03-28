@@ -14,6 +14,9 @@ public final class ClaudeCodeChatManager {
     private let client: any AIClient
     private var currentTask: Task<Void, Never>?
 
+    public var providerName: String { client.name }
+    public var providerDisplayName: String { client.displayName }
+    public var supportsSessionHistory: Bool { client.name == "claude" }
     public var messages: [ClaudeCodeChatMessage] { sessionState.messages }
     public var workingDirectory: String { sessionState.workingDirectory }
     public var currentSessionId: String? { sessionState.sessionId }
@@ -30,7 +33,7 @@ public final class ClaudeCodeChatManager {
         let resolvedWorkingDir = Self.resolveSymlinks(in: rawWorkingDir)
         self.sessionState = SessionState(workingDirectory: resolvedWorkingDir)
 
-        if settings.resumeLastSession {
+        if settings.resumeLastSession && client.name == "claude" {
             self.isLoadingHistory = true
             let workDir = resolvedWorkingDir
             Task {
@@ -77,7 +80,7 @@ public final class ClaudeCodeChatManager {
 
         self.sessionState = SessionState(workingDirectory: resolvedPath)
 
-        if settings.resumeLastSession {
+        if settings.resumeLastSession && supportsSessionHistory {
             self.isLoadingHistory = true
             let sessions = await Self.listSessionsFromDisk(workingDirectory: resolvedPath)
             guard self.sessionState.workingDirectory == resolvedPath else { return }
@@ -272,7 +275,7 @@ public final class ClaudeCodeChatManager {
                         if result.exitCode == 130 || result.exitCode == 143 {
                             errorMessage = "Request interrupted by user"
                         } else {
-                            errorMessage = "Error running Claude (exit code \(result.exitCode))\n\(result.stderr)"
+                            errorMessage = "Error running \(client.displayName) (exit code \(result.exitCode))\n\(result.stderr)"
                         }
                         sessionState.messages[index] = ClaudeCodeChatMessage(
                             id: assistantMessageId,

@@ -1,9 +1,11 @@
 import ArgumentParser
+import EnvironmentSDK
+import Foundation
 import LoggingSDK
 
 @main
 struct AIDevToolsKit: AsyncParsableCommand {
-    nonisolated(unsafe) static var loggingBootstrapped = false
+    nonisolated(unsafe) static var bootstrapped = false
 
     static let configuration = CommandConfiguration(
         commandName: "ai-dev-tools-kit",
@@ -12,8 +14,17 @@ struct AIDevToolsKit: AsyncParsableCommand {
     )
 
     mutating func validate() throws {
-        guard !Self.loggingBootstrapped else { return }
+        guard !Self.bootstrapped else { return }
         AIDevToolsLogging.bootstrap()
-        Self.loggingBootstrapped = true
+        loadDotEnv()
+        Self.bootstrapped = true
+    }
+
+    private func loadDotEnv() {
+        for (key, value) in DotEnvironmentLoader.loadDotEnv() {
+            if ProcessInfo.processInfo.environment[key] == nil {
+                setenv(key, value, 0)
+            }
+        }
     }
 }
