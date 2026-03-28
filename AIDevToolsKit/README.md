@@ -49,11 +49,19 @@ Dependencies flow downward only. Each layer is a separate target with its own te
 | `ClaudePythonSDK` | Python `claude_agent.py` script | Claude Agent via Python subprocess — JSON stdin/stdout, inactivity watchdog |
 | `SkillScannerSDK` | Filesystem scan | Scans `.agents/skills/`, `.claude/skills/`, `.claude/commands/`, and `~/.claude/commands/` for skill `.md` files |
 
+**Services (shared models, config, stateful utilities):**
+
+| Target | Built On | Description |
+|--------|----------|-------------|
+| `AnthropicChatService` | `AnthropicSDK` | Anthropic HTTP chat — orchestration, SwiftData persistence, streaming events |
+| `ClaudeCodeChatService` | `ClaudeCLISDK` | Claude Code CLI chat — session management, message queuing, content line parsing |
+
 **Features (use case orchestration):**
 
 | Target | Description |
 |--------|-------------|
-| `ChatFeature` | Unified chat protocol with provider adapters — works with any `AIClient` (Anthropic, Claude Code, Codex) |
+| `AnthropicChatFeature` | Use cases for Anthropic HTTP chat (send message, manage conversations) |
+| `ClaudeCodeChatFeature` | Use cases for Claude Code CLI chat (send message, list sessions, scan skills) |
 
 ## How Eval Cases Work
 

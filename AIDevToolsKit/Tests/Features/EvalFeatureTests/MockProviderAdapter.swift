@@ -43,8 +43,7 @@ struct MockEvalProvider: AIClient, EvalCapable {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         fatalError("Not implemented in mock")
     }

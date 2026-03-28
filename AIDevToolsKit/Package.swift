@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "AIOutputSDK", targets: ["AIOutputSDK"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
         .library(name: "ChatFeature", targets: ["ChatFeature"]),
+        .library(name: "ChatService", targets: ["ChatService"]),
         .library(name: "ClaudeCLISDK", targets: ["ClaudeCLISDK"]),
         .library(name: "ClaudePythonSDK", targets: ["ClaudePythonSDK"]),
         .library(name: "CodexCLISDK", targets: ["CodexCLISDK"]),
@@ -148,6 +149,13 @@ let package = Package(
             path: "Sources/Services/ArchitecturePlannerService"
         ),
         .target(
+            name: "ChatService",
+            dependencies: [
+                "AIOutputSDK",
+            ],
+            path: "Sources/Services/ChatService"
+        ),
+        .target(
             name: "DataPathsService",
             dependencies: [],
             path: "Sources/Services/DataPathsService"
@@ -281,8 +289,13 @@ let package = Package(
         ),
         .testTarget(
             name: "ChatFeatureTests",
-            dependencies: ["AIOutputSDK", "ChatFeature", "SkillScannerSDK"],
+            dependencies: ["ChatFeature", "SkillScannerSDK"],
             path: "Tests/Features/ChatFeatureTests"
+        ),
+        .testTarget(
+            name: "ChatServiceTests",
+            dependencies: ["AIOutputSDK", "ChatService"],
+            path: "Tests/Services/ChatServiceTests"
         ),
         .testTarget(
             name: "ClaudeCLISDKTests",

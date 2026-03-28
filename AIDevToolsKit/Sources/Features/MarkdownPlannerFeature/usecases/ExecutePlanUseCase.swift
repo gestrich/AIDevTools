@@ -63,14 +63,13 @@ public struct ExecutePlanUseCase: Sendable {
     }
 
     public enum Progress: Sendable {
-        case allCompleted(phasesExecuted: Int, totalSeconds: Int)
         case fetchingStatus
+        case phaseOverview(phases: [PhaseStatus])
+        case startingPhase(index: Int, total: Int, description: String)
+        case phaseOutput(text: String)
         case phaseCompleted(index: Int, elapsedSeconds: Int, totalElapsedSeconds: Int)
         case phaseFailed(index: Int, description: String, error: String)
-        case phaseOutput(text: String)
-        case phaseOverview(phases: [PhaseStatus])
-        case phaseStreamEvent(AIStreamEvent)
-        case startingPhase(index: Int, total: Int, description: String)
+        case allCompleted(phasesExecuted: Int, totalSeconds: Int)
         case timeLimitReached(remaining: Int, totalSeconds: Int)
         case uncommittedChanges(files: [String])
     }
@@ -180,9 +179,6 @@ public struct ExecutePlanUseCase: Sendable {
                     onOutput: { text in
                         outputAccumulator.append(text)
                         onProgress?(.phaseOutput(text: text))
-                    },
-                    onStreamEvent: { event in
-                        onProgress?(.phaseStreamEvent(event))
                     }
                 )
             } catch {
@@ -312,8 +308,7 @@ public struct ExecutePlanUseCase: Sendable {
         description: String,
         repoPath: URL?,
         repository: RepositoryInfo?,
-        onOutput: (@Sendable (String) -> Void)?,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> PhaseResult {
         var ghInstructions = "\nWhen creating pull requests, ALWAYS use `gh pr create --draft`."
         if let githubUser = repository?.githubUser {
@@ -356,8 +351,7 @@ public struct ExecutePlanUseCase: Sendable {
             prompt: prompt,
             jsonSchema: Self.executionSchema,
             options: options,
-            onOutput: onOutput,
-            onStreamEvent: onStreamEvent
+            onOutput: onOutput
         )
         return output.value
     }

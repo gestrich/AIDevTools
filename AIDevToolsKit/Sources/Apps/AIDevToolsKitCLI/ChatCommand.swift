@@ -43,61 +43,64 @@ struct ChatCommand: AsyncParsableCommand {
             client = defaultClient
         }
 
-        let chatProvider = AIClientChatAdapter.make(from: client)
+        let useCase = SendChatMessageUseCase(client: client)
         let dir = workingDir ?? FileManager.default.currentDirectoryPath
 
         if let message {
-            try await sendMessage(message, workingDirectory: dir, chatProvider: chatProvider)
+            try await sendMessage(message, workingDirectory: dir, useCase: useCase, client: client)
         } else {
-            try await runInteractive(workingDirectory: dir, chatProvider: chatProvider)
+            try await runInteractive(workingDirectory: dir, useCase: useCase, client: client)
         }
     }
 
     private func sendMessage(
         _ text: String,
         workingDirectory: String,
-        chatProvider: any ChatProvider
+        useCase: SendChatMessageUseCase,
+        client: any AIClient
     ) async throws {
         var sessionId: String?
-        if resume, chatProvider.supportsSessionHistory {
-            let sessions = await chatProvider.listSessions(workingDirectory: workingDirectory)
+        if resume, let listable = client as? SessionListable {
+            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
         }
 
-        let options = ChatProviderOptions(
+        let options = SendChatMessageUseCase.Options(
+            message: text,
+            workingDirectory: workingDirectory,
             sessionId: sessionId,
-            systemPrompt: systemPrompt,
-            workingDirectory: workingDirectory
+            systemPrompt: systemPrompt
         )
 
-        let result = try await chatProvider.sendMessage(
-            text,
-            images: [],
-            options: options
-        ) { event in
-            if case .textDelta(let text) = event {
-                print(text, terminator: "")
-                fflush(stdout)
+        let result = try await useCase.run(options) { progress in
+            switch progress {
+            case .streamEvent(let event):
+                if case .textDelta(let text) = event {
+                    print(text, terminator: "")
+                    fflush(stdout)
+                }
+            case .completed:
+                print()
             }
         }
-        print()
 
-        if result.content.isEmpty && result.sessionId == nil {
-            throw ExitCode.failure
+        if result.exitCode != 0 {
+            throw ExitCode(result.exitCode)
         }
     }
 
     private func runInteractive(
         workingDirectory: String,
-        chatProvider: any ChatProvider
+        useCase: SendChatMessageUseCase,
+        client: any AIClient
     ) async throws {
-        print("\(chatProvider.displayName) Chat (type 'exit' or Ctrl-D to quit)")
+        print("\(client.displayName) Chat (type 'exit' or Ctrl-D to quit)")
         print("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}")
 
         var sessionId: String?
 
-        if resume, chatProvider.supportsSessionHistory {
-            let sessions = await chatProvider.listSessions(workingDirectory: workingDirectory)
+        if resume, let listable = client as? SessionListable {
+            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
             if let sessionId {
                 print("Resuming session: \(sessionId)")
@@ -117,27 +120,28 @@ struct ChatCommand: AsyncParsableCommand {
             if input.isEmpty { continue }
             if input.lowercased() == "exit" { break }
 
-            let options = ChatProviderOptions(
+            let options = SendChatMessageUseCase.Options(
+                message: input,
+                workingDirectory: workingDirectory,
                 sessionId: sessionId,
-                systemPrompt: systemPrompt,
-                workingDirectory: workingDirectory
+                systemPrompt: systemPrompt
             )
 
-            print("\n\(chatProvider.displayName): ", terminator: "")
+            print("\n\(client.displayName): ", terminator: "")
             fflush(stdout)
 
             do {
-                let result = try await chatProvider.sendMessage(
-                    input,
-                    images: [],
-                    options: options
-                ) { event in
-                    if case .textDelta(let text) = event {
-                        print(text, terminator: "")
-                        fflush(stdout)
+                let result = try await useCase.run(options) { progress in
+                    switch progress {
+                    case .streamEvent(let event):
+                        if case .textDelta(let text) = event {
+                            print(text, terminator: "")
+                            fflush(stdout)
+                        }
+                    case .completed:
+                        print()
                     }
                 }
-                print()
                 sessionId = result.sessionId ?? sessionId
             } catch {
                 print("\nError: \(error.localizedDescription)")

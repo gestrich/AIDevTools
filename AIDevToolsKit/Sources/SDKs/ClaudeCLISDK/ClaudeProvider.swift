@@ -132,8 +132,7 @@ public struct ClaudeProvider: Sendable {
         workingDirectory: String? = nil,
         environment: [String: String]? = nil,
         maxTimeoutRetries: Int = 1,
-        onFormattedOutput: (@Sendable (String) -> Void)? = nil,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)? = nil
+        onFormattedOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> ClaudeStructuredOutput<T> {
         let formatter = ClaudeStreamFormatter()
         let stdoutCapture = StdoutAccumulator()
@@ -157,8 +156,7 @@ public struct ClaudeProvider: Sendable {
                     onOutput: Self.outputHandler(
                         formatter: formatter,
                         stdoutCapture: stdoutCapture,
-                        onFormattedOutput: onFormattedOutput,
-                        onStreamEvent: onStreamEvent
+                        onFormattedOutput: onFormattedOutput
                     )
                 )
                 return try parser.parse(type, from: result)
@@ -219,8 +217,7 @@ public struct ClaudeProvider: Sendable {
     private static func outputHandler(
         formatter: ClaudeStreamFormatter,
         stdoutCapture: StdoutAccumulator,
-        onFormattedOutput: (@Sendable (String) -> Void)?,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)? = nil
+        onFormattedOutput: (@Sendable (String) -> Void)?
     ) -> @Sendable (StreamOutput) -> Void {
         { item in
             switch item {
@@ -229,11 +226,6 @@ public struct ClaudeProvider: Sendable {
                 if let onFormattedOutput {
                     let formatted = formatter.format(text)
                     if !formatted.isEmpty { onFormattedOutput(formatted) }
-                }
-                if let onStreamEvent {
-                    for event in formatter.formatStructured(text) {
-                        onStreamEvent(event)
-                    }
                 }
             case .stderr(_, let text):
                 if let onFormattedOutput {

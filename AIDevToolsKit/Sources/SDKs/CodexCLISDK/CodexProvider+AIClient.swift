@@ -65,8 +65,7 @@ extension CodexProvider: AIClient, SessionListable {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         var command = Codex.Exec(prompt: prompt)
         command.ephemeral = true

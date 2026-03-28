@@ -11,19 +11,20 @@ Entry points, UI, and CLI. Depends on: Features, Services, SDKs.
 
 ### Features
 Business logic orchestration and use cases. Depends on: Services, SDKs.
-- **ArchitecturePlannerFeature** — Architecture-driven planning with requirements, guidelines, and conformance scoring
-- **ChatFeature** — Unified chat protocol, provider adapters, and use cases for any AI provider
+- **AnthropicChatFeature** — Anthropic API chat orchestration
+- **ClaudeCodeChatFeature** — Claude Code CLI chat orchestration
 - **EvalFeature** — Eval execution, grading, and result analysis
+- **ArchitecturePlannerFeature** — Architecture-driven planning with requirements, guidelines, and conformance scoring
 - **MarkdownPlannerFeature** — Plan generation and phase execution
 - **SkillBrowserFeature** — Repository and skill browsing
 
 ### Services
 Domain services and data persistence. Depends on: SDKs.
-- **ArchitecturePlannerService** — SwiftData models and persistence for architecture-driven planning
-- **DataPathsService** — Application data directory management
+- **AnthropicChatService** — Anthropic chat session and message persistence
+- **ClaudeCodeChatService** — Claude Code chat session persistence
 - **EvalService** — Eval case storage and artifact management
+- **ArchitecturePlannerService** — SwiftData models and persistence for architecture-driven planning
 - **MarkdownPlannerService** — Plan settings, plan entry model, architecture diagram model
-- **ProviderRegistryService** — AI provider registration and discovery
 - **SkillService** — Skill configuration and repository settings
 
 ### SDKs

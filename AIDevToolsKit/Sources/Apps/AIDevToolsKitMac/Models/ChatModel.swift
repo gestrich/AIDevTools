@@ -30,36 +30,39 @@ public final class ChatModel {
     public private(set) var currentStreamingMessageId: UUID?
 
     public var currentSessionId: String? { sessionId }
-    public var providerName: String { provider.name }
-    public var supportsSessionHistory: Bool { provider.supportsSessionHistory }
+    public var providerName: String { client.name }
+    public var supportsSessionHistory: Bool { client is SessionListable }
 
-    private let provider: any ChatProvider
+    private let sendMessageUseCase: SendChatMessageUseCase
+    private let client: any AIClient
     private let systemPrompt: String?
     private var sessionId: String?
     private var currentTask: Task<Void, Never>?
     private var hasStartedSession: Bool = false
 
     public init(
-        provider: any ChatProvider,
+        sendMessageUseCase: SendChatMessageUseCase,
+        client: any AIClient,
         workingDirectory: String?,
         settings: ChatSettings = ChatSettings(),
         systemPrompt: String? = nil
     ) {
-        self.provider = provider
+        self.sendMessageUseCase = sendMessageUseCase
+        self.client = client
         self.settings = settings
-        self.providerDisplayName = provider.displayName
+        self.providerDisplayName = client.displayName
         self.systemPrompt = systemPrompt
 
         let rawWorkingDir = workingDirectory ?? FileManager.default.currentDirectoryPath
         self.workingDirectory = Self.resolveSymlinks(in: rawWorkingDir)
 
-        if settings.resumeLastSession, provider.supportsSessionHistory {
+        if settings.resumeLastSession, let listable = client as? SessionListable {
             self.isLoadingHistory = true
             let workDir = self.workingDirectory
             Task {
-                let sessions = await provider.listSessions(workingDirectory: workDir)
+                let sessions = await listable.listSessions(workingDirectory: workDir)
                 if let mostRecent = sessions.first {
-                    let sessionMessages = await provider.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: workDir)
+                    let sessionMessages = await listable.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: workDir)
                     self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
                     self.sessionId = mostRecent.id
                     self.hasStartedSession = true
@@ -144,37 +147,6 @@ public final class ChatModel {
         )
     }
 
-    public func appendStreamEventToCurrentMessage(_ event: AIStreamEvent) {
-        guard let id = currentStreamingMessageId,
-              let index = messages.firstIndex(where: { $0.id == id }) else { return }
-        let existing = messages[index]
-        var blocks = existing.contentBlocks
-        switch event {
-        case .textDelta(let chunk):
-            if case .text(let prev) = blocks.last {
-                blocks[blocks.count - 1] = .text(prev + chunk)
-            } else {
-                blocks.append(.text(chunk))
-            }
-        case .thinking(let content):
-            blocks.append(.thinking(content))
-        case .toolUse(let name, let detail):
-            blocks.append(.toolUse(name: name, detail: detail))
-        case .toolResult(let name, let summary, let isError):
-            blocks.append(.toolResult(name: name, summary: summary, isError: isError))
-        case .metrics(let duration, let cost, let turns):
-            blocks.append(.metrics(duration: duration, cost: cost, turns: turns))
-        }
-        messages[index] = ChatMessage(
-            id: existing.id,
-            role: existing.role,
-            contentBlocks: blocks,
-            images: existing.images,
-            timestamp: existing.timestamp,
-            isComplete: false
-        )
-    }
-
     public func finalizeCurrentStreamingMessage() {
         guard let id = currentStreamingMessageId,
               let index = messages.firstIndex(where: { $0.id == id }) else {
@@ -196,11 +168,13 @@ public final class ChatModel {
     // MARK: - Session Management
 
     public func listSessions() async -> [ChatSession] {
-        await provider.listSessions(workingDirectory: workingDirectory)
+        guard let listable = client as? SessionListable else { return [] }
+        return await listable.listSessions(workingDirectory: workingDirectory)
     }
 
     public nonisolated func loadSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
-        provider.getSessionDetails(sessionId: sessionId, summary: summary, lastModified: lastModified, workingDirectory: workingDirectory)
+        guard let listable = client as? SessionListable else { return nil }
+        return listable.getSessionDetails(sessionId: sessionId, summary: summary, lastModified: lastModified, workingDirectory: workingDirectory)
     }
 
     public func resumeSession(_ sessionId: String) async {
@@ -209,7 +183,12 @@ public final class ChatModel {
         self.hasStartedSession = true
         self.isLoadingHistory = true
 
-        let sessionMessages = await provider.loadSessionMessages(sessionId: sessionId, workingDirectory: workingDirectory)
+        guard let listable = client as? SessionListable else {
+            self.isLoadingHistory = false
+            return
+        }
+
+        let sessionMessages = await listable.loadSessionMessages(sessionId: sessionId, workingDirectory: workingDirectory)
         self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
         self.isLoadingHistory = false
     }
@@ -223,12 +202,12 @@ public final class ChatModel {
         self.sessionId = nil
         self.hasStartedSession = false
 
-        if settings.resumeLastSession, provider.supportsSessionHistory {
+        if settings.resumeLastSession, let listable = client as? SessionListable {
             self.isLoadingHistory = true
-            let sessions = await provider.listSessions(workingDirectory: resolvedPath)
+            let sessions = await listable.listSessions(workingDirectory: resolvedPath)
             guard self.workingDirectory == resolvedPath else { return }
             if let mostRecent = sessions.first {
-                let sessionMessages = await provider.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: resolvedPath)
+                let sessionMessages = await listable.loadSessionMessages(sessionId: mostRecent.id, workingDirectory: resolvedPath)
                 guard self.workingDirectory == resolvedPath else { return }
                 self.messages = sessionMessages.map { ChatMessage(role: $0.role == .user ? .user : .assistant, content: $0.content, isComplete: true) }
                 self.sessionId = mostRecent.id
@@ -251,7 +230,6 @@ public final class ChatModel {
             settings.resumeLastSession && hasStartedSession ? sessionId : nil
         }
         let workingDir = await MainActor.run { workingDirectory }
-        let sysPrompt = await MainActor.run { systemPrompt }
 
         let assistantMessageId = UUID()
         let placeholderMessage = ChatMessage(
@@ -291,60 +269,82 @@ public final class ChatModel {
 
         let accumulator = StreamAccumulator()
 
-        let options = ChatProviderOptions(
+        let options = SendChatMessageUseCase.Options(
+            message: content,
+            workingDirectory: workingDir,
             sessionId: resumeId,
-            systemPrompt: sysPrompt,
-            workingDirectory: workingDir
+            images: images,
+            systemPrompt: systemPrompt
         )
 
         do {
-            let result = try await provider.sendMessage(
-                content,
-                images: images,
-                options: options
-            ) { @Sendable event in
-                Task {
-                    let updatedBlocks = await accumulator.apply(event)
-                    await MainActor.run { [updatedBlocks] in
-                        if let index = self.messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                            self.messages[index] = ChatMessage(
-                                id: assistantMessageId,
-                                role: .assistant,
-                                contentBlocks: updatedBlocks,
-                                timestamp: self.messages[index].timestamp
-                            )
+            let result = try await sendMessageUseCase.run(options) { @Sendable progress in
+                switch progress {
+                case .streamEvent(let event):
+                    Task {
+                        let updatedBlocks = await accumulator.apply(event)
+                        await MainActor.run { [updatedBlocks] in
+                            if let index = self.messages.firstIndex(where: { $0.id == assistantMessageId }) {
+                                self.messages[index] = ChatMessage(
+                                    id: assistantMessageId,
+                                    role: .assistant,
+                                    contentBlocks: updatedBlocks,
+                                    timestamp: self.messages[index].timestamp
+                                )
+                            }
                         }
                     }
+                case .completed:
+                    break
                 }
             }
 
             await MainActor.run {
-                hasStartedSession = true
-                if let newSessionId = result.sessionId {
-                    sessionId = newSessionId
+                let displayName = providerDisplayName
+                if result.exitCode == 0 {
+                    hasStartedSession = true
+                    if let newSessionId = result.sessionId {
+                        sessionId = newSessionId
+                    }
                 }
 
                 if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                     let existing = messages[index]
-                    messages[index] = ChatMessage(
-                        id: existing.id,
-                        role: existing.role,
-                        contentBlocks: existing.contentBlocks,
-                        images: existing.images,
-                        timestamp: existing.timestamp,
-                        isComplete: true
-                    )
+
+                    if result.exitCode != 0 {
+                        let errorMessage: String
+                        if result.exitCode == 130 || result.exitCode == 143 {
+                            errorMessage = "Request interrupted by user"
+                        } else {
+                            errorMessage = "Error running \(displayName) (exit code \(result.exitCode))\n\(result.stderr)"
+                        }
+                        messages[index] = ChatMessage(
+                            id: assistantMessageId,
+                            role: .assistant,
+                            content: errorMessage,
+                            timestamp: existing.timestamp,
+                            isComplete: true
+                        )
+                    } else {
+                        messages[index] = ChatMessage(
+                            id: existing.id,
+                            role: existing.role,
+                            contentBlocks: existing.contentBlocks,
+                            images: existing.images,
+                            timestamp: existing.timestamp,
+                            isComplete: true
+                        )
+                    }
                 }
                 isProcessing = false
             }
         } catch {
             await MainActor.run {
-                let displayName = providerDisplayName
                 if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                     messages[index] = ChatMessage(
                         id: assistantMessageId,
                         role: .assistant,
-                        content: "Error running \(displayName): \(error.localizedDescription)",
+                        content: "Error: \(error.localizedDescription)",
                         timestamp: messages[index].timestamp,
                         isComplete: true
                     )

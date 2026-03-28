@@ -100,8 +100,7 @@ private struct MockAIClient: AIClient {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?,
-        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         let value = "mock value" as! T
         return AIStructuredResult(rawOutput: "raw", stderr: "", value: value)
