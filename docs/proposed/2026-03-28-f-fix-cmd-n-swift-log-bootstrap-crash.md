@@ -46,7 +46,10 @@ Move `AIDevToolsLogging.bootstrap()` out of `AIDevToolsKitMacEntryView.init()` a
 - CMD+N creates new windows without re-bootstrapping the logger
 - No crash on CMD+N
 
-## - [ ] Phase 2: Validation
+## - [x] Phase 2: Validation
+
+**Skills used**: `none`
+**Principles applied**: Verified build succeeds with `xcodebuild`. Pre-existing SkillScanner test failures are unrelated to this change. Manual verification (CMD+N, Settings, log output) requires human testing.
 
 Build and verify the fix.
 
