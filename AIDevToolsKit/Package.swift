@@ -284,7 +284,7 @@ let package = Package(
                 "ClaudeChainFeature",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
-            path: "Sources/ClaudeChainCLI"
+            path: "Sources/Apps/ClaudeChainCLI"
         ),
         .target(
             name: "ClaudeChainSDK",
@@ -294,7 +294,7 @@ let package = Package(
         .executableTarget(
             name: "ClaudeChainMain",
             dependencies: ["ClaudeChainCLI"],
-            path: "Sources/ClaudeChainMain"
+            path: "Sources/Apps/ClaudeChainMain"
         ),
         .target(
             name: "ClaudeChainService",
@@ -332,7 +332,7 @@ let package = Package(
         .testTarget(
             name: "ClaudeChainCLITests",
             dependencies: ["ClaudeChainCLI"],
-            path: "Tests/ClaudeChainCLITests"
+            path: "Tests/Apps/ClaudeChainCLITests"
         ),
         .testTarget(
             name: "ClaudeChainSDKTests",

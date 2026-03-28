@@ -94,7 +94,10 @@ ClaudeChainMain → ClaudeChainCLI → ClaudeChainFeature → ClaudeChainService
 5. Update all dependency references in `Package.swift` from `"ClaudeChainServices"` → `"ClaudeChainFeature"`
 6. Build to verify: `swift build --target ClaudeChainFeature`
 
-## - [ ] Phase 4: Move ClaudeChainCLI and ClaudeChainMain to Apps layer
+## - [x] Phase 4: Move ClaudeChainCLI and ClaudeChainMain to Apps layer
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Moved CLI commands and executable entry point to Apps layer per 4-layer architecture. No import renames needed since target names are unchanged.
 
 **Skills to read**: `swift-architecture`
 
