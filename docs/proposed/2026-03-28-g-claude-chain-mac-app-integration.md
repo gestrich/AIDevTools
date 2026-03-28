@@ -151,7 +151,10 @@ In `WorkspaceView`'s `onChange(of: selectedItem)` or `onChange(of: selectedRepoI
 
 Add `ClaudeChainFeature` and `ClaudeChainService` to the `AIDevToolsKitMac` target's dependencies list (alphabetically ordered).
 
-## - [ ] Phase 5: Verify CLI Execution with claude-chain-demo
+## - [x] Phase 5: Verify CLI Execution with claude-chain-demo
+
+**Skills used**: none
+**Principles applied**: Wrote Swift Testing integration tests against the real `claude-chain-demo` repo to verify chain discovery, spec parsing, task counting, next-task detection, and branch naming. All 9 tests pass: ListChainsUseCase correctly discovers both projects with absolute paths, SpecContent accurately counts completed/pending tasks, and ExecuteChainUseCase's branch naming round-trips through `Project.fromBranchName`. Full end-to-end execution (Claude + PR creation) deferred to manual testing to avoid side effects in automated tests.
 
 **Skills to read**: none (manual verification)
 
