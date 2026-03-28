@@ -1,7 +1,7 @@
 import AIOutputSDK
 import Foundation
 
-extension CodexProvider: AIClient, SessionListable {
+extension CodexProvider: AIClient {
     public var name: String { "codex" }
     public var displayName: String { "Codex CLI" }
 
@@ -85,7 +85,7 @@ extension CodexProvider: AIClient, SessionListable {
         return AIStructuredResult(rawOutput: result.stdout, stderr: result.stderr, value: value)
     }
 
-    // MARK: - SessionListable
+    // MARK: - Session History
 
     public func listSessions(workingDirectory: String) async -> [ChatSession] {
         CodexSessionStorage().listSessions()

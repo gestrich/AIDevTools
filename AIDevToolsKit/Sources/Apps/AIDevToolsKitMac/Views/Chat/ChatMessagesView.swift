@@ -134,7 +134,7 @@ struct ChatMessagesView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
 
-                if chatModel.supportsSessionHistory && chatModel.settings.resumeLastSession {
+                if chatModel.settings.resumeLastSession {
                     Label("Will resume last session on startup", systemImage: "arrow.triangle.branch")
                         .font(.caption)
                         .foregroundStyle(.green)

@@ -41,14 +41,3 @@ public struct SessionDetails: Sendable {
     }
 }
 
-public protocol SessionListable {
-    func listSessions(workingDirectory: String) async -> [ChatSession]
-    func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage]
-    func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails?
-}
-
-extension SessionListable {
-    public func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
-        nil
-    }
-}

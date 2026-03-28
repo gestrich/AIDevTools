@@ -74,6 +74,10 @@ public protocol AIClient: Sendable {
         options: AIClientOptions,
         onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIStructuredResult<T>
+
+    func listSessions(workingDirectory: String) async -> [ChatSession]
+    func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage]
+    func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails?
 }
 
 extension AIClient {
@@ -84,4 +88,8 @@ extension AIClient {
     ) async throws -> AIClientResult {
         try await run(prompt: prompt, options: options, onOutput: onOutput, onStreamEvent: nil)
     }
+
+    public func listSessions(workingDirectory: String) async -> [ChatSession] { [] }
+    public func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] { [] }
+    public func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? { nil }
 }

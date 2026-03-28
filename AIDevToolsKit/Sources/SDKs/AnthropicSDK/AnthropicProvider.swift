@@ -2,7 +2,7 @@ import AIOutputSDK
 import Foundation
 @preconcurrency import SwiftAnthropic
 
-public actor AnthropicProvider: AIClient, SessionListable {
+public actor AnthropicProvider: AIClient {
     public nonisolated var name: String { "anthropic-api" }
     public nonisolated var displayName: String { "Anthropic API" }
 
@@ -121,7 +121,7 @@ public actor AnthropicProvider: AIClient, SessionListable {
         return AIStructuredResult(rawOutput: result.stdout, sessionId: result.sessionId, stderr: "", value: value)
     }
 
-    // MARK: - SessionListable
+    // MARK: - Session History
 
     public func listSessions(workingDirectory: String) async -> [ChatSession] {
         await storage.listSessions()

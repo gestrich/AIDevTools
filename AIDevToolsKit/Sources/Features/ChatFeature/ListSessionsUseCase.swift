@@ -11,9 +11,9 @@ public struct ListSessionsUseCase: Sendable {
         }
     }
 
-    private let client: any AIClient & SessionListable
+    private let client: any AIClient
 
-    public init(client: any AIClient & SessionListable) {
+    public init(client: any AIClient) {
         self.client = client
     }
 

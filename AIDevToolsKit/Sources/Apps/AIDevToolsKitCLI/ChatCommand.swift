@@ -60,8 +60,8 @@ struct ChatCommand: AsyncParsableCommand {
         client: any AIClient
     ) async throws {
         var sessionId: String?
-        if resume, let listable = client as? SessionListable {
-            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
+        if resume {
+            let sessions = await client.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
         }
 
@@ -99,8 +99,8 @@ struct ChatCommand: AsyncParsableCommand {
 
         var sessionId: String?
 
-        if resume, let listable = client as? SessionListable {
-            let sessions = await listable.listSessions(workingDirectory: workingDirectory)
+        if resume {
+            let sessions = await client.listSessions(workingDirectory: workingDirectory)
             sessionId = sessions.first?.id
             if let sessionId {
                 print("Resuming session: \(sessionId)")
