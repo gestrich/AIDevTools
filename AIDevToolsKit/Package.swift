@@ -12,6 +12,11 @@ let package = Package(
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
         .library(name: "ChatFeature", targets: ["ChatFeature"]),
         .library(name: "ChatService", targets: ["ChatService"]),
+        .library(name: "ClaudeChainCLI", targets: ["ClaudeChainCLI"]),
+        .library(name: "ClaudeChainService", targets: ["ClaudeChainService"]),
+        .library(name: "ClaudeChainInfrastructure", targets: ["ClaudeChainInfrastructure"]),
+        .library(name: "ClaudeChainServices", targets: ["ClaudeChainServices"]),
+        .executable(name: "claude-chain", targets: ["ClaudeChainMain"]),
         .library(name: "ClaudeCLISDK", targets: ["ClaudeCLISDK"]),
         .library(name: "ClaudePythonSDK", targets: ["ClaudePythonSDK"]),
         .library(name: "CodexCLISDK", targets: ["CodexCLISDK"]),
@@ -37,6 +42,7 @@ let package = Package(
         .package(url: "https://github.com/gestrich/SwiftCLI", branch: "main"),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui.git", from: "2.0.0"),
         .package(url: "https://github.com/jamesrochabrun/SwiftAnthropic", from: "2.0.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
     ],
     targets: [
         // Apps Layer
@@ -269,6 +275,40 @@ let package = Package(
             path: "Sources/SDKs/SkillScannerSDK"
         ),
 
+        // ClaudeChain Targets
+        .target(
+            name: "ClaudeChainCLI",
+            dependencies: [
+                "ClaudeChainInfrastructure",
+                "ClaudeChainService",
+                "ClaudeChainServices",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            path: "Sources/ClaudeChainCLI"
+        ),
+        .target(
+            name: "ClaudeChainInfrastructure",
+            dependencies: ["ClaudeChainService"],
+            path: "Sources/ClaudeChainInfrastructure"
+        ),
+        .executableTarget(
+            name: "ClaudeChainMain",
+            dependencies: ["ClaudeChainCLI"],
+            path: "Sources/ClaudeChainMain"
+        ),
+        .target(
+            name: "ClaudeChainService",
+            dependencies: [
+                .product(name: "Yams", package: "Yams"),
+            ],
+            path: "Sources/Services/ClaudeChainService"
+        ),
+        .target(
+            name: "ClaudeChainServices",
+            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService"],
+            path: "Sources/ClaudeChainServices"
+        ),
+
         // Test Targets (alphabetical)
         .testTarget(
             name: "AIOutputSDKTests",
@@ -288,6 +328,26 @@ let package = Package(
             name: "ArchitecturePlannerServiceTests",
             dependencies: ["ArchitecturePlannerService"],
             path: "Tests/Services/ArchitecturePlannerServiceTests"
+        ),
+        .testTarget(
+            name: "ClaudeChainCLITests",
+            dependencies: ["ClaudeChainCLI"],
+            path: "Tests/ClaudeChainCLITests"
+        ),
+        .testTarget(
+            name: "ClaudeChainInfrastructureTests",
+            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService"],
+            path: "Tests/ClaudeChainInfrastructureTests"
+        ),
+        .testTarget(
+            name: "ClaudeChainServiceTests",
+            dependencies: ["ClaudeChainService"],
+            path: "Tests/Services/ClaudeChainServiceTests"
+        ),
+        .testTarget(
+            name: "ClaudeChainServicesTests",
+            dependencies: ["ClaudeChainInfrastructure", "ClaudeChainService", "ClaudeChainServices"],
+            path: "Tests/ClaudeChainServicesTests"
         ),
         .testTarget(
             name: "ChatFeatureTests",
