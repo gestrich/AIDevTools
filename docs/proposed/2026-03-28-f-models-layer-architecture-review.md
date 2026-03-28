@@ -73,9 +73,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 7: Review and fix RepositoryEvalConfig.swift
+## - [x] Phase 7: Review and fix RepositoryEvalConfig.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Added `Sendable` conformance for consistency with project value-type conventions; removed redundant explicit memberwise init that duplicated Swift's synthesized initializer
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/RepositoryEvalConfig.swift`
 - Save the review output to `reviews/apps-RepositoryEvalConfig.md`
