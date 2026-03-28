@@ -329,7 +329,10 @@ With chat embedded in feature views, the standalone chat panel in `WorkspaceView
 **Files to modify**:
 - `Apps/AIDevToolsKitMac/Views/WorkspaceView.swift` — remove standalone chat panel
 
-## - [ ] Phase 7: Research provider output richness
+## - [x] Phase 7: Research provider output richness
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Research-only phase — no code changes. Ran Claude CLI with `--output-format stream-json --verbose` to capture a real JSONL sample, then cross-referenced `ClaudeStreamFormatter`, `ClaudeStreamModels`, and `AnthropicProvider` against the live data. Key findings: (1) `toolResult.name` is always `""` because the `user` event only has `tool_use_id` not the tool name — correlation across events requires statefulness; (2) array `ToolResultContent` is silently dropped and string content is truncated at 200 chars; (3) `AnthropicProvider` emits no thinking, no tool input detail, and no metrics; (4) thinking is disabled at the `MessageParameter` call site. All findings documented in `docs/proposed/2026-03-28-e-provider-output-richness-research.md`.
 
 **Skills to read**: `swift-architecture`
 
