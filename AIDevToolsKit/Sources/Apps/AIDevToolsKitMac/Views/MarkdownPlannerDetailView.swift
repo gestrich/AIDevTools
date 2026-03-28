@@ -85,7 +85,7 @@ struct MarkdownPlannerDetailView: View {
                     }
                 }
 
-                if case .completed(let result) = markdownPlannerModel.state {
+                if case .completed(let result, _) = markdownPlannerModel.state {
                     completionBanner(result)
                 }
 
@@ -458,7 +458,7 @@ struct MarkdownPlannerDetailView: View {
     }
 
     private func mergeExecutionPhaseStates() {
-        let executionPhases = markdownPlannerModel.lastExecutionPhases
+        let executionPhases = markdownPlannerModel.state.lastExecutionPhases
         guard !executionPhases.isEmpty else { return }
         localPhases = localPhases.enumerated().map { index, phase in
             if index < executionPhases.count, executionPhases[index].isCompleted {

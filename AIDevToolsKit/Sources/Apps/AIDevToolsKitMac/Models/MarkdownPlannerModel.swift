@@ -24,8 +24,16 @@ final class MarkdownPlannerModel {
         case idle
         case executing(progress: ExecutionProgress)
         case generating(step: String)
-        case completed(ExecutePlanUseCase.Result)
+        case completed(ExecutePlanUseCase.Result, phases: [PhaseStatus])
         case error(Error)
+
+        var lastExecutionPhases: [PhaseStatus] {
+            switch self {
+            case .completed(_, let phases): return phases
+            case .executing(let progress): return progress.phases
+            default: return []
+            }
+        }
     }
 
     struct ExecutionProgress {
@@ -39,12 +47,12 @@ final class MarkdownPlannerModel {
 
     var state: State = .idle
     var plans: [MarkdownPlanEntry] = []
-    var isLoadingPlans: Bool = false
-    var executionCompleteCount: Int = 0
-    var phaseCompleteCount: Int = 0
+    private(set) var isLoadingPlans: Bool = false
+    private(set) var executionCompleteCount: Int = 0
+    private(set) var phaseCompleteCount: Int = 0
     private(set) var currentRepository: RepositoryInfo?
-    private(set) var lastExecutionPhases: [PhaseStatus] = []
     private(set) var queuedTasks: [QueuedTask] = []
+    /// Bridge for views to relay execution progress to a ChatModel for streaming display.
     var executionProgressObserver: (@MainActor (ExecutePlanUseCase.Progress) -> Void)?
 
     var selectedProviderName: String {
@@ -81,8 +89,10 @@ final class MarkdownPlannerModel {
         self.providerRegistry = providerRegistry
         self.togglePhaseUseCase = togglePhaseUseCase
 
-        let client = selectedProviderName.flatMap { providerRegistry.client(named: $0) }
-            ?? providerRegistry.defaultClient!
+        guard let client = selectedProviderName.flatMap({ providerRegistry.client(named: $0) })
+            ?? providerRegistry.defaultClient else {
+            preconditionFailure("MarkdownPlannerModel requires at least one configured provider")
+        }
         self.selectedProviderName = client.name
         self.activeClient = client
     }
@@ -171,10 +181,13 @@ final class MarkdownPlannerModel {
                 )
                 _ = try await integrateUseCase.run(integrateOptions)
             })
+            let phases: [PhaseStatus]
             if case .executing(let progress) = state {
-                lastExecutionPhases = progress.phases
+                phases = progress.phases
+            } else {
+                phases = []
             }
-            state = .completed(result)
+            state = .completed(result, phases: phases)
             executionCompleteCount += 1
             await loadPlans(for: repository)
         } catch {
