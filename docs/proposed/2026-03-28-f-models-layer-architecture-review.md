@@ -13,7 +13,7 @@ There are 16 files across three Models directories:
 - **Services layer** (`Sources/Services/EvalService/Models/`) — 5 files
 - **Services layer** (`Sources/Services/SkillService/Models/`) — 1 file
 
-Each phase reviews one file. The review output (markdown) should be saved to `reviews/<layer>-<filename>.md` (e.g., `reviews/apps-ActivePlanModel.md`).
+Each phase reviews one file and then implements all findings. The review output (markdown) should be saved to `reviews/<layer>-<filename>.md` (e.g., `reviews/apps-ActivePlanModel.md`).
 
 ## Phases
 
@@ -33,100 +33,128 @@ Each phase reviews one file. The review output (markdown) should be saved to `re
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ArchitecturePlannerModel.swift`
 - Save the review output to `reviews/apps-ArchitecturePlannerModel.md`
 
-## - [ ] Phase 3: Review ChatModel.swift
+## - [ ] Phase 3: Review and fix ChatModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ChatModel.swift`
 - Save the review output to `reviews/apps-ChatModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 4: Review EvalRunnerModel.swift
+## - [ ] Phase 4: Review and fix EvalRunnerModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/EvalRunnerModel.swift`
 - Save the review output to `reviews/apps-EvalRunnerModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 5: Review MarkdownPlannerModel.swift
+## - [ ] Phase 5: Review and fix MarkdownPlannerModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/MarkdownPlannerModel.swift`
 - Save the review output to `reviews/apps-MarkdownPlannerModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 6: Review ProviderModel.swift
+## - [ ] Phase 6: Review and fix ProviderModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/ProviderModel.swift`
 - Save the review output to `reviews/apps-ProviderModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 7: Review RepositoryEvalConfig.swift
+## - [ ] Phase 7: Review and fix RepositoryEvalConfig.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/RepositoryEvalConfig.swift`
 - Save the review output to `reviews/apps-RepositoryEvalConfig.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 8: Review SettingsModel.swift
+## - [ ] Phase 8: Review and fix SettingsModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/SettingsModel.swift`
 - Save the review output to `reviews/apps-SettingsModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 9: Review SkillContent.swift
+## - [ ] Phase 9: Review and fix SkillContent.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/SkillContent.swift`
 - Save the review output to `reviews/apps-SkillContent.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 10: Review WorkspaceModel.swift
+## - [ ] Phase 10: Review and fix WorkspaceModel.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/WorkspaceModel.swift`
 - Save the review output to `reviews/apps-WorkspaceModel.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 11: Review CaseResult.swift
+## - [ ] Phase 11: Review and fix CaseResult.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/CaseResult.swift`
 - Save the review output to `reviews/services-CaseResult.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 12: Review EvalCase.swift
+## - [ ] Phase 12: Review and fix EvalCase.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/EvalCase.swift`
 - Save the review output to `reviews/services-EvalCase.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 13: Review EvalSuite.swift
+## - [ ] Phase 13: Review and fix EvalSuite.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/EvalSuite.swift`
 - Save the review output to `reviews/services-EvalSuite.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 14: Review GradingModels.swift
+## - [ ] Phase 14: Review and fix GradingModels.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/GradingModels.swift`
 - Save the review output to `reviews/services-GradingModels.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 15: Review ProviderTypes.swift
+## - [ ] Phase 15: Review and fix ProviderTypes.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/ProviderTypes.swift`
 - Save the review output to `reviews/services-ProviderTypes.md`
+- Implement all review findings, including low severity
+- Verify the build passes
 
-## - [ ] Phase 16: Review Skill.swift
+## - [ ] Phase 16: Review and fix Skill.swift
 
 **Skills to read**: `ai-dev-tools-review`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/SkillService/Models/Skill.swift`
 - Save the review output to `reviews/services-Skill.md`
+- Implement all review findings, including low severity
+- Verify the build passes
