@@ -197,7 +197,8 @@ private final class MockAIClient: AIClient, @unchecked Sendable {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         fatalError("Not used in ChatSessionManager tests")
     }

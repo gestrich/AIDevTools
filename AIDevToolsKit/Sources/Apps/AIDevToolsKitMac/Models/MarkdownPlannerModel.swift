@@ -305,6 +305,8 @@ final class MarkdownPlannerModel {
             phaseCompleteCount += 1
         case .phaseFailed(_, let description, let error):
             current.currentPhaseDescription = "\(description) — Failed: \(error)"
+        case .phaseStreamEvent:
+            break
         case .allCompleted(let phasesExecuted, _):
             current.phasesCompleted = phasesExecuted
         case .timeLimitReached:

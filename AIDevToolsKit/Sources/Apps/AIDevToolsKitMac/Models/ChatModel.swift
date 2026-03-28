@@ -147,6 +147,37 @@ public final class ChatModel {
         )
     }
 
+    public func appendStreamEventToCurrentMessage(_ event: AIStreamEvent) {
+        guard let id = currentStreamingMessageId,
+              let index = messages.firstIndex(where: { $0.id == id }) else { return }
+        let existing = messages[index]
+        var blocks = existing.contentBlocks
+        switch event {
+        case .textDelta(let chunk):
+            if case .text(let prev) = blocks.last {
+                blocks[blocks.count - 1] = .text(prev + chunk)
+            } else {
+                blocks.append(.text(chunk))
+            }
+        case .thinking(let content):
+            blocks.append(.thinking(content))
+        case .toolUse(let name, let detail):
+            blocks.append(.toolUse(name: name, detail: detail))
+        case .toolResult(let name, let summary, let isError):
+            blocks.append(.toolResult(name: name, summary: summary, isError: isError))
+        case .metrics(let duration, let cost, let turns):
+            blocks.append(.metrics(duration: duration, cost: cost, turns: turns))
+        }
+        messages[index] = ChatMessage(
+            id: existing.id,
+            role: existing.role,
+            contentBlocks: blocks,
+            images: existing.images,
+            timestamp: existing.timestamp,
+            isComplete: false
+        )
+    }
+
     public func finalizeCurrentStreamingMessage() {
         guard let id = currentStreamingMessageId,
               let index = messages.firstIndex(where: { $0.id == id }) else {

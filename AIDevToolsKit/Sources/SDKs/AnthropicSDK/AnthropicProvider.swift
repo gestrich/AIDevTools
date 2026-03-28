@@ -102,7 +102,8 @@ public actor AnthropicProvider: AIClient, SessionListable {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         let structuredPrompt = """
             \(prompt)
@@ -113,7 +114,7 @@ public actor AnthropicProvider: AIClient, SessionListable {
             Respond ONLY with the JSON object, no other text.
             """
 
-        let result = try await run(prompt: structuredPrompt, options: options, onOutput: onOutput)
+        let result = try await run(prompt: structuredPrompt, options: options, onOutput: onOutput, onStreamEvent: onStreamEvent)
 
         let data = Data(result.stdout.utf8)
         let value = try JSONDecoder().decode(T.self, from: data)

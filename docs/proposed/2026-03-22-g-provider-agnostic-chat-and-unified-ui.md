@@ -29,7 +29,10 @@ Design a chat protocol/abstraction that captures the common interface:
 
 Both existing implementations should be able to conform to this protocol.
 
-## - [ ] Phase 2: Create Provider Adapters
+## - [x] Phase 2: Create Provider Adapters
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Created a single generic `AIClientChatAdapter` in ChatFeature rather than three separate adapter types, since all providers (AnthropicProvider, ClaudeProvider, CodexProvider) already conform to `AIClient & SessionListable`. This avoids code duplication and respects the 4-layer architecture — the adapter lives in the Features layer and depends only on `AIOutputSDK` protocols, not concrete SDK types. Image attachment handling (base64 → temp files) is included in the adapter. Also fixed pre-existing `runStructured` signature mismatches in AnthropicProvider and CodexProvider after Phase 1 protocol changes.
 
 Implement adapters that conform the existing services to the new protocol:
 

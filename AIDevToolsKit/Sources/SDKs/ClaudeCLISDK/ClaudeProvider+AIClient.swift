@@ -34,7 +34,8 @@ extension ClaudeProvider: AIClient {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIStructuredResult<T> {
         var command = Claude(prompt: prompt)
         command.dangerouslySkipPermissions = options.dangerouslySkipPermissions
@@ -50,7 +51,8 @@ extension ClaudeProvider: AIClient {
             command: command,
             workingDirectory: options.workingDirectory,
             environment: options.environment,
-            onFormattedOutput: onOutput
+            onFormattedOutput: onOutput,
+            onStreamEvent: onStreamEvent
         )
         let sessionId = Self.extractSessionId(from: output.rawOutput)
         return AIStructuredResult(rawOutput: output.rawOutput, sessionId: sessionId, stderr: output.stderr, value: output.value)

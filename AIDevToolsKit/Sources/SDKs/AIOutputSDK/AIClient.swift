@@ -72,7 +72,8 @@ public protocol AIClient: Sendable {
         prompt: String,
         jsonSchema: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIStructuredResult<T>
 }
 
@@ -83,5 +84,15 @@ extension AIClient {
         onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIClientResult {
         try await run(prompt: prompt, options: options, onOutput: onOutput, onStreamEvent: nil)
+    }
+
+    public func runStructured<T: Decodable & Sendable>(
+        _ type: T.Type,
+        prompt: String,
+        jsonSchema: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?
+    ) async throws -> AIStructuredResult<T> {
+        try await runStructured(type, prompt: prompt, jsonSchema: jsonSchema, options: options, onOutput: onOutput, onStreamEvent: nil)
     }
 }

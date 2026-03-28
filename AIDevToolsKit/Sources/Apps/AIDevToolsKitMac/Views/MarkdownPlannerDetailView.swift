@@ -420,8 +420,8 @@ struct MarkdownPlannerDetailView: View {
                 chatModel.finalizeCurrentStreamingMessage()
                 chatModel.appendStatusMessage("Starting Phase \(index + 1): \(desc)")
                 chatModel.beginStreamingMessage()
-            case .phaseOutput(let text):
-                chatModel.appendTextToCurrentStreamingMessage(text)
+            case .phaseStreamEvent(let event):
+                chatModel.appendStreamEventToCurrentMessage(event)
             case .phaseCompleted:
                 chatModel.finalizeCurrentStreamingMessage()
             case .phaseFailed(_, let desc, let error):

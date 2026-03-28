@@ -151,6 +151,9 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
                 printColored("  \(file)", color: .yellow)
             }
             print()
+
+        case .phaseStreamEvent(_):
+            break
         }
     }
 
