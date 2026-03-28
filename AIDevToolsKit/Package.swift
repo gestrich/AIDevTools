@@ -178,6 +178,13 @@ let package = Package(
             path: "Sources/Services/ChatService"
         ),
         .target(
+            name: "ChatManagerService",
+            dependencies: [
+                "AIOutputSDK",
+            ],
+            path: "Sources/Services/ChatManagerService"
+        ),
+        .target(
             name: "ClaudeCodeChatService",
             dependencies: [
                 "AIOutputSDK",
