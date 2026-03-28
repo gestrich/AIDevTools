@@ -56,7 +56,7 @@ Each phase reviews one file and then implements all findings. The review output 
 ## - [x] Phase 5: Review and fix MarkdownPlannerModel.swift
 
 **Skills used**: `ai-dev-tools-review`
-**Principles applied**: Replaced force-unwrap on `providerRegistry.defaultClient` with guard/preconditionFailure; folded `lastExecutionPhases` into State enum `.completed` case with computed accessor; tightened access control on `isLoadingPlans`, `executionCompleteCount`, `phaseCompleteCount` to `private(set)`; documented `executionProgressObserver` bridging purpose
+**Principles applied**: Replaced force-unwrap on `providerRegistry.defaultClient` with guard/preconditionFailure; folded `lastExecutionPhases` into State enum `.completed` case with computed accessor; tightened access control on `isLoadingPlans`, `executionCompleteCount`, `phaseCompleteCount` to `private(set)`; documented `executionProgressObserver` bridging purpose; removed redundant Logger import/property/usage in `generate()`; nested `QueuedTask` inside model
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/MarkdownPlannerModel.swift`
 - Save the review output to `reviews/apps-MarkdownPlannerModel.md`

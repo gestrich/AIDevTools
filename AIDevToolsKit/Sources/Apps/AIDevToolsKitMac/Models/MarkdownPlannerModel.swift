@@ -1,24 +1,23 @@
 import AIOutputSDK
 import ChatFeature
 import Foundation
-import Logging
 import MarkdownPlannerFeature
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
 
-struct QueuedTask: Identifiable {
-    let id: UUID
-    let description: String
-
-    init(id: UUID = UUID(), description: String) {
-        self.id = id
-        self.description = description
-    }
-}
-
 @MainActor @Observable
 final class MarkdownPlannerModel {
+
+    struct QueuedTask: Identifiable {
+        let id: UUID
+        let description: String
+
+        init(id: UUID = UUID(), description: String) {
+            self.id = id
+            self.description = description
+        }
+    }
 
     enum State {
         case idle
@@ -70,7 +69,6 @@ final class MarkdownPlannerModel {
     private var activeClient: any AIClient
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
-    private let logger = Logger(label: "MarkdownPlannerModel")
     private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let providerRegistry: ProviderRegistry
     private let togglePhaseUseCase: TogglePhaseUseCase
@@ -239,7 +237,6 @@ final class MarkdownPlannerModel {
             state = .idle
             return planName
         } catch {
-            logger.error("Plan generation failed: \(error.localizedDescription)")
             state = .error(error)
             return nil
         }

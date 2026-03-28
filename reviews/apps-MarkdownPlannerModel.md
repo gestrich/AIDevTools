@@ -135,12 +135,48 @@ private(set) var phaseCompleteCount: Int = 0
 
 ---
 
+## Finding 6 — [Severity: 3/10] Redundant logger error in `generate()`
+
+**Location:** Lines 65, 229
+
+### Guidance
+
+> **At the app layer**, catch errors to set state the UI can display.
+
+### Interpretation
+
+`generate()` logs the error via `logger.error(...)` AND sets `state = .error(error)` on the next line. The error is already properly surfaced to the UI through state. The `Logger` import and instance exist solely for this one call, adding a dependency (`Logging`) for no user-visible benefit. Severity 3/10 because the error is correctly surfaced — the log is redundant.
+
+### Resolution
+
+Remove the `logger.error(...)` call, the `Logger` property, and the `Logging` import since they're unused elsewhere in the file.
+
+---
+
+## Finding 7 — [Severity: 2/10] `QueuedTask` defined at file scope
+
+**Location:** Lines 10-18
+
+### Guidance
+
+> The model file should only contain the model.
+
+### Interpretation
+
+`QueuedTask` is a simple value type used exclusively by `MarkdownPlannerModel`. Defining it at file scope pollutes the module's top-level namespace. Severity 2/10 because it's a minor organizational issue with no functional impact.
+
+### Resolution
+
+Nest `QueuedTask` inside `MarkdownPlannerModel`.
+
+---
+
 ## Summary
 
 | | |
 |---|---|
 | **Layer** | Apps |
-| **Findings** | 5 |
+| **Findings** | 7 |
 | **Highest severity** | 5/10 |
 | **Overall health** | Well-structured model with proper enum-based state, good use case delegation, and clear error handling. Main issues are a force-unwrap crash risk and a few state properties that leak outside the enum. |
 | **Top priority** | Fix the force-unwrap on `providerRegistry.defaultClient` and tighten access control on independently stored properties. |
