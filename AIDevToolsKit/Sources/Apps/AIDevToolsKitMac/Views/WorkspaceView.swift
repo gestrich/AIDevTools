@@ -3,7 +3,6 @@ import ArchitecturePlannerService
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
-import SkillService
 import SwiftUI
 
 enum WorkspaceItem: Hashable {

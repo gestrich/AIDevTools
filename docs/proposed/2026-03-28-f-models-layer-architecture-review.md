@@ -163,9 +163,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 16: Review and fix Skill.swift
+## - [x] Phase 16: Review and fix Skill.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Eliminated redundant `Skill` and `ReferenceFile` types that duplicated `SkillInfo` and `SkillReferenceFile` from SkillScannerSDK; added `Identifiable` and `Hashable` to `SkillReferenceFile`; simplified `LoadSkillsUseCase` to return SDK types directly; removed unnecessary `SkillService` dependency from `SkillBrowserFeature`
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/SkillService/Models/Skill.swift`
 - Save the review output to `reviews/services-Skill.md`

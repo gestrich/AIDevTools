@@ -3,7 +3,7 @@ import Foundation
 import MarkdownPlannerService
 import RepositorySDK
 import SkillBrowserFeature
-import SkillService
+import SkillScannerSDK
 
 @MainActor @Observable
 final class WorkspaceModel {
@@ -17,7 +17,7 @@ final class WorkspaceModel {
 
     private(set) var repositories: [RepositoryInfo] = []
     private(set) var selectedRepository: RepositoryInfo?
-    private(set) var skills: [Skill] = []
+    private(set) var skills: [SkillInfo] = []
     private(set) var isLoadingSkills: Bool = false
     var state: State = .idle
 

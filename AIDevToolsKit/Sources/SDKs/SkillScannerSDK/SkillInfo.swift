@@ -24,7 +24,8 @@ public struct SkillInfo: Codable, Identifiable, Sendable {
     }
 }
 
-public struct SkillReferenceFile: Codable, Sendable {
+public struct SkillReferenceFile: Codable, Hashable, Identifiable, Sendable {
+    public var id: URL { url }
     public let name: String
     public let url: URL
 

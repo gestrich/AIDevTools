@@ -1,10 +1,11 @@
 import MarkdownUI
 import ProviderRegistryService
+import SkillScannerSDK
 import SkillService
 import SwiftUI
 
 struct SkillDetailView: View {
-    let skill: Skill
+    let skill: SkillInfo
     let evalConfig: RepositoryEvalConfig?
     let evalRegistry: EvalProviderRegistry?
     var onNavigateToEvals: (() -> Void)?

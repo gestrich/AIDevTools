@@ -140,7 +140,6 @@ let package = Package(
                 "MarkdownPlannerService",
                 "RepositorySDK",
                 "SkillScannerSDK",
-                "SkillService",
             ],
             path: "Sources/Features/SkillBrowserFeature"
         ),
@@ -361,7 +360,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SkillBrowserFeatureTests",
-            dependencies: ["RepositorySDK", "SkillBrowserFeature", "SkillScannerSDK", "SkillService"],
+            dependencies: ["RepositorySDK", "SkillBrowserFeature", "SkillScannerSDK"],
             path: "Tests/Features/SkillBrowserFeatureTests"
         ),
         .testTarget(

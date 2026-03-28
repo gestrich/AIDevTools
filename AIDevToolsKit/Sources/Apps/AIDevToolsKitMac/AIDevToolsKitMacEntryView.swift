@@ -8,7 +8,6 @@ import ProviderRegistryService
 import RepositorySDK
 import SkillBrowserFeature
 import SkillScannerSDK
-import SkillService
 import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
