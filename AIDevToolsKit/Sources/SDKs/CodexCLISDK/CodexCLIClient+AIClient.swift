@@ -1,7 +1,7 @@
 import AIOutputSDK
 import Foundation
 
-extension CodexCLIClient: AIClient {
+extension CodexCLIClient: AIClient, SessionListable {
     public var name: String { "codex" }
     public var displayName: String { "Codex CLI" }
 
@@ -13,6 +13,10 @@ extension CodexCLIClient: AIClient {
         options: AIClientOptions,
         onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIClientResult {
+        if let sessionId = options.sessionId {
+            return try await runResume(sessionId: sessionId, prompt: prompt, options: options, onOutput: onOutput)
+        }
+
         var command = Codex.Exec(prompt: prompt)
         command.ephemeral = true
         command.fullAuto = options.dangerouslySkipPermissions
@@ -35,6 +39,24 @@ extension CodexCLIClient: AIClient {
             onFormattedOutput: onOutput
         )
         return AIClientResult(exitCode: result.exitCode, stderr: result.stderr, stdout: result.stdout)
+    }
+
+    private func runResume(
+        sessionId: String,
+        prompt: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?
+    ) async throws -> AIClientResult {
+        var command = Codex.Exec.Resume(sessionId: sessionId, prompt: prompt)
+        command.fullAuto = options.dangerouslySkipPermissions
+        command.model = options.model
+        let result = try await run(
+            command: command,
+            workingDirectory: options.workingDirectory,
+            environment: options.environment,
+            onFormattedOutput: onOutput
+        )
+        return AIClientResult(exitCode: result.exitCode, sessionId: sessionId, stderr: result.stderr, stdout: result.stdout)
     }
 
     public func runStructured<T: Decodable & Sendable>(
@@ -60,5 +82,15 @@ extension CodexCLIClient: AIClient {
         let data = Data(result.stdout.utf8)
         let value = try JSONDecoder().decode(T.self, from: data)
         return AIStructuredResult(rawOutput: result.stdout, stderr: result.stderr, value: value)
+    }
+
+    // MARK: - SessionListable
+
+    public func listSessions(workingDirectory: String) async -> [ChatSession] {
+        CodexSessionStorage().listSessions()
+    }
+
+    public func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] {
+        CodexSessionStorage().loadMessages(sessionId: sessionId)
     }
 }

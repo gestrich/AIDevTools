@@ -365,9 +365,10 @@ Once this is in place, the session picker automatically appears for Anthropic AP
 - Move `ChatConversation.swift` and `ChatMessage.swift` from `AnthropicChatService` to `AnthropicSDK` (or keep in service if SDK shouldn't depend on SwiftData)
 - `Package.swift` — update dependencies
 
-## - [ ] Phase 8: Codex session history
+## - [x] Phase 8: Codex session history
 
-**Skills to read**: `swift-architecture`
+**Skills used**: `swift-architecture`
+**Principles applied**: `SessionListable` conformance parsing Codex's native `~/.codex/session_index.jsonl` and rollout files (both legacy `.json` and current `.jsonl` formats); session resume via `codex exec resume <sessionId>` (non-interactive subcommand of exec, not top-level `codex resume` which requires a TTY)
 
 Investigate Codex CLI's session storage mechanism and conform `CodexCLIClient` to `SessionListable`.
 
