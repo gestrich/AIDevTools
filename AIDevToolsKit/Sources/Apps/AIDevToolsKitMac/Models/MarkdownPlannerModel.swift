@@ -1,8 +1,10 @@
+import AIOutputSDK
 import ClaudeCLISDK
 import Foundation
 import Logging
 import MarkdownPlannerFeature
 import MarkdownPlannerService
+import ProviderRegistryService
 import RepositorySDK
 
 struct PlanPhase: Identifiable {
@@ -45,22 +47,49 @@ final class MarkdownPlannerModel {
     var phaseCompleteCount: Int = 0
     private(set) var currentRepository: RepositoryInfo?
 
+    var selectedProviderName: String {
+        didSet {
+            if oldValue != selectedProviderName {
+                rebuildClient()
+            }
+        }
+    }
+
+    var availableProviders: [(name: String, displayName: String)] {
+        providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
+    }
+
+    private var activeClient: any AIClient
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
     private let logger = Logger(label: "MarkdownPlannerModel")
     private let planSettingsStore: MarkdownPlannerRepoSettingsStore
+    private let providerRegistry: ProviderRegistry
     private let togglePhaseUseCase: TogglePhaseUseCase
 
     init(
         dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
         planSettingsStore: MarkdownPlannerRepoSettingsStore,
+        providerRegistry: ProviderRegistry,
+        selectedProviderName: String? = nil,
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
     ) {
         self.dataPath = dataPath
         self.deletePlanUseCase = deletePlanUseCase
         self.planSettingsStore = planSettingsStore
+        self.providerRegistry = providerRegistry
         self.togglePhaseUseCase = togglePhaseUseCase
+
+        let client = selectedProviderName.flatMap { providerRegistry.client(named: $0) }
+            ?? providerRegistry.providers.first!
+        self.selectedProviderName = client.name
+        self.activeClient = client
+    }
+
+    private func rebuildClient() {
+        guard let client = providerRegistry.client(named: selectedProviderName) else { return }
+        activeClient = client
     }
 
     func loadPlans(for repo: RepositoryInfo) async {
@@ -102,18 +131,24 @@ final class MarkdownPlannerModel {
         Task { await reloadPlans() }
     }
 
-    func execute(plan: MarkdownPlanEntry, repository: RepositoryInfo, stopAfterArchitectureDiagram: Bool = false) async {
+    func execute(
+        plan: MarkdownPlanEntry,
+        repository: RepositoryInfo,
+        executeMode: ExecutePlanUseCase.ExecuteMode = .all,
+        stopAfterArchitectureDiagram: Bool = false
+    ) async {
         state = .executing(progress: ExecutionProgress())
         phaseCompleteCount = 0
 
         do {
             let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
             let useCase = ExecutePlanUseCase(
-                client: ClaudeProvider(),
+                client: activeClient,
                 completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
                 dataPath: dataPath
             )
             let options = ExecutePlanUseCase.Options(
+                executeMode: executeMode,
                 planPath: plan.planURL,
                 repoPath: repository.path,
                 repository: repository,
@@ -138,7 +173,7 @@ final class MarkdownPlannerModel {
 
         let settingsStore = planSettingsStore
         let useCase = GeneratePlanUseCase(
-            client: ClaudeProvider(),
+            client: activeClient,
             resolveProposedDirectory: { repo in
                 let settings = try settingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
@@ -215,6 +250,8 @@ final class MarkdownPlannerModel {
         case .allCompleted(let phasesExecuted, _):
             current.phasesCompleted = phasesExecuted
         case .timeLimitReached:
+            break
+        case .uncommittedChanges:
             break
         }
 

@@ -19,6 +19,9 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
     @Option(help: "Maximum runtime in minutes")
     var maxMinutes: Int = 90
 
+    @Flag(help: "Execute only the next incomplete phase")
+    var next = false
+
     @Option(help: "Provider to use (default: first registered)")
     var provider: String?
 
@@ -70,6 +73,7 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
         )
         let result = try await useCase.run(
             ExecutePlanUseCase.Options(
+                executeMode: next ? .next : .all,
                 planPath: planURL,
                 repoPath: repoPath,
                 maxMinutes: maxMinutes,
@@ -141,6 +145,13 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
 
         case .timeLimitReached(let remaining, let totalSeconds):
             printColored("Time limit reached — \(remaining) steps may remain (total: \(TimerDisplay.formatTime(totalSeconds)))", color: .yellow)
+
+        case .uncommittedChanges(let files):
+            printColored("Warning: Uncommitted changes detected:", color: .yellow)
+            for file in files {
+                printColored("  \(file)", color: .yellow)
+            }
+            print()
         }
     }
 

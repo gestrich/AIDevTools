@@ -76,7 +76,10 @@ Remove the `architectureJSONInstruction` method and architecture diagram generat
 
 **Expected outcome:** Generated plans have all phases visible for user review. No Phase 3 dynamically creates more phases. Plans include relevant skills table and "Skills to read" per phase.
 
-## - [ ] Phase 3: Enhance phase execution with skill loading and completion notes
+## - [x] Phase 3: Enhance phase execution with skill loading and completion notes
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added git status check at SDK layer (GitClient.status), skill parsing at Feature layer, and completion notes instructions in execution prompt. Progress enum extended for uncommitted changes notification.
 
 **Skills to read**: `swift-architecture`
 
@@ -105,7 +108,10 @@ Complete Phase N: [Description]
 
 **Expected outcome:** Each executed phase reads relevant skills, adds completion notes to the markdown, and commits with a descriptive message.
 
-## - [ ] Phase 4: Add execute-next-only mode
+## - [x] Phase 4: Add execute-next-only mode
+
+**Skills used**: `swift-architecture`
+**Principles applied**: ExecuteMode enum at Feature layer, --next CLI flag, "Next only" checkbox toggle in Mac detail view. Apps layer owns UI state, Features layer owns the mode logic.
 
 **Skills to read**: `swift-architecture`
 
@@ -126,7 +132,10 @@ Add support for executing only the next incomplete phase instead of all remainin
 
 **Expected outcome:** User can run one phase at a time for review, or batch-execute all remaining.
 
-## - [ ] Phase 5: Add provider selection
+## - [x] Phase 5: Add provider selection
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Followed ArchitecturePlannerModel pattern for provider picker. CLI execute already had --provider; added to plan command. Mac model accepts ProviderRegistry via constructor injection, stores selectedProviderName with didSet rebuild.
 
 **Skills to read**: `swift-architecture`
 
@@ -144,7 +153,10 @@ Add AI provider selection to both CLI and Mac app. Follow the same pattern alrea
 
 **Expected outcome:** Users can choose which AI provider to use for both plan generation and execution, from both CLI and Mac app.
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Verified swift build passes, all 37 MarkdownPlanner tests pass, no PlanRunner references remain in Swift source.
 
 **Skills to read**: `swift-architecture`
 

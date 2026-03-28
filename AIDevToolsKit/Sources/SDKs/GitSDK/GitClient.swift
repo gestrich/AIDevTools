@@ -33,6 +33,14 @@ public struct GitClient: Sendable {
         return try await execute(command, workingDirectory: workingDirectory)
     }
 
+    public func status(workingDirectory: String) async throws -> [String] {
+        let command = GitCLI.Status(porcelain: true)
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        return result.stdout
+            .components(separatedBy: .newlines)
+            .filter { !$0.isEmpty }
+    }
+
     @discardableResult
     public func add(files: [String], workingDirectory: String) async throws -> ExecutionResult {
         let command = GitCLI.Add(files: files)

@@ -38,9 +38,12 @@ public struct AIDevToolsKitMacEntryView: View {
             removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore),
             updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
         ))
+        let storedPlannerProviderName = UserDefaults.standard.string(forKey: "mdPlannerProviderName")
         _markdownPlannerModel = State(initialValue: MarkdownPlannerModel(
             dataPath: root.settingsModel.dataPath,
-            planSettingsStore: root.planSettingsStore
+            planSettingsStore: root.planSettingsStore,
+            providerRegistry: root.providerModel.providerRegistry,
+            selectedProviderName: storedPlannerProviderName
         ))
         let storedPlannerProvider = UserDefaults.standard.string(forKey: "archPlannerProviderName")
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(

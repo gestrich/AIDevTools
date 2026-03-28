@@ -23,6 +23,11 @@ public struct GitCLI {
     }
 
     @CLICommand
+    public struct Status {
+        @Flag public var porcelain: Bool = false
+    }
+
+    @CLICommand
     public struct Branch {
         @Positional public var name: String
     }

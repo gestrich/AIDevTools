@@ -7,7 +7,13 @@ import RepositorySDK
 
 public struct ExecutePlanUseCase: Sendable {
 
+    public enum ExecuteMode: Sendable {
+        case all
+        case next
+    }
+
     public struct Options: Sendable {
+        public let executeMode: ExecuteMode
         public let planPath: URL
         public let repoPath: URL?
         public let maxMinutes: Int
@@ -16,6 +22,7 @@ public struct ExecutePlanUseCase: Sendable {
         public let useWorktree: Bool
 
         public init(
+            executeMode: ExecuteMode = .all,
             planPath: URL,
             repoPath: URL? = nil,
             maxMinutes: Int = 90,
@@ -23,6 +30,7 @@ public struct ExecutePlanUseCase: Sendable {
             stopAfterArchitectureDiagram: Bool = false,
             useWorktree: Bool = false
         ) {
+            self.executeMode = executeMode
             self.planPath = planPath
             self.repoPath = repoPath
             self.maxMinutes = maxMinutes
@@ -63,6 +71,7 @@ public struct ExecutePlanUseCase: Sendable {
         case phaseFailed(index: Int, description: String, error: String)
         case allCompleted(phasesExecuted: Int, totalSeconds: Int)
         case timeLimitReached(remaining: Int, totalSeconds: Int)
+        case uncommittedChanges(files: [String])
     }
 
     public enum ExecuteError: Error, LocalizedError {
@@ -110,6 +119,13 @@ public struct ExecutePlanUseCase: Sendable {
             Self.logDirectory(dataPath: dataPath, repoName: repoName, planURL: options.planPath)
         } else {
             nil
+        }
+
+        if let repoPath = options.repoPath {
+            let changedFiles = try await gitClient.status(workingDirectory: repoPath.path)
+            if !changedFiles.isEmpty {
+                onProgress?(.uncommittedChanges(files: changedFiles))
+            }
         }
 
         let maxRuntimeSeconds = options.maxMinutes * 60
@@ -198,6 +214,11 @@ public struct ExecutePlanUseCase: Sendable {
             ])
             onProgress?(.phaseCompleted(index: nextIndex, elapsedSeconds: phaseElapsed, totalElapsedSeconds: totalElapsed))
             phasesExecuted += 1
+
+            if options.executeMode == .next {
+                let totalSeconds = Int(Date().timeIntervalSince(scriptStart))
+                return Result(phasesExecuted: 1, totalPhases: phases.count, allCompleted: false, totalSeconds: totalSeconds)
+            }
 
             if options.stopAfterArchitectureDiagram && architectureDiagramExists(planPath: options.planPath) {
                 let totalSeconds = Int(Date().timeIntervalSince(scriptStart))
@@ -291,16 +312,27 @@ public struct ExecutePlanUseCase: Sendable {
             ghInstructions += "\nBefore running any `gh` commands, first run `gh auth switch -u \(githubUser)`."
         }
 
+        let skillsToRead = Self.parseSkillsToRead(planPath: planPath, phaseIndex: phaseIndex)
+        let skillsInstruction = skillsToRead.isEmpty ? "" : """
+
+        Before implementing, read these skills for relevant conventions: \(skillsToRead.joined(separator: ", "))
+        """
+
         let prompt = """
         Look at \(planPath.path) for background.
 
         You are working on Phase \(phaseIndex + 1): \(description)
+        \(skillsInstruction)
 
         Complete ONLY this phase by:
         1. Implementing the required changes
         2. Ensuring the build succeeds
-        3. Updating the markdown document to mark this phase as completed with any relevant technical notes
-        4. Committing your changes
+        3. Updating the markdown document:
+           - Change `## - [ ]` to `## - [x]` for this phase
+           - Add completion notes below the phase heading:
+             **Skills used**: `skill-a`, `skill-b` (list skills you actually read/applied, or "none")
+             **Principles applied**: Brief note about key decisions made
+        4. Committing your changes with message: "Complete Phase \(phaseIndex + 1): \(description)"
         \(ghInstructions)
 
         Return success: true if the phase was completed successfully, false otherwise.
@@ -319,6 +351,28 @@ public struct ExecutePlanUseCase: Sendable {
             onOutput: onOutput
         )
         return output.value
+    }
+
+    static func parseSkillsToRead(planPath: URL, phaseIndex: Int) -> [String] {
+        guard let content = try? String(contentsOf: planPath, encoding: .utf8) else { return [] }
+
+        let lines = content.components(separatedBy: "\n")
+        var currentPhase = -1
+        for line in lines {
+            if line.hasPrefix("## - [") {
+                currentPhase += 1
+            }
+            if currentPhase == phaseIndex,
+               let range = line.range(of: "**Skills to read**:", options: .caseInsensitive)
+                ?? line.range(of: "**Skills to read**:", options: .caseInsensitive) {
+                let after = line[range.upperBound...]
+                return after
+                    .components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "`", with: "") }
+                    .filter { !$0.isEmpty }
+            }
+        }
+        return []
     }
 
     // MARK: - Architecture Diagram Detection

@@ -15,6 +15,7 @@ struct MarkdownPlannerDetailView: View {
     @State private var architectureDiagram: ArchitectureDiagram?
     @State private var selectedModule: ModuleSelection?
     @State private var isArchitectureExpanded = true
+    @State private var executeNextOnly = false
     @AppStorage("planStopAfterArchitectureDiagram") private var stopAfterArchitectureDiagram = false
 
     var body: some View {
@@ -129,6 +130,20 @@ struct MarkdownPlannerDetailView: View {
                     .font(.subheadline)
             }
 
+            Picker("Provider", selection: Bindable(markdownPlannerModel).selectedProviderName) {
+                ForEach(markdownPlannerModel.availableProviders, id: \.name) { provider in
+                    Text(provider.displayName).tag(provider.name)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 120)
+            .disabled(isBusy)
+
+            Toggle("Next only", isOn: $executeNextOnly)
+                .toggleStyle(.checkbox)
+                .font(.caption)
+                .help("Execute only the next incomplete phase")
+
             Toggle("Pause for architecture", isOn: $stopAfterArchitectureDiagram)
                 .toggleStyle(.checkbox)
                 .font(.caption)
@@ -143,15 +158,17 @@ struct MarkdownPlannerDetailView: View {
 
             Button {
                 let stopForDiagram = stopAfterArchitectureDiagram
+                let mode: ExecutePlanUseCase.ExecuteMode = executeNextOnly ? .next : .all
                 Task {
                     await markdownPlannerModel.execute(
                         plan: plan,
                         repository: repository,
+                        executeMode: mode,
                         stopAfterArchitectureDiagram: stopForDiagram
                     )
                 }
             } label: {
-                Label("Execute", systemImage: "play.fill")
+                Label(executeNextOnly ? "Execute Next" : "Execute All", systemImage: "play.fill")
             }
             .buttonStyle(.borderedProminent)
             .disabled(isBusy)

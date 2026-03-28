@@ -4,6 +4,7 @@ import DataPathsService
 import Foundation
 import MarkdownPlannerFeature
 import MarkdownPlannerService
+import ProviderRegistryService
 import RepositorySDK
 
 struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
@@ -18,6 +19,9 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
     @Flag(help: "Execute the plan immediately after generating it")
     var execute = false
 
+    @Option(help: "Provider to use (default: first registered)")
+    var provider: String?
+
     @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
@@ -27,8 +31,11 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
         let repos = try store.loadAll()
         let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
+        let registry = makeProviderRegistry()
+        let client = provider.flatMap { registry.client(named: $0) } ?? registry.providers.first!
+
         let useCase = GeneratePlanUseCase(
-            client: ClaudeProvider(),
+            client: client,
             resolveProposedDirectory: { repo in
                 try planSettings.resolvedProposedDirectory(forRepo: repo)
             }
