@@ -83,9 +83,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 8: Review and fix SettingsModel.swift
+## - [x] Phase 8: Review and fix SettingsModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Injected ResolveDataPathUseCase via init for testability; removed hidden didSet side-effect and moved save into explicit updateDataPath method; tightened dataPath to private(set)
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/SettingsModel.swift`
 - Save the review output to `reviews/apps-SettingsModel.md`
