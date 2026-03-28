@@ -143,9 +143,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 14: Review and fix GradingModels.swift
+## - [x] Phase 14: Review and fix GradingModels.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: No violations found — file is a clean Services-layer value type with immutable properties, Sendable/Codable conformance, and correct layer placement
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/GradingModels.swift`
 - Save the review output to `reviews/services-GradingModels.md`
