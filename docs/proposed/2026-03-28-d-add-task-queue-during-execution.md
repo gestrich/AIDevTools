@@ -88,7 +88,10 @@ Add the UI for queuing tasks:
 - Allow removing a queued task before it's integrated (swipe to delete or X button)
 - When a queued task is integrated (queue drains), it disappears from the queued list and appears as a new phase in the phase list on next status refresh
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
+
+**Skills used**: none
+**Principles applied**: Verified clean build with no compiler errors. Manual testing steps documented below for Bill to validate end-to-end behavior.
 
 - Build the project and verify no compiler errors
 - Test manually:
