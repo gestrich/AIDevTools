@@ -24,7 +24,10 @@ Add infrastructure for the task queue in the App-layer model:
 - Add `func queueTask(_ description: String)` that appends to the array
 - Add `func clearQueue() -> [QueuedTask]` that drains and returns the queued tasks
 
-## - [ ] Phase 2: Create IntegrateTaskIntoPlanUseCase
+## - [x] Phase 2: Create IntegrateTaskIntoPlanUseCase
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Placed use case in Features/MarkdownPlannerFeature/usecases following the existing pattern (GeneratePlanUseCase, ExecutePlanUseCase). Reused PhaseResult for the structured response to avoid unnecessary new types. Included plan content directly in the prompt so the AI has full context for intelligent placement.
 
 **Skills to read**: `swift-architecture`
 
