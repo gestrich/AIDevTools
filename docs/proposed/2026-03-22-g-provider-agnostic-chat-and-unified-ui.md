@@ -40,7 +40,10 @@ Implement adapters that conform the existing services to the new protocol:
 - `ClaudeCodeCLIChatAdapter` — wraps the existing Claude Code CLI chat logic
 - Potentially a `CodexChatAdapter` stub for future use
 
-## - [ ] Phase 3: Build Unified Chat View
+## - [x] Phase 3: Build Unified Chat View
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Refactored ChatModel to depend on ChatProvider protocol instead of AIClient + SendChatMessageUseCase, completing the protocol adoption from Phases 1-2. Added getSessionDetails to ChatProvider with default nil implementation. Created AIClientChatAdapter.make(from:) factory for easy provider creation. Added chat as a workspace item in WorkspaceView with a provider selector Picker, session history button (conditional on supportsSessionHistory), and settings/new conversation controls. Updated CLI ChatCommand to also use ChatProvider. No layer violations — factory lives in ChatFeature (Features layer), not ProviderRegistryService (Services layer).
 
 Replace the two chat views with a single `ChatView` that works with the chat protocol. The mode picker (API/CLI) becomes a provider selector. Consolidate shared UI (message list, input bar, streaming indicators) and keep provider-specific UI (e.g., Claude Code settings) behind conditional checks.
 

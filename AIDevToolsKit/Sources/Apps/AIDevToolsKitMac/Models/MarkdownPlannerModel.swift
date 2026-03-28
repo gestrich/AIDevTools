@@ -249,8 +249,7 @@ final class MarkdownPlannerModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
         return ChatModel(
-            sendMessageUseCase: SendChatMessageUseCase(client: activeClient),
-            client: activeClient,
+            provider: AIClientChatAdapter.make(from: activeClient),
             workingDirectory: workingDirectory,
             settings: settings,
             systemPrompt: systemPrompt

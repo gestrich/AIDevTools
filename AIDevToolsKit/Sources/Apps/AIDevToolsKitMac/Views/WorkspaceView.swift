@@ -1,5 +1,6 @@
 import AIOutputSDK
 import ArchitecturePlannerService
+import ChatFeature
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
@@ -8,6 +9,7 @@ import SwiftUI
 
 enum WorkspaceItem: Hashable {
     case architecturePlanner
+    case chat
     case evals
     case plan(String)
     case skill(String)
@@ -22,14 +24,19 @@ struct WorkspaceView: View {
     let evalProviderRegistry: EvalProviderRegistry
 
     @AppStorage("selectedArchPlanner") private var storedArchPlanner = false
+    @AppStorage("selectedChatView") private var storedChatView = false
     @AppStorage("selectedEvalsView") private var storedEvalsView = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedPlanName") private var storedPlanName: String?
     @AppStorage("selectedSkillName") private var storedSkillName: String?
+    @AppStorage("chatProviderName") private var chatProviderName: String = ""
     @AppStorage("anthropicAPIKey") private var apiKey = ""
+    @State private var chatModel: ChatModel?
     @State private var selectedRepoID: UUID?
     @State private var selectedItem: WorkspaceItem?
     @State private var showGenerateSheet = false
+    @State private var showingChatSettings = false
+    @State private var showingSessionPicker = false
 
     var body: some View {
         NavigationSplitView {
@@ -46,11 +53,19 @@ struct WorkspaceView: View {
                         async let _ = markdownPlannerModel.loadPlans(for: repo)
                     }
                     architecturePlannerModel.loadJobs(repoName: repo.name, repoPath: repo.path.path())
+                    if let chatModel {
+                        Task { await chatModel.setWorkingDirectory(repo.path.path()) }
+                    }
                 }
             }
         } content: {
             if model.selectedRepository != nil {
                 List(selection: $selectedItem) {
+                    Section("Chat") {
+                        Text("Chat")
+                            .tag(WorkspaceItem.chat)
+                    }
+
                     if let repo = model.selectedRepository, model.evalConfig(for: repo) != nil {
                         Section("Evals") {
                             Text("All Evals")
@@ -93,26 +108,38 @@ struct WorkspaceView: View {
                     switch newValue {
                     case .architecturePlanner:
                         storedArchPlanner = true
+                        storedChatView = false
                         storedEvalsView = false
                         storedPlanName = nil
                         storedSkillName = nil
+                    case .chat:
+                        storedArchPlanner = false
+                        storedChatView = true
+                        storedEvalsView = false
+                        storedPlanName = nil
+                        storedSkillName = nil
+                        rebuildChatModelIfNeeded()
                     case .evals:
                         storedArchPlanner = false
+                        storedChatView = false
                         storedEvalsView = true
                         storedPlanName = nil
                         storedSkillName = nil
                     case .plan(let name):
                         storedArchPlanner = false
+                        storedChatView = false
                         storedEvalsView = false
                         storedPlanName = name
                         storedSkillName = nil
                     case .skill(let name):
                         storedArchPlanner = false
+                        storedChatView = false
                         storedEvalsView = false
                         storedPlanName = nil
                         storedSkillName = name
                     case nil:
                         storedArchPlanner = false
+                        storedChatView = false
                         storedEvalsView = false
                         storedPlanName = nil
                         storedSkillName = nil
@@ -137,6 +164,8 @@ struct WorkspaceView: View {
                 architecturePlannerModel.loadJobs(repoName: repo.name, repoPath: repo.path.path())
                 if storedArchPlanner {
                     selectedItem = .architecturePlanner
+                } else if storedChatView {
+                    selectedItem = .chat
                 } else if storedEvalsView {
                     selectedItem = .evals
                 } else if let planName = storedPlanName {
@@ -149,6 +178,11 @@ struct WorkspaceView: View {
         .onChange(of: apiKey) { _, _ in
             providerModel.refreshProviders()
         }
+        .onChange(of: chatProviderName) { _, _ in
+            if selectedItem == .chat {
+                rebuildChatModelIfNeeded()
+            }
+        }
     }
 
     @ViewBuilder
@@ -157,6 +191,8 @@ struct WorkspaceView: View {
             switch selectedItem {
             case .architecturePlanner:
                 ArchitecturePlannerView(model: architecturePlannerModel)
+            case .chat:
+                chatDetailView
             case .evals:
                 if let config = model.evalConfig(for: repo) {
                     EvalResultsView(config: config, registry: evalProviderRegistry)
@@ -177,6 +213,89 @@ struct WorkspaceView: View {
                 ContentUnavailableView("Select an Item", systemImage: "doc.text", description: Text("Choose a skill, plan, or eval suite to view details."))
             }
         }
+    }
+
+    // MARK: - Chat Detail
+
+    @ViewBuilder
+    private var chatDetailView: some View {
+        if let chatModel {
+            VStack(spacing: 0) {
+                chatToolbar
+                Divider()
+                ChatPanelView()
+                    .environment(chatModel)
+            }
+            .sheet(isPresented: $showingChatSettings) {
+                ChatSettingsView()
+                    .environment(chatModel)
+            }
+            .sheet(isPresented: $showingSessionPicker) {
+                ChatSessionPickerView()
+                    .environment(chatModel)
+            }
+        } else {
+            ContentUnavailableView("No Provider Available", systemImage: "bubble.left.and.bubble.right", description: Text("No chat providers are registered."))
+        }
+    }
+
+    private var chatToolbar: some View {
+        HStack(spacing: 12) {
+            Picker("Provider", selection: $chatProviderName) {
+                ForEach(providerModel.providerRegistry.providers, id: \.name) { provider in
+                    Text(provider.displayName).tag(provider.name)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 150)
+
+            Spacer()
+
+            if chatModel?.supportsSessionHistory == true {
+                Button(action: { showingSessionPicker = true }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+                .help("Session history")
+            }
+
+            Button(action: {
+                chatModel?.startNewConversation()
+            }) {
+                Image(systemName: "plus.message")
+            }
+            .help("New conversation")
+
+            Button(action: { showingChatSettings = true }) {
+                Image(systemName: "gearshape")
+            }
+            .help("Chat settings")
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - Chat Model Management
+
+    private func rebuildChatModelIfNeeded() {
+        let targetName = chatProviderName.isEmpty
+            ? providerModel.providerRegistry.defaultClient?.name ?? ""
+            : chatProviderName
+
+        if chatModel?.providerName == targetName { return }
+
+        guard let client = providerModel.providerRegistry.client(named: targetName)
+            ?? providerModel.providerRegistry.defaultClient else {
+            chatModel = nil
+            return
+        }
+
+        chatProviderName = client.name
+        let workingDir = model.selectedRepository?.path.path()
+        chatModel = ChatModel(
+            provider: AIClientChatAdapter.make(from: client),
+            workingDirectory: workingDir
+        )
     }
 
     // MARK: - Plan List Content

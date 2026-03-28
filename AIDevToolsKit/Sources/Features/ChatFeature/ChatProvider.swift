@@ -39,6 +39,7 @@ public protocol ChatProvider: Sendable {
     var supportsSessionHistory: Bool { get }
 
     func cancel() async
+    func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails?
     func listSessions(workingDirectory: String) async -> [ChatSession]
     func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage]
     func sendMessage(
@@ -53,6 +54,8 @@ extension ChatProvider {
     public var supportsSessionHistory: Bool { false }
 
     public func cancel() async {}
+
+    public func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? { nil }
 
     public func listSessions(workingDirectory: String) async -> [ChatSession] { [] }
 

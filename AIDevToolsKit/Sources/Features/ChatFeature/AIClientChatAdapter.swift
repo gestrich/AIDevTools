@@ -73,12 +73,25 @@ public final class AIClientChatAdapter: @unchecked Sendable, ChatProvider {
 
     public func cancel() async {}
 
+    public func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
+        sessionLister?.getSessionDetails(sessionId: sessionId, summary: summary, lastModified: lastModified, workingDirectory: workingDirectory)
+    }
+
     public func listSessions(workingDirectory: String) async -> [ChatSession] {
         await sessionLister?.listSessions(workingDirectory: workingDirectory) ?? []
     }
 
     public func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] {
         await sessionLister?.loadSessionMessages(sessionId: sessionId, workingDirectory: workingDirectory) ?? []
+    }
+
+    // MARK: - Factory
+
+    public static func make(from client: any AIClient) -> AIClientChatAdapter {
+        if let sessionListable = client as? (any AIClient & SessionListable) {
+            return AIClientChatAdapter(client: sessionListable)
+        }
+        return AIClientChatAdapter(client: client)
     }
 
     // MARK: - Image Handling
