@@ -11,7 +11,8 @@ extension CodexProvider: AIClient, SessionListable {
     public func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         if let sessionId = options.sessionId {
             return try await runResume(sessionId: sessionId, prompt: prompt, options: options, onOutput: onOutput)

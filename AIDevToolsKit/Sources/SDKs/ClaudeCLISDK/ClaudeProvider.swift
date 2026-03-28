@@ -1,3 +1,4 @@
+import AIOutputSDK
 import CLISDK
 import ConcurrencySDK
 import Foundation
@@ -109,36 +110,19 @@ public struct ClaudeProvider: Sendable {
         command: Claude,
         workingDirectory: String? = nil,
         environment: [String: String]? = nil,
-        onFormattedOutput: (@Sendable (String) -> Void)? = nil
+        onFormattedOutput: (@Sendable (String) -> Void)? = nil,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)? = nil
     ) async throws -> ExecutionResult {
         let formatter = ClaudeStreamFormatter()
         return try await run(
             command: command,
             workingDirectory: workingDirectory,
             environment: environment,
-            onOutput: onFormattedOutput.map { callback -> @Sendable (StreamOutput) -> Void in
-                { item in
-                    switch item {
-                    case .stdout(_, let text):
-                        let formatted = formatter.format(text)
-                        if !formatted.isEmpty {
-                            callback(formatted)
-                        }
-                    case .stderr(_, let text):
-                        let nonJSON = text.components(separatedBy: "\n")
-                            .filter { line in
-                                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                                return !trimmed.isEmpty && !trimmed.hasPrefix("{")
-                            }
-                            .joined(separator: "\n")
-                        if !nonJSON.isEmpty {
-                            callback(nonJSON)
-                        }
-                    default:
-                        break
-                    }
-                }
-            }
+            onOutput: Self.buildOutputHandler(
+                formatter: formatter,
+                onFormattedOutput: onFormattedOutput,
+                onStreamEvent: onStreamEvent
+            )
         )
     }
 
@@ -184,6 +168,46 @@ public struct ClaudeProvider: Sendable {
                 }
                 retryCount += 1
                 currentCommand = Self.resumeCommand(from: command, sessionId: sessionId)
+            }
+        }
+    }
+
+    // MARK: - Output Handlers
+
+    private static func buildOutputHandler(
+        formatter: ClaudeStreamFormatter,
+        onFormattedOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+    ) -> (@Sendable (StreamOutput) -> Void)? {
+        guard onFormattedOutput != nil || onStreamEvent != nil else { return nil }
+        return { item in
+            switch item {
+            case .stdout(_, let text):
+                if let onFormattedOutput {
+                    let formatted = formatter.format(text)
+                    if !formatted.isEmpty {
+                        onFormattedOutput(formatted)
+                    }
+                }
+                if let onStreamEvent {
+                    for event in formatter.formatStructured(text) {
+                        onStreamEvent(event)
+                    }
+                }
+            case .stderr(_, let text):
+                if let onFormattedOutput {
+                    let nonJSON = text.components(separatedBy: "\n")
+                        .filter { line in
+                            let trimmed = line.trimmingCharacters(in: .whitespaces)
+                            return !trimmed.isEmpty && !trimmed.hasPrefix("{")
+                        }
+                        .joined(separator: "\n")
+                    if !nonJSON.isEmpty {
+                        onFormattedOutput(nonJSON)
+                    }
+                }
+            default:
+                break
             }
         }
     }

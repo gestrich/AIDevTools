@@ -88,7 +88,8 @@ private struct MockAIClient: AIClient {
     func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         onOutput?("mock output")
         return AIClientResult(exitCode: 0, stderr: "", stdout: "mock output")

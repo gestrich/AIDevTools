@@ -18,7 +18,8 @@ public actor AnthropicProvider: AIClient, SessionListable {
     public func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         let sessionId = options.sessionId ?? UUID().uuidString
 
@@ -60,9 +61,16 @@ public actor AnthropicProvider: AIClient, SessionListable {
         var fullResponse = ""
 
         for try await chunk in stream {
+            if let contentBlock = chunk.contentBlock {
+                if contentBlock.type == "tool_use" {
+                    let name = contentBlock.name ?? ""
+                    onStreamEvent?(.toolUse(name: name, detail: ""))
+                }
+            }
             if let delta = chunk.delta, let text = delta.text {
                 fullResponse += text
                 onOutput?(text)
+                onStreamEvent?(.textDelta(text))
             }
         }
 

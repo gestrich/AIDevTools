@@ -24,13 +24,14 @@ public struct AIRunSession: Sendable {
     public func run(
         prompt: String,
         options: AIClientOptions = AIClientOptions(),
-        onOutput: (@Sendable (String) -> Void)? = nil
+        onOutput: (@Sendable (String) -> Void)? = nil,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)? = nil
     ) async throws -> AIClientResult {
         guard let client else {
             throw AIRunSessionError.noClient
         }
         do {
-            let result = try await client.run(prompt: prompt, options: options, onOutput: onOutput)
+            let result = try await client.run(prompt: prompt, options: options, onOutput: onOutput, onStreamEvent: onStreamEvent)
             try? store.write(output: result.stdout, key: key)
             return result
         } catch {

@@ -13,7 +13,8 @@ struct MockAIClient: AIClient, Sendable {
     func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         AIClientResult(exitCode: 0, stderr: "", stdout: "")
     }

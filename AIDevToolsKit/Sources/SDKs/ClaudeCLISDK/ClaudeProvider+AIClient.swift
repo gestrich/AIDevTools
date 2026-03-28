@@ -7,7 +7,8 @@ extension ClaudeProvider: AIClient {
     public func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         var command = Claude(prompt: prompt)
         command.dangerouslySkipPermissions = options.dangerouslySkipPermissions
@@ -21,7 +22,8 @@ extension ClaudeProvider: AIClient {
             command: command,
             workingDirectory: options.workingDirectory,
             environment: options.environment,
-            onFormattedOutput: onOutput
+            onFormattedOutput: onOutput,
+            onStreamEvent: onStreamEvent
         )
         let sessionId = Self.extractSessionId(from: result.stdout)
         return AIClientResult(exitCode: result.exitCode, sessionId: sessionId, stderr: result.stderr, stdout: result.stdout)

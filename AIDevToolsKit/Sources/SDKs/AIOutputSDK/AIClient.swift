@@ -63,7 +63,8 @@ public protocol AIClient: Sendable {
     func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult
 
     func runStructured<T: Decodable & Sendable>(
@@ -73,4 +74,14 @@ public protocol AIClient: Sendable {
         options: AIClientOptions,
         onOutput: (@Sendable (String) -> Void)?
     ) async throws -> AIStructuredResult<T>
+}
+
+extension AIClient {
+    public func run(
+        prompt: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?
+    ) async throws -> AIClientResult {
+        try await run(prompt: prompt, options: options, onOutput: onOutput, onStreamEvent: nil)
+    }
 }

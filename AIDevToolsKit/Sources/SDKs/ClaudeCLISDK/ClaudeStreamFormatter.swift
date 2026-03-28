@@ -104,31 +104,29 @@ public final class ClaudeStreamFormatter: StreamFormatter, Sendable {
         return parts.joined(separator: "\n") + "\n"
     }
 
-    private func formatToolUse(name: String, input: [String: JSONValue]?) -> String {
+    private func toolUseDetail(name: String, input: [String: JSONValue]?) -> String {
         switch name {
         case ClaudeToolName.bash:
-            let cmd = input?[ClaudeToolInputKey.command]?.stringValue ?? ""
-            return "[Bash] \(cmd)"
+            return input?[ClaudeToolInputKey.command]?.stringValue ?? ""
         case "Read":
-            let path = input?["file_path"]?.stringValue ?? ""
-            return "[Read] \(path)"
+            return input?["file_path"]?.stringValue ?? ""
         case "Edit":
-            let path = input?["file_path"]?.stringValue ?? ""
-            return "[Edit] \(path)"
+            return input?["file_path"]?.stringValue ?? ""
         case "Write":
-            let path = input?["file_path"]?.stringValue ?? ""
-            return "[Write] \(path)"
+            return input?["file_path"]?.stringValue ?? ""
         case "Grep":
             let pattern = input?["pattern"]?.stringValue ?? ""
             let path = input?["path"]?.stringValue ?? ""
-            return "[Grep] \(pattern) in \(path)"
+            return "\(pattern) in \(path)"
         case "Glob":
-            let pattern = input?["pattern"]?.stringValue ?? ""
-            return "[Glob] \(pattern)"
+            return input?["pattern"]?.stringValue ?? ""
         default:
-            let keys = input.map { Array($0.keys).sorted().joined(separator: ", ") } ?? ""
-            return "[\(name)] \(keys)"
+            return input.map { Array($0.keys).sorted().joined(separator: ", ") } ?? ""
         }
+    }
+
+    private func formatToolUse(name: String, input: [String: JSONValue]?) -> String {
+        "[\(name)] \(toolUseDetail(name: name, input: input))"
     }
 
     private func formatUserEvent(_ event: ClaudeUserEvent) -> String? {
@@ -163,5 +161,103 @@ public final class ClaudeStreamFormatter: StreamFormatter, Sendable {
             parts.append("Turns: \(turns)")
         }
         return parts.joined(separator: " | ") + "\n"
+    }
+
+    // MARK: - Structured Parsing
+
+    public func formatStructured(_ rawChunk: String) -> [AIStreamEvent] {
+        var events: [AIStreamEvent] = []
+        for line in rawChunk.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else { continue }
+            events.append(contentsOf: parseStreamEvents(data, rawLine: trimmed))
+        }
+        return events
+    }
+
+    private func parseStreamEvents(_ data: Data, rawLine: String) -> [AIStreamEvent] {
+        let envelope: ClaudeEventEnvelope
+        do {
+            envelope = try decoder.decode(ClaudeEventEnvelope.self, from: data)
+        } catch {
+            return [.textDelta(rawLine + "\n")]
+        }
+
+        switch envelope.type {
+        case ClaudeEventType.assistant:
+            do {
+                let event = try decoder.decode(ClaudeAssistantEvent.self, from: data)
+                return parseAssistantStreamEvents(event)
+            } catch {
+                logger.error("Failed to decode assistant event for structured parse: \(error.localizedDescription)")
+                return []
+            }
+        case ClaudeEventType.user:
+            do {
+                let event = try decoder.decode(ClaudeUserEvent.self, from: data)
+                return parseUserStreamEvents(event)
+            } catch {
+                logger.error("Failed to decode user event for structured parse: \(error.localizedDescription)")
+                return []
+            }
+        case ClaudeEventType.result:
+            do {
+                let event = try decoder.decode(ClaudeResultSummary.self, from: data)
+                return parseResultStreamEvents(event)
+            } catch {
+                logger.error("Failed to decode result event for structured parse: \(error.localizedDescription)")
+                return []
+            }
+        default:
+            return []
+        }
+    }
+
+    private func parseAssistantStreamEvents(_ event: ClaudeAssistantEvent) -> [AIStreamEvent] {
+        guard let content = event.message?.content, !content.isEmpty else { return [] }
+        var events: [AIStreamEvent] = []
+
+        for block in content {
+            switch block.type {
+            case "thinking":
+                if let thinking = block.thinking, !thinking.isEmpty {
+                    events.append(.thinking(thinking))
+                }
+            case "text":
+                if let text = block.text, !text.isEmpty {
+                    events.append(.textDelta(text))
+                }
+            case ClaudeContentBlockType.toolUse:
+                if let name = block.name, name != ClaudeToolName.structuredOutput {
+                    let detail = toolUseDetail(name: name, input: block.input)
+                    events.append(.toolUse(name: name, detail: detail))
+                }
+            default:
+                break
+            }
+        }
+
+        return events
+    }
+
+    private func parseUserStreamEvents(_ event: ClaudeUserEvent) -> [AIStreamEvent] {
+        guard let content = event.message?.content, !content.isEmpty else { return [] }
+        var events: [AIStreamEvent] = []
+
+        for block in content {
+            if block.type == ClaudeContentBlockType2.toolResult {
+                let isError = block.isError ?? false
+                if let summary = block.content?.summary, !summary.isEmpty {
+                    events.append(.toolResult(name: "", summary: summary, isError: isError))
+                }
+            }
+        }
+
+        return events
+    }
+
+    private func parseResultStreamEvents(_ event: ClaudeResultSummary) -> [AIStreamEvent] {
+        let duration: TimeInterval? = event.durationMs.map { Double($0) / 1000.0 }
+        return [.metrics(duration: duration, cost: event.totalCostUsd, turns: event.numTurns)]
     }
 }

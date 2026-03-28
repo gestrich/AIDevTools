@@ -181,7 +181,8 @@ private final class MockAIClient: AIClient, @unchecked Sendable {
     func run(
         prompt: String,
         options: AIClientOptions,
-        onOutput: (@Sendable (String) -> Void)?
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> AIClientResult {
         lastRunOptions = options
         if let error { throw error }

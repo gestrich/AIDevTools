@@ -22,7 +22,10 @@ The goal is to unify these by embedding chat views directly within feature views
 
 4. **No read-only chat mode**: For execution streaming, the chat should be read-only (no input field, no send button). The current `ChatPanelView` always shows the input area.
 
-## - [ ] Phase 1: Structured content blocks at the SDK layer
+## - [x] Phase 1: Structured content blocks at the SDK layer
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added `onStreamEvent` alongside existing `onOutput` for backward compatibility — all existing callers continue to work via a protocol extension. New types (`AIStreamEvent`, `AIContentBlock`) placed in SDKs layer per architecture guidelines. Extracted `toolUseDetail` helper in `ClaudeStreamFormatter` to share logic between formatted string output and structured event parsing.
 
 **Skills to read**: `swift-architecture`
 
