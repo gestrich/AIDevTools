@@ -12,6 +12,7 @@ import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
     @State private var architecturePlannerModel: ArchitecturePlannerModel
+    @State private var claudeChainModel: ClaudeChainModel
     @State private var markdownPlannerModel: MarkdownPlannerModel
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
@@ -51,6 +52,7 @@ public struct AIDevToolsKitMacEntryView: View {
             selectedProviderName: storedPlannerProviderName
         ))
         let storedPlannerProvider = UserDefaults.standard.string(forKey: "archPlannerProviderName")
+        _claudeChainModel = State(initialValue: ClaudeChainModel())
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
             dataPathsService: root.dataPathsService,
             providerRegistry: root.providerModel.providerRegistry,
@@ -62,6 +64,7 @@ public struct AIDevToolsKitMacEntryView: View {
     public var body: some View {
         WorkspaceView(evalProviderRegistry: evalProviderRegistry)
             .environment(architecturePlannerModel)
+            .environment(claudeChainModel)
             .environment(markdownPlannerModel)
             .environment(providerModel)
             .environment(workspaceModel)

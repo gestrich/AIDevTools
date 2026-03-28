@@ -134,7 +134,10 @@ case .claudeChain:
 
 In `WorkspaceView`'s `onChange(of: selectedItem)` or `onChange(of: selectedRepoID)`, call `claudeChainModel.loadChains(for: repo.path)` when the Claude Chain item is selected (or eagerly when repo is selected).
 
-## - [ ] Phase 4: Wire ClaudeChainModel into App Entry Point
+## - [x] Phase 4: Wire ClaudeChainModel into App Entry Point
+
+**Skills used**: `swift-swiftui` (dependency-injection.md)
+**Principles applied**: Root model stored as `@State` in the app entry view per DI skill conventions. Environment injection follows alphabetical ordering alongside existing models. ClaudeChainModel uses default use case initializers (no CompositionRoot wiring needed). Added `ClaudeChainService` to Package.swift dependencies alphabetically.
 
 **Skills to read**: `swift-swiftui` (dependency-injection.md)
 

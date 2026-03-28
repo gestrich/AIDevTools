@@ -81,6 +81,7 @@ let package = Package(
                 "ArchitecturePlannerService",
                 "ChatFeature",
                 "ClaudeChainFeature",
+                "ClaudeChainService",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
                 "DataPathsService",
