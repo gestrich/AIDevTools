@@ -1,6 +1,6 @@
 import EvalService
 import Foundation
-import PlanRunnerService
+import MarkdownPlannerService
 import RepositorySDK
 import SkillBrowserFeature
 import SkillService
@@ -24,7 +24,7 @@ final class WorkspaceModel {
     private let dataPath: URL
     private let repoStore: RepositoryStore
     private let evalSettingsStore: EvalRepoSettingsStore
-    private let planSettingsStore: PlanRepoSettingsStore
+    private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let loadRepositories: LoadRepositoriesUseCase
     private let loadSkills: LoadSkillsUseCase
     private let addRepository: AddRepositoryUseCase
@@ -35,7 +35,7 @@ final class WorkspaceModel {
         dataPath: URL,
         repoStore: RepositoryStore,
         evalSettingsStore: EvalRepoSettingsStore,
-        planSettingsStore: PlanRepoSettingsStore,
+        planSettingsStore: MarkdownPlannerRepoSettingsStore,
         loadRepositories: LoadRepositoriesUseCase,
         loadSkills: LoadSkillsUseCase,
         addRepository: AddRepositoryUseCase,
@@ -157,7 +157,7 @@ final class WorkspaceModel {
         }
     }
 
-    func planSettings(for repo: RepositoryInfo) -> PlanRepoSettings? {
+    func planSettings(for repo: RepositoryInfo) -> MarkdownPlannerRepoSettings? {
         try? planSettingsStore.settings(forRepoId: repo.id)
     }
 

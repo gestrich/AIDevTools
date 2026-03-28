@@ -6,7 +6,7 @@
 
 ## Background
 
-The current "Plan Runner" feature generates phased markdown plans and executes them via AI. It's being renamed to **Markdown Executor** to better describe what it does, and refactored to:
+The current "Plan Runner" feature generates phased markdown plans and executes them via AI. It's being renamed to **Markdown Planner** to better describe what it does, and refactored to:
 
 1. **Remove dynamic phase generation** — currently Phases 1-3 are scaffolding and Phase 3 generates the real phases at runtime. Instead, generation should produce a complete plan upfront so the user can review all phases before execution.
 2. **Adopt plan skill conventions** — the plan generation prompt should follow the same structure as `gestrich-claude-tools-plan`: skill discovery from CLAUDE.md, relevant skills table, detailed phases with "Skills to read" sections, ≤10 phases, validation phase.
@@ -16,25 +16,25 @@ The current "Plan Runner" feature generates phased markdown plans and executes t
 
 See [architecture-planner-vs-plans-evaluation.md](architecture-planner-vs-plans-evaluation.md) for the full feature comparison that motivated this refactor.
 
-## - [ ] Phase 1: Rename PlanRunner to MarkdownExecutor across all layers
+## - [ ] Phase 1: Rename PlanRunner to MarkdownPlanner across all layers
 
 **Skills to read**: `swift-architecture`
 
-Rename all types, files, targets, and module references from `PlanRunner` to `MarkdownExecutor`. This is a mechanical rename with no behavior changes.
+Rename all types, files, targets, and module references from `PlanRunner` to `MarkdownPlanner`. This is a mechanical rename with no behavior changes.
 
 **Files to rename:**
-- Features: `PlanRunnerFeature/` → `MarkdownExecutorFeature/` (all 6 use cases, 2 service files)
-- Services: `PlanRunnerService/` → `MarkdownExecutorService/` (4 files: `PlanRepoSettings`, `PlanRepoSettingsStore`, `PlanEntry`, `ArchitectureDiagram`)
-- CLI: `PlanRunnerCommand.swift`, `PlanRunnerPlanCommand.swift`, `PlanRunnerExecuteCommand.swift`, `PlanRunnerDeleteCommand.swift` → `MarkdownExecutor*` equivalents
-- Mac: `PlanRunnerModel.swift` → `MarkdownExecutorModel.swift`, `PlanDetailView.swift` → `MarkdownExecutorDetailView.swift`
+- Features: `PlanRunnerFeature/` → `MarkdownPlannerFeature/` (all 6 use cases, 2 service files)
+- Services: `PlanRunnerService/` → `MarkdownPlannerService/` (4 files: `PlanRepoSettings`, `PlanRepoSettingsStore`, `PlanEntry`, `ArchitectureDiagram`)
+- CLI: `PlanRunnerCommand.swift`, `PlanRunnerPlanCommand.swift`, `PlanRunnerExecuteCommand.swift`, `PlanRunnerDeleteCommand.swift` → `MarkdownPlanner*` equivalents
+- Mac: `PlanRunnerModel.swift` → `MarkdownPlannerModel.swift`, `PlanDetailView.swift` → `MarkdownPlannerDetailView.swift`
 
 **Type renames:**
-- `PlanRunnerFeature` target → `MarkdownExecutorFeature`
-- `PlanRunnerService` target → `MarkdownExecutorService`
-- `PlanRepoSettings` → `MarkdownExecutorRepoSettings`
-- `PlanRepoSettingsStore` → `MarkdownExecutorRepoSettingsStore`
+- `PlanRunnerFeature` target → `MarkdownPlannerFeature`
+- `PlanRunnerService` target → `MarkdownPlannerService`
+- `PlanRepoSettings` → `MarkdownPlannerRepoSettings`
+- `PlanRepoSettingsStore` → `MarkdownPlannerRepoSettingsStore`
 - `PlanEntry` → `MarkdownPlanEntry`
-- CLI command `plan-runner` → `markdown-executor`
+- CLI command `plan-runner` → `markdown-planner`
 
 **Also update:**
 - `Package.swift` targets and dependencies
@@ -110,11 +110,11 @@ Add support for executing only the next incomplete phase instead of all remainin
 - In `.next` mode: execute one phase, commit, return result with `phasesExecuted: 1`
 - In `.all` mode: current loop behavior (execute all remaining)
 
-**Changes to CLI (`MarkdownExecutorExecuteCommand`):**
+**Changes to CLI (`MarkdownPlannerExecuteCommand`):**
 - Add `--next` flag (default: execute all)
 - When `--next` is passed, set `executeMode: .next`
 
-**Changes to Mac app (`MarkdownExecutorModel`):**
+**Changes to Mac app (`MarkdownPlannerModel`):**
 - Add a toggle or segmented control for "Next phase" vs "All phases"
 - Wire the selection to the use case options
 
@@ -126,12 +126,12 @@ Add support for executing only the next incomplete phase instead of all remainin
 
 Add AI provider selection to both CLI and Mac app. Follow the same pattern already used by Architecture Planner for provider selection.
 
-**CLI (`MarkdownExecutorExecuteCommand` and `MarkdownExecutorPlanCommand`):**
+**CLI (`MarkdownPlannerExecuteCommand` and `MarkdownPlannerPlanCommand`):**
 - Add `--provider <name>` option
 - Resolve the provider from the registered providers list
 - Pass to the use case's `AIClient`
 
-**Mac app (`MarkdownExecutorModel`):**
+**Mac app (`MarkdownPlannerModel`):**
 - Add a provider picker (dropdown) — reuse the same pattern from `ArchitecturePlannerModel`
 - Rebuild use cases when provider changes
 - Persist selection per session (not across app launches)
@@ -147,11 +147,11 @@ Verify the refactor works end-to-end:
 - `swift build` passes with no errors or warnings related to the rename
 - All existing `PlanRunner` tests pass under new names
 - CLI commands work:
-  - `markdown-executor plan "add a new feature"` generates a complete plan with all phases
-  - `markdown-executor execute --next` runs one phase
-  - `markdown-executor execute` runs all remaining phases
-  - `markdown-executor execute --provider <name>` uses the specified provider
-  - `markdown-executor delete` deletes a plan
+  - `markdown-planner plan "add a new feature"` generates a complete plan with all phases
+  - `markdown-planner execute --next` runs one phase
+  - `markdown-planner execute` runs all remaining phases
+  - `markdown-planner execute --provider <name>` uses the specified provider
+  - `markdown-planner delete` deletes a plan
 - Mac app:
   - Plans list loads
   - Provider picker appears and is functional

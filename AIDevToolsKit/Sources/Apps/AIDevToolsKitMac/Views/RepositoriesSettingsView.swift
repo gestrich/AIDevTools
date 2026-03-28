@@ -1,4 +1,4 @@
-import PlanRunnerService
+import MarkdownPlannerService
 import RepositorySDK
 import SwiftUI
 
@@ -138,8 +138,8 @@ private struct ConfigurationDetailView: View {
 
             Section("Directories") {
                 detailRow("Cases Directory", value: casesDirectory)
-                detailRow("Proposed Plans", value: proposedDirectory, fallback: PlanRepoSettings.defaultProposedDirectory)
-                detailRow("Completed Plans", value: completedDirectory, fallback: PlanRepoSettings.defaultCompletedDirectory)
+                detailRow("Proposed Plans", value: proposedDirectory, fallback: MarkdownPlannerRepoSettings.defaultProposedDirectory)
+                detailRow("Completed Plans", value: completedDirectory, fallback: MarkdownPlannerRepoSettings.defaultCompletedDirectory)
             }
 
             Section("Skills & Architecture") {

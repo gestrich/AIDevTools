@@ -1,12 +1,12 @@
 import Foundation
 import Testing
-@testable import PlanRunnerService
+@testable import MarkdownPlannerService
 
-struct PlanRepoSettingsStoreTests {
-    private func makeTempStore() -> (PlanRepoSettingsStore, URL) {
+struct MarkdownPlannerRepoSettingsStoreTests {
+    private func makeTempStore() -> (MarkdownPlannerRepoSettingsStore, URL) {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        return (PlanRepoSettingsStore(filePath: tempDir.appending(path: "plan-settings.json")), tempDir)
+        return (MarkdownPlannerRepoSettingsStore(filePath: tempDir.appending(path: "plan-settings.json")), tempDir)
     }
 
     private func cleanup(_ url: URL) {
@@ -30,7 +30,7 @@ struct PlanRepoSettingsStoreTests {
         let (store, tempDir) = makeTempStore()
         defer { cleanup(tempDir) }
         let repoId = UUID()
-        let settings = [PlanRepoSettings(
+        let settings = [MarkdownPlannerRepoSettings(
             repoId: repoId,
             proposedDirectory: "specs/proposed",
             completedDirectory: "specs/completed"
@@ -111,7 +111,7 @@ struct PlanRepoSettingsStoreTests {
 
     @Test func resolvedProposedDirectoryAbsolutePath() {
         // Arrange
-        let settings = PlanRepoSettings(repoId: UUID(), proposedDirectory: "/absolute/proposed")
+        let settings = MarkdownPlannerRepoSettings(repoId: UUID(), proposedDirectory: "/absolute/proposed")
         let repoPath = URL(filePath: "/tmp/repo")
 
         // Act
@@ -123,7 +123,7 @@ struct PlanRepoSettingsStoreTests {
 
     @Test func resolvedProposedDirectoryRelativePath() {
         // Arrange
-        let settings = PlanRepoSettings(repoId: UUID(), proposedDirectory: "specs/proposed")
+        let settings = MarkdownPlannerRepoSettings(repoId: UUID(), proposedDirectory: "specs/proposed")
         let repoPath = URL(filePath: "/tmp/repo")
 
         // Act
@@ -135,7 +135,7 @@ struct PlanRepoSettingsStoreTests {
 
     @Test func resolvedCompletedDirectoryAbsolutePath() {
         // Arrange
-        let settings = PlanRepoSettings(repoId: UUID(), completedDirectory: "/absolute/completed")
+        let settings = MarkdownPlannerRepoSettings(repoId: UUID(), completedDirectory: "/absolute/completed")
         let repoPath = URL(filePath: "/tmp/repo")
 
         // Act
@@ -147,7 +147,7 @@ struct PlanRepoSettingsStoreTests {
 
     @Test func resolvedCompletedDirectoryRelativePath() {
         // Arrange
-        let settings = PlanRepoSettings(repoId: UUID(), completedDirectory: "specs/completed")
+        let settings = MarkdownPlannerRepoSettings(repoId: UUID(), completedDirectory: "specs/completed")
         let repoPath = URL(filePath: "/tmp/repo")
 
         // Act
@@ -159,7 +159,7 @@ struct PlanRepoSettingsStoreTests {
 
     @Test func resolvedDirectoriesUseDefaultsWhenNil() {
         // Arrange
-        let settings = PlanRepoSettings(repoId: UUID())
+        let settings = MarkdownPlannerRepoSettings(repoId: UUID())
         let repoPath = URL(filePath: "/tmp/repo")
 
         // Act

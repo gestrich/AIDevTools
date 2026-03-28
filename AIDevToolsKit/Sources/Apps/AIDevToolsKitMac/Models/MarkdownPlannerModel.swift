@@ -1,8 +1,8 @@
 import ClaudeCLISDK
 import Foundation
 import Logging
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import RepositorySDK
 
 struct PlanPhase: Identifiable {
@@ -19,7 +19,7 @@ struct PlanPhase: Identifiable {
 }
 
 @MainActor @Observable
-final class PlanRunnerModel {
+final class MarkdownPlannerModel {
 
     enum State {
         case idle
@@ -39,7 +39,7 @@ final class PlanRunnerModel {
     }
 
     var state: State = .idle
-    var plans: [PlanEntry] = []
+    var plans: [MarkdownPlanEntry] = []
     var isLoadingPlans: Bool = false
     var executionCompleteCount: Int = 0
     var phaseCompleteCount: Int = 0
@@ -47,14 +47,14 @@ final class PlanRunnerModel {
 
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
-    private let logger = Logger(label: "PlanRunnerModel")
-    private let planSettingsStore: PlanRepoSettingsStore
+    private let logger = Logger(label: "MarkdownPlannerModel")
+    private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let togglePhaseUseCase: TogglePhaseUseCase
 
     init(
         dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
-        planSettingsStore: PlanRepoSettingsStore,
+        planSettingsStore: MarkdownPlannerRepoSettingsStore,
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
     ) {
         self.dataPath = dataPath
@@ -78,7 +78,7 @@ final class PlanRunnerModel {
         self.isLoadingPlans = false
     }
 
-    func deletePlan(_ plan: PlanEntry) throws {
+    func deletePlan(_ plan: MarkdownPlanEntry) throws {
         try deletePlanUseCase.run(planURL: plan.planURL)
         plans.removeAll { $0.id == plan.id }
     }
@@ -89,25 +89,25 @@ final class PlanRunnerModel {
     }
 
     /// Toggles a phase checkbox in the plan markdown and returns the updated content.
-    func togglePhase(plan: PlanEntry, phaseIndex: Int) throws -> String {
+    func togglePhase(plan: MarkdownPlanEntry, phaseIndex: Int) throws -> String {
         let updatedContent = try togglePhaseUseCase.run(planURL: plan.planURL, phaseIndex: phaseIndex)
         Task { await reloadPlans() }
         return updatedContent
     }
 
-    func completePlan(_ plan: PlanEntry, repository: RepositoryInfo) throws {
-        let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? PlanRepoSettings(repoId: repository.id)
+    func completePlan(_ plan: MarkdownPlanEntry, repository: RepositoryInfo) throws {
+        let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
         let completedDir = settings.resolvedCompletedDirectory(repoPath: repository.path)
         try CompletePlanUseCase(completedDirectory: completedDir).run(planURL: plan.planURL)
         Task { await reloadPlans() }
     }
 
-    func execute(plan: PlanEntry, repository: RepositoryInfo, stopAfterArchitectureDiagram: Bool = false) async {
+    func execute(plan: MarkdownPlanEntry, repository: RepositoryInfo, stopAfterArchitectureDiagram: Bool = false) async {
         state = .executing(progress: ExecutionProgress())
         phaseCompleteCount = 0
 
         do {
-            let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? PlanRepoSettings(repoId: repository.id)
+            let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
             let useCase = ExecutePlanUseCase(
                 client: ClaudeProvider(),
                 completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
@@ -140,7 +140,7 @@ final class PlanRunnerModel {
         let useCase = GeneratePlanUseCase(
             client: ClaudeProvider(),
             resolveProposedDirectory: { repo in
-                let settings = try settingsStore.settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
+                let settings = try settingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
             }
         )
@@ -239,7 +239,7 @@ final class PlanRunnerModel {
     }
 
     private func resolvedProposedDirectory(for repo: RepositoryInfo) throws -> URL {
-        let settings = try planSettingsStore.settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
+        let settings = try planSettingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
         return settings.resolvedProposedDirectory(repoPath: repo.path)
     }
 }

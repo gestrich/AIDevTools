@@ -2,7 +2,7 @@ import AIOutputSDK
 import Foundation
 import GitSDK
 import Logging
-import PlanRunnerService
+import MarkdownPlannerService
 import RepositorySDK
 
 public struct ExecutePlanUseCase: Sendable {
@@ -83,7 +83,7 @@ public struct ExecutePlanUseCase: Sendable {
     private let completedDirectory: URL?
     private let dataPath: URL
     private let gitClient: GitClient
-    private let logger = Logger(label: "PlanRunner")
+    private let logger = Logger(label: "MarkdownPlanner")
 
     public init(
         client: any AIClient,

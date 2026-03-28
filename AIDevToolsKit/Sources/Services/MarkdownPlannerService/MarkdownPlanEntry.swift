@@ -1,6 +1,6 @@
 import Foundation
 
-public struct PlanEntry: Identifiable, Sendable {
+public struct MarkdownPlanEntry: Identifiable, Sendable {
     public var id: String { planURL.path }
     public let planURL: URL
     public let completedPhases: Int

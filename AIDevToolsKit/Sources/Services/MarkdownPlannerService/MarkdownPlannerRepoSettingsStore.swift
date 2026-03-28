@@ -1,21 +1,21 @@
 import Foundation
 
-public struct PlanRepoSettingsStore: Sendable {
+public struct MarkdownPlannerRepoSettingsStore: Sendable {
     private let filePath: URL
 
     public init(filePath: URL) {
         self.filePath = filePath
     }
 
-    public func loadAll() throws -> [PlanRepoSettings] {
+    public func loadAll() throws -> [MarkdownPlannerRepoSettings] {
         guard FileManager.default.fileExists(atPath: filePath.path()) else {
             return []
         }
         let data = try Data(contentsOf: filePath)
-        return try JSONDecoder().decode([PlanRepoSettings].self, from: data)
+        return try JSONDecoder().decode([MarkdownPlannerRepoSettings].self, from: data)
     }
 
-    public func save(_ settings: [PlanRepoSettings]) throws {
+    public func save(_ settings: [MarkdownPlannerRepoSettings]) throws {
         try ensureDirectoryExists()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -23,7 +23,7 @@ public struct PlanRepoSettingsStore: Sendable {
         try data.write(to: filePath, options: .atomic)
     }
 
-    public func settings(forRepoId repoId: UUID) throws -> PlanRepoSettings? {
+    public func settings(forRepoId repoId: UUID) throws -> MarkdownPlannerRepoSettings? {
         try loadAll().first { $0.repoId == repoId }
     }
 
@@ -50,7 +50,7 @@ public struct PlanRepoSettingsStore: Sendable {
             all[index].proposedDirectory = proposedDirectory
             all[index].completedDirectory = completedDirectory
         } else {
-            all.append(PlanRepoSettings(
+            all.append(MarkdownPlannerRepoSettings(
                 repoId: repoId,
                 proposedDirectory: proposedDirectory,
                 completedDirectory: completedDirectory

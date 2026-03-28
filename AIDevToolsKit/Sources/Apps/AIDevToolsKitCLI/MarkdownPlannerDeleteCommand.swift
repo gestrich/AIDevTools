@@ -1,11 +1,11 @@
 import ArgumentParser
 import DataPathsService
 import Foundation
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import RepositorySDK
 
-struct PlanRunnerDeleteCommand: ParsableCommand {
+struct MarkdownPlannerDeleteCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "delete",
         abstract: "Delete a plan file"

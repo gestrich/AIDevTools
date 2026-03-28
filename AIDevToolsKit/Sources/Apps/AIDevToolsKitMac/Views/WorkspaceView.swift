@@ -1,7 +1,7 @@
 import AIOutputSDK
 import ArchitecturePlannerService
 import ChatFeature
-import PlanRunnerService
+import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
 import SkillService
@@ -17,7 +17,7 @@ enum WorkspaceItem: Hashable {
 struct WorkspaceView: View {
     @Environment(ArchitecturePlannerModel.self) var architecturePlannerModel
     @Environment(WorkspaceModel.self) var model
-    @Environment(PlanRunnerModel.self) var planRunnerModel
+    @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
     @Environment(ProviderModel.self) var providerModel
 
     let evalProviderRegistry: EvalProviderRegistry
@@ -49,7 +49,7 @@ struct WorkspaceView: View {
                 if let id = newValue, let repo = model.repositories.first(where: { $0.id == id }) {
                     Task {
                         async let _ = model.selectRepository(repo)
-                        async let _ = planRunnerModel.loadPlans(for: repo)
+                        async let _ = markdownPlannerModel.loadPlans(for: repo)
                     }
                     architecturePlannerModel.loadJobs(repoName: repo.name, repoPath: repo.path.path())
                 }
@@ -93,7 +93,7 @@ struct WorkspaceView: View {
                 .navigationTitle(model.selectedRepository?.name ?? "")
                 .task(id: model.selectedRepository?.id) {
                     if let repo = model.selectedRepository {
-                        await planRunnerModel.loadPlans(for: repo)
+                        await markdownPlannerModel.loadPlans(for: repo)
                     }
                 }
                 .onChange(of: selectedItem) { _, newValue in
@@ -164,7 +164,7 @@ struct WorkspaceView: View {
                let repo = model.repositories.first(where: { $0.id == id }) {
                 selectedRepoID = id
                 async let _ = model.selectRepository(repo)
-                async let _ = planRunnerModel.loadPlans(for: repo)
+                async let _ = markdownPlannerModel.loadPlans(for: repo)
                 architecturePlannerModel.loadJobs(repoName: repo.name, repoPath: repo.path.path())
                 if storedArchPlanner {
                     selectedItem = .architecturePlanner
@@ -265,8 +265,8 @@ struct WorkspaceView: View {
                     EvalResultsView(config: config, registry: evalProviderRegistry)
                 }
             case .plan(let name):
-                if let plan = planRunnerModel.plans.first(where: { $0.name == name }) {
-                    PlanDetailView(plan: plan, repository: repo)
+                if let plan = markdownPlannerModel.plans.first(where: { $0.name == name }) {
+                    MarkdownPlannerDetailView(plan: plan, repository: repo)
                 }
             case .skill(let name):
                 if let skill = model.skills.first(where: { $0.name == name }) {
@@ -312,7 +312,7 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var planListContent: some View {
-        if planRunnerModel.isLoadingPlans {
+        if markdownPlannerModel.isLoadingPlans {
             HStack(spacing: 8) {
                 ProgressView()
                     .controlSize(.small)
@@ -322,7 +322,7 @@ struct WorkspaceView: View {
             }
         }
 
-        if case .generating(let step) = planRunnerModel.state {
+        if case .generating(let step) = markdownPlannerModel.state {
             HStack(spacing: 8) {
                 ProgressView()
                     .controlSize(.small)
@@ -333,7 +333,7 @@ struct WorkspaceView: View {
             }
         }
 
-        if case .error(let error) = planRunnerModel.state {
+        if case .error(let error) = markdownPlannerModel.state {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -344,7 +344,7 @@ struct WorkspaceView: View {
                         .foregroundStyle(.red)
                     Spacer()
                     Button("Dismiss") {
-                        planRunnerModel.reset()
+                        markdownPlannerModel.reset()
                     }
                     .font(.caption)
                     .buttonStyle(.borderless)
@@ -359,7 +359,7 @@ struct WorkspaceView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
 
-        ForEach(planRunnerModel.plans) { plan in
+        ForEach(markdownPlannerModel.plans) { plan in
             PlanListRow(plan: plan)
                 .tag(WorkspaceItem.plan(plan.name))
                 .contextMenu {
@@ -367,7 +367,7 @@ struct WorkspaceView: View {
                         if case .plan(plan.name) = selectedItem {
                             selectedItem = nil
                         }
-                        try? planRunnerModel.deletePlan(plan)
+                        try? markdownPlannerModel.deletePlan(plan)
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
@@ -386,7 +386,7 @@ struct WorkspaceView: View {
 // MARK: - Plan List Row
 
 private struct PlanListRow: View {
-    let plan: PlanEntry
+    let plan: MarkdownPlanEntry
 
     var body: some View {
         HStack(spacing: 8) {
@@ -413,7 +413,7 @@ private struct PlanListRow: View {
 
 private struct GeneratePlanSheet: View {
     @Environment(WorkspaceModel.self) var model
-    @Environment(PlanRunnerModel.self) var planRunnerModel
+    @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
     @Environment(\.dismiss) var dismiss
 
     @State private var promptText = ""
@@ -454,7 +454,7 @@ private struct GeneratePlanSheet: View {
                     let selected = matchRepo ? nil : model.selectedRepository
                     dismiss()
                     Task {
-                        await planRunnerModel.generate(prompt: text, repositories: repos, selectedRepository: selected)
+                        await markdownPlannerModel.generate(prompt: text, repositories: repos, selectedRepository: selected)
                     }
                 }
                 .keyboardShortcut(.defaultAction)

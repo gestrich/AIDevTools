@@ -1,5 +1,5 @@
 import Foundation
-import PlanRunnerService
+import MarkdownPlannerService
 
 public struct LoadPlansUseCase: Sendable {
 
@@ -9,14 +9,14 @@ public struct LoadPlansUseCase: Sendable {
         self.proposedDirectory = proposedDirectory
     }
 
-    public func run() async -> [PlanEntry] {
+    public func run() async -> [MarkdownPlanEntry] {
         let dir = proposedDirectory
         return await Task.detached {
             self.loadFromDisk(proposedDirectory: dir)
         }.value
     }
 
-    private func loadFromDisk(proposedDirectory: URL) -> [PlanEntry] {
+    private func loadFromDisk(proposedDirectory: URL) -> [MarkdownPlanEntry] {
         let fm = FileManager.default
 
         guard fm.fileExists(atPath: proposedDirectory.path),
@@ -30,11 +30,11 @@ public struct LoadPlansUseCase: Sendable {
 
         return files
             .filter { $0.pathExtension == "md" }
-            .compactMap { url -> PlanEntry? in
+            .compactMap { url -> MarkdownPlanEntry? in
                 let (completed, total) = parsePhaseCount(from: url)
                 guard total > 0 else { return nil }
                 let date = fileCreationDate(url)
-                return PlanEntry(
+                return MarkdownPlanEntry(
                     planURL: url,
                     completedPhases: completed,
                     totalPhases: total,

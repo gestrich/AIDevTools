@@ -2,12 +2,12 @@ import ArgumentParser
 import ClaudeCLISDK
 import DataPathsService
 import Foundation
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
 
-struct PlanRunnerExecuteCommand: AsyncParsableCommand {
+struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "execute",
         abstract: "Execute phases from a planning document"
@@ -144,7 +144,7 @@ struct PlanRunnerExecuteCommand: AsyncParsableCommand {
         }
     }
 
-    private func selectPlanningDoc(proposedDir: String = PlanRepoSettings.defaultProposedDirectory) -> URL? {
+    private func selectPlanningDoc(proposedDir: String = MarkdownPlannerRepoSettings.defaultProposedDirectory) -> URL? {
         let fm = FileManager.default
         let dir = URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent(proposedDir)
 

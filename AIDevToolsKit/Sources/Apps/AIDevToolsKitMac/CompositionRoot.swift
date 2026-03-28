@@ -2,7 +2,7 @@ import ClaudeCLISDK
 import CodexCLISDK
 import DataPathsService
 import EvalService
-import PlanRunnerService
+import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
 
@@ -11,7 +11,7 @@ struct CompositionRoot {
     let dataPathsService: DataPathsService
     let evalSettingsStore: EvalRepoSettingsStore
     let evalProviderRegistry: EvalProviderRegistry
-    let planSettingsStore: PlanRepoSettingsStore
+    let planSettingsStore: MarkdownPlannerRepoSettingsStore
     let providerModel: ProviderModel
     let repositoryStore: RepositoryStore
     let settingsModel: SettingsModel
@@ -27,7 +27,7 @@ struct CompositionRoot {
         let evalSettingsStore = EvalRepoSettingsStore(
             filePath: try dataPathsService.path(for: .evalSettings).appending(path: "eval-settings.json")
         )
-        let planSettingsStore = PlanRepoSettingsStore(
+        let planSettingsStore = MarkdownPlannerRepoSettingsStore(
             filePath: try dataPathsService.path(for: .planSettings).appending(path: "plan-settings.json")
         )
 

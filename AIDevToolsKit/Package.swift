@@ -23,8 +23,8 @@ let package = Package(
         .library(name: "EvalService", targets: ["EvalService"]),
         .library(name: "GitSDK", targets: ["GitSDK"]),
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
-        .library(name: "PlanRunnerFeature", targets: ["PlanRunnerFeature"]),
-        .library(name: "PlanRunnerService", targets: ["PlanRunnerService"]),
+        .library(name: "MarkdownPlannerFeature", targets: ["MarkdownPlannerFeature"]),
+        .library(name: "MarkdownPlannerService", targets: ["MarkdownPlannerService"]),
         .library(name: "ProviderRegistryService", targets: ["ProviderRegistryService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
@@ -57,8 +57,8 @@ let package = Package(
                 "EvalSDK",
                 "EvalService",
                 "LoggingSDK",
-                "PlanRunnerFeature",
-                "PlanRunnerService",
+                "MarkdownPlannerFeature",
+                "MarkdownPlannerService",
                 "ProviderRegistryService",
                 "RepositorySDK",
                 "SkillBrowserFeature",
@@ -81,8 +81,8 @@ let package = Package(
                 "EvalSDK",
                 "EvalService",
                 "LoggingSDK",
-                "PlanRunnerFeature",
-                "PlanRunnerService",
+                "MarkdownPlannerFeature",
+                "MarkdownPlannerService",
                 "ProviderRegistryService",
                 "RepositorySDK",
                 "SkillBrowserFeature",
@@ -122,15 +122,15 @@ let package = Package(
             path: "Sources/Features/EvalFeature"
         ),
         .target(
-            name: "PlanRunnerFeature",
+            name: "MarkdownPlannerFeature",
             dependencies: [
                 "AIOutputSDK",
                 "GitSDK",
                 "LoggingSDK",
-                "PlanRunnerService",
+                "MarkdownPlannerService",
                 "RepositorySDK",
             ],
-            path: "Sources/Features/PlanRunnerFeature"
+            path: "Sources/Features/MarkdownPlannerFeature"
         ),
         .target(
             name: "SkillBrowserFeature",
@@ -166,9 +166,9 @@ let package = Package(
             path: "Sources/Services/EvalService"
         ),
         .target(
-            name: "PlanRunnerService",
+            name: "MarkdownPlannerService",
             dependencies: [],
-            path: "Sources/Services/PlanRunnerService"
+            path: "Sources/Services/MarkdownPlannerService"
         ),
         .target(
             name: "ProviderRegistryService",
@@ -342,14 +342,14 @@ let package = Package(
             path: "Tests/SDKs/GitSDKTests"
         ),
         .testTarget(
-            name: "PlanRunnerFeatureTests",
-            dependencies: ["GitSDK", "PlanRunnerFeature", "PlanRunnerService", "RepositorySDK"],
-            path: "Tests/Features/PlanRunnerFeatureTests"
+            name: "MarkdownPlannerFeatureTests",
+            dependencies: ["GitSDK", "MarkdownPlannerFeature", "MarkdownPlannerService", "RepositorySDK"],
+            path: "Tests/Features/MarkdownPlannerFeatureTests"
         ),
         .testTarget(
-            name: "PlanRunnerServiceTests",
-            dependencies: ["PlanRunnerService"],
-            path: "Tests/Services/PlanRunnerServiceTests"
+            name: "MarkdownPlannerServiceTests",
+            dependencies: ["MarkdownPlannerService"],
+            path: "Tests/Services/MarkdownPlannerServiceTests"
         ),
         .testTarget(
             name: "RepositorySDKTests",

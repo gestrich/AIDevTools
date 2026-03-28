@@ -1,4 +1,4 @@
-import PlanRunnerService
+import MarkdownPlannerService
 import SwiftUI
 
 struct ModuleCardView: View {

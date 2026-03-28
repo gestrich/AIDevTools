@@ -1,12 +1,12 @@
 import MarkdownUI
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import RepositorySDK
 import SwiftUI
 
-struct PlanDetailView: View {
-    @Environment(PlanRunnerModel.self) var planRunnerModel
-    let plan: PlanEntry
+struct MarkdownPlannerDetailView: View {
+    @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
+    let plan: MarkdownPlanEntry
     let repository: RepositoryInfo
 
     @State private var planContent: String?
@@ -21,7 +21,7 @@ struct PlanDetailView: View {
         VStack(spacing: 0) {
             headerBar
 
-            if case .error(let error) = planRunnerModel.state {
+            if case .error(let error) = markdownPlannerModel.state {
                 errorBanner(error)
             }
 
@@ -39,13 +39,13 @@ struct PlanDetailView: View {
                             }
                         }
 
-                        if case .executing(let progress) = planRunnerModel.state,
+                        if case .executing(let progress) = markdownPlannerModel.state,
                            !progress.currentOutput.isEmpty {
                             outputPanel(progress.currentOutput)
                                 .id("live-output")
                         }
 
-                        if case .completed(let result) = planRunnerModel.state {
+                        if case .completed(let result) = markdownPlannerModel.state {
                             completionBanner(result)
                         }
 
@@ -78,10 +78,10 @@ struct PlanDetailView: View {
         .task(id: plan.id) {
             loadPlan()
         }
-        .onChange(of: planRunnerModel.phaseCompleteCount) {
+        .onChange(of: markdownPlannerModel.phaseCompleteCount) {
             loadArchitectureDiagram()
         }
-        .onChange(of: planRunnerModel.executionCompleteCount) {
+        .onChange(of: markdownPlannerModel.executionCompleteCount) {
             loadPlan()
         }
     }
@@ -89,19 +89,19 @@ struct PlanDetailView: View {
     // MARK: - Header
 
     private var isExecuting: Bool {
-        if case .executing = planRunnerModel.state { return true }
+        if case .executing = markdownPlannerModel.state { return true }
         return false
     }
 
     private var isGenerating: Bool {
-        if case .generating = planRunnerModel.state { return true }
+        if case .generating = markdownPlannerModel.state { return true }
         return false
     }
 
     private var isBusy: Bool { isExecuting || isGenerating }
 
     private var executionOutput: String {
-        if case .executing(let progress) = planRunnerModel.state {
+        if case .executing(let progress) = markdownPlannerModel.state {
             return progress.currentOutput
         }
         return ""
@@ -123,7 +123,7 @@ struct PlanDetailView: View {
 
             Spacer()
 
-            if case .executing(let progress) = planRunnerModel.state, progress.totalPhases > 0 {
+            if case .executing(let progress) = markdownPlannerModel.state, progress.totalPhases > 0 {
                 Text("\(progress.phasesCompleted)/\(progress.totalPhases) phases")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
@@ -144,7 +144,7 @@ struct PlanDetailView: View {
             Button {
                 let stopForDiagram = stopAfterArchitectureDiagram
                 Task {
-                    await planRunnerModel.execute(
+                    await markdownPlannerModel.execute(
                         plan: plan,
                         repository: repository,
                         stopAfterArchitectureDiagram: stopForDiagram
@@ -161,7 +161,7 @@ struct PlanDetailView: View {
 
     @ViewBuilder
     private var executionStatusText: some View {
-        if case .executing(let progress) = planRunnerModel.state {
+        if case .executing(let progress) = markdownPlannerModel.state {
             if let index = progress.currentPhaseIndex {
                 Text("Phase \(index + 1): \(progress.currentPhaseDescription)")
                     .font(.subheadline)
@@ -179,7 +179,7 @@ struct PlanDetailView: View {
 
     @ViewBuilder
     private var phaseSection: some View {
-        if case .executing(let progress) = planRunnerModel.state, !progress.phases.isEmpty {
+        if case .executing(let progress) = markdownPlannerModel.state, !progress.phases.isEmpty {
             executionPhaseList(progress)
         } else if !localPhases.isEmpty {
             localPhaseList
@@ -211,7 +211,7 @@ struct PlanDetailView: View {
         }
     }
 
-    private func executionPhaseList(_ progress: PlanRunnerModel.ExecutionProgress) -> some View {
+    private func executionPhaseList(_ progress: MarkdownPlannerModel.ExecutionProgress) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Phases")
                 .font(.headline)
@@ -273,7 +273,7 @@ struct PlanDetailView: View {
             }
             Spacer()
             Button("Dismiss") {
-                planRunnerModel.reset()
+                markdownPlannerModel.reset()
             }
             .buttonStyle(.borderless)
         }
@@ -290,7 +290,7 @@ struct PlanDetailView: View {
                 .font(.callout)
             Spacer()
             Button("Dismiss") {
-                planRunnerModel.reset()
+                markdownPlannerModel.reset()
             }
             .buttonStyle(.borderless)
         }
@@ -302,19 +302,19 @@ struct PlanDetailView: View {
 
     private func togglePhase(at index: Int) {
         do {
-            let updatedContent = try planRunnerModel.togglePhase(plan: plan, phaseIndex: index)
+            let updatedContent = try markdownPlannerModel.togglePhase(plan: plan, phaseIndex: index)
             planContent = updatedContent
-            localPhases = PlanRunnerModel.parsePhases(from: updatedContent)
+            localPhases = MarkdownPlannerModel.parsePhases(from: updatedContent)
         } catch {
-            planRunnerModel.state = .error(error)
+            markdownPlannerModel.state = .error(error)
         }
     }
 
     private func completePlan() {
         do {
-            try planRunnerModel.completePlan(plan, repository: repository)
+            try markdownPlannerModel.completePlan(plan, repository: repository)
         } catch {
-            planRunnerModel.state = .error(error)
+            markdownPlannerModel.state = .error(error)
         }
     }
 
@@ -324,7 +324,7 @@ struct PlanDetailView: View {
         do {
             let content = try String(contentsOf: plan.planURL, encoding: .utf8)
             planContent = content
-            localPhases = PlanRunnerModel.parsePhases(from: content)
+            localPhases = MarkdownPlannerModel.parsePhases(from: content)
             loadError = nil
         } catch {
             planContent = nil

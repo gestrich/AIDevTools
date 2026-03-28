@@ -2,7 +2,7 @@ import ArgumentParser
 import DataPathsService
 import EvalService
 import Foundation
-import PlanRunnerService
+import MarkdownPlannerService
 import RepositorySDK
 import SkillBrowserFeature
 
@@ -28,8 +28,8 @@ struct ReposCommand: ParsableCommand {
         EvalRepoSettingsStore(filePath: try service.path(for: .evalSettings).appending(path: "eval-settings.json"))
     }
 
-    static func makePlanSettingsStore(_ service: DataPathsService) throws -> PlanRepoSettingsStore {
-        PlanRepoSettingsStore(filePath: try service.path(for: .planSettings).appending(path: "plan-settings.json"))
+    static func makePlanSettingsStore(_ service: DataPathsService) throws -> MarkdownPlannerRepoSettingsStore {
+        MarkdownPlannerRepoSettingsStore(filePath: try service.path(for: .planSettings).appending(path: "plan-settings.json"))
     }
 }
 

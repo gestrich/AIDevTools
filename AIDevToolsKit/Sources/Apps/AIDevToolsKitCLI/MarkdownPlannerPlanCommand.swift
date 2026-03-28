@@ -2,11 +2,11 @@ import ArgumentParser
 import ClaudeCLISDK
 import DataPathsService
 import Foundation
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import RepositorySDK
 
-struct PlanRunnerPlanCommand: AsyncParsableCommand {
+struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "plan",
         abstract: "Generate an implementation plan from a prompt"
@@ -44,7 +44,7 @@ struct PlanRunnerPlanCommand: AsyncParsableCommand {
 
         if execute {
             printColored("\nStarting execution...", color: .cyan)
-            let executeCmd = try PlanRunnerExecuteCommand.parse(["--plan", result.planURL.path])
+            let executeCmd = try MarkdownPlannerExecuteCommand.parse(["--plan", result.planURL.path])
             try await executeCmd.run()
         }
     }

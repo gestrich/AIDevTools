@@ -3,8 +3,8 @@ import ArchitecturePlannerService
 import DataPathsService
 import EvalService
 import LoggingSDK
-import PlanRunnerFeature
-import PlanRunnerService
+import MarkdownPlannerFeature
+import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
 import SkillBrowserFeature
@@ -14,7 +14,7 @@ import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
     @State private var architecturePlannerModel: ArchitecturePlannerModel
-    @State private var planRunnerModel: PlanRunnerModel
+    @State private var markdownPlannerModel: MarkdownPlannerModel
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
@@ -38,7 +38,7 @@ public struct AIDevToolsKitMacEntryView: View {
             removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore),
             updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
         ))
-        _planRunnerModel = State(initialValue: PlanRunnerModel(
+        _markdownPlannerModel = State(initialValue: MarkdownPlannerModel(
             dataPath: root.settingsModel.dataPath,
             planSettingsStore: root.planSettingsStore
         ))
@@ -54,7 +54,7 @@ public struct AIDevToolsKitMacEntryView: View {
     public var body: some View {
         WorkspaceView(evalProviderRegistry: evalProviderRegistry)
             .environment(architecturePlannerModel)
-            .environment(planRunnerModel)
+            .environment(markdownPlannerModel)
             .environment(providerModel)
             .environment(workspaceModel)
             .frame(minWidth: 800, minHeight: 600)

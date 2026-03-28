@@ -1,15 +1,15 @@
 import Foundation
-import PlanRunnerService
+import MarkdownPlannerService
 import RepositorySDK
 
-extension PlanRepoSettingsStore {
+extension MarkdownPlannerRepoSettingsStore {
     func resolvedProposedDirectory(forRepo repo: RepositoryInfo) throws -> URL {
-        let settings = try settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
+        let settings = try settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
         return settings.resolvedProposedDirectory(repoPath: repo.path)
     }
 
     func resolvedCompletedDirectory(forRepo repo: RepositoryInfo) throws -> URL {
-        let settings = try settings(forRepoId: repo.id) ?? PlanRepoSettings(repoId: repo.id)
+        let settings = try settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
         return settings.resolvedCompletedDirectory(repoPath: repo.path)
     }
 }

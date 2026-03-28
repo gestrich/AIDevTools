@@ -15,7 +15,7 @@ Business logic orchestration and use cases. Depends on: Services, SDKs.
 - **ClaudeCodeChatFeature** — Claude Code CLI chat orchestration
 - **EvalFeature** — Eval execution, grading, and result analysis
 - **ArchitecturePlannerFeature** — Architecture-driven planning with requirements, guidelines, and conformance scoring
-- **PlanRunnerFeature** — Plan generation and phase execution
+- **MarkdownPlannerFeature** — Plan generation and phase execution
 - **SkillBrowserFeature** — Repository and skill browsing
 
 ### Services
@@ -24,7 +24,7 @@ Domain services and data persistence. Depends on: SDKs.
 - **ClaudeCodeChatService** — Claude Code chat session persistence
 - **EvalService** — Eval case storage and artifact management
 - **ArchitecturePlannerService** — SwiftData models and persistence for architecture-driven planning
-- **PlanRunnerService** — Plan settings, plan entry model, architecture diagram model
+- **MarkdownPlannerService** — Plan settings, plan entry model, architecture diagram model
 - **SkillService** — Skill configuration and repository settings
 
 ### SDKs
