@@ -93,9 +93,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 9: Review and fix SkillContent.swift
+## - [x] Phase 9: Review and fix SkillContent.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Moved SkillContent from Apps/Models to SkillService/Models since it's a pure parsing/data struct with no app-layer concerns; added public access control and Sendable conformance
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/SkillContent.swift`
 - Save the review output to `reviews/apps-SkillContent.md`
