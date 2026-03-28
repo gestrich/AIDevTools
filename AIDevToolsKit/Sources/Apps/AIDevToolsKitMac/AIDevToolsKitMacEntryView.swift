@@ -42,10 +42,11 @@ public struct AIDevToolsKitMacEntryView: View {
             dataPath: root.settingsModel.dataPath,
             planSettingsStore: root.planSettingsStore
         ))
-        let defaultClient = root.providerModel.providerRegistry.providers.first!
+        let storedPlannerProvider = UserDefaults.standard.string(forKey: "archPlannerProviderName")
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
             dataPathsService: root.dataPathsService,
-            client: defaultClient
+            providerRegistry: root.providerModel.providerRegistry,
+            selectedProviderName: storedPlannerProvider
         ))
         evalProviderRegistry = root.evalProviderRegistry
     }

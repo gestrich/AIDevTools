@@ -3,6 +3,7 @@ import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import DataPathsService
 import Foundation
+import ProviderRegistryService
 
 @MainActor @Observable
 final class ArchitecturePlannerModel {
@@ -21,46 +22,67 @@ final class ArchitecturePlannerModel {
     var selectedStepIndex: Int?
     var featureDescription: String = ""
 
+    var selectedProviderName: String {
+        didSet {
+            if oldValue != selectedProviderName {
+                rebuildUseCases()
+            }
+        }
+    }
+
+    var availableProviders: [(name: String, displayName: String)] {
+        providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
+    }
+
     private(set) var currentRepoName: String?
     private(set) var currentRepoPath: String?
 
     private var outputStore: AIOutputStore?
     private var store: ArchitecturePlannerStore?
 
+    private let providerRegistry: ProviderRegistry
     private let dataPathsService: DataPathsService
     private let createJobUseCase: CreatePlanningJobUseCase
-    private let compileArchInfoUseCase: CompileArchitectureInfoUseCase
-    private let compileFollowupsUseCase: CompileFollowupsUseCase
-    private let executeUseCase: ExecuteImplementationUseCase
-    private let formRequirementsUseCase: FormRequirementsUseCase
+    private var compileArchInfoUseCase: CompileArchitectureInfoUseCase
+    private var compileFollowupsUseCase: CompileFollowupsUseCase
+    private var executeUseCase: ExecuteImplementationUseCase
+    private var formRequirementsUseCase: FormRequirementsUseCase
     private let generateReportUseCase: GenerateReportUseCase
     private let manageGuidelinesUseCase: ManageGuidelinesUseCase
-    private let planAcrossLayersUseCase: PlanAcrossLayersUseCase
-    private let scoreConformanceUseCase: ScoreConformanceUseCase
+    private var planAcrossLayersUseCase: PlanAcrossLayersUseCase
+    private var scoreConformanceUseCase: ScoreConformanceUseCase
 
     init(
         dataPathsService: DataPathsService,
-        client: any AIClient,
-        compileArchInfoUseCase: CompileArchitectureInfoUseCase? = nil,
-        compileFollowupsUseCase: CompileFollowupsUseCase? = nil,
-        createJobUseCase: CreatePlanningJobUseCase = CreatePlanningJobUseCase(),
-        executeUseCase: ExecuteImplementationUseCase? = nil,
-        formRequirementsUseCase: FormRequirementsUseCase? = nil,
-        generateReportUseCase: GenerateReportUseCase = GenerateReportUseCase(),
-        manageGuidelinesUseCase: ManageGuidelinesUseCase = ManageGuidelinesUseCase(),
-        planAcrossLayersUseCase: PlanAcrossLayersUseCase? = nil,
-        scoreConformanceUseCase: ScoreConformanceUseCase? = nil
+        providerRegistry: ProviderRegistry,
+        selectedProviderName: String? = nil
     ) {
         self.dataPathsService = dataPathsService
-        self.compileArchInfoUseCase = compileArchInfoUseCase ?? CompileArchitectureInfoUseCase(client: client)
-        self.compileFollowupsUseCase = compileFollowupsUseCase ?? CompileFollowupsUseCase(client: client)
-        self.createJobUseCase = createJobUseCase
-        self.executeUseCase = executeUseCase ?? ExecuteImplementationUseCase(client: client)
-        self.formRequirementsUseCase = formRequirementsUseCase ?? FormRequirementsUseCase(client: client)
-        self.generateReportUseCase = generateReportUseCase
-        self.manageGuidelinesUseCase = manageGuidelinesUseCase
-        self.planAcrossLayersUseCase = planAcrossLayersUseCase ?? PlanAcrossLayersUseCase(client: client)
-        self.scoreConformanceUseCase = scoreConformanceUseCase ?? ScoreConformanceUseCase(client: client)
+        self.providerRegistry = providerRegistry
+
+        let client = selectedProviderName.flatMap { providerRegistry.client(named: $0) }
+            ?? providerRegistry.providers.first!
+        self.selectedProviderName = client.name
+
+        self.compileArchInfoUseCase = CompileArchitectureInfoUseCase(client: client)
+        self.compileFollowupsUseCase = CompileFollowupsUseCase(client: client)
+        self.createJobUseCase = CreatePlanningJobUseCase()
+        self.executeUseCase = ExecuteImplementationUseCase(client: client)
+        self.formRequirementsUseCase = FormRequirementsUseCase(client: client)
+        self.generateReportUseCase = GenerateReportUseCase()
+        self.manageGuidelinesUseCase = ManageGuidelinesUseCase()
+        self.planAcrossLayersUseCase = PlanAcrossLayersUseCase(client: client)
+        self.scoreConformanceUseCase = ScoreConformanceUseCase(client: client)
+    }
+
+    private func rebuildUseCases() {
+        guard let client = providerRegistry.client(named: selectedProviderName) else { return }
+        compileArchInfoUseCase = CompileArchitectureInfoUseCase(client: client)
+        compileFollowupsUseCase = CompileFollowupsUseCase(client: client)
+        executeUseCase = ExecuteImplementationUseCase(client: client)
+        formRequirementsUseCase = FormRequirementsUseCase(client: client)
+        planAcrossLayersUseCase = PlanAcrossLayersUseCase(client: client)
+        scoreConformanceUseCase = ScoreConformanceUseCase(client: client)
     }
 
     func loadJobs(repoName: String, repoPath: String) {

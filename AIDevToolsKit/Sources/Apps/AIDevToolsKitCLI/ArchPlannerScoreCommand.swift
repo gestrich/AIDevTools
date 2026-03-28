@@ -1,9 +1,9 @@
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
-import ClaudeCLISDK
 import DataPathsService
 import Foundation
+import ProviderRegistryService
 
 struct ArchPlannerScoreCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -22,6 +22,9 @@ struct ArchPlannerScoreCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Job ID (UUID)")
     var jobId: String
 
+    @Option(name: .long, help: "Provider to use (default: first registered)")
+    var provider: String?
+
     mutating func run() async throws {
         guard let uuid = UUID(uuidString: jobId) else {
             print("Invalid job ID: \(jobId)")
@@ -29,7 +32,9 @@ struct ArchPlannerScoreCommand: AsyncParsableCommand {
         }
 
         let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
-        let useCase = ScoreConformanceUseCase(client: ClaudeProvider())
+        let registry = makeProviderRegistry()
+        let client = provider.flatMap { registry.client(named: $0) } ?? registry.providers.first!
+        let useCase = ScoreConformanceUseCase(client: client)
         let options = ScoreConformanceUseCase.Options(jobId: uuid, repoPath: repoPath)
 
         let result = try await useCase.run(options, store: store) { progress in

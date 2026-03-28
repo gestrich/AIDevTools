@@ -4,6 +4,7 @@ import SwiftUI
 struct ArchitecturePlannerDetailView: View {
     @Bindable var model: ArchitecturePlannerModel
     let job: PlanningJob
+    @AppStorage("archPlannerProviderName") private var storedProviderName: String = "claude"
     @State private var expandedOutputStepIndex: Int?
     @State private var loadedOutput: String?
 
@@ -301,6 +302,16 @@ struct ArchitecturePlannerDetailView: View {
 
     private var actionBar: some View {
         HStack {
+            Picker("Provider", selection: $model.selectedProviderName) {
+                ForEach(model.availableProviders, id: \.name) { entry in
+                    Text(entry.displayName).tag(entry.name)
+                }
+            }
+            .frame(maxWidth: 200)
+            .onChange(of: model.selectedProviderName) { _, newName in
+                storedProviderName = newName
+            }
+
             if case .running(let stepName) = model.state {
                 ProgressView()
                     .controlSize(.small)

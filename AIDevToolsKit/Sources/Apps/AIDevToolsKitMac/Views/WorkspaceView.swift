@@ -197,7 +197,6 @@ struct WorkspaceView: View {
                     Text(entry.displayName).tag(entry.name)
                 }
             }
-            .pickerStyle(.segmented)
             .frame(maxWidth: 200)
             .onChange(of: chatProviderName) { _, _ in
                 rebuildChatModel()

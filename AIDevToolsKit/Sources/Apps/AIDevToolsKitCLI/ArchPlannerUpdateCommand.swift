@@ -1,9 +1,10 @@
+import AIOutputSDK
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
-import ClaudeCLISDK
 import DataPathsService
 import Foundation
+import ProviderRegistryService
 import SwiftData
 
 struct ArchPlannerUpdateCommand: AsyncParsableCommand {
@@ -23,6 +24,9 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Job ID (UUID)")
     var jobId: String
 
+    @Option(name: .long, help: "Provider to use (default: first registered)")
+    var provider: String?
+
     @Option(name: .long, help: "Step to run (e.g. form-requirements, compile-arch-info, plan-across-layers, checklist-validation, build-implementation-model, score, execute, report, followups, all, next)")
     var step: String?
 
@@ -33,17 +37,19 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         }
 
         let store = try DataPathsService.makeArchPlannerStore(dataPath: dataPathOptions.dataPath, repoName: repoName)
+        let registry = makeProviderRegistry()
+        let client = provider.flatMap { registry.client(named: $0) } ?? registry.providers.first!
         let stepName = step ?? "next"
 
         if stepName == "all" {
-            try await runAllSteps(store: store, jobId: uuid)
+            try await runAllSteps(store: store, jobId: uuid, client: client)
         } else {
             let targetStep = try await resolveStep(stepName, store: store, jobId: uuid)
-            try await runStep(targetStep, store: store, jobId: uuid)
+            try await runStep(targetStep, store: store, jobId: uuid, client: client)
         }
     }
 
-    private func runAllSteps(store: ArchitecturePlannerStore, jobId: UUID) async throws {
+    private func runAllSteps(store: ArchitecturePlannerStore, jobId: UUID, client: any AIClient) async throws {
         while true {
             let resolved: String
             do {
@@ -54,7 +60,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
                 break
             }
             print("\n--- Running: \(resolved) ---\n")
-            try await runStep(resolved, store: store, jobId: jobId)
+            try await runStep(resolved, store: store, jobId: jobId, client: client)
         }
         print("\nAll steps completed.")
     }
@@ -82,10 +88,10 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         return resolved
     }
 
-    private func runStep(_ targetStep: String, store: ArchitecturePlannerStore, jobId: UUID) async throws {
+    private func runStep(_ targetStep: String, store: ArchitecturePlannerStore, jobId: UUID, client: any AIClient) async throws {
         switch targetStep {
         case "form-requirements":
-            let useCase = FormRequirementsUseCase(client: ClaudeProvider())
+            let useCase = FormRequirementsUseCase(client: client)
             let options = FormRequirementsUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
@@ -99,7 +105,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             print("Requirements formed: \(result.requirements.count)")
 
         case "compile-arch-info":
-            let useCase = CompileArchitectureInfoUseCase(client: ClaudeProvider())
+            let useCase = CompileArchitectureInfoUseCase(client: client)
             let options = CompileArchitectureInfoUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
@@ -113,7 +119,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             print("Layers: \(result.layersSummary.prefix(200))")
 
         case "plan-across-layers":
-            let useCase = PlanAcrossLayersUseCase(client: ClaudeProvider())
+            let useCase = PlanAcrossLayersUseCase(client: client)
             let options = PlanAcrossLayersUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
@@ -141,7 +147,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             print("Components with mappings: \(result.componentsWithMappings)/\(result.componentsTotal)")
 
         case "build-implementation-model", "score":
-            let useCase = ScoreConformanceUseCase(client: ClaudeProvider())
+            let useCase = ScoreConformanceUseCase(client: client)
             let options = ScoreConformanceUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
@@ -175,7 +181,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             print("Review step auto-approved")
 
         case "execute":
-            let useCase = ExecuteImplementationUseCase(client: ClaudeProvider())
+            let useCase = ExecuteImplementationUseCase(client: client)
             let options = ExecuteImplementationUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
@@ -198,7 +204,7 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
             print(result.report)
 
         case "followups":
-            let useCase = CompileFollowupsUseCase(client: ClaudeProvider())
+            let useCase = CompileFollowupsUseCase(client: client)
             let options = CompileFollowupsUseCase.Options(jobId: jobId, repoPath: repoPath)
             let result = try await useCase.run(options, store: store, onProgress: { progress in
                 switch progress {
