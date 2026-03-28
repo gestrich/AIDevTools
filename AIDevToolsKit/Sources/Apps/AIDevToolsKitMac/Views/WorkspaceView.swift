@@ -1,8 +1,5 @@
 import AIOutputSDK
-import AnthropicChatService
-import AnthropicSDK
 import ArchitecturePlannerService
-import ClaudeCLISDK
 import ClaudeCodeChatService
 import PlanRunnerService
 import ProviderRegistryService
@@ -22,8 +19,8 @@ struct WorkspaceView: View {
     @Environment(ArchitecturePlannerModel.self) var architecturePlannerModel
     @Environment(WorkspaceModel.self) var model
     @Environment(PlanRunnerModel.self) var planRunnerModel
+    @Environment(ProviderModel.self) var providerModel
 
-    let providerRegistry: ProviderRegistry
     let evalProviderRegistry: EvalProviderRegistry
 
     @AppStorage("selectedArchPlanner") private var storedArchPlanner = false
@@ -187,6 +184,7 @@ struct WorkspaceView: View {
             rebuildClaudeCodeChatManager()
         }
         .onChange(of: apiKey) { _, _ in
+            providerModel.refreshProviders()
             rebuildChatViewModel()
         }
     }
@@ -194,11 +192,7 @@ struct WorkspaceView: View {
     // MARK: - Chat
 
     private var chatProviders: [(name: String, displayName: String)] {
-        var result = providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
-        if !apiKey.isEmpty {
-            result.append((name: "anthropic-api", displayName: "Anthropic API"))
-        }
-        return result
+        providerModel.providerRegistry.providers.map { (name: $0.name, displayName: $0.displayName) }
     }
 
     private var chatToolbar: some View {
@@ -314,13 +308,13 @@ struct WorkspaceView: View {
     }
 
     private func rebuildChatViewModel() {
-        guard !apiKey.isEmpty, model.selectedRepository != nil else {
+        guard let client = providerModel.providerRegistry.client(named: "anthropic-api"),
+              model.selectedRepository != nil else {
             chatViewModel = nil
             return
         }
-        let anthropicClient = AnthropicAIClient(apiClient: AnthropicAPIClient(apiKey: apiKey))
         chatViewModel = ChatViewModel(
-            client: anthropicClient,
+            client: client,
             modelContext: modelContext,
             systemPrompt: buildSystemPrompt()
         )
@@ -331,7 +325,7 @@ struct WorkspaceView: View {
             claudeCodeChatManager = nil
             return
         }
-        guard let client = providerRegistry.client(named: chatProviderName) else {
+        guard let client = providerModel.providerRegistry.client(named: chatProviderName) else {
             claudeCodeChatManager = nil
             return
         }

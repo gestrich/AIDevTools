@@ -48,7 +48,10 @@ ChatView (Feature/App layer)
 
 ## Phases
 
-## - [ ] Phase 1: Make ProviderRegistry mutable and register Anthropic API
+## - [x] Phase 1: Make ProviderRegistry mutable and register Anthropic API
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Kept `@Observable` at Apps layer only via `ProviderModel`; `ProviderRegistry` stays immutable Sendable struct in Services; model rebuilds registry on settings change; views observe the model, not the registry directly
 
 **Skills to read**: `swift-architecture`
 

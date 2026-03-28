@@ -12,9 +12,9 @@ import RepositorySDK
 struct CompositionRoot {
     let dataPathsService: DataPathsService
     let evalSettingsStore: EvalRepoSettingsStore
-    let planSettingsStore: PlanRepoSettingsStore
-    let providerRegistry: ProviderRegistry
     let evalProviderRegistry: EvalProviderRegistry
+    let planSettingsStore: PlanRepoSettingsStore
+    let providerModel: ProviderModel
     let repositoryStore: RepositoryStore
     let settingsModel: SettingsModel
 
@@ -36,8 +36,6 @@ struct CompositionRoot {
         let claude = ClaudeCLIClient()
         let codex = CodexCLIClient()
 
-        let providerRegistry = ProviderRegistry(providers: [claude, codex])
-
         let evalProviderRegistry = EvalProviderRegistry(entries: [
             EvalProviderEntry(client: claude, adapter: ClaudeAdapter(client: claude)),
             EvalProviderEntry(client: codex, adapter: CodexAdapter(client: codex)),
@@ -46,9 +44,9 @@ struct CompositionRoot {
         return CompositionRoot(
             dataPathsService: dataPathsService,
             evalSettingsStore: evalSettingsStore,
-            planSettingsStore: planSettingsStore,
-            providerRegistry: providerRegistry,
             evalProviderRegistry: evalProviderRegistry,
+            planSettingsStore: planSettingsStore,
+            providerModel: ProviderModel(),
             repositoryStore: repositoryStore,
             settingsModel: settingsModel
         )

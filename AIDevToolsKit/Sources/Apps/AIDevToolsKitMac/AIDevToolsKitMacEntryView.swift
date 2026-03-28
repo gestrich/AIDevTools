@@ -16,10 +16,10 @@ import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
     @State private var architecturePlannerModel: ArchitecturePlannerModel
+    @State private var planRunnerModel: PlanRunnerModel
+    @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
-    @State private var planRunnerModel: PlanRunnerModel
-    private let providerRegistry: ProviderRegistry
     private let evalProviderRegistry: EvalProviderRegistry
 
     public init() {
@@ -28,6 +28,7 @@ public struct AIDevToolsKitMacEntryView: View {
             fatalError("Failed to initialize app services. Check data directory permissions.")
         }
         _settingsModel = State(initialValue: root.settingsModel)
+        _providerModel = State(initialValue: root.providerModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
             repoStore: root.repositoryStore,
@@ -43,25 +44,26 @@ public struct AIDevToolsKitMacEntryView: View {
             dataPath: root.settingsModel.dataPath,
             planSettingsStore: root.planSettingsStore
         ))
-        let defaultClient = root.providerRegistry.providers.first!
+        let defaultClient = root.providerModel.providerRegistry.providers.first!
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
             dataPathsService: root.dataPathsService,
             client: defaultClient
         ))
-        providerRegistry = root.providerRegistry
         evalProviderRegistry = root.evalProviderRegistry
     }
 
     public var body: some View {
-        WorkspaceView(providerRegistry: providerRegistry, evalProviderRegistry: evalProviderRegistry)
+        WorkspaceView(evalProviderRegistry: evalProviderRegistry)
             .environment(architecturePlannerModel)
             .environment(planRunnerModel)
+            .environment(providerModel)
             .environment(workspaceModel)
             .modelContainer(for: [ChatConversation.self, ChatMessage.self])
     }
 }
 
 public struct AIDevToolsSettingsView: View {
+    @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
 
@@ -69,6 +71,7 @@ public struct AIDevToolsSettingsView: View {
         guard let root = try? CompositionRoot.create() else {
             fatalError("Failed to initialize app services. Check data directory permissions.")
         }
+        _providerModel = State(initialValue: root.providerModel)
         _settingsModel = State(initialValue: root.settingsModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
@@ -85,6 +88,7 @@ public struct AIDevToolsSettingsView: View {
 
     public var body: some View {
         SettingsView()
+            .environment(providerModel)
             .environment(settingsModel)
             .environment(workspaceModel)
             .task { workspaceModel.load() }
