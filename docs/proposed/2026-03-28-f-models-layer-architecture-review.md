@@ -153,9 +153,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 15: Review and fix ProviderTypes.swift
+## - [x] Phase 15: Review and fix ProviderTypes.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Renamed file from ProviderTypes.swift to SkillCheckResult.swift to match its sole type after provider-related types were moved out in prior refactors; no other violations found — file is a clean Services-layer value type with Sendable/Codable conformance
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Services/EvalService/Models/ProviderTypes.swift`
 - Save the review output to `reviews/services-ProviderTypes.md`
