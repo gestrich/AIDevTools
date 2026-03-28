@@ -43,9 +43,10 @@ Each phase reviews one file and then implements all findings. The review output 
 - Implement all review findings, including low severity
 - Verify the build passes
 
-## - [ ] Phase 4: Review and fix EvalRunnerModel.swift
+## - [x] Phase 4: Review and fix EvalRunnerModel.swift
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Extracted LoadLastResultsUseCase for filesystem I/O; folded lastResults into State enum with prior pattern; removed debug logging infrastructure; injected all dependencies (GitClient, ClearArtifactsUseCase, ReadCaseOutputUseCase) via init; fixed force-unwraps on registry.defaultEntry; surfaced suite-loading errors to state
 
 - Run the `ai-dev-tools-review` skill on `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/EvalRunnerModel.swift`
 - Save the review output to `reviews/apps-EvalRunnerModel.md`

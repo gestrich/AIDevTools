@@ -63,7 +63,7 @@ struct EvalResultsView: View {
     private var caseListView: some View {
         VStack(spacing: 0) {
             headerBar
-            if case .error(let error) = evalRunnerModel.state {
+            if case .error(let error, _) = evalRunnerModel.state {
                 errorBanner(error)
             }
             if evalRunnerModel.displayedCases.isEmpty {
@@ -123,11 +123,11 @@ struct EvalResultsView: View {
                 .font(.subheadline)
 
             Button {
-                evalRunnerModel.clearArtifacts()
+                evalRunnerModel.clearAllArtifacts()
             } label: {
                 Label("Clear Results", systemImage: "trash")
             }
-            .disabled(isRunning || evalRunnerModel.lastResults.isEmpty)
+            .disabled(isRunning || evalRunnerModel.state.lastResults.isEmpty)
 
             RunEvalMenu(providers: registry.entries) { providerFilter in
                 runWithDirtyCheck(suite: activeSuite) {
@@ -242,7 +242,7 @@ private struct EvalCaseRow: View {
     }
 
     private var runProgress: EvalRunnerModel.RunProgress? {
-        if case .running(let progress) = evalRunnerModel.state,
+        if case .running(let progress, _) = evalRunnerModel.state,
            let currentId = progress.currentCaseId,
            currentId == evalCase.id || currentId.hasSuffix(".\(evalCase.id)") {
             return progress

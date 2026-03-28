@@ -5,31 +5,23 @@ import EvalService
 import Foundation
 import ProviderRegistryService
 
-private let debugLogURL: URL = {
-    let url = URL(fileURLWithPath: "/tmp/eval_runner_debug.log")
-    try? "".write(to: url, atomically: true, encoding: .utf8)
-    return url
-}()
-
-private func debugLog(_ message: String) {
-    let timestamp = ISO8601DateFormatter().string(from: Date())
-    let line = "[\(timestamp)] \(message)\n"
-    if let data = line.data(using: .utf8),
-       let handle = try? FileHandle(forWritingTo: debugLogURL) {
-        handle.seekToEndOfFile()
-        handle.write(data)
-        handle.closeFile()
-    }
-}
-
 @MainActor @Observable
 final class EvalRunnerModel {
 
     enum State {
-        case idle
-        case running(progress: RunProgress)
+        case idle(prior: [EvalSummary])
+        case running(progress: RunProgress, prior: [EvalSummary])
         case completed([EvalSummary])
-        case error(Error)
+        case error(Error, prior: [EvalSummary])
+
+        var lastResults: [EvalSummary] {
+            switch self {
+            case .idle(let prior): return prior
+            case .running(_, let prior): return prior
+            case .completed(let summaries): return summaries
+            case .error(_, let prior): return prior
+            }
+        }
     }
 
     struct RunProgress {
@@ -41,8 +33,7 @@ final class EvalRunnerModel {
         var currentOutput: String = ""
     }
 
-    var state: State = .idle
-    var lastResults: [EvalSummary] = []
+    var state: State = .idle(prior: [])
 
     var suites: [EvalSuite] = []
     var selectedSuite: EvalSuite?
@@ -51,32 +42,47 @@ final class EvalRunnerModel {
     let evalConfig: RepositoryEvalConfig
     let registry: EvalProviderRegistry
 
-    private let runEvals: RunEvalsUseCase
+    private let clearArtifacts: ClearArtifactsUseCase
+    private let gitClient: GitClient
     private let listSuites: ListEvalSuitesUseCase
+    private let loadLastResults: LoadLastResultsUseCase
+    private let readCaseOutput: ReadCaseOutputUseCase
+    private let runEvals: RunEvalsUseCase
 
     init(
         config: RepositoryEvalConfig,
         skillName: String? = nil,
         registry: EvalProviderRegistry,
-        listSuites: ListEvalSuitesUseCase = ListEvalSuitesUseCase()
+        clearArtifacts: ClearArtifactsUseCase = ClearArtifactsUseCase(),
+        gitClient: GitClient = GitClient(),
+        listSuites: ListEvalSuitesUseCase = ListEvalSuitesUseCase(),
+        loadLastResults: LoadLastResultsUseCase = LoadLastResultsUseCase(),
+        readCaseOutput: ReadCaseOutputUseCase = ReadCaseOutputUseCase()
     ) {
         self.evalConfig = config
         self.registry = registry
-        self.runEvals = RunEvalsUseCase(registry: registry)
+        self.clearArtifacts = clearArtifacts
+        self.gitClient = gitClient
         self.listSuites = listSuites
+        self.loadLastResults = loadLastResults
+        self.readCaseOutput = readCaseOutput
+        self.runEvals = RunEvalsUseCase(registry: registry)
 
         let options = ListEvalSuitesUseCase.Options(
             casesDirectory: config.casesDirectory,
             skillName: skillName
         )
-        if let loadedSuites = try? listSuites.run(options) {
+        do {
+            let loadedSuites = try listSuites.run(options)
             suites = loadedSuites
             if loadedSuites.count == 1 {
                 selectedSuite = loadedSuites[0]
             }
+        } catch {
+            state = .error(error, prior: [])
         }
         filterCases()
-        loadLastResults()
+        reloadLastResults()
     }
 
     func selectSuite(_ suite: EvalSuite?) {
@@ -102,7 +108,7 @@ final class EvalRunnerModel {
     }
 
     func repoHasOutstandingChanges() throws -> Bool {
-        try GitClient().hasOutstandingChanges(at: evalConfig.repoRoot)
+        try gitClient.hasOutstandingChanges(at: evalConfig.repoRoot)
     }
 
     func run(
@@ -110,16 +116,15 @@ final class EvalRunnerModel {
         suite: EvalSuite? = nil,
         evalCase: EvalCase? = nil
     ) async {
+        let prior = state.lastResults
         let suiteName = suite?.name
         let caseId = evalCase?.id
-        debugLog("run() called — providerFilter=\(providerFilter ?? ["all"]), suite=\(suiteName ?? "nil"), caseId=\(caseId ?? "nil")")
         state = .running(progress: RunProgress(
             completedCases: 0,
             totalCases: 0,
             provider: providerFilter?.first ?? registry.defaultEntry?.name ?? "",
             currentCaseId: caseId
-        ))
-        debugLog("state -> .running (initial)")
+        ), prior: prior)
 
         let options = RunEvalsUseCase.Options(
             casesDirectory: evalConfig.casesDirectory,
@@ -131,88 +136,72 @@ final class EvalRunnerModel {
         )
 
         do {
-            debugLog("calling runEvals.run()...")
             let summaries = try await runEvals.run(options) { [weak self] progress in
                 guard let self else { return }
                 Task { @MainActor in
-                    let priorState = "\(self.state)"
                     switch progress {
                     case .startingProvider(let provider, let caseCount):
-                        debugLog("progress: startingProvider(\(provider), count=\(caseCount)) | state=\(priorState)")
-                        if case .running(var current) = self.state {
+                        if case .running(var current, let prior) = self.state {
                             current.completedCases = 0
                             current.totalCases = caseCount
                             current.provider = provider
-                            self.state = .running(progress: current)
+                            self.state = .running(progress: current, prior: prior)
                         }
                     case .startingCase(let caseId, _, let total, let provider, let task):
-                        debugLog("progress: startingCase(\(caseId), provider=\(provider)) | state=\(priorState)")
-                        if case .running(var current) = self.state {
+                        if case .running(var current, let prior) = self.state {
                             current.currentCaseId = caseId
                             current.currentTask = task
                             current.totalCases = total
                             current.provider = provider
                             current.currentOutput = ""
-                            self.state = .running(progress: current)
+                            self.state = .running(progress: current, prior: prior)
                         }
-                    case .caseOutput(let caseId, let text):
-                        debugLog("progress: caseOutput(\(caseId), len=\(text.count)) | state=\(priorState)")
-                        if case .running(var current) = self.state {
+                    case .caseOutput(_, let text):
+                        if case .running(var current, let prior) = self.state {
                             current.currentOutput += text
-                            self.state = .running(progress: current)
+                            self.state = .running(progress: current, prior: prior)
                         }
                     case .completedCase(let result, let index, let total, let provider):
-                        debugLog("progress: completedCase(\(result.caseId), \(index)/\(total), passed=\(result.passed)) | state=\(priorState)")
-                        if case .running(var current) = self.state {
+                        if case .running(var current, let prior) = self.state {
                             current.completedCases = index + 1
                             current.totalCases = total
                             current.provider = provider
                             current.currentCaseId = result.caseId
                             current.currentOutput = ""
-                            self.state = .running(progress: current)
+                            self.state = .running(progress: current, prior: prior)
                         }
                     case .completedProvider:
-                        debugLog("progress: completedProvider | state=\(priorState)")
                         break
                     }
                 }
             }
 
-            debugLog("runEvals.run() returned \(summaries.count) summaries")
-            for s in summaries {
-                debugLog("  summary: provider=\(s.provider), total=\(s.total), passed=\(s.passed), failed=\(s.failed)")
-            }
             if summaries.isEmpty {
-                debugLog("state -> .error(noCasesFound)")
-                state = .error(EvalRunnerError.noCasesFound)
+                state = .error(EvalRunnerError.noCasesFound, prior: prior)
             } else {
-                debugLog("state -> .completed(\(summaries.count) summaries)")
-                lastResults = summaries
                 state = .completed(summaries)
             }
         } catch {
-            debugLog("state -> .error(\(error))")
-            state = .error(error)
+            state = .error(error, prior: prior)
         }
     }
 
     func reset() {
-        state = .idle
+        state = .idle(prior: state.lastResults)
     }
 
-    func clearArtifacts() {
+    func clearAllArtifacts() {
         do {
-            try ClearArtifactsUseCase().run(outputDirectory: evalConfig.outputDirectory)
-            lastResults = []
-            state = .idle
+            try clearArtifacts.run(outputDirectory: evalConfig.outputDirectory)
+            state = .idle(prior: [])
         } catch {
-            state = .error(error)
+            state = .error(error, prior: state.lastResults)
         }
     }
 
     func lastCaseResults(for evalCase: EvalCase) -> [(provider: String, result: CaseResult)] {
         let qualifiedId = evalCase.qualifiedId
-        return lastResults.compactMap { summary in
+        return state.lastResults.compactMap { summary in
             guard let result = summary.cases.first(where: {
                 $0.caseId == qualifiedId || $0.caseId == evalCase.id || $0.caseId.hasSuffix(".\(evalCase.id)")
             }) else { return nil }
@@ -224,7 +213,7 @@ final class EvalRunnerModel {
         let providerValue = Provider(rawValue: provider)
 
         let qualifiedId: String
-        if let matchedResult = lastResults
+        if let matchedResult = state.lastResults
             .flatMap(\.cases)
             .first(where: { $0.caseId == evalCase.qualifiedId || $0.caseId == evalCase.id || $0.caseId.hasSuffix(".\(evalCase.id)") }) {
             qualifiedId = matchedResult.caseId
@@ -233,10 +222,12 @@ final class EvalRunnerModel {
         }
 
         let entry = registry.entries.first(where: { $0.name == provider })
-        let formatter: any StreamFormatter = entry?.client.streamFormatter
-            ?? registry.defaultEntry!.client.streamFormatter
-        let rubricFormatter: any StreamFormatter = entry?.client.streamFormatter
-            ?? registry.defaultEntry!.client.streamFormatter
+        guard let formatter = entry?.client.streamFormatter
+                ?? registry.defaultEntry?.client.streamFormatter else {
+            return nil
+        }
+        let rubricFormatter = entry?.client.streamFormatter
+            ?? registry.defaultEntry?.client.streamFormatter ?? formatter
 
         let options = ReadCaseOutputUseCase.Options(
             caseId: qualifiedId,
@@ -245,30 +236,17 @@ final class EvalRunnerModel {
             outputDirectory: evalConfig.outputDirectory,
             rubricFormatter: rubricFormatter
         )
-        return try? ReadCaseOutputUseCase().run(options)
+        return try? readCaseOutput.run(options)
     }
 
-    private func loadLastResults() {
-        let artifactsDir = evalConfig.outputDirectory.appendingPathComponent("artifacts")
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: artifactsDir.path) else { return }
-
-        let decoder = JSONDecoder()
-        var summaries: [EvalSummary] = []
-
-        for entry in registry.entries {
-            let summaryFile = artifactsDir
-                .appendingPathComponent(entry.name)
-                .appendingPathComponent("summary.json")
-            guard let data = try? Data(contentsOf: summaryFile),
-                  let summary = try? decoder.decode(EvalSummary.self, from: data) else {
-                continue
-            }
-            summaries.append(summary)
-        }
-
+    private func reloadLastResults() {
+        let options = LoadLastResultsUseCase.Options(
+            outputDirectory: evalConfig.outputDirectory,
+            providerNames: registry.entries.map(\.name)
+        )
+        let summaries = loadLastResults.run(options)
         if !summaries.isEmpty {
-            lastResults = summaries
+            state = .idle(prior: summaries)
         }
     }
 }
