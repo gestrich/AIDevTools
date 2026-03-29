@@ -104,7 +104,10 @@ case prradarOutput(String)     // prradar/repos/{repoName}
 - Run `swift build` after each phase to verify incremental progress
 - PRRadar's Xcode project (`PRRadar.xcodeproj`) is **not** migrated — only the Swift package contents
 
-## - [ ] Phase 1: Add external dependencies and new unique SDKs
+## - [x] Phase 1: Add external dependencies and new unique SDKs
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: SDKs placed at the bottom layer per architecture rules. `ClaudeAgentSDK` is new alongside existing `ClaudePythonSDK` (identical client code, different module — deduplication deferred). `PythonEnvironment.swift` omitted from `ClaudeAgentSDK` since `EnvironmentSDK` already owns it. `swift-crypto` and `swift-markdown` added as package dependencies now (used by later phases); both produce unused-dependency warnings on macOS since `CryptoKit` is built-in and no target uses `swift-markdown` yet.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

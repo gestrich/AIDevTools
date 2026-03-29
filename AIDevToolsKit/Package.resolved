@@ -1,5 +1,5 @@
 {
-  "originHash" : "4e200db216053bd7d4bcbec5082bcf418a596a097f716fdf6f6c171f2ca0ac29",
+  "originHash" : "e74a973dc6aabba5711be4a91dfb4474d507fb48aa37e7667113ac9671852963",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "2849f5323265386e200484b0d0f896e73c3411b9",
         "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "octokit.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nerdishbynature/octokit.swift",
+      "state" : {
+        "revision" : "cd108b387782d8509e64e298cf4800dc47fc40ae",
+        "version" : "0.14.0"
+      }
+    },
+    {
+      "identity" : "requestkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nerdishbynature/RequestKit.git",
+      "state" : {
+        "revision" : "e4d905fed938807e36d87f28375f88b7c1c26840",
+        "version" : "3.3.0"
       }
     },
     {
@@ -76,10 +94,10 @@
     {
       "identity" : "swift-cmark",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-cmark",
+      "location" : "https://github.com/swiftlang/swift-cmark.git",
       "state" : {
-        "revision" : "5d9bdaa4228b381639fff09403e39a04926e2dbe",
-        "version" : "0.7.1"
+        "branch" : "gfm",
+        "revision" : "924936d0427cb25a61169739a7660230bffa6ea6"
       }
     },
     {
@@ -105,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-crypto.git",
       "state" : {
-        "revision" : "fa308c07a6fa04a727212d793e761460e41049c3",
-        "version" : "4.3.0"
+        "revision" : "95ba0316a9b733e92bb6b071255ff46263bbe7dc",
+        "version" : "3.15.1"
       }
     },
     {
@@ -143,6 +161,15 @@
       "state" : {
         "revision" : "bbd81b6725ae874c69e9b8c8804d462356b55523",
         "version" : "1.10.1"
+      }
+    },
+    {
+      "identity" : "swift-markdown",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-markdown.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "55d66d9a9e8d4fd3f48d111b0d437e82fe451903"
       }
     },
     {

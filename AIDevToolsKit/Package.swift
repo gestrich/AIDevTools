@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "AIDevToolsKitMac", targets: ["AIDevToolsKitMac"]),
         .library(name: "AIOutputSDK", targets: ["AIOutputSDK"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
+        .library(name: "ClaudeAgentSDK", targets: ["ClaudeAgentSDK"]),
         .library(name: "ChatFeature", targets: ["ChatFeature"]),
         .library(name: "ChatService", targets: ["ChatService"]),
         .library(name: "ClaudeChainCLI", targets: ["ClaudeChainCLI"]),
@@ -33,6 +34,7 @@ let package = Package(
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
         .library(name: "MarkdownPlannerFeature", targets: ["MarkdownPlannerFeature"]),
         .library(name: "MarkdownPlannerService", targets: ["MarkdownPlannerService"]),
+        .library(name: "OctokitSDK", targets: ["OctokitSDK"]),
         .library(name: "PipelineFeature", targets: ["PipelineFeature"]),
         .library(name: "PipelineSDK", targets: ["PipelineSDK"]),
         .library(name: "PipelineService", targets: ["PipelineService"]),
@@ -44,11 +46,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
         .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
         .package(url: "https://github.com/gestrich/SwiftCLI", branch: "main"),
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui.git", from: "2.0.0"),
         .package(url: "https://github.com/jamesrochabrun/SwiftAnthropic", from: "2.0.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
+        .package(url: "https://github.com/nerdishbynature/octokit.swift", from: "0.14.0"),
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", branch: "main"),
     ],
     targets: [
         // Apps Layer
@@ -253,6 +258,15 @@ let package = Package(
             path: "Sources/SDKs/AnthropicSDK"
         ),
         .target(
+            name: "ClaudeAgentSDK",
+            dependencies: [
+                .product(name: "CLISDK", package: "SwiftCLI"),
+                "ConcurrencySDK",
+                "EnvironmentSDK",
+            ],
+            path: "Sources/SDKs/ClaudeAgentSDK"
+        ),
+        .target(
             name: "ClaudeCLISDK",
             dependencies: [
                 .product(name: "CLISDK", package: "SwiftCLI"),
@@ -314,6 +328,13 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
             ],
             path: "Sources/SDKs/LoggingSDK"
+        ),
+        .target(
+            name: "OctokitSDK",
+            dependencies: [
+                .product(name: "OctoKit", package: "octokit.swift"),
+            ],
+            path: "Sources/SDKs/OctokitSDK"
         ),
         .target(
             name: "PipelineSDK",
