@@ -1,9 +1,11 @@
-# PRRadar Migration to AIDevTools
+## Relevant Skills
 
-**Date:** 2026-03-29
-**Status:** Proposed
+| Skill | Description |
+|-------|-------------|
+| `swift-app-architecture:swift-architecture` | 4-layer architecture — placement guidance for SDKs, Services, Features, Apps |
+| `swift-app-architecture:swift-swiftui` | SwiftUI Observable model patterns, view composition, tab integration |
 
-## Goal
+## Background
 
 Migrate the entire PRRadar project (`/Users/bill/Developer/personal/PRRadar`) into AIDevTools so that:
 
@@ -13,7 +15,7 @@ Migrate the entire PRRadar project (`/Users/bill/Developer/personal/PRRadar`) in
 4. The project builds and works end-to-end, even if some redundancy remains initially
 5. Deduplication of overlapping modules happens in later phases
 
-## Guiding Decisions
+### Guiding Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -25,54 +27,30 @@ Migrate the entire PRRadar project (`/Users/bill/Developer/personal/PRRadar`) in
 | Deduplication timing | **After** PRRadar builds in AIDevTools | Get it working first, then clean up |
 | Repository management | **Single shared repo list** via `RepositoryInfo` + per-feature settings store | Follow established pattern (like `EvalRepoSettings`) |
 
-## Repository & Settings Integration
+### Repository & Settings Integration
 
-### Principle: One Repo List, Supplementary Settings
+**One Repo List, Supplementary Settings:** AIDevTools already has a shared repo list (`RepositoryStore` → `[RepositoryInfo]`). PRRadar plugs into this — it does **not** introduce its own concept of repos or configurations. PRRadar-specific settings (rule paths, diff source) are supplementary per-repo config in a per-feature settings store — same pattern as `EvalRepoSettings`.
 
-AIDevTools already has a shared repo list (`RepositoryStore` → `[RepositoryInfo]`) displayed in the workspace sidebar. PRRadar plugs into this — it does **not** introduce its own concept of repos or configurations.
+**Config vs Artifacts (Don't Confuse These):**
 
-PRRadar-specific settings (rule paths, diff source) are supplementary per-repo config, stored in a per-feature settings store — the same pattern `EvalRepoSettings` and `MarkdownPlannerRepoSettings` already use.
-
-### Config vs Artifacts (Don't Confuse These)
-
-**Config** — user-set preferences that rarely change:
-- Rule paths (where review rules live)
-- Diff source (git vs GitHub API)
-
-**Artifacts** — runtime output from running PRRadar analysis:
-- Diffs, evaluations, reports, comments
-- Stored under `DataPathsService` like other feature output
-- Path: `{dataPathsRoot}/prradar/{repoName}/{prNumber}/`
-
-These are completely separate concerns. Config goes in a settings store. Artifacts go in data paths.
-
-### Config: PRRadarRepoSettings
-
-Follows the established `EvalRepoSettingsStore` pattern:
+- **Config** — user-set preferences: rule paths, diff source. Stored in `PRRadarRepoSettings` / `PRRadarRepoSettingsStore` at `{dataPathsRoot}/prradar/settings/prradar-settings.json`
+- **Artifacts** — runtime output from analysis (diffs, evaluations, reports, comments). Stored via `DataPathsService` at `{dataPathsRoot}/prradar/repos/{repoName}/{prNumber}/`
 
 ```swift
-// Sources/Services/PRRadarConfigService/PRRadarRepoSettings.swift
 public struct PRRadarRepoSettings: Codable, Sendable {
     public let repoId: UUID
-    public var rulePaths: [RulePath]       // Rule set locations
-    public var diffSource: DiffSource      // .git or .githubAPI
+    public var rulePaths: [RulePath]
+    public var diffSource: DiffSource
 }
 ```
 
-Stored at `ServicePath.prradarSettings` → `{dataPathsRoot}/prradar/settings/prradar-settings.json`
-
-### Artifacts: DataPathsService
-
-Add a new `ServicePath` case for PRRadar output:
-
+New `ServicePath` cases:
 ```swift
 case prradarSettings           // prradar/settings
 case prradarOutput(String)     // prradar/repos/{repoName}
 ```
 
-PRRadar's existing phase output code writes to this path instead of a user-configured `outputDir`.
-
-### Field Mapping (PRRadar → AIDevTools)
+**Field Mapping (PRRadar → AIDevTools):**
 
 | PRRadar Field | Where It Goes | Notes |
 |---------------|--------------|-------|
@@ -86,73 +64,51 @@ PRRadar's existing phase output code writes to this path instead of a user-confi
 | `outputDir` | `DataPathsService.path(for: .prradarOutput(repoName))` | Derived from data paths, not config |
 | `agentScriptPath` | Derived at runtime | Not stored |
 
-### Settings UI
+### Overlap Analysis
 
-PRRadar config appears as a section in the existing repo edit form — same place evals and plans already have their settings. No separate settings scene.
-
-### Credentials
-
-Both projects use the same `KeychainSDK` with account-based lookup. A repo's `credentialAccount` on `RepositoryInfo` works for all features — PRRadar, evals, chains, etc.
-
-## Overlap Analysis
-
-### SDKs — AIDevTools Is Superset (Reuse AIDevTools')
+**SDKs — AIDevTools Is Superset (Reuse AIDevTools'):**
 
 | Module | AIDevTools | PRRadar | Gap to Close |
 |--------|-----------|---------|--------------|
-| **GitSDK** | 3 files, worktree/branch/commit ops | 2 files, basic ops + `GitOperationsService` | Add missing methods from `GitOperationsService` to `GitClient` (`isGitRepository`, `getFileContent`, `getRepoRoot`, `getMergeBase`, `getRemoteURL`, `getBlobHash`, `diffNoIndex`, `clean`, `checkWorkingDirectoryClean`) |
+| **GitSDK** | 3 files, worktree/branch/commit ops | 2 files, basic ops + `GitOperationsService` | Add missing methods to `GitClient` |
 | **KeychainSDK** | 5 credential types | 2 credential types | No gap — superset |
 | **EnvironmentSDK** | 3 files (incl. PythonEnvironment) | 2 files | No gap — superset |
-| **ConcurrencySDK** | `InactivityWatchdog` + `timeSinceLastActivity()` | `InactivityWatchdog` | No gap — superset |
-| **LoggingSDK** | 3 files, basic reader | 3 files, reader + run tracking | Add `readLastRun()` and `readRuns()` to AIDevTools' `LogReaderService`; parameterize app name in bootstrap |
+| **ConcurrencySDK** | `InactivityWatchdog` + extra method | `InactivityWatchdog` | No gap — superset |
+| **LoggingSDK** | 3 files, basic reader | 3 files, reader + run tracking | Add run tracking to AIDevTools' `LogReaderService` |
 
-### SDKs — PRRadar-Unique (Must Bring Over)
+**SDKs — PRRadar-Unique (Must Bring Over):**
 
 | Module | What It Does | New Name in AIDevTools |
 |--------|-------------|----------------------|
-| **GitHubSDK** | Octokit wrapper (`OctokitClient`, `ImageDownloadService`) | **OctokitSDK** (to distinguish from `gh` CLI approach) |
-| **ClaudeSDK** | Python Claude Agent bridge (`ClaudeAgentClient`) | **ClaudeAgentSDK** (to distinguish from `ClaudeCLISDK` and `ClaudePythonSDK`) |
+| **GitHubSDK** | Octokit wrapper (`OctokitClient`, `ImageDownloadService`) | **OctokitSDK** |
+| **ClaudeSDK** | Python Claude Agent bridge (`ClaudeAgentClient`) | **ClaudeAgentSDK** |
 
-### Services — All Unique to PRRadar (Must Bring Over)
-
-| Module | Dependencies | Notes |
-|--------|-------------|-------|
-| **PRRadarModels** | Foundation only (+ swift-crypto conditional) | Domain models for diffs, rules, evaluations |
-| **PRRadarConfigService** | PRRadarModels, KeychainSDK, EnvironmentSDK | Configuration, paths, credentials |
-| **PRRadarCLIService** | ClaudeAgentSDK, GitSDK, OctokitSDK, PRRadarConfigService, PRRadarModels, EnvironmentSDK | Core business logic |
-
-### Features — Unique to PRRadar
-
-| Module | Dependencies |
-|--------|-------------|
-| **PRReviewFeature** | PRRadarCLIService, PRRadarConfigService, PRRadarModels, LoggingSDK |
-
-### Apps — Integration Points
-
-| PRRadar Module | Integration Target |
-|---------------|-------------------|
-| **MacApp** (views + models) | New tab in `AIDevToolsKitMac` `WorkspaceView` |
-| **PRRadarMacCLI** (15+ commands) | New command group in `AIDevToolsKitCLI` |
-
-## External Dependencies to Add
-
+**External Dependencies to Add:**
 ```swift
 .package(url: "https://github.com/nerdishbynature/octokit.swift", from: "0.14.0"),
 .package(url: "https://github.com/swiftlang/swift-markdown.git", branch: "main"),
-// swift-crypto only needed on non-Apple platforms (conditional)
 ```
 
-Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are already present.
+### Risk Assessment
 
----
+| Risk | Mitigation |
+|------|-----------|
+| Import name collisions (e.g., `GitCLI`) | PRRadar's `GitCLI` replaced by AIDevTools' version; `GitOperationsService` becomes thin wrapper |
+| PRRadar's `ContentView` name conflict | Rename to `PRRadarContentView` |
+| `OctoKit` type collisions | PRRadar already namespaces via `OctokitClient` wrapper |
+| Large PR size | Each phase is a separate PR |
 
-## Phase Plan
+### Execution Notes
 
-### Phase 1: Add External Dependencies & New Unique SDKs
+- Each phase should be a **separate PR** for reviewability
+- Run `swift build` after each phase to verify incremental progress
+- PRRadar's Xcode project (`PRRadar.xcodeproj`) is **not** migrated — only the Swift package contents
 
-**Goal:** Get the foundation layer building.
+## - [ ] Phase 1: Add external dependencies and new unique SDKs
 
-**Steps:**
+**Skills to read**: `swift-app-architecture:swift-architecture`
+
+Get the foundation layer building by adding new package dependencies and copying PRRadar-unique SDKs.
 
 1. Add `octokit.swift` and `swift-markdown` package dependencies to `Package.swift`
 2. Add conditional `swift-crypto` dependency
@@ -167,11 +123,11 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
 
 **Verification:** `swift build --target OctokitSDK` and `swift build --target ClaudeAgentSDK` succeed.
 
-### Phase 2: Extend Overlapping SDKs
+## - [ ] Phase 2: Extend overlapping SDKs with missing PRRadar functionality
 
-**Goal:** AIDevTools' shared SDKs cover all functionality PRRadar needs.
+**Skills to read**: `swift-app-architecture:swift-architecture`
 
-**Steps:**
+AIDevTools' shared SDKs must cover all functionality PRRadar needs.
 
 1. **GitSDK** — Add to `GitClient.swift`:
    - `isGitRepository(at:)` → runs `git rev-parse --is-inside-work-tree`
@@ -192,11 +148,11 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
 
 **Verification:** All existing tests still pass; new methods compile.
 
-### Phase 3: Migrate Services Layer
+## - [ ] Phase 3: Migrate services layer
 
-**Goal:** All PRRadar domain models and services build in AIDevTools.
+**Skills to read**: `swift-app-architecture:swift-architecture`
 
-**Steps:**
+All PRRadar domain models and services build in AIDevTools.
 
 1. Copy `PRRadarModels` → `AIDevToolsKit/Sources/Services/PRRadarModels/`
    - Add target with conditional swift-crypto dependency
@@ -216,19 +172,15 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
    - Verify `GitSDK` imports work (PRRadar uses `GitOperationsService`; need adapter or update call sites to use `GitClient`)
    - Add target to `Package.swift`
 
-**Key decision for PRRadarCLIService + GitSDK:** PRRadar's code calls `GitOperationsService` methods. Two options:
-- **Option A:** Add a `GitOperationsService` typealias/wrapper in GitSDK that delegates to `GitClient` (quick, deferred cleanup)
-- **Option B:** Update all call sites in `PRRadarCLIService` to use `GitClient` directly (cleaner but more changes)
-
-**Recommendation:** Option A for this phase (get it building), Option B in deduplication.
+**Key decision for PRRadarCLIService + GitSDK:** PRRadar's code calls `GitOperationsService` methods. Use Option A for now: add a `GitOperationsService` wrapper in GitSDK that delegates to `GitClient` (quick, deferred cleanup). Option B (update all call sites) happens in deduplication.
 
 **Verification:** `swift build --target PRRadarCLIService` succeeds.
 
-### Phase 4: Migrate Feature Layer
+## - [ ] Phase 4: Migrate feature layer
 
-**Goal:** PRReviewFeature builds in AIDevTools.
+**Skills to read**: `swift-app-architecture:swift-architecture`
 
-**Steps:**
+PRReviewFeature builds in AIDevTools.
 
 1. Copy `PRReviewFeature` → `AIDevToolsKit/Sources/Features/PRReviewFeature/`
 2. Update imports (`ClaudeSDK` → `ClaudeAgentSDK`, `GitHubSDK` → `OctokitSDK`)
@@ -236,14 +188,14 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
 
 **Verification:** `swift build --target PRReviewFeature` succeeds.
 
-### Phase 5: Migrate Mac App Views as New Tab
+## - [ ] Phase 5: Migrate Mac app views as new workspace tab
 
-**Goal:** PRRadar UI appears as a new tab in the AIDevTools workspace.
+**Skills to read**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
 
-**Steps:**
+PRRadar UI appears as a new tab in the AIDevTools workspace.
 
 1. Copy PRRadar `MacApp/` → `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/PRRadar/`
-   - All models: `AppModel`, `AllPRsModel`, `PRModel`, `SettingsModel`
+   - All models: `AllPRsModel`, `PRModel`
    - All views: `ContentView` (rename to `PRRadarContentView`), phase views, git views, utilities
 2. Update imports across all copied files
 3. Rename PRRadar's `ContentView` → `PRRadarContentView` to avoid collision
@@ -259,16 +211,16 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
        .tabItem { Label("PR Radar", systemImage: "eye") }
        .tag("prradar")
    ```
-6. Add `PRReviewFeature`, `PRRadarCLIService`, `PRRadarConfigService`, `PRRadarModels`, `OctokitSDK` to `AIDevToolsKitMac` target dependencies
-7. Add `MarkdownUI` and `Markdown` dependencies (already available)
+7. Add `PRReviewFeature`, `PRRadarCLIService`, `PRRadarConfigService`, `PRRadarModels`, `OctokitSDK` to `AIDevToolsKitMac` target dependencies
+8. Add `pr-radar-gemini.png` icon to AIDevTools asset catalog for use as the PR Radar tab icon
 
 **Verification:** Mac app builds, new tab appears, PR list loads for a configured repo.
 
-### Phase 6: Migrate CLI Commands
+## - [ ] Phase 6: Migrate CLI commands
 
-**Goal:** PRRadar CLI commands available through `ai-dev-tools-kit`.
+**Skills to read**: `swift-app-architecture:swift-architecture`
 
-**Steps:**
+PRRadar CLI commands available through `ai-dev-tools-kit`.
 
 1. Copy PRRadar CLI commands → `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/PRRadar/`
 2. Create a `PRRadarCommand` group that nests all subcommands
@@ -278,11 +230,9 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
 
 **Verification:** `swift build --target ai-dev-tools-kit` succeeds; `ai-dev-tools-kit prradar --help` lists subcommands.
 
-### Phase 7: Migrate Tests
+## - [ ] Phase 7: Migrate tests
 
-**Goal:** All PRRadar tests pass in AIDevTools.
-
-**Steps:**
+All PRRadar tests pass in AIDevTools.
 
 1. Copy test targets:
    - `LoggingSDKTests` → merge into existing (or add new test cases)
@@ -294,9 +244,9 @@ Note: `swift-argument-parser`, `swift-log`, `SwiftCLI`, `swift-markdown-ui` are 
 
 **Verification:** `swift test` passes for all new and existing test targets.
 
-### Phase 7b: End-to-End CLI Verification Against PRRadar-TestRepo
+## - [ ] Phase 8: End-to-end CLI verification against PRRadar-TestRepo
 
-**Goal:** Prove the migrated CLI works by running real analysis against `gestrich/PRRadar-TestRepo`.
+Prove the migrated CLI works by running real analysis against `gestrich/PRRadar-TestRepo`.
 
 This is not an automated integration test — it's a manual verification step where you run CLI commands and confirm output. The test repo has open PRs specifically for this purpose (e.g., PR #23 "Test: Validator with violations", PR #24 "Test: grouped import order violations").
 
@@ -330,13 +280,11 @@ This is not an automated integration test — it's a manual verification step wh
 - PR list refreshes and shows open PRs
 - Regex-mode analysis completes without errors and produces report artifacts
 - Comments are posted to the test PR on GitHub
-- Artifacts are written to the correct `DataPathsService`-managed path (not a separate output directory)
+- Artifacts are written to the correct `DataPathsService`-managed path
 
----
+## - [ ] Phase 9: Migrate skills, scripts, docs, and remaining assets
 
-### Phase 8: Migrate Skills, Scripts, Docs, and Remaining Assets
-
-**Goal:** Nothing left behind in the old repo. Every useful asset lives in AIDevTools.
+Nothing left behind in the old repo. Every useful asset lives in AIDevTools.
 
 **Skills** (`.claude/skills/` → `.agents/skills/`):
 - `pr-radar-add-rule/SKILL.md` — create new review rules
@@ -368,94 +316,38 @@ This is not an automated integration test — it's a manual verification step wh
 - `.xcuitest-config.json` — adapt for new project structure
 
 **App Assets:**
-- `PRRadar/Assets.xcassets/AppIcon.appiconset/pr-radar-gemini.png` — the PR Radar icon (green neon code radar). Add to AIDevTools asset catalog and use as the PR Radar tab icon in the workspace
-- `PRRadar/Assets.xcassets/AccentColor.colorset/` — accent color definition
-- `PRRadarMac.entitlements` — merge needed entitlements into AIDevTools app
+- `pr-radar-gemini.png` — PR Radar icon for tab branding
+- `AccentColor.colorset/` — accent color definition
+- `PRRadarMac.entitlements` — merge needed entitlements
 
 **XCUITests:**
 - `PRRadarMacUITests/` → `Tests/Apps/PRRadarMacUITests/` (adapt for new tab-based structure)
 
 **IDE Config:**
-- `.vscode/launch.json` — 6 debug configs → adapt paths and merge into AIDevTools' launch.json
+- `.vscode/launch.json` — adapt paths and merge
 
 **NOT migrated** (generated/personal):
-- `.venv/` — regenerate
-- `xcuserdata/` — regenerate
-- `.env` — sensitive, per-machine
-- `.build/`, `SourcePackages/` — generated
-- `PRRadar.xcodeproj/` — the Xcode project wrapper is replaced by AIDevTools' project
-- `Package.resolved` — regenerated by the new package
+- `.venv/`, `xcuserdata/`, `.env`, `.build/`, `SourcePackages/`, `PRRadar.xcodeproj/`, `Package.resolved`
 
-**Verification:** `git status` on old PRRadar repo shows nothing unaccounted for. All useful content has a home in AIDevTools.
+**Verification:** All useful content from PRRadar repo has a home in AIDevTools.
 
----
+## - [ ] Phase 10: Validation
 
-## Future Deduplication Phases (Post-Migration)
+Run full validation across the migrated codebase.
 
-These are tracked separately and happen after PRRadar is fully building:
+1. `swift build` — full package builds with no errors
+2. `swift test` — all test targets pass (existing + migrated)
+3. Mac app launches, PR Radar tab is visible per repo
+4. CLI `ai-dev-tools-kit prradar --help` shows all subcommands
+5. End-to-end regex analysis against PRRadar-TestRepo succeeds
+6. Artifacts land in `~/Desktop/ai-dev-tools/prradar/repos/...`
+7. No files left behind in old PRRadar repo that should have been migrated
 
-### Phase 9: Unify Git Operations
-- Remove `GitOperationsService` wrapper
-- Update all PRRadarCLIService call sites to use `GitClient` directly
-- Consolidate any remaining git-related utilities
+### Future Deduplication Phases (Post-Migration, Separate Plans)
 
-### Phase 10: Unify GitHub Clients
-- Evaluate whether `gh` CLI usage in `ClaudeChainSDK` should migrate to `OctokitSDK`
-- Or keep both: Octokit for rich API needs, `gh` CLI for simple CI operations
-- Define a shared `GitHubClientProtocol` if both are retained
+These happen after all migration phases are complete:
 
-### Phase 11: Simplify PRRadar Configuration
-- Evaluate whether `RepositoryConfiguration` runtime object can be removed entirely
-- PRRadar code could take `RepositoryInfo` + `PRRadarRepoSettings` directly
-- Remove any remaining adapter shims from Phase 3
-
-### Phase 13: Migrate PRRadar to AIOutputSDK Provider Framework
-- PRRadar currently uses `ClaudeAgentSDK` (Python bridge) — tightly coupled to one AI provider
-- AIDevTools has `AIOutputSDK` — a provider-agnostic framework with `AIClient` protocol and multiple implementations (Anthropic API, Claude CLI, Codex CLI)
-- Migrate PRRadar's `AnalysisService` to use `AIClient` instead of `ClaudeAgentClient` directly
-- This unlocks provider selection in the PR Radar tab (same picker used by evals and chat)
-- `ClaudeAgentSDK` could become another `AIClient` implementation, or be retired if the Anthropic SDK provider covers the same use cases
-- Structured output (`runStructured<T>`) may replace PRRadar's custom JSON schema passing
-
----
-
-## Dependency Graph After Migration (Phase 1-8 Complete)
-
-```
-Apps Layer:
-  AIDevToolsKitMac ──→ PRReviewFeature, PRRadarCLIService, PRRadarConfigService,
-                        PRRadarModels, OctokitSDK (+ all existing deps)
-  AIDevToolsKitCLI ──→ PRReviewFeature, PRRadarCLIService, PRRadarConfigService,
-                        PRRadarModels, OctokitSDK (+ all existing deps)
-
-Features Layer:
-  PRReviewFeature ──→ PRRadarCLIService, PRRadarConfigService, PRRadarModels, LoggingSDK
-
-Services Layer:
-  PRRadarCLIService ──→ ClaudeAgentSDK, GitSDK, OctokitSDK, PRRadarConfigService,
-                         PRRadarModels, EnvironmentSDK
-  PRRadarConfigService ──→ PRRadarModels, KeychainSDK, EnvironmentSDK
-  PRRadarModels ──→ (Foundation only)
-
-SDKs Layer:
-  OctokitSDK ──→ OctoKit (external)
-  ClaudeAgentSDK ──→ CLISDK, ConcurrencySDK, EnvironmentSDK
-  (all existing SDKs unchanged)
-```
-
-## Risk Assessment
-
-| Risk | Mitigation |
-|------|-----------|
-| Import name collisions (e.g., both projects define `GitCLI`) | PRRadar's `GitCLI` is replaced by AIDevTools' version; PRRadar's `GitOperationsService` becomes a thin wrapper |
-| PRRadar's `ContentView` name conflict | Rename to `PRRadarContentView` |
-| Credential flow differences | Keep both flows initially; unify in Phase 11 |
-| `OctoKit` type collisions with internal types | PRRadar already namespaces via `OctokitClient` wrapper |
-| Large PR size | Each phase is a separate PR; phases 1-4 are mechanical copies |
-
-## Execution Notes
-
-- Each phase should be a **separate PR** for reviewability
-- Run `swift build` after each phase to verify incremental progress
-- The Mac app Xcode project (`AIDevTools.xcodeproj`) may need scheme updates after Phase 5
-- PRRadar's Xcode project (`PRRadar.xcodeproj`) is **not** migrated — only the Swift package contents
+- **Unify Git Operations** — Remove `GitOperationsService` wrapper, update call sites to use `GitClient` directly
+- **Unify GitHub Clients** — Evaluate whether `gh` CLI usage in `ClaudeChainSDK` should migrate to `OctokitSDK`, or keep both with a shared protocol
+- **Simplify PRRadar Configuration** — Remove `RepositoryConfiguration` runtime object, take `RepositoryInfo` + `PRRadarRepoSettings` directly
+- **Migrate PRRadar to AIOutputSDK Provider Framework** — Replace `ClaudeAgentSDK` (Python bridge, single provider) with `AIClient` protocol from `AIOutputSDK`, unlocking provider selection in the PR Radar tab (Anthropic API, Claude CLI, Codex, etc.)
