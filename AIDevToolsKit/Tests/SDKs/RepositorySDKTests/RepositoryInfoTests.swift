@@ -26,7 +26,6 @@ struct RepositoryInfoTests {
             name: "my-repo",
             credentialAccount: "gestrich",
             description: "A test repository",
-            githubUser: "testuser",
             recentFocus: "Adding auth",
             skills: ["swift", "swiftui"],
             architectureDocs: ["docs/arch.md"],
@@ -49,7 +48,6 @@ struct RepositoryInfoTests {
         #expect(decoded.name == "my-repo")
         #expect(decoded.credentialAccount == "gestrich")
         #expect(decoded.description == "A test repository")
-        #expect(decoded.githubUser == "testuser")
         #expect(decoded.recentFocus == "Adding auth")
         #expect(decoded.skills == ["swift", "swiftui"])
         #expect(decoded.architectureDocs == ["docs/arch.md"])
@@ -76,7 +74,6 @@ struct RepositoryInfoTests {
         #expect(decoded.name == "repo")
         #expect(decoded.credentialAccount == nil)
         #expect(decoded.description == nil)
-        #expect(decoded.githubUser == nil)
         #expect(decoded.verification == nil)
         #expect(decoded.pullRequest == nil)
     }

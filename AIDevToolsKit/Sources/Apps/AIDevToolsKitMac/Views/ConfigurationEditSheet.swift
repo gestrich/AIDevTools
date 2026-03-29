@@ -10,7 +10,6 @@ struct ConfigurationEditSheet: View {
     @State private var proposedDirectoryText: String
     @State private var credentialAccountText: String
     @State private var descriptionText: String
-    @State private var githubUserText: String
     @State private var recentFocusText: String
     @State private var skillsText: String
     @State private var architectureDocsText: String
@@ -46,7 +45,6 @@ struct ConfigurationEditSheet: View {
         _proposedDirectoryText = State(initialValue: proposedDirectory ?? "")
         _credentialAccountText = State(initialValue: config.credentialAccount ?? "")
         _descriptionText = State(initialValue: config.description ?? "")
-        _githubUserText = State(initialValue: config.githubUser ?? "")
         _recentFocusText = State(initialValue: config.recentFocus ?? "")
         _skillsText = State(initialValue: (config.skills ?? []).joined(separator: "\n"))
         _architectureDocsText = State(initialValue: (config.architectureDocs ?? []).joined(separator: "\n"))
@@ -190,7 +188,6 @@ struct ConfigurationEditSheet: View {
             name: finalName,
             credentialAccount: credentialAccountText.isEmpty ? nil : credentialAccountText,
             description: descriptionText.isEmpty ? nil : descriptionText,
-            githubUser: githubUserText.isEmpty ? nil : githubUserText,
             recentFocus: recentFocusText.isEmpty ? nil : recentFocusText,
             skills: skills.isEmpty ? nil : skills,
             architectureDocs: archDocs.isEmpty ? nil : archDocs,

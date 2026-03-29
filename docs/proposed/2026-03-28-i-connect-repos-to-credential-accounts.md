@@ -133,7 +133,10 @@ This is the key phase — replace `gh auth switch` instructions with actual `GH_
 - Verify: configure a repo with a credential account, generate a plan — it should not contain `gh auth switch` instructions
 - Verify: execute a plan phase — `GH_TOKEN` should be injected into the environment
 
-## - [ ] Phase 5: Remove deprecated `githubUser` field
+## - [x] Phase 5: Remove deprecated `githubUser` field
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Removed `githubUser` from all layers (SDK, App, CLI, Tests) following the downward dependency flow. Existing `repositories.json` files with `githubUser` will silently ignore the field since Codable skips unknown keys.
 
 **Skills to read**: `swift-architecture`
 

@@ -164,9 +164,6 @@ struct UpdateRepo: ParsableCommand {
     @Option(help: "Description of the repository")
     var description: String?
 
-    @Option(help: "GitHub username for gh CLI auth switching")
-    var githubUser: String?
-
     @Option(help: "Current focus area for the repository")
     var recentFocus: String?
 
@@ -213,7 +210,6 @@ struct UpdateRepo: ParsableCommand {
                 name: name ?? repo.name,
                 credentialAccount: repo.credentialAccount,
                 description: repo.description,
-                githubUser: repo.githubUser,
                 recentFocus: repo.recentFocus,
                 skills: repo.skills,
                 architectureDocs: repo.architectureDocs,
@@ -221,10 +217,9 @@ struct UpdateRepo: ParsableCommand {
                 pullRequest: repo.pullRequest
             )
         }
-        if let name { repo = RepositoryInfo(id: repo.id, path: repo.path, name: name, credentialAccount: repo.credentialAccount, description: repo.description, githubUser: repo.githubUser, recentFocus: repo.recentFocus, skills: repo.skills, architectureDocs: repo.architectureDocs, verification: repo.verification, pullRequest: repo.pullRequest) }
+        if let name { repo = RepositoryInfo(id: repo.id, path: repo.path, name: name, credentialAccount: repo.credentialAccount, description: repo.description, recentFocus: repo.recentFocus, skills: repo.skills, architectureDocs: repo.architectureDocs, verification: repo.verification, pullRequest: repo.pullRequest) }
         if let credentialAccount { repo.credentialAccount = credentialAccount }
         if let description { repo.description = description }
-        if let githubUser { repo.githubUser = githubUser }
         if let recentFocus { repo.recentFocus = recentFocus }
         if !skills.isEmpty { repo.skills = skills }
         if !architectureDocs.isEmpty { repo.architectureDocs = architectureDocs }

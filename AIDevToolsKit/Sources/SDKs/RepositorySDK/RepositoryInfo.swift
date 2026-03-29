@@ -6,7 +6,6 @@ public struct RepositoryInfo: Codable, Identifiable, Sendable {
     public let name: String
     public var credentialAccount: String?
     public var description: String?
-    public var githubUser: String?
     public var recentFocus: String?
     public var skills: [String]?
     public var architectureDocs: [String]?
@@ -19,7 +18,6 @@ public struct RepositoryInfo: Codable, Identifiable, Sendable {
         name: String? = nil,
         credentialAccount: String? = nil,
         description: String? = nil,
-        githubUser: String? = nil,
         recentFocus: String? = nil,
         skills: [String]? = nil,
         architectureDocs: [String]? = nil,
@@ -31,7 +29,6 @@ public struct RepositoryInfo: Codable, Identifiable, Sendable {
         self.name = name ?? path.lastPathComponent
         self.credentialAccount = credentialAccount
         self.description = description
-        self.githubUser = githubUser
         self.recentFocus = recentFocus
         self.skills = skills
         self.architectureDocs = architectureDocs
@@ -46,7 +43,6 @@ public struct RepositoryInfo: Codable, Identifiable, Sendable {
             name: name,
             credentialAccount: credentialAccount,
             description: description,
-            githubUser: githubUser,
             recentFocus: recentFocus,
             skills: skills,
             architectureDocs: architectureDocs,
