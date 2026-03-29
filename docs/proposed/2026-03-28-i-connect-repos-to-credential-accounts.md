@@ -50,7 +50,10 @@ Add a `credentialAccount: String?` field to `RepositoryInfo` alongside the exist
 3. Fix all compilation errors from the new init parameter — callers that construct `RepositoryInfo` directly will need updating. Find them with: `swift build 2>&1 | grep error`
 4. Build: `swift build`
 
-## - [ ] Phase 2: Update Mac app edit UI with credential account Picker
+## - [x] Phase 2: Update Mac app edit UI with credential account Picker
+
+**Skills used**: `swift-swiftui`
+**Principles applied**: Used `@Environment(CredentialModel.self)` for dependency injection per MV pattern. Kept `credentialAccountText` as `@State` (view-owned form state). Preserved `githubUser` pass-through for non-breaking migration per Phase 1 convention.
 
 **Skills to read**: `swift-swiftui`
 

@@ -8,6 +8,7 @@ struct ConfigurationEditSheet: View {
     @State private var casesDirectoryText: String
     @State private var completedDirectoryText: String
     @State private var proposedDirectoryText: String
+    @State private var credentialAccountText: String
     @State private var descriptionText: String
     @State private var githubUserText: String
     @State private var recentFocusText: String
@@ -22,6 +23,7 @@ struct ConfigurationEditSheet: View {
     let isNew: Bool
     let onSave: (RepositoryInfo, String?, String?, String?) -> Void
     let onCancel: () -> Void
+    @Environment(CredentialModel.self) private var credentialModel
     @Environment(\.dismiss) private var dismiss
 
     init(
@@ -42,6 +44,7 @@ struct ConfigurationEditSheet: View {
         _casesDirectoryText = State(initialValue: casesDirectory ?? "")
         _completedDirectoryText = State(initialValue: completedDirectory ?? "")
         _proposedDirectoryText = State(initialValue: proposedDirectory ?? "")
+        _credentialAccountText = State(initialValue: config.credentialAccount ?? "")
         _descriptionText = State(initialValue: config.description ?? "")
         _githubUserText = State(initialValue: config.githubUser ?? "")
         _recentFocusText = State(initialValue: config.recentFocus ?? "")
@@ -76,9 +79,13 @@ struct ConfigurationEditSheet: View {
                             .textFieldStyle(.roundedBorder)
                     }
 
-                    LabeledContent("GitHub User") {
-                        TextField("username", text: $githubUserText)
-                            .textFieldStyle(.roundedBorder)
+                    LabeledContent("Credential Account") {
+                        Picker("", selection: $credentialAccountText) {
+                            Text("None").tag("")
+                            ForEach(credentialModel.credentialAccounts, id: \.account) { status in
+                                Text(status.account).tag(status.account)
+                            }
+                        }
                     }
 
                     LabeledContent("Recent Focus") {
@@ -181,6 +188,7 @@ struct ConfigurationEditSheet: View {
             id: config.id,
             path: repoURL,
             name: finalName,
+            credentialAccount: credentialAccountText.isEmpty ? nil : credentialAccountText,
             description: descriptionText.isEmpty ? nil : descriptionText,
             githubUser: githubUserText.isEmpty ? nil : githubUserText,
             recentFocus: recentFocusText.isEmpty ? nil : recentFocusText,
