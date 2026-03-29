@@ -592,6 +592,97 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         }
     }
     
+    /// Get the current repository name from git remote
+    ///
+    /// Determines the GitHub repository name by parsing the git remote origin URL.
+    /// Works with both HTTPS and SSH remote URLs.
+    ///
+    /// - Parameter workingDirectory: Directory to run git commands in (default: current directory)
+    /// - Returns: Repository name in "owner/repo" format
+    /// - Throws: GitHubAPIError if unable to determine repository
+    ///
+    /// Example:
+    ///     // Get current repo
+    ///     let repo = getCurrentRepository()  // Returns "owner/repo"
+    ///     
+    ///     // Get repo from specific directory  
+    ///     let repo = getCurrentRepository(workingDirectory: "/path/to/repo")
+    public static func getCurrentRepository(workingDirectory: String = ".") throws -> String {
+        // Get the remote origin URL using git
+        let result = try runGitCommand(args: ["remote", "get-url", "origin"], workingDirectory: workingDirectory)
+        let remoteUrl = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Parse the URL to extract owner/repo
+        // Handle both SSH (git@github.com:owner/repo.git) and HTTPS (https://github.com/owner/repo.git) formats
+        if let repo = extractRepoFromUrl(remoteUrl) {
+            return repo
+        } else {
+            throw GitHubAPIError("Unable to parse repository name from remote URL: \(remoteUrl)")
+        }
+    }
+    
+    /// Helper to run git commands
+    private static func runGitCommand(args: [String], workingDirectory: String) throws -> String {
+        let cliClient = CLIClient()
+        
+        // Create a sync wrapper using RunLoop
+        var result: ExecutionResult?
+        var error: Error?
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                result = try await cliClient.execute(
+                    command: "git",
+                    arguments: args,
+                    workingDirectory: workingDirectory,
+                    environment: nil,
+                    printCommand: false
+                )
+            } catch let e {
+                error = e
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        
+        if let error = error {
+            throw GitHubAPIError("Git command failed: \(args.joined(separator: " "))\n\(error.localizedDescription)")
+        }
+        
+        guard let result = result else {
+            throw GitHubAPIError("Git command failed: \(args.joined(separator: " "))\nNo result")
+        }
+        
+        if result.exitCode != 0 {
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw GitHubAPIError("Git command failed: \(args.joined(separator: " "))\n\(stderr.isEmpty ? result.stdout : stderr)")
+        }
+        
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    /// Helper to extract owner/repo from various Git URL formats
+    private static func extractRepoFromUrl(_ url: String) -> String? {
+        // SSH format: git@github.com:owner/repo.git
+        if url.hasPrefix("git@github.com:") {
+            let withoutPrefix = String(url.dropFirst("git@github.com:".count))
+            let withoutSuffix = withoutPrefix.hasSuffix(".git") ? String(withoutPrefix.dropLast(4)) : withoutPrefix
+            return withoutSuffix
+        }
+        
+        // HTTPS format: https://github.com/owner/repo.git
+        if url.hasPrefix("https://github.com/") {
+            let withoutPrefix = String(url.dropFirst("https://github.com/".count))
+            let withoutSuffix = withoutPrefix.hasSuffix(".git") ? String(withoutPrefix.dropLast(4)) : withoutPrefix
+            return withoutSuffix
+        }
+        
+        return nil
+    }
+    
     // MARK: - Workflow operations
     
     /// List workflow runs for a specific workflow and branch
@@ -831,6 +922,30 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         ]
         
         // Execute command
+        _ = try runGhCommand(args: args)
+    }
+    
+    // MARK: - Comment operations
+    
+    /// Post a comment on a pull request
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prNumber: Pull request number to comment on
+    /// - Parameter body: Comment text to post
+    /// - Throws: GitHubAPIError if gh command fails
+    ///
+    /// Example:
+    ///     // Post a comment on PR #123
+    ///     postPRComment(repo: "owner/repo", prNumber: 123, body: "Great work!")
+    public static func postPRComment(repo: String, prNumber: Int, body: String) throws {
+        // Use gh pr comment command
+        let args = [
+            "pr", "comment", String(prNumber),
+            "--repo", repo,
+            "--body", body
+        ]
+        
+        // Execute command (no output expected)
         _ = try runGhCommand(args: args)
     }
     
