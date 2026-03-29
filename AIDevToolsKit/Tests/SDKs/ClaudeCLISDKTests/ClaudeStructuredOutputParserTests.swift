@@ -212,6 +212,51 @@ struct ClaudeStructuredOutputParserTests {
         }
     }
 
+    @Test func noResultEventIncludesEventTypeCounts() throws {
+        do {
+            _ = try parser.parse(
+                SimpleResult.self,
+                from: ExecutionResult(
+                    exitCode: 0,
+                    stdout: Self.noResultEvent,
+                    stderr: "",
+                    duration: 5.0
+                )
+            )
+            Issue.record("Expected error to be thrown")
+        } catch let error as ClaudeStructuredOutputError {
+            let description = error.errorDescription ?? ""
+            #expect(description.contains("events=[assistant:1 system:1]"))
+            #expect(description.contains("session=abc123"))
+            #expect(description.contains("stdout_tail:"))
+        } catch {
+            Issue.record("Unexpected error type: \(error)")
+        }
+    }
+
+    @Test func noResultEventCountsJsonDecodeFailures() throws {
+        let stdout = """
+        {"type":"system","subtype":"init","session_id":"sess-1"}
+        this is not json
+        also not json
+        {"type":"assistant","message":{"content":[]}}
+        """
+        do {
+            _ = try parser.parse(
+                SimpleResult.self,
+                from: ExecutionResult(exitCode: 0, stdout: stdout, stderr: "", duration: 1.0)
+            )
+            Issue.record("Expected error to be thrown")
+        } catch let error as ClaudeStructuredOutputError {
+            let description = error.errorDescription ?? ""
+            #expect(description.contains("json_failures=2"))
+            #expect(description.contains("events=[assistant:1 system:1]"))
+            #expect(description.contains("session=sess-1"))
+        } catch {
+            Issue.record("Unexpected error type: \(error)")
+        }
+    }
+
     // MARK: - Edge cases
 
     @Test func handlesLeadingWhitespace() throws {
