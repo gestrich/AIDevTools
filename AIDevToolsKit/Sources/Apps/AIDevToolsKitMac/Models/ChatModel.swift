@@ -22,6 +22,7 @@ public final class ChatModel {
     private let getSessionDetailsUseCase: GetSessionDetailsUseCase
     private let listSessionsUseCase: ListSessionsUseCase
     private let loadSessionMessagesUseCase: LoadSessionMessagesUseCase
+    private let responseHandler: (any AIResponseHandling)?
     private let sendMessageUseCase: SendChatMessageUseCase
     private let systemPrompt: String?
     private var currentTask: Task<Void, Never>?
@@ -37,11 +38,13 @@ public final class ChatModel {
         providerName: String,
         workingDirectory: String?,
         settings: ChatSettings = ChatSettings(),
-        systemPrompt: String? = nil
+        systemPrompt: String? = nil,
+        responseHandler: (any AIResponseHandling)? = nil
     ) {
         self.getSessionDetailsUseCase = getSessionDetailsUseCase
         self.listSessionsUseCase = listSessionsUseCase
         self.loadSessionMessagesUseCase = loadSessionMessagesUseCase
+        self.responseHandler = responseHandler
         self.sendMessageUseCase = sendMessageUseCase
         self.settings = settings
         self.providerDisplayName = providerDisplayName
@@ -61,6 +64,22 @@ public final class ChatModel {
                 }
             }
         }
+    }
+
+    public convenience init(configuration: ChatModelConfiguration) {
+        let client = configuration.client
+        self.init(
+            getSessionDetailsUseCase: GetSessionDetailsUseCase(client: client),
+            listSessionsUseCase: ListSessionsUseCase(client: client),
+            loadSessionMessagesUseCase: LoadSessionMessagesUseCase(client: client),
+            sendMessageUseCase: SendChatMessageUseCase(client: client),
+            providerDisplayName: client.displayName,
+            providerName: client.name,
+            workingDirectory: configuration.workingDirectory,
+            settings: configuration.settings,
+            systemPrompt: configuration.systemPrompt,
+            responseHandler: configuration.responseHandler
+        )
     }
 
     // MARK: - Public API
@@ -240,6 +259,7 @@ public final class ChatModel {
             settings.resumeLastSession && hasStartedSession ? sessionId : nil
         }
         let workingDir = await MainActor.run { workingDirectory }
+        let descriptors = await MainActor.run { responseHandler?.responseDescriptors ?? [] }
 
         let assistantMessageId = UUID()
         let placeholderMessage = ChatMessage(
@@ -258,7 +278,8 @@ public final class ChatModel {
             workingDirectory: workingDir,
             sessionId: resumeId,
             images: images,
-            systemPrompt: systemPrompt
+            systemPrompt: systemPrompt,
+            responseDescriptors: descriptors
         )
 
         do {
@@ -305,10 +326,17 @@ public final class ChatModel {
                             isComplete: true
                         )
                     } else {
+                        let parser = StructuredOutputParser()
+                        let strippedBlocks = existing.contentBlocks.map { block -> AIContentBlock in
+                            if case .text(let text) = block {
+                                return .text(parser.stripResponses(from: text))
+                            }
+                            return block
+                        }
                         messages[index] = ChatMessage(
                             id: existing.id,
                             role: existing.role,
-                            contentBlocks: existing.contentBlocks,
+                            contentBlocks: strippedBlocks,
                             images: existing.images,
                             timestamp: existing.timestamp,
                             isComplete: true
@@ -316,6 +344,10 @@ public final class ChatModel {
                     }
                 }
                 state = .idle
+            }
+
+            if result.exitCode == 0 {
+                await processStructuredOutputReplies(from: result.fullText)
             }
         } catch {
             await MainActor.run {
@@ -333,6 +365,30 @@ public final class ChatModel {
         }
 
         await processNextQueuedMessage()
+    }
+
+    private nonisolated func processStructuredOutputReplies(from text: String) async {
+        let handler = await MainActor.run { self.responseHandler }
+        guard let handler else { return }
+
+        let parsed = StructuredOutputParser().parse(text)
+        guard !parsed.isEmpty else { return }
+
+        var replies: [String] = []
+        for response in parsed {
+            if let reply = try? await handler.handleResponse(name: response.name, json: response.json) {
+                replies.append(reply)
+            }
+        }
+
+        guard !replies.isEmpty else { return }
+
+        let finalReplies = replies
+        await MainActor.run {
+            for reply in finalReplies.reversed() {
+                self.messageQueue.insert(QueuedMessage(content: reply), at: 0)
+            }
+        }
     }
 
     private nonisolated func processNextQueuedMessage() async {
@@ -389,6 +445,28 @@ public final class ChatModel {
         case idle
         case loadingHistory
         case processing
+    }
+}
+
+public struct ChatModelConfiguration {
+    public let client: any AIClient
+    public let responseHandler: (any AIResponseHandling)?
+    public let settings: ChatSettings
+    public let systemPrompt: String?
+    public let workingDirectory: String?
+
+    public init(
+        client: any AIClient,
+        responseHandler: (any AIResponseHandling)? = nil,
+        settings: ChatSettings = ChatSettings(),
+        systemPrompt: String? = nil,
+        workingDirectory: String? = nil
+    ) {
+        self.client = client
+        self.responseHandler = responseHandler
+        self.settings = settings
+        self.systemPrompt = systemPrompt
+        self.workingDirectory = workingDirectory
     }
 }
 

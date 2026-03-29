@@ -245,17 +245,12 @@ final class MarkdownPlannerModel {
     func makeChatModel(workingDirectory: String, systemPrompt: String? = nil) -> ChatModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
-        return ChatModel(
-            getSessionDetailsUseCase: GetSessionDetailsUseCase(client: activeClient),
-            listSessionsUseCase: ListSessionsUseCase(client: activeClient),
-            loadSessionMessagesUseCase: LoadSessionMessagesUseCase(client: activeClient),
-            sendMessageUseCase: SendChatMessageUseCase(client: activeClient),
-            providerDisplayName: activeClient.displayName,
-            providerName: activeClient.name,
-            workingDirectory: workingDirectory,
+        return ChatModel(configuration: ChatModelConfiguration(
+            client: activeClient,
             settings: settings,
-            systemPrompt: systemPrompt
-        )
+            systemPrompt: systemPrompt,
+            workingDirectory: workingDirectory
+        ))
     }
 
     func queueTask(_ description: String) {

@@ -241,7 +241,10 @@ Add `responseDescriptors: [AIResponseDescriptor]` to `AIClientOptions`. How prov
 - `AIOutputSDK/StreamAccumulator.swift` — handle new event (if applicable)
 - `AIOutputSDK/AIClient.swift` — add `responseDescriptors` to `AIClientOptions`
 
-## - [ ] Phase 3: Structured output through the stack (Feature + App layers)
+## - [x] Phase 3: Structured output through the stack (Feature + App layers)
+
+**Skills used**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
+**Principles applied**: Added `responseDescriptors` to `SendChatMessageUseCase.Options` (passed through to `AIClientOptions`). Added `ChatModelConfiguration` struct and `init(configuration:)` convenience init to `ChatModel`, constructing use cases from a single `AIClient`. Added `responseHandler` property; round-trip handling strips `<app-response>` tags before display, parses structured outputs, calls the handler, and inserts query replies at the front of the message queue before `processNextQueuedMessage`. Migrated `MarkdownPlannerModel` and `ClaudeChainModel` `makeChatModel()` to use `ChatModelConfiguration`. Kept old `init` for backward compatibility, adding `responseHandler` as an optional parameter with default `nil`.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
 

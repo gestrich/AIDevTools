@@ -121,16 +121,11 @@ final class ClaudeChainModel {
     func makeChatModel(workingDirectory: String) -> ChatModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
-        return ChatModel(
-            getSessionDetailsUseCase: GetSessionDetailsUseCase(client: activeClient),
-            listSessionsUseCase: ListSessionsUseCase(client: activeClient),
-            loadSessionMessagesUseCase: LoadSessionMessagesUseCase(client: activeClient),
-            sendMessageUseCase: SendChatMessageUseCase(client: activeClient),
-            providerDisplayName: activeClient.displayName,
-            providerName: activeClient.name,
-            workingDirectory: workingDirectory,
-            settings: settings
-        )
+        return ChatModel(configuration: ChatModelConfiguration(
+            client: activeClient,
+            settings: settings,
+            workingDirectory: workingDirectory
+        ))
     }
 
     func reset() {
