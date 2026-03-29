@@ -15,14 +15,13 @@ struct WorkspaceSidebar<Content: View>: View {
 
             Divider()
 
-            HStack {
-                Spacer()
-                Button { onAdd() } label: {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.borderless)
-                .padding(8)
+            Button { onAdd() } label: {
+                Label("New", systemImage: "plus")
+                    .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.regular)
+            .padding(8)
         }
         .frame(width: WorkspaceStyle.sidebarWidth)
     }
