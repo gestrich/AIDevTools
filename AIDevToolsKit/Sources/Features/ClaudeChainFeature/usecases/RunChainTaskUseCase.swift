@@ -1,0 +1,382 @@
+import AIOutputSDK
+import ClaudeChainSDK
+import ClaudeChainService
+import CredentialService
+import Foundation
+
+public struct RunChainTaskUseCase: Sendable {
+
+    public struct Options: Sendable {
+        public let projectName: String
+        public let repoPath: URL
+
+        public init(repoPath: URL, projectName: String) {
+            self.projectName = projectName
+            self.repoPath = repoPath
+        }
+    }
+
+    public struct Result: Sendable {
+        public let message: String
+        public let phasesCompleted: Int
+        public let prNumber: String?
+        public let prURL: String?
+        public let success: Bool
+        public let taskDescription: String?
+
+        public init(
+            success: Bool,
+            message: String,
+            prURL: String? = nil,
+            prNumber: String? = nil,
+            taskDescription: String? = nil,
+            phasesCompleted: Int = 0
+        ) {
+            self.message = message
+            self.phasesCompleted = phasesCompleted
+            self.prNumber = prNumber
+            self.prURL = prURL
+            self.success = success
+            self.taskDescription = taskDescription
+        }
+    }
+
+    public enum Progress: Sendable {
+        case aiCompleted
+        case aiOutput(String)
+        case aiStreamEvent(AIStreamEvent)
+        case completed(prURL: String?)
+        case failed(phase: String, error: String)
+        case finalizing
+        case generatingSummary
+        case postingPRComment
+        case postScriptCompleted(ActionResult)
+        case prCommentPosted
+        case prCreated(prNumber: String, prURL: String)
+        case preparingProject
+        case preparedTask(description: String, index: Int, total: Int)
+        case preScriptCompleted(ActionResult)
+        case runningAI(taskDescription: String)
+        case runningPostScript
+        case runningPreScript
+        case summaryCompleted(summary: String)
+        case summaryStreamEvent(AIStreamEvent)
+    }
+
+    private let client: any AIClient
+
+    public init(client: any AIClient) {
+        self.client = client
+    }
+
+    public func run(
+        options: Options,
+        onProgress: (@Sendable (Progress) -> Void)? = nil
+    ) async throws -> Result {
+        var phasesCompleted = 0
+
+        // Phase 1: Prepare — load project, find next task
+        onProgress?(.preparingProject)
+
+        let chainDir = options.repoPath.appendingPathComponent("claude-chain").path
+        let project = Project(
+            name: options.projectName,
+            basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
+        )
+        let repository = ProjectRepository(repo: "")
+
+        let config = (try? repository.loadLocalConfiguration(project: project))
+            ?? ProjectConfiguration.default(project: project)
+
+        guard let spec = try repository.loadLocalSpec(project: project) else {
+            onProgress?(.failed(phase: "prepare", error: "No spec.md found for project \(options.projectName)"))
+            return Result(
+                success: false,
+                message: "No spec.md found for project \(options.projectName)"
+            )
+        }
+
+        guard let task = spec.getNextAvailableTask() else {
+            onProgress?(.failed(phase: "prepare", error: "All tasks completed for project \(options.projectName)"))
+            return Result(
+                success: false,
+                message: "All tasks completed for project \(options.projectName)"
+            )
+        }
+
+        onProgress?(.preparedTask(description: task.description, index: task.index, total: spec.totalTasks))
+        phasesCompleted += 1
+
+        // Create branch
+        let branchName = PRService.formatBranchName(projectName: options.projectName, taskHash: task.taskHash)
+        _ = try GitOperations.runGitCommand(args: ["checkout", "-b", branchName])
+
+        let baseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
+
+        // Phase 2: Pre-action script
+        onProgress?(.runningPreScript)
+        let preResult = try ScriptRunner.runActionScript(
+            projectPath: project.basePath,
+            scriptType: "pre",
+            workingDirectory: options.repoPath.path
+        )
+        onProgress?(.preScriptCompleted(preResult))
+        phasesCompleted += 1
+
+        // Phase 3: AI execution
+        let claudePrompt = buildTaskPrompt(task: task, spec: spec)
+        onProgress?(.runningAI(taskDescription: task.description))
+
+        let aiOptions = AIClientOptions(
+            dangerouslySkipPermissions: true,
+            workingDirectory: options.repoPath.path
+        )
+
+        let aiResult = try await client.run(
+            prompt: claudePrompt,
+            options: aiOptions,
+            onOutput: { text in
+                onProgress?(.aiOutput(text))
+            },
+            onStreamEvent: { event in
+                onProgress?(.aiStreamEvent(event))
+            }
+        )
+        onProgress?(.aiCompleted)
+        phasesCompleted += 1
+
+        // Extract cost from AI stream metrics (captured from the last metrics event)
+        let mainCost = extractCost(from: aiResult)
+
+        // Phase 4: Post-action script
+        onProgress?(.runningPostScript)
+        let postResult = try ScriptRunner.runActionScript(
+            projectPath: project.basePath,
+            scriptType: "post",
+            workingDirectory: options.repoPath.path
+        )
+        onProgress?(.postScriptCompleted(postResult))
+        phasesCompleted += 1
+
+        // Phase 5: Finalize — commit, push, create PR
+        onProgress?(.finalizing)
+
+        // Commit any uncommitted changes
+        let statusOutput = try GitOperations.runGitCommand(args: ["status", "--porcelain"])
+        if !statusOutput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try GitOperations.runGitCommand(args: ["add", "-A"])
+            let stagedStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
+            if !stagedStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Complete task: \(task.description)"])
+            }
+        }
+
+        // Mark task complete in spec.md
+        let specFilePath = options.repoPath.appendingPathComponent(project.specPath).path
+        try TaskService.markTaskComplete(planFile: specFilePath, task: task.description)
+        _ = try GitOperations.runGitCommand(args: ["add", specFilePath])
+        let specStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
+        if !specStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Mark task \(task.index) as complete in spec.md"])
+        }
+
+        // Push branch
+        _ = try GitOperations.runGitCommand(args: ["push", "-u", "origin", branchName])
+
+        // Create draft PR
+        let prTitle = buildPRTitle(projectName: options.projectName, task: task.description)
+        let prBody = "Task \(task.index)/\(spec.totalTasks): \(task.description)"
+        let prURL = try GitHubOperations.runGhCommand(args: [
+            "pr", "create",
+            "--draft",
+            "--title", prTitle,
+            "--body", prBody,
+            "--label", Constants.defaultPRLabel,
+            "--head", branchName,
+            "--base", baseBranch,
+        ])
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Get PR number
+        let prViewOutput = try GitHubOperations.runGhCommand(args: [
+            "pr", "view", branchName,
+            "--json", "number",
+        ])
+        let prNumber = parsePRNumber(from: prViewOutput)
+
+        if let prNumber {
+            onProgress?(.prCreated(prNumber: prNumber, prURL: prURL))
+        }
+        phasesCompleted += 1
+
+        // Phase 6: Generate PR summary
+        onProgress?(.generatingSummary)
+        var summaryContent: String?
+        var summaryCost = 0.0
+
+        do {
+            let summaryPrompt = buildSummaryPrompt(
+                taskDescription: task.description,
+                baseBranch: baseBranch
+            )
+            let summaryOptions = AIClientOptions(
+                dangerouslySkipPermissions: true,
+                workingDirectory: options.repoPath.path
+            )
+
+            let summaryResult = try await client.run(
+                prompt: summaryPrompt,
+                options: summaryOptions,
+                onOutput: nil,
+                onStreamEvent: { event in
+                    onProgress?(.summaryStreamEvent(event))
+                }
+            )
+            summaryContent = summaryResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            summaryCost = extractCost(from: summaryResult)
+            if let summary = summaryContent, !summary.isEmpty {
+                onProgress?(.summaryCompleted(summary: summary))
+            }
+        } catch {
+            // Summary generation is non-fatal
+        }
+        phasesCompleted += 1
+
+        // Phase 7: Post PR comment
+        if let prNumber {
+            onProgress?(.postingPRComment)
+            do {
+                let costBreakdown = CostBreakdown(
+                    mainCost: mainCost,
+                    summaryCost: summaryCost
+                )
+                let report = PullRequestCreatedReport(
+                    prNumber: prNumber,
+                    prURL: prURL,
+                    projectName: options.projectName,
+                    task: task.description,
+                    costBreakdown: costBreakdown,
+                    repo: detectRepo(),
+                    runID: "",
+                    summaryContent: summaryContent,
+                    progressInfo: [
+                        "tasks_completed": spec.completedTasks + 1,
+                        "tasks_total": spec.totalTasks,
+                    ]
+                )
+
+                let formatter = MarkdownReportFormatter()
+                let comment = formatter.format(report.buildCommentElements())
+
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
+                try comment.write(to: tempURL, atomically: true, encoding: .utf8)
+                defer { try? FileManager.default.removeItem(at: tempURL) }
+
+                _ = try GitHubOperations.runGhCommand(args: [
+                    "pr", "comment", prNumber,
+                    "--body-file", tempURL.path,
+                ])
+                onProgress?(.prCommentPosted)
+            } catch {
+                // Comment posting is non-fatal
+            }
+            phasesCompleted += 1
+        }
+
+        onProgress?(.completed(prURL: prURL.isEmpty ? nil : prURL))
+
+        return Result(
+            success: true,
+            message: "Task completed: \(task.description)",
+            prURL: prURL.isEmpty ? nil : prURL,
+            prNumber: prNumber,
+            taskDescription: task.description,
+            phasesCompleted: phasesCompleted
+        )
+    }
+
+    // MARK: - Prompt Building
+
+    private func buildTaskPrompt(task: SpecTask, spec: SpecContent) -> String {
+        """
+        Complete the following task from spec.md:
+
+        Task: \(task.description)
+
+        Instructions: Read the entire spec.md file below to understand both WHAT to do and HOW to do it. \
+        Follow all guidelines and patterns specified in the document.
+
+        --- BEGIN spec.md ---
+        \(spec.content)
+        --- END spec.md ---
+
+        Now complete the task '\(task.description)' following all the details and instructions in the spec.md file above.
+        """
+    }
+
+    private func buildSummaryPrompt(taskDescription: String, baseBranch: String) -> String {
+        """
+        You are reviewing a pull request. Analyze the changes made by running \
+        `git diff \(baseBranch)...HEAD` and write a concise markdown summary.
+
+        The task was: \(taskDescription)
+
+        Write a PR summary that includes:
+        1. A brief overview of what was changed
+        2. Key implementation decisions
+        3. Any notable patterns or conventions followed
+
+        Output ONLY the markdown summary text, nothing else.
+        """
+    }
+
+    private func buildPRTitle(projectName: String, task: String) -> String {
+        let maxTitleLength = 80
+        let titlePrefix = "ClaudeChain: [\(projectName)] "
+        let availableForTask = maxTitleLength - titlePrefix.count
+        let truncatedTask: String
+        if task.count > availableForTask {
+            truncatedTask = String(task.prefix(availableForTask - 3)) + "..."
+        } else {
+            truncatedTask = task
+        }
+        return "\(titlePrefix)\(truncatedTask)"
+    }
+
+    // MARK: - Helpers
+
+    private func extractCost(from result: AIClientResult) -> Double {
+        // Cost is typically reported in stderr as part of Claude CLI output
+        // For now, return 0.0 — the cost will be populated when metrics events are available
+        return 0.0
+    }
+
+    private func parsePRNumber(from jsonOutput: String) -> String? {
+        guard let data = jsonOutput.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let number = json["number"] as? Int else {
+            return nil
+        }
+        return String(number)
+    }
+
+    private func detectRepo() -> String {
+        if let repo = ProcessInfo.processInfo.environment["GITHUB_REPOSITORY"], !repo.isEmpty {
+            return repo
+        }
+        // Try to detect from git remote
+        if let remoteURL = try? GitOperations.runGitCommand(args: ["remote", "get-url", "origin"]) {
+            let trimmed = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Parse "https://github.com/owner/repo.git" or "git@github.com:owner/repo.git"
+            if trimmed.contains("github.com") {
+                let cleaned = trimmed
+                    .replacingOccurrences(of: "git@github.com:", with: "")
+                    .replacingOccurrences(of: "https://github.com/", with: "")
+                    .replacingOccurrences(of: ".git", with: "")
+                return cleaned
+            }
+        }
+        return ""
+    }
+}
