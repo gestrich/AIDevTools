@@ -42,8 +42,8 @@ public struct Project {
         
         // Expected format: claude-chain/{project_name}/spec.md
         guard parts.count == 3,
-              parts[0] == "claude-chain",
-              parts[2] == "spec.md" else {
+              parts[0] == ClaudeChainConstants.projectDirectoryPrefix,
+              parts[2] == ClaudeChainConstants.specFileName else {
             return nil
         }
         

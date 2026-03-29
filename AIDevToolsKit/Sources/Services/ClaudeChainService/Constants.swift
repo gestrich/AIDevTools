@@ -1,29 +1,36 @@
-/// Domain constants for ClaudeChain application.
-///
-/// Defines application-wide default values and constants that are reusable
-/// across different layers of the application.
-public struct Constants {
+/// ClaudeChain project constants
+public struct ClaudeChainConstants {
+    /// Spec file name
+    public static let specFileName = "spec.md"
     
-    /// Default GitHub label for ClaudeChain PRs
-    public static let defaultPRLabel = "claudechain"
+    /// ClaudeChain projects directory prefix
+    public static let projectDirectoryPrefix = "claude-chain"
     
-    /// Default base branch
-    public static let defaultBaseBranch = "main"
+    /// Spec file path pattern for detecting project changes
+    /// Format: claude-chain/*/spec.md
+    public static let specPathPattern = "\(projectDirectoryPrefix)/*/\(specFileName)"
     
-    /// Default metadata branch
-    public static let defaultMetadataBranch = "claudechain-metadata"
-    
-    /// Default statistics lookback period (days)
-    public static let defaultStatsDaysBack = 30
+    /// Expected spec file path format: claude-chain/{project_name}/spec.md
+    public static let specPathFormat = "\(projectDirectoryPrefix)/{project_name}/\(specFileName)"
     
     /// Default number of days before a PR is considered stale
     public static let defaultStalePRDays = 7
     
-    /// Default allowed tools for Claude Code execution
-    /// Minimal permissions: file operations + git staging/committing (required by ClaudeChain prompt)
-    /// Users can override via CLAUDE_ALLOWED_TOOLS env var or project's allowedTools config
-    public static let defaultAllowedTools = "Read,Write,Edit,Bash(git add:*),Bash(git commit:*)"
+    /// Default number of days to look back for statistics
+    public static let defaultStatsDaysBack = 30
     
-    /// PR Summary file path (used by action.yml and commands)
-    public static let prSummaryFilePath = "/tmp/pr-summary.md"
+    /// Default PR label for ClaudeChain PRs
+    public static let defaultPRLabel = "claudechain"
+    
+    /// Default base branch for PRs
+    public static let defaultBaseBranch = "main"
+    
+    /// Default PR summary file path
+    public static let prSummaryFilePath = "pr-summary.md"
+    
+    /// Default allowed tools for Claude
+    public static let defaultAllowedTools = "computer_20241022"
 }
+
+/// Backwards compatibility alias
+public typealias Constants = ClaudeChainConstants

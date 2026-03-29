@@ -10,6 +10,7 @@ import ClaudeChainService
 import ClaudeChainSDK
 import Foundation
 import GitSDK
+import ClaudeChainService
 
 public class AutoStartService {
     /**
@@ -42,7 +43,7 @@ public class AutoStartService {
     
     // MARK: - Public API methods
     
-    public func detectChangedProjects(refBefore: String, refAfter: String, specPattern: String = "claude-chain/*/spec.md", workingDirectory: String = FileManager.default.currentDirectoryPath) async throws -> [AutoStartProject] {
+    public func detectChangedProjects(refBefore: String, refAfter: String, specPattern: String = ClaudeChainConstants.specPathPattern, workingDirectory: String = FileManager.default.currentDirectoryPath) async throws -> [AutoStartProject] {
         // Identify projects with spec.md changes between two git references
         //
         // Args:
@@ -64,7 +65,7 @@ public class AutoStartService {
         do {
             let changedFiles = try await gitClient.diffChangedFiles(ref1: refBefore, ref2: refAfter, pattern: specPattern, workingDirectory: workingDirectory)
             for filePath in changedFiles {
-                if let projectName = GitClient.parseSpecPathToProject(path: filePath) {
+                if let projectName = Project.parseSpecPathToProject(path: filePath) {
                     // Determine if this is a new file (added) or modified
                     // For now, we'll treat all changes as MODIFIED and rely on
                     // determineNewProjects() to check if the project is truly new
@@ -85,7 +86,7 @@ public class AutoStartService {
         do {
             let deletedFiles = try await gitClient.diffDeletedFiles(ref1: refBefore, ref2: refAfter, pattern: specPattern, workingDirectory: workingDirectory)
             for filePath in deletedFiles {
-                if let projectName = GitClient.parseSpecPathToProject(path: filePath) {
+                if let projectName = Project.parseSpecPathToProject(path: filePath) {
                     changedProjects.append(
                         AutoStartProject(
                             name: projectName,

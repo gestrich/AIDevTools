@@ -103,7 +103,14 @@ public struct GitClient: Sendable {
         let command = GitCLI.RevList(count: true, range: range)
         let result = try await execute(command, workingDirectory: workingDirectory)
         let countString = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        return Int(countString) ?? 0
+        guard let count = Int(countString) else {
+            throw CLIClientError.executionFailed(
+                command: "git rev-list --count \(range)", 
+                exitCode: 1, 
+                output: "Invalid count output: '\(countString)'"
+            )
+        }
+        return count
     }
 
     @discardableResult
@@ -135,14 +142,24 @@ public struct GitClient: Sendable {
         }
     }
 
-    public func diffChangedFiles(ref1: String, ref2: String, pattern: String, workingDirectory: String) async throws -> [String] {
+    /// Get list of changed files between two git references
+    ///
+    /// - Parameters:
+    ///   - ref1: First git reference (base)
+    ///   - ref2: Second git reference (head)
+    ///   - pattern: File pattern to match (e.g., "*.swift", "**/spec.md")
+    ///   - diffFilter: Git diff filter for change types. "A" = Added, "M" = Modified, "D" = Deleted, etc. Default: "AM" (Added + Modified)
+    ///   - workingDirectory: Working directory for git commands
+    /// - Returns: Array of file paths that match the criteria
+    /// - Throws: Error if git command fails
+    public func diffChangedFiles(ref1: String, ref2: String, pattern: String, diffFilter: String = "AM", workingDirectory: String) async throws -> [String] {
         try await ensureRefAvailable(ref: ref1, workingDirectory: workingDirectory)
         try await ensureRefAvailable(ref: ref2, workingDirectory: workingDirectory)
         
         let command = GitCLI.Diff(
             cached: false,
             nameOnly: true,
-            diffFilter: "AM",
+            diffFilter: diffFilter,
             ref1: ref1,
             ref2: ref2,
             pattern: pattern
@@ -159,6 +176,15 @@ public struct GitClient: Sendable {
         }
     }
 
+    /// Get list of deleted files between two git references
+    ///
+    /// - Parameters:
+    ///   - ref1: First git reference (base)
+    ///   - ref2: Second git reference (head)  
+    ///   - pattern: File pattern to match (e.g., "*.swift", "**/spec.md")
+    ///   - workingDirectory: Working directory for git commands
+    /// - Returns: Array of file paths that were deleted
+    /// - Throws: Error if git command fails
     public func diffDeletedFiles(ref1: String, ref2: String, pattern: String, workingDirectory: String) async throws -> [String] {
         try await ensureRefAvailable(ref: ref1, workingDirectory: workingDirectory)
         try await ensureRefAvailable(ref: ref2, workingDirectory: workingDirectory)
@@ -183,29 +209,7 @@ public struct GitClient: Sendable {
         }
     }
 
-    /// Extract project name from a spec.md file path
-    ///
-    /// Expected path format: claude-chain/{project_name}/spec.md
-    ///
-    /// - Parameter path: File path to parse
-    /// - Returns: Project name if path matches expected format, nil otherwise
-    ///
-    /// Examples:
-    ///     parseSpecPathToProject("claude-chain/my-project/spec.md")  // returns "my-project"
-    ///     parseSpecPathToProject("claude-chain/another/spec.md")    // returns "another" 
-    ///     parseSpecPathToProject("invalid/path/spec.md")           // returns nil
-    public static func parseSpecPathToProject(path: String) -> String? {
-        let parts = path.components(separatedBy: "/")
-        
-        // Expected format: claude-chain/{project_name}/spec.md
-        guard parts.count == 3,
-              parts[0] == "claude-chain",
-              parts[2] == "spec.md" else {
-            return nil
-        }
-        
-        return parts[1]
-    }
+    // Claude Chain specific logic moved to ClaudeChainService layer
 
     func execute(_ command: some CLICommand, workingDirectory: String) async throws -> ExecutionResult {
         let result = try await client.execute(
