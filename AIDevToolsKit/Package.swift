@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
         .library(name: "MarkdownPlannerFeature", targets: ["MarkdownPlannerFeature"]),
         .library(name: "MarkdownPlannerService", targets: ["MarkdownPlannerService"]),
+        .library(name: "PipelineSDK", targets: ["PipelineSDK"]),
         .library(name: "ProviderRegistryService", targets: ["ProviderRegistryService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
@@ -292,6 +293,11 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
             ],
             path: "Sources/SDKs/LoggingSDK"
+        ),
+        .target(
+            name: "PipelineSDK",
+            dependencies: [],
+            path: "Sources/SDKs/PipelineSDK"
         ),
         .target(
             name: "RepositorySDK",
