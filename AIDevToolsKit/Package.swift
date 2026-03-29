@@ -492,6 +492,16 @@ let package = Package(
             path: "Tests/Services/MarkdownPlannerServiceTests"
         ),
         .testTarget(
+            name: "PipelineFeatureTests",
+            dependencies: ["PipelineFeature", "PipelineSDK"],
+            path: "Tests/Features/PipelineFeatureTests"
+        ),
+        .testTarget(
+            name: "PipelineSDKTests",
+            dependencies: ["PipelineSDK"],
+            path: "Tests/SDKs/PipelineSDKTests"
+        ),
+        .testTarget(
             name: "RepositorySDKTests",
             dependencies: ["RepositorySDK"],
             path: "Tests/SDKs/RepositorySDKTests"

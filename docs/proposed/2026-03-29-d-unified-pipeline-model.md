@@ -215,7 +215,10 @@ Replace ClaudeChain's execution with the unified pipeline:
 - `SpecTask` is retained as a view model or replaced by `CodeChangeStep` directly
 - Existing spec.md files continue to work unchanged
 
-## - [ ] Phase 7: Validation
+## - [x] Phase 7: Validation
+
+**Skills used**: none (`swift-testing` skill not found; used patterns from existing test files in the repo)
+**Principles applied**: Added `PipelineSDKTests` (16 tests covering `MarkdownPipelineSource` parsing for both formats, mixed/edge-case inputs, `markStepCompleted`, and `appendSteps`) and `PipelineFeatureTests` (7 tests covering `ExecutePipelineUseCase` — sequential dispatch, skip-completed, persistence, dynamic step insertion, progress events, and `noHandlerFound` error). Used `import Testing` + `#expect` + `@Suite`/`@Test` to match the project's Swift Testing convention. Pre-existing `ClaudeChainSDKTests` compile errors (unrelated to this phase) block `swift test` from running, but both new targets build and link cleanly via `swift build --target`.
 
 **Skills to read**: `swift-testing`, `ai-dev-tools-review`
 
