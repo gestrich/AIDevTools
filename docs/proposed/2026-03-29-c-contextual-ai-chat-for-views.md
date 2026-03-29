@@ -289,7 +289,10 @@ Migrate `MarkdownPlannerModel.makeChatModel()` and `ClaudeChainModel.makeChatMod
 - `AIDevToolsKitMac/Models/MarkdownPlannerModel.swift` — update `makeChatModel`
 - `AIDevToolsKitMac/Models/ClaudeChainModel.swift` — update `makeChatModel`
 
-## - [ ] Phase 4: ViewChatContext protocol and ContextualChatPanel
+## - [x] Phase 4: ViewChatContext protocol and ContextualChatPanel
+
+**Skills used**: `swift-app-architecture:swift-swiftui`
+**Principles applied**: `ViewChatContext` is a `@MainActor AnyObject` protocol — keeps all context access on the main actor. `SystemPromptBuilder.build(for:)` is `@MainActor` to match. `ContextualChatPanel` owns `ChatModel` as `@State` (created lazily via `.task`), uses `@AppStorage("contextualChatVisible")` for collapse persistence, and gets `ProviderModel` from environment for the provider picker. System prompt is stable — built once at `ChatModel` creation, not rebuilt per message.
 
 **Skills to read**: `swift-app-architecture:swift-swiftui`
 
