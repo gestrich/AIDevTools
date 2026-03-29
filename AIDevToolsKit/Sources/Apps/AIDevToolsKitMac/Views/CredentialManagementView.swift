@@ -262,16 +262,9 @@ private struct CredentialEditSheet: View {
                 .font(.title2)
                 .bold()
 
-            if isNew {
-                LabeledContent("Account Name") {
-                    TextField("e.g. work, personal", text: $credential.accountName)
-                        .textFieldStyle(.roundedBorder)
-                }
-            } else {
-                LabeledContent("Account Name") {
-                    Text(credential.accountName)
-                        .foregroundStyle(.secondary)
-                }
+            LabeledContent("Account Name") {
+                TextField("e.g. work, personal", text: $credential.accountName)
+                    .textFieldStyle(.roundedBorder)
             }
 
             Divider()

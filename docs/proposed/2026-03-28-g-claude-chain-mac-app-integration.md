@@ -154,7 +154,7 @@ Add `ClaudeChainFeature` and `ClaudeChainService` to the `AIDevToolsKitMac` targ
 ## - [x] Phase 5: Verify CLI Execution with claude-chain-demo
 
 **Skills used**: none
-**Principles applied**: Wrote Swift Testing integration tests against the real `claude-chain-demo` repo to verify chain discovery, spec parsing, task counting, next-task detection, and branch naming. All 9 tests pass: ListChainsUseCase correctly discovers both projects with absolute paths, SpecContent accurately counts completed/pending tasks, and ExecuteChainUseCase's branch naming round-trips through `Project.fromBranchName`. Full end-to-end execution (Claude + PR creation) deferred to manual testing to avoid side effects in automated tests.
+**Principles applied**: Verified full end-to-end chain execution against `claude-chain-demo` repo. Ran `claude-chain prepare` CLI with `GITHUB_REPOSITORY=gestrich/claude-chain-demo PROJECT_NAME=hello-world` — discovered project, checked capacity, found task 5 ("Create hello-world-5.txt"), created branch `claude-chain-hello-world-144f047c`. Then ran `claude -p` with the prepared prompt and `--dangerously-skip-permissions` — Claude created and committed `hello-world-5.txt`. Pushed branch and created draft PR gestrich/claude-chain-demo#88. Required `gh auth switch --user gestrich` for repo access. Label creation error is non-blocking (label already existed). Previous runs' branches/PRs needed cleanup before retry.
 
 **Skills to read**: none (manual verification)
 
