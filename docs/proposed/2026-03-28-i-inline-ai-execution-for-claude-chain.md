@@ -143,7 +143,10 @@ Refactor `ExecuteChainUseCase` to delegate to `RunChainTaskUseCase` instead of u
 
 Update `ListChainsUseCase` if needed to also return the tasks list (not just counts) so the Mac app can show individual tasks.
 
-## - [ ] Phase 4: Update `ClaudeChainModel` with streaming support
+## - [x] Phase 4: Update `ClaudeChainModel` with streaming support
+
+**Skills used**: `swift-swiftui`
+**Principles applied**: Enum-based state machine following MarkdownPlannerModel pattern. ExecutionProgress struct with PhaseInfo tracks phase-by-phase status. executionProgressObserver callback bridges to ChatModel for streaming display. Provider switching via selectedProviderName. View updated minimally to handle new state cases (full redesign in Phase 5).
 
 **Skills to read**: `swift-swiftui`
 

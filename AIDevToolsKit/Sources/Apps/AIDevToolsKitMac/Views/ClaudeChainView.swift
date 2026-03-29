@@ -26,14 +26,30 @@ struct ClaudeChainView: View {
                 } else {
                     chainContent(projects: projects)
                 }
-            case .executing(let projectName, let status):
+            case .executing(let progress):
                 VStack(spacing: 12) {
                     ProgressView()
-                    Text("Executing: \(projectName)")
-                        .font(.headline)
-                    Text(status)
+                    if !progress.taskDescription.isEmpty {
+                        Text("Executing: \(progress.taskDescription)")
+                            .font(.headline)
+                    }
+                    Text(progress.currentPhase)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .completed(let result):
+                VStack(spacing: 12) {
+                    Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .font(.largeTitle)
+                        .foregroundStyle(result.success ? .green : .red)
+                    Text(result.message)
+                        .font(.headline)
+                    if let prURL = result.prURL {
+                        Text(prURL)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .error(let error):
