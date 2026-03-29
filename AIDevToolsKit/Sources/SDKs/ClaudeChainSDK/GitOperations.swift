@@ -15,6 +15,15 @@ public struct GitOperations {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = cmd
+
+        var environment = ProcessInfo.processInfo.environment
+        let currentPath = environment["PATH"] ?? ""
+        let brewPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        let missingPaths = brewPaths.filter { !currentPath.contains($0) }
+        if !missingPaths.isEmpty {
+            environment["PATH"] = (missingPaths + [currentPath]).joined(separator: ":")
+        }
+        process.environment = environment
         
         var stdout = ""
         var stderr = ""
