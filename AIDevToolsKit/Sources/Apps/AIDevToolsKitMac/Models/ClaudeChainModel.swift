@@ -1,5 +1,7 @@
+import AIOutputSDK
 import ClaudeChainFeature
 import Foundation
+import ProviderRegistryService
 
 @MainActor @Observable
 final class ClaudeChainModel {
@@ -14,15 +16,21 @@ final class ClaudeChainModel {
 
     private(set) var state: State = .idle
 
-    private let executeChainUseCase: ExecuteChainUseCase
+    private var activeClient: any AIClient
     private let listChainsUseCase: ListChainsUseCase
+    private let providerRegistry: ProviderRegistry
 
     init(
-        executeChainUseCase: ExecuteChainUseCase = ExecuteChainUseCase(),
-        listChainsUseCase: ListChainsUseCase = ListChainsUseCase()
+        listChainsUseCase: ListChainsUseCase = ListChainsUseCase(),
+        providerRegistry: ProviderRegistry
     ) {
-        self.executeChainUseCase = executeChainUseCase
         self.listChainsUseCase = listChainsUseCase
+        self.providerRegistry = providerRegistry
+
+        guard let client = providerRegistry.defaultClient else {
+            preconditionFailure("ClaudeChainModel requires at least one configured provider")
+        }
+        self.activeClient = client
     }
 
     func loadChains(for repoPath: URL) {
@@ -41,10 +49,13 @@ final class ClaudeChainModel {
         state = .executing(projectName: projectName, status: "Starting...")
         Task {
             do {
-                state = .executing(projectName: projectName, status: "Running claude-code...")
-                let result = try await executeChainUseCase.run(
+                let useCase = ExecuteChainUseCase(client: activeClient)
+                state = .executing(projectName: projectName, status: "Running AI task...")
+                let result = try await useCase.run(
                     options: .init(repoPath: repoPath, projectName: projectName)
-                )
+                ) { progress in
+                    // Phase 4 will add full streaming support
+                }
                 if result.success {
                     let status = result.prURL.map { "PR created: \($0)" } ?? result.message
                     state = .executing(projectName: projectName, status: status)

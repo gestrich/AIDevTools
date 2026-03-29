@@ -1,3 +1,4 @@
+import AIOutputSDK
 import ClaudeChainFeature
 import ClaudeChainSDK
 import ClaudeChainService
@@ -61,12 +62,51 @@ struct ExecuteChainUseCaseSpecTests {
 
     @Test("returns failure for nonexistent project")
     func nonexistentProject() async throws {
-        let useCase = ExecuteChainUseCase()
+        let useCase = ExecuteChainUseCase(client: StubAIClient())
         let result = try await useCase.run(options: .init(
             repoPath: demoRepoPath,
             projectName: "nonexistent"
         ))
         #expect(!result.success)
         #expect(result.message.contains("No spec.md found"))
+    }
+}
+
+// MARK: - Test Doubles
+
+private struct StubAIClient: AIClient {
+    let displayName = "Stub"
+    let name = "stub"
+
+    func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
+        nil
+    }
+
+    func listSessions(workingDirectory: String) async -> [ChatSession] {
+        []
+    }
+
+    func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] {
+        []
+    }
+
+    func run(
+        prompt: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+    ) async throws -> AIClientResult {
+        AIClientResult(exitCode: 0, stderr: "", stdout: "")
+    }
+
+    func runStructured<T: Decodable & Sendable>(
+        _ type: T.Type,
+        prompt: String,
+        jsonSchema: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+    ) async throws -> AIStructuredResult<T> {
+        throw NSError(domain: "StubAIClient", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
 }

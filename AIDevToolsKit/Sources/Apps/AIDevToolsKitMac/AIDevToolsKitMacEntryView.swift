@@ -53,7 +53,9 @@ public struct AIDevToolsKitMacEntryView: View {
             selectedProviderName: storedPlannerProviderName
         ))
         let storedPlannerProvider = UserDefaults.standard.string(forKey: "archPlannerProviderName")
-        _claudeChainModel = State(initialValue: ClaudeChainModel())
+        _claudeChainModel = State(initialValue: ClaudeChainModel(
+            providerRegistry: root.providerModel.providerRegistry
+        ))
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
             dataPathsService: root.dataPathsService,
             providerRegistry: root.providerModel.providerRegistry,

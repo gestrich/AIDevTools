@@ -125,7 +125,10 @@ Register `RunTaskCommand` in `ClaudeChainCLI.subcommands` (alphabetically).
 
 The existing `prepare` and `finalize` commands remain unchanged for backward compatibility with the GitHub Actions workflow.
 
-## - [ ] Phase 3: Update `ExecuteChainUseCase` to use `RunChainTaskUseCase`
+## - [x] Phase 3: Update `ExecuteChainUseCase` to use `RunChainTaskUseCase`
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Delegated to `RunChainTaskUseCase` via composition rather than reimplementing. Re-exported `Progress` as typealias to avoid duplication. Updated `ClaudeChainModel` to accept `ProviderRegistry` following `MarkdownPlannerModel` pattern. Added `ChainTask` type and tasks list to `ListChainsUseCase`/`ChainProject` for Phase 5 UI needs.
 
 **Skills to read**: `swift-architecture`
 

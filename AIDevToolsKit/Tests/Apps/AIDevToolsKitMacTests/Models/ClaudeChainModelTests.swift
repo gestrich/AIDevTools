@@ -1,5 +1,7 @@
+import AIOutputSDK
 import ClaudeChainFeature
 import Foundation
+import ProviderRegistryService
 import Testing
 
 @testable import AIDevToolsKitMac
@@ -31,12 +33,17 @@ struct ClaudeChainModelTests {
         try? FileManager.default.removeItem(at: url)
     }
 
+    @MainActor private func makeModel() -> ClaudeChainModel {
+        let registry = ProviderRegistry(providers: [StubAIClient()])
+        return ClaudeChainModel(providerRegistry: registry)
+    }
+
     // MARK: - loadChains state transitions
 
     @Test("initial state is idle")
     @MainActor func initialState() {
         // Arrange
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Assert
         guard case .idle = model.state else {
@@ -57,7 +64,7 @@ struct ClaudeChainModelTests {
             - [ ] Task 2 - Pending
             """)
         defer { cleanup(repoPath) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.loadChains(for: repoPath)
@@ -85,7 +92,7 @@ struct ClaudeChainModelTests {
                 """
         )
         defer { cleanup(repoPath) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.loadChains(for: repoPath)
@@ -113,7 +120,7 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.loadChains(for: tempDir)
@@ -155,7 +162,7 @@ struct ClaudeChainModelTests {
             )
         }
         defer { cleanup(tempDir) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.loadChains(for: tempDir)
@@ -183,7 +190,7 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.executeChain(projectName: "test", repoPath: tempDir)
@@ -207,7 +214,7 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = ClaudeChainModel()
+        let model = makeModel()
 
         // Act
         model.executeChain(projectName: "nonexistent", repoPath: tempDir)
@@ -219,5 +226,44 @@ struct ClaudeChainModelTests {
             return
         }
         #expect(error.localizedDescription.contains("No spec.md found"))
+    }
+}
+
+// MARK: - Test Doubles
+
+private struct StubAIClient: AIClient {
+    let displayName = "Stub"
+    let name = "stub"
+
+    func getSessionDetails(sessionId: String, summary: String, lastModified: Date, workingDirectory: String) -> SessionDetails? {
+        nil
+    }
+
+    func listSessions(workingDirectory: String) async -> [ChatSession] {
+        []
+    }
+
+    func loadSessionMessages(sessionId: String, workingDirectory: String) async -> [ChatSessionMessage] {
+        []
+    }
+
+    func run(
+        prompt: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+    ) async throws -> AIClientResult {
+        AIClientResult(exitCode: 0, stderr: "", stdout: "")
+    }
+
+    func runStructured<T: Decodable & Sendable>(
+        _ type: T.Type,
+        prompt: String,
+        jsonSchema: String,
+        options: AIClientOptions,
+        onOutput: (@Sendable (String) -> Void)?,
+        onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
+    ) async throws -> AIStructuredResult<T> {
+        throw NSError(domain: "StubAIClient", code: 1, userInfo: [NSLocalizedDescriptionKey: "Not implemented"])
     }
 }

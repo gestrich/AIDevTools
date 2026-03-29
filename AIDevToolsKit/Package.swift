@@ -386,7 +386,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ClaudeChainFeatureTests",
-            dependencies: ["ClaudeChainFeature", "ClaudeChainSDK", "ClaudeChainService"],
+            dependencies: ["AIOutputSDK", "ClaudeChainFeature", "ClaudeChainSDK", "ClaudeChainService"],
             path: "Tests/Features/ClaudeChainFeatureTests"
         ),
         .testTarget(
