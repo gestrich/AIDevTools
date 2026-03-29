@@ -89,6 +89,8 @@ let package = Package(
                 "ClaudeChainService",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
+                "CredentialFeature",
+                "CredentialService",
                 "DataPathsService",
                 "EvalFeature",
                 "EvalSDK",

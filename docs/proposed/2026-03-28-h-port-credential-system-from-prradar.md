@@ -158,7 +158,10 @@ Port PRRadar's `CredentialsCommand` into the existing `AIDevToolsKitCLI` target.
 5. Build: `swift build --target AIDevToolsKitCLI`
 6. Test manually: `ai-dev-tools-kit credentials list`, `ai-dev-tools-kit credentials add testaccount --github-token fake-token`, `ai-dev-tools-kit credentials show testaccount`, `ai-dev-tools-kit credentials remove testaccount`
 
-## - [ ] Phase 5: Add CredentialModel and CredentialManagementView to Mac app
+## - [x] Phase 5: Add CredentialModel and CredentialManagementView to Mac app
+
+**Skills used**: `swift-swiftui`
+**Principles applied**: Model-View pattern with `@Observable` model injected via Environment; CredentialModel is a root-level `@State` in both entry views; removed `@AppStorage("anthropicAPIKey")` from GeneralSettingsView in favor of keychain-backed credentials; added Credentials tab to SettingsView; use cases injected via convenience init with alphabetically sorted properties
 
 **Skills to read**: `swift-swiftui`
 

@@ -2,23 +2,11 @@ import ChatFeature
 import SwiftUI
 
 struct GeneralSettingsView: View {
-    @Environment(ProviderModel.self) private var providerModel
     @Environment(SettingsModel.self) private var settingsModel
-    @AppStorage("anthropicAPIKey") private var apiKey = ""
     @State private var chatSettings = ChatSettings()
 
     var body: some View {
         Form {
-            Section("Anthropic API") {
-                SecureField("API Key", text: $apiKey)
-                    .onChange(of: apiKey) { _, _ in
-                        providerModel.refreshProviders()
-                    }
-                Text("Required for the API chat mode. Get a key at console.anthropic.com")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
             Section("Chat Settings") {
                 Toggle("Enable Streaming", isOn: Binding(
                     get: { chatSettings.enableStreaming },

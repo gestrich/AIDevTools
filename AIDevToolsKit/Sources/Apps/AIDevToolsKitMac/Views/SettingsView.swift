@@ -14,6 +14,10 @@ struct SettingsView: View {
                 GeneralSettingsView()
             }
 
+            Tab("Credentials", systemImage: "key") {
+                CredentialManagementView()
+            }
+
             Tab("Repositories", systemImage: "folder") {
                 RepositoriesSettingsView(
                     workspaceModel: workspaceModel,

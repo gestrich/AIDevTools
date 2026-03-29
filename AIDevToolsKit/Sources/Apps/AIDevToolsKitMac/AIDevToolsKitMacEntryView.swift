@@ -13,6 +13,7 @@ import SwiftUI
 public struct AIDevToolsKitMacEntryView: View {
     @State private var architecturePlannerModel: ArchitecturePlannerModel
     @State private var claudeChainModel: ClaudeChainModel
+    @State private var credentialModel = CredentialModel()
     @State private var markdownPlannerModel: MarkdownPlannerModel
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
@@ -65,6 +66,7 @@ public struct AIDevToolsKitMacEntryView: View {
         WorkspaceView(evalProviderRegistry: evalProviderRegistry)
             .environment(architecturePlannerModel)
             .environment(claudeChainModel)
+            .environment(credentialModel)
             .environment(markdownPlannerModel)
             .environment(providerModel)
             .environment(workspaceModel)
@@ -73,6 +75,7 @@ public struct AIDevToolsKitMacEntryView: View {
 }
 
 public struct AIDevToolsSettingsView: View {
+    @State private var credentialModel = CredentialModel()
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
@@ -106,6 +109,7 @@ public struct AIDevToolsSettingsView: View {
 
     public var body: some View {
         SettingsView()
+            .environment(credentialModel)
             .environment(providerModel)
             .environment(settingsModel)
             .environment(workspaceModel)
