@@ -4,7 +4,7 @@ import ClaudeChainService
 import ClaudeChainSDK
 import ClaudeChainFeature
 
-public struct AutoStartCommand: ParsableCommand {
+public struct AutoStartCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "auto-start",
         abstract: "Detect new projects and trigger workflows"
@@ -27,8 +27,8 @@ public struct AutoStartCommand: ParsableCommand {
     
     public init() {}
     
-    public func run() throws {
-        let exitCode = try cmdAutoStart(
+    public func run() async throws {
+        let exitCode = try await cmdAutoStart(
             gh: GitHubActions(),
             repo: repo ?? ProcessInfo.processInfo.environment["GITHUB_REPOSITORY"] ?? "",
             baseBranch: baseBranch ?? "main",
@@ -50,7 +50,7 @@ private func cmdAutoStart(
     refBefore: String,
     refAfter: String,
     autoStartEnabled: Bool = true
-) throws -> Int32 {
+) async throws -> Int32 {
     /**
      * Detect new projects and trigger ClaudeChain workflows for them.
      *
@@ -89,7 +89,7 @@ private func cmdAutoStart(
 
     // === Step 1: Detect changed projects ===
     print("=== Step 1/3: Detecting changed projects ===")
-    let changedProjects = autoStartService.detectChangedProjects(
+    let changedProjects = try await autoStartService.detectChangedProjects(
         refBefore: refBefore,
         refAfter: refAfter,
         specPattern: "claude-chain/*/spec.md"

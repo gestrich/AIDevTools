@@ -4,8 +4,9 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitSDK
 
-public struct FinalizeCommand: ParsableCommand {
+public struct FinalizeCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "finalize",
         abstract: "Finalize after Claude Code execution (commit, PR, summary)"
@@ -13,7 +14,7 @@ public struct FinalizeCommand: ParsableCommand {
     
     public init() {}
     
-    public func run() throws {
+    public func run() async throws {
         /**
          * Orchestrate finalization workflow using Service Layer classes.
          *
@@ -38,7 +39,10 @@ public struct FinalizeCommand: ParsableCommand {
             let assignees = (environment["ASSIGNEES"] ?? "")
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
+            
+            // Initialize GitClient
+            let gitClient = GitClient()
+            let workingDirectory = FileManager.default.currentDirectoryPath
             let reviewers = (environment["REVIEWERS"] ?? "")
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -126,21 +130,21 @@ public struct FinalizeCommand: ParsableCommand {
             }
             
             // Configure git user for commits
-            _ = try GitOperations.runGitCommand(args: ["config", "user.name", "github-actions[bot]"])
-            _ = try GitOperations.runGitCommand(args: ["config", "user.email", "github-actions[bot]@users.noreply.github.com"])
+            _ = try await gitClient.config(key: "user.name", value: "github-actions[bot]", workingDirectory: workingDirectory)
+            _ = try await gitClient.config(key: "user.email", value: "github-actions[bot]@users.noreply.github.com", workingDirectory: workingDirectory)
             
             // Check for any changes (staged, unstaged, or untracked)
-            let statusOutput = try GitOperations.runGitCommand(args: ["status", "--porcelain"])
-            if !statusOutput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let statusOutput = try await gitClient.status(workingDirectory: workingDirectory)
+            if !statusOutput.isEmpty {
                 print("Found uncommitted changes, staging...")
-                _ = try GitOperations.runGitCommand(args: ["add", "-A"])
+                _ = try await gitClient.addAll(workingDirectory: workingDirectory)
                 
                 // Check if there are actually staged changes after git add
-                let stagedStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
-                if !stagedStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let fileCount = stagedStatus.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\n").count
+                let stagedStatus = try await gitClient.diffCachedNames(workingDirectory: workingDirectory)
+                if !stagedStatus.isEmpty {
+                    let fileCount = stagedStatus.count
                     print("Committing \(fileCount) file(s)...")
-                    _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Complete task: \(task)"])
+                    _ = try await gitClient.commit(message: "Complete task: \(task)", workingDirectory: workingDirectory)
                 } else {
                     print("No changes to commit after staging (files may have been committed by Claude Code)")
                 }
@@ -153,7 +157,7 @@ public struct FinalizeCommand: ParsableCommand {
             
             // Reconfigure git auth (Claude Code action may have changed it)
             let remoteUrl = "https://x-access-token:\(ghToken)@github.com/\(githubRepository).git"
-            _ = try GitOperations.runGitCommand(args: ["remote", "set-url", "origin", remoteUrl])
+            _ = try await gitClient.remoteSetURL(name: "origin", url: remoteUrl, workingDirectory: workingDirectory)
             
             // Fetch spec.md from base branch and mark task as complete
             print("Fetching spec.md from base branch...")
@@ -172,11 +176,11 @@ public struct FinalizeCommand: ParsableCommand {
                     try TaskService.markTaskComplete(planFile: specFileURL.path, task: task)
                     
                     // Stage and commit the updated spec.md
-                    _ = try GitOperations.runGitCommand(args: ["add", specFileURL.path])
-                    let specStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
-                    if !specStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    _ = try await gitClient.add(files: [specFileURL.path], workingDirectory: workingDirectory)
+                    let specStatus = try await gitClient.diffCachedNames(workingDirectory: workingDirectory)
+                    if !specStatus.isEmpty {
                         print("Committing spec.md update...")
-                        _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Mark task \(taskIndex) as complete in spec.md"])
+                        _ = try await gitClient.commit(message: "Mark task \(taskIndex) as complete in spec.md", workingDirectory: workingDirectory)
                     }
                 } else {
                     print("Warning: Could not fetch spec.md from \(baseBranch), skipping spec update")
@@ -187,12 +191,11 @@ public struct FinalizeCommand: ParsableCommand {
             
             // Check if there are commits to push (after spec.md update)
             // Fetch base branch ref for shallow clone compatibility
-            try GitOperations.ensureRefAvailable(ref: "origin/\(baseBranch)")
+            try await gitClient.ensureRefAvailable(ref: "origin/\(baseBranch)", workingDirectory: workingDirectory)
             
             let commitsCount: Int
             do {
-                let commitsAhead = try GitOperations.runGitCommand(args: ["rev-list", "--count", "origin/\(baseBranch)..HEAD"])
-                commitsCount = Int(commitsAhead) ?? 0
+                commitsCount = try await gitClient.revListCount(range: "origin/\(baseBranch)..HEAD", workingDirectory: workingDirectory)
             } catch {
                 commitsCount = 0
             }
@@ -208,7 +211,7 @@ public struct FinalizeCommand: ParsableCommand {
             print("Found \(commitsCount) commit(s) to push")
             
             // Push the branch
-            _ = try GitOperations.runGitCommand(args: ["push", "-u", "origin", branchName, "--force"])
+            _ = try await gitClient.push(remote: "origin", branch: branchName, setUpstream: true, workingDirectory: workingDirectory)
             
             // Load PR template and substitute
             var prBody: String

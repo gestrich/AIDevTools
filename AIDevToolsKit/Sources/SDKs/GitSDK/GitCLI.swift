@@ -29,10 +29,15 @@ public struct GitCLI {
     public struct Diff {
         @Flag("--cached") public var cached: Bool = false
         @Flag("--name-only") public var nameOnly: Bool = false
+        @Option("--diff-filter") public var diffFilter: String?
+        @Positional public var ref1: String?
+        @Positional public var ref2: String?
+        @Positional public var pattern: String?
     }
 
     @CLICommand
     public struct Fetch {
+        @Option("--depth") public var depth: String?
         @Positional public var remote: String
         @Positional public var branch: String
     }
@@ -43,6 +48,7 @@ public struct GitCLI {
     @CLICommand
     public struct Push {
         @Flag("-u") public var setUpstream: Bool = false
+        @Flag("--force") public var force: Bool = false
         @Positional public var remote: String
         @Positional public var branch: String
     }
@@ -52,6 +58,12 @@ public struct GitCLI {
         @CLICommand("get-url")
         public struct GetURL {
             @Positional public var name: String
+        }
+
+        @CLICommand("set-url")
+        public struct SetURL {
+            @Positional public var name: String
+            @Positional public var url: String
         }
     }
 
@@ -76,5 +88,29 @@ public struct GitCLI {
 
         @CLICommand
         public struct Prune {}
+    }
+
+    @CLICommand
+    public struct Config {
+        @Positional public var key: String
+        @Positional public var value: String
+    }
+
+    @CLICommand("cat-file")
+    public struct CatFile {
+        @Flag("-t") public var type: Bool = false
+        @Positional public var object: String
+    }
+
+    @CLICommand("rev-list")
+    public struct RevList {
+        @Flag("--count") public var count: Bool = false
+        @Positional public var range: String
+    }
+
+    @CLICommand("rev-parse")
+    public struct RevParse {
+        @Flag("--abbrev-ref") public var abbrevRef: Bool = false
+        @Positional public var ref: String
     }
 }

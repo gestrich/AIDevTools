@@ -8,6 +8,9 @@
 
 import ClaudeChainService
 import ClaudeChainSDK
+import Foundation
+import GitSDK
+import ClaudeChainService
 
 public class AutoStartService {
     /**
@@ -21,6 +24,7 @@ public class AutoStartService {
     private let repo: String
     private let prService: PRService
     private let autoStartEnabled: Bool
+    private let gitClient: GitClient
     
     /**
      * Initialize the auto-start service
@@ -30,15 +34,16 @@ public class AutoStartService {
      *     prService: PRService instance for PR operations
      *     autoStartEnabled: Whether auto-start is enabled (default: true)
      */
-    public init(repo: String, prService: PRService, autoStartEnabled: Bool = true) {
+    public init(repo: String, prService: PRService, autoStartEnabled: Bool = true, gitClient: GitClient = GitClient()) {
         self.repo = repo
         self.prService = prService
         self.autoStartEnabled = autoStartEnabled
+        self.gitClient = gitClient
     }
     
     // MARK: - Public API methods
     
-    public func detectChangedProjects(refBefore: String, refAfter: String, specPattern: String = "claude-chain/*/spec.md") -> [AutoStartProject] {
+    public func detectChangedProjects(refBefore: String, refAfter: String, specPattern: String = ClaudeChainConstants.specPathPattern, workingDirectory: String = FileManager.default.currentDirectoryPath) async throws -> [AutoStartProject] {
         // Identify projects with spec.md changes between two git references
         //
         // Args:
@@ -58,9 +63,9 @@ public class AutoStartService {
         
         // Detect added or modified spec files
         do {
-            let changedFiles = try GitOperations.detectChangedFiles(refBefore: refBefore, refAfter: refAfter, pattern: specPattern)
+            let changedFiles = try await gitClient.diffChangedFiles(ref1: refBefore, ref2: refAfter, pattern: specPattern, workingDirectory: workingDirectory)
             for filePath in changedFiles {
-                if let projectName = GitOperations.parseSpecPathToProject(path: filePath) {
+                if let projectName = Project.parseSpecPathToProject(path: filePath) {
                     // Determine if this is a new file (added) or modified
                     // For now, we'll treat all changes as MODIFIED and rely on
                     // determineNewProjects() to check if the project is truly new
@@ -79,9 +84,9 @@ public class AutoStartService {
         
         // Detect deleted spec files
         do {
-            let deletedFiles = try GitOperations.detectDeletedFiles(refBefore: refBefore, refAfter: refAfter, pattern: specPattern)
+            let deletedFiles = try await gitClient.diffDeletedFiles(ref1: refBefore, ref2: refAfter, pattern: specPattern, workingDirectory: workingDirectory)
             for filePath in deletedFiles {
-                if let projectName = GitOperations.parseSpecPathToProject(path: filePath) {
+                if let projectName = Project.parseSpecPathToProject(path: filePath) {
                     changedProjects.append(
                         AutoStartProject(
                             name: projectName,

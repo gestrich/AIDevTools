@@ -1,11 +1,16 @@
 import ClaudeChainService
 import Foundation
+import CLISDK
 
 /// GitHub CLI and API operations
 public struct GitHubOperations: GitHubOperationsProtocol {
     
+    private let cliClient: CLIClient
+    
     /// Public initializer for dependency injection
-    public init() {}
+    public init(cliClient: CLIClient = CLIClient()) {
+        self.cliClient = cliClient
+    }
     
     /// Run a GitHub CLI command and return stdout
     ///
@@ -13,12 +18,46 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// - Returns: Command stdout as string
     /// - Throws: GitHubAPIError if gh command fails
     public static func runGhCommand(args: [String]) throws -> String {
-        do {
-            let result = try GitOperations.runCommand(cmd: ["gh"] + args)
-            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        } catch {
+        // Use CLIClient synchronously for now to avoid changing all method signatures
+        let cliClient = CLIClient()
+        
+        // Create a sync wrapper using RunLoop
+        var result: ExecutionResult?
+        var error: Error?
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                result = try await cliClient.execute(
+                    command: "gh",
+                    arguments: args,
+                    workingDirectory: ".",
+                    environment: nil,
+                    printCommand: false
+                )
+            } catch let e {
+                error = e
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        
+        if let error = error {
             throw GitHubAPIError("GitHub CLI command failed: \(args.joined(separator: " "))\n\(error.localizedDescription)")
         }
+        
+        guard let result = result else {
+            throw GitHubAPIError("GitHub CLI command failed: \(args.joined(separator: " "))\nNo result")
+        }
+        
+        if result.exitCode != 0 {
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw GitHubAPIError("GitHub CLI command failed: \(args.joined(separator: " "))\n\(stderr.isEmpty ? result.stdout : stderr)")
+        }
+        
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     /// Call GitHub REST API using gh CLI

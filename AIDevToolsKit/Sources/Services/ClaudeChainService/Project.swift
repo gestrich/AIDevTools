@@ -26,6 +26,30 @@ public struct Project {
         return "\(basePath)/spec.md"
     }
     
+    /// Extract project name from a spec.md file path
+    ///
+    /// Expected path format: claude-chain/{project_name}/spec.md
+    ///
+    /// - Parameter path: File path to parse
+    /// - Returns: Project name if path matches expected format, nil otherwise
+    ///
+    /// Examples:
+    ///     Project.parseSpecPathToProject("claude-chain/my-project/spec.md")  // returns "my-project"
+    ///     Project.parseSpecPathToProject("claude-chain/another/spec.md")    // returns "another" 
+    ///     Project.parseSpecPathToProject("invalid/path/spec.md")           // returns nil
+    public static func parseSpecPathToProject(path: String) -> String? {
+        let parts = path.components(separatedBy: "/")
+        
+        // Expected format: claude-chain/{project_name}/spec.md
+        guard parts.count == 3,
+              parts[0] == ClaudeChainConstants.projectDirectoryPrefix,
+              parts[2] == ClaudeChainConstants.specFileName else {
+            return nil
+        }
+        
+        return parts[1]
+    }
+
     /// Path to pr-template.md file
     public var prTemplatePath: String {
         return "\(basePath)/pr-template.md"

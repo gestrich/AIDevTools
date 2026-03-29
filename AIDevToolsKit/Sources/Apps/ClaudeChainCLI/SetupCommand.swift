@@ -1,7 +1,9 @@
 import ArgumentParser
-import Foundation
-import ClaudeChainService
+import CLISDK
 import ClaudeChainSDK
+import ClaudeChainService
+import Foundation
+import GitSDK
 
 public struct SetupCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
@@ -14,7 +16,7 @@ public struct SetupCommand: ParsableCommand {
     
     public init() {}
     
-    public func run() throws {
+    public func run() async throws {
         let resolvedPath = URL(fileURLWithPath: repositoryPath).standardizedFileURL.path
         
         print("ClaudeChain Interactive Setup")
@@ -45,12 +47,12 @@ public struct SetupCommand: ParsableCommand {
         
         switch choice {
         case 0:
-            let result = try setupNewRepo(repoPath: resolvedPath)
+            let result = try await setupNewRepo(repoPath: resolvedPath)
             if result != 0 {
                 throw ExitCode.failure
             }
         case 1:
-            let result = try addProject(repoPath: resolvedPath)
+            let result = try await addProject(repoPath: resolvedPath)
             if result == nil {
                 throw ExitCode.failure
             } else {
@@ -68,7 +70,7 @@ Next step: Deploy spec (project)
 """)
             }
         case 2:
-            let result = try deployToGitHub(repoPath: resolvedPath)
+            let result = try await deployToGitHub(repoPath: resolvedPath)
             if result != 0 {
                 throw ExitCode.failure
             }
@@ -188,17 +190,12 @@ private func hasClaudeChainWorkflow(repoPath: String) -> Bool {
 }
 
 /// Get the current git branch name
-private func getCurrentBranch(repoPath: String) -> String {
+private func getCurrentBranch(repoPath: String) async -> String {
     do {
-        let result = try GitOperations.runCommand(cmd: ["git", "-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"])
-        let branch = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        // "HEAD" is returned in detached HEAD state
-        if !branch.isEmpty && branch != "HEAD" {
-            return branch
-        }
-        return "main"
+        let gitClient = GitClient()
+        return try await gitClient.getCurrentBranch(workingDirectory: repoPath)
     } catch {
-        return "main"
+        return "main"  // fallback on error
     }
 }
 
@@ -222,7 +219,7 @@ private func getWorkflowName(repoPath: String) -> String {
 // MARK: - Main Setup Functions
 
 /// Walk through full repository setup
-private func setupNewRepo(repoPath: String) throws -> Int {
+private func setupNewRepo(repoPath: String) async throws -> Int {
     print("\n" + String(repeating: "=", count: 50))
     print("Setup Repository")
     print(String(repeating: "=", count: 50))
@@ -306,7 +303,7 @@ private func setupNewRepo(repoPath: String) throws -> Int {
     print(String(repeating: "-", count: 30))
     
     if promptYesNo(question: "  Create a project now? (Recommended)", defaultValue: true) {
-        let result = try addProject(repoPath: repoPath)
+        let result = try await addProject(repoPath: repoPath)
         if result == nil {
             return 1
         }
@@ -337,7 +334,7 @@ Next step: Deploy spec (project)
 }
 
 /// Add a new ClaudeChain project to the repository
-private func addProject(repoPath: String) throws -> (String, String)? {
+private func addProject(repoPath: String) async throws -> (String, String)? {
     print("\n" + String(repeating: "=", count: 50))
     print("Create New Spec (Project)")
     print(String(repeating: "=", count: 50))
@@ -361,7 +358,7 @@ private func addProject(repoPath: String) throws -> (String, String)? {
     
     // Base branch
     print("")
-    let currentBranch = getCurrentBranch(repoPath: repoPath)
+    let currentBranch = await getCurrentBranch(repoPath: repoPath)
     let baseBranch = promptInput(question: "Base branch for PRs", defaultValue: currentBranch)
     
     // Optional: assignee
@@ -463,7 +460,7 @@ echo "Post-action script completed successfully"
 }
 
 /// Guide user through deploying ClaudeChain to GitHub
-private func deployToGitHub(repoPath: String) throws -> Int {
+private func deployToGitHub(repoPath: String) async throws -> Int {
     print("\n" + String(repeating: "=", count: 50))
     print("Deploy Spec (Project)")
     print(String(repeating: "=", count: 50))
@@ -624,7 +621,7 @@ private func deployToGitHub(repoPath: String) throws -> Int {
   Once pushed, you can trigger the first workflow run.
 """)
             if promptYesNo(question: "  Would you like me to trigger the workflow now?", defaultValue: true) {
-                try runFirstWorkflow(repoPath: repoPath, workflowName: workflowName, projectName: projectName, baseBranch: baseBranch)
+                try await runFirstWorkflow(repoPath: repoPath, workflowName: workflowName, projectName: projectName, baseBranch: baseBranch)
             } else {
                 print("""
 
@@ -653,7 +650,7 @@ Happy automating!
 }
 
 /// Trigger the first workflow run
-private func runFirstWorkflow(repoPath: String, workflowName: String, projectName: String, baseBranch: String) throws {
+private func runFirstWorkflow(repoPath: String, workflowName: String, projectName: String, baseBranch: String) async throws {
     let command = [
         "gh", "workflow", "run", workflowName,
         "--ref", baseBranch,
@@ -671,7 +668,22 @@ private func runFirstWorkflow(repoPath: String, workflowName: String, projectNam
     if promptYesNo(question: "  Proceed?", defaultValue: true) {
         print("\n  Running workflow...")
         do {
-            _ = try GitOperations.runCommand(cmd: command, check: true, captureOutput: true)
+            let cliClient = CLIClient()
+            let result = try await cliClient.execute(
+                command: command[0],
+                arguments: Array(command.dropFirst()),
+                workingDirectory: ".",
+                environment: nil,
+                printCommand: false
+            )
+            if result.exitCode != 0 {
+                let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                throw CLIClientError.executionFailed(
+                    command: command.joined(separator: " "),
+                    exitCode: result.exitCode,
+                    output: stderr.isEmpty ? result.stdout : stderr
+                )
+            }
             print("  Workflow triggered successfully!")
             print("\n  Check the Actions tab in GitHub to monitor progress.")
         } catch {

@@ -50,7 +50,7 @@ The CLI commands in `FinalizeCommand` and `PrepareCommand` use git operations no
 
 For `GitCLI` structs, add the `@CLICommand` definitions. For `GitClient`, add corresponding async methods.
 
-## - [ ] Phase 3: Migrate `FinalizeCommand` and `PrepareCommand` to `GitClient`
+## - [x] Phase 3: Migrate `FinalizeCommand` and `PrepareCommand` to `GitClient`
 
 **Skills to read**: `swift-architecture`
 
@@ -59,7 +59,7 @@ For `GitCLI` structs, add the `@CLICommand` definitions. For `GitClient`, add co
 - Replace all `GitOperations.runGitCommand(...)` calls with `GitClient` methods
 - Add `GitSDK` dependency to `ClaudeChainCLI` target in `Package.swift` if not already present
 
-## - [ ] Phase 4: Migrate `AutoStartService` to `GitClient`
+## - [x] Phase 4: Migrate `AutoStartService` to `GitClient`
 
 **Skills to read**: `swift-architecture`
 
@@ -70,13 +70,13 @@ For `GitCLI` structs, add the `@CLICommand` definitions. For `GitClient`, add co
 
 `AutoStartCommand` calls `detectChangedProjects` — verify it's already `AsyncParsableCommand` or migrate it.
 
-## - [ ] Phase 5: Delete `GitOperations.swift` and clean up
+## - [x] Phase 5: Delete `GitOperations.swift` and clean up
 
 - Delete `AIDevToolsKit/Sources/SDKs/ClaudeChainSDK/GitOperations.swift`
 - Remove any now-unused imports of `ClaudeChainSDK` where only `GitOperations` was used
 - Verify no remaining references to `GitOperations` in the codebase
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
 
 **Skills to read**: `swift-testing`
 

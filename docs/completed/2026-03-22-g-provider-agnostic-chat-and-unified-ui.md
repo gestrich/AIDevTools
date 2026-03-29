@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Obsolete. Provider-agnostic chat unification was already completed in "2026-03-25-a-unify-ai-interface-for-chat.md" and "2026-03-27-a-remove-provider-references-from-chat-ui.md". The project now has a unified ChatModel and AIClient protocol that works with any provider, eliminating separate Anthropic and Claude Code chat implementations.
+
 ## Relevant Skills
 
 | Skill | Description |

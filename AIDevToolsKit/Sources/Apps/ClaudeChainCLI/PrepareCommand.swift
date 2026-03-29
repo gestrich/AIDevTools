@@ -4,8 +4,9 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitSDK
 
-public struct PrepareCommand: ParsableCommand {
+public struct PrepareCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "prepare",
         abstract: "Prepare everything for Claude Code execution"
@@ -13,7 +14,7 @@ public struct PrepareCommand: ParsableCommand {
     
     public init() {}
     
-    public func run() throws {
+    public func run() async throws {
         /**
          * Orchestrate preparation workflow using Service Layer classes.
          *
@@ -27,6 +28,10 @@ public struct PrepareCommand: ParsableCommand {
             // === Get common dependencies ===
             let env = ProcessInfo.processInfo.environment
             let repo = env["GITHUB_REPOSITORY"] ?? ""
+            
+            // Initialize GitClient
+            let gitClient = GitClient()
+            let workingDirectory = FileManager.default.currentDirectoryPath
 
             // Resolve GH_TOKEN via CredentialResolver so all child gh processes authenticate.
             // CredentialResolver checks GITHUB_TOKEN env → .env → keychain.
@@ -272,7 +277,7 @@ public struct PrepareCommand: ParsableCommand {
             let branchName = PRService.formatBranchName(projectName: projectName, taskHash: taskHash)
             
             do {
-                _ = try GitOperations.runGitCommand(args: ["checkout", "-b", branchName])
+                _ = try await gitClient.checkout(ref: branchName, createBranch: true, workingDirectory: workingDirectory)
                 print("✅ Created branch: \(branchName)")
             } catch {
                 gh.setError(message: "Failed to create branch: \(error.localizedDescription)")

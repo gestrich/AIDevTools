@@ -324,7 +324,10 @@ let package = Package(
         ),
         .target(
             name: "ClaudeChainSDK",
-            dependencies: ["ClaudeChainService"],
+            dependencies: [
+                .product(name: "CLISDK", package: "SwiftCLI"),
+                "ClaudeChainService",
+            ],
             path: "Sources/SDKs/ClaudeChainSDK"
         ),
         .executableTarget(
