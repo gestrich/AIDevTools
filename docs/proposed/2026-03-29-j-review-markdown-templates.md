@@ -35,7 +35,10 @@ The goal is a **review template system** using the same markdown format as plans
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Searched all Feature source files for cross-feature `import` statements and audited Package.swift for feature-to-feature target dependencies. No violations found — each Feature depends only on Services, SDKs, and external packages. Build is clean.
-## - [ ] Verify all new types are in their correct SDK/Feature/Service/App layer and move any that aren't
+## - [x] Verify all new types are in their correct SDK/Feature/Service/App layer and move any that aren't
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Reviewed all types introduced by the AppIPCSDK, AppIPCServer, and MCPCommand commits. `AppIPCClient`, `IPCRequest`, `IPCUIState`, and `IPCError` are stateless `Sendable` structs/enums in `SDKs/AppIPCSDK/` ✓. `AppIPCServer` is a `@MainActor final class` in `Apps/AIDevToolsKitMac/IPC/` ✓. `MCPCommand` is an `AsyncParsableCommand` in `Apps/AIDevToolsKitCLI/` ✓. `LoadPlansUseCase` is a `Sendable` struct in `Features/MarkdownPlannerFeature/usecases/` ✓. No violations found. Build is clean.
 ```
 
 ## Phases
