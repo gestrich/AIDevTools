@@ -79,7 +79,10 @@ public protocol PipelineSource: Sendable {
 
 Keep all types in SDKs. No UIKit, no SwiftData, no AI calls here.
 
-## - [ ] Phase 2: Implement Markdown Pipeline Source (SDKs layer)
+## - [x] Phase 2: Implement Markdown Pipeline Source (SDKs layer)
+
+**Skills used**: `ai-dev-tools-review:sdks-layer`
+**Principles applied**: Created `MarkdownPipelineSource: PipelineSource` in `PipelineSDK` with a `MarkdownPipelineFormat` enum (`.phase` for MarkdownPlanner's `## - [ ]` syntax, `.task` for ClaudeChain's `- [ ]` syntax). Both formats parse into `CodeChangeStep` instances. `appendCreatePRStep` defaults to `true` for `.task` format to match ClaudeChain's implicit PR creation behavior. `markStepCompleted` performs an in-place regex replacement on disk; `appendSteps` appends new markdown lines. `CreatePRStep` is silently skipped in `markStepCompleted` since it has no markdown representation. The struct is a stateless `Sendable` value type with no business logic or platform imports beyond Foundation.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
