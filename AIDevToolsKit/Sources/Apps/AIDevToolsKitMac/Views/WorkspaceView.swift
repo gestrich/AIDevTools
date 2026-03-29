@@ -53,23 +53,23 @@ struct WorkspaceView: View {
     private func tabContent(for repo: RepositoryInfo) -> some View {
         TabView(selection: $selectedTab) {
             ArchitecturePlannerView(repository: repo)
-                .tabItem { Image(systemName: "building.columns") }
+                .tabItem { Label("Architecture", systemImage: "building.columns") }
                 .tag("architecture")
 
             ClaudeChainView(repository: repo)
-                .tabItem { Image(systemName: "link") }
+                .tabItem { Label("Chains", systemImage: "link") }
                 .tag("claudeChain")
 
             EvalsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
-                .tabItem { Image(systemName: "checkmark.shield") }
+                .tabItem { Label("Evals", systemImage: "checkmark.shield") }
                 .tag("evals")
 
             PlansContainer(repository: repo)
-                .tabItem { Image(systemName: "doc.text") }
+                .tabItem { Label("Plans", systemImage: "doc.text") }
                 .tag("plans")
 
             SkillsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
-                .tabItem { Image(systemName: "star") }
+                .tabItem { Label("Skills", systemImage: "star") }
                 .tag("skills")
         }
     }
