@@ -39,7 +39,10 @@ Use the official `modelcontextprotocol/swift-sdk` package for MCP server/client 
 
 ## Phases
 
-## - [ ] Phase 1: AppIPCSDK — Unix domain socket client
+## - [x] Phase 1: AppIPCSDK — Unix domain socket client
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Placed `AppIPCSDK` in the SDKs layer as a stateless `Sendable` struct per architecture rules. Used POSIX socket APIs directly (Darwin) to keep the implementation dependency-free. Error cases are `LocalizedError` so MCP tool handlers can surface descriptive messages to Claude.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

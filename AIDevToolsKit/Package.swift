@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "AIDevToolsKitMac", targets: ["AIDevToolsKitMac"]),
         .library(name: "AIOutputSDK", targets: ["AIOutputSDK"]),
         .library(name: "AnthropicSDK", targets: ["AnthropicSDK"]),
+        .library(name: "AppIPCSDK", targets: ["AppIPCSDK"]),
         .library(name: "ClaudeAgentSDK", targets: ["ClaudeAgentSDK"]),
         .library(name: "ChatFeature", targets: ["ChatFeature"]),
         .library(name: "ChatService", targets: ["ChatService"]),
@@ -67,6 +68,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 "AIOutputSDK",
                 "AnthropicSDK",
+                "AppIPCSDK",
                 "ArchitecturePlannerFeature",
                 "ArchitecturePlannerService",
                 "ChatFeature",
@@ -314,6 +316,11 @@ let package = Package(
                 "SwiftAnthropic",
             ],
             path: "Sources/SDKs/AnthropicSDK"
+        ),
+        .target(
+            name: "AppIPCSDK",
+            dependencies: [],
+            path: "Sources/SDKs/AppIPCSDK"
         ),
         .target(
             name: "ClaudeAgentSDK",
