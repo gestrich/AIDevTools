@@ -7,7 +7,7 @@ struct ArchitecturePlannerView: View {
     var body: some View {
         HSplitView {
             jobListSidebar
-                .frame(minWidth: 200, maxWidth: 300)
+                .workspaceSidebar()
 
             if let job = model.selectedJob {
                 ArchitecturePlannerDetailView(model: model, job: job)

@@ -1,14 +1,14 @@
 import SwiftUI
 
 enum WorkspaceStyle {
-    static let sidebarMinWidth: CGFloat = 220
-    static let sidebarIdealWidth: CGFloat = 260
+    static let sidebarWidth: CGFloat = 250
 }
 
 struct WorkspaceSidebarModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .frame(minWidth: WorkspaceStyle.sidebarMinWidth, idealWidth: WorkspaceStyle.sidebarIdealWidth, maxHeight: .infinity)
+            .frame(maxHeight: .infinity)
+            .frame(width: WorkspaceStyle.sidebarWidth)
             .listStyle(.sidebar)
     }
 }
