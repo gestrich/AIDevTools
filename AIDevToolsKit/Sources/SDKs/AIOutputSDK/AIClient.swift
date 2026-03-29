@@ -5,6 +5,7 @@ public struct AIClientOptions: Sendable {
     public var environment: [String: String]?
     public var jsonSchema: String?
     public var model: String?
+    public var responseDescriptors: [AIResponseDescriptor]
     public var sessionId: String?
     public var systemPrompt: String?
     public var workingDirectory: String?
@@ -14,6 +15,7 @@ public struct AIClientOptions: Sendable {
         environment: [String: String]? = nil,
         jsonSchema: String? = nil,
         model: String? = nil,
+        responseDescriptors: [AIResponseDescriptor] = [],
         sessionId: String? = nil,
         systemPrompt: String? = nil,
         workingDirectory: String? = nil
@@ -22,6 +24,7 @@ public struct AIClientOptions: Sendable {
         self.environment = environment
         self.jsonSchema = jsonSchema
         self.model = model
+        self.responseDescriptors = responseDescriptors
         self.sessionId = sessionId
         self.systemPrompt = systemPrompt
         self.workingDirectory = workingDirectory

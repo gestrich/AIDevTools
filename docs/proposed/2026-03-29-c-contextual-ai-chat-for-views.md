@@ -170,7 +170,10 @@ Test the XML tag approach without native structured output. Use a regular chat c
 - `scripts/experiments/structured-output-chat/` — shell scripts for each experiment
 - `docs/proposed/structured-output-experiment-results.md` — findings
 
-## - [ ] Phase 2: Structured output SDK primitives
+## - [x] Phase 2: Structured output SDK primitives
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Added `AIResponseDescriptor`, `AIResponseHandling`, `AIResponseRouter`, and `StructuredOutputParser` to `AIOutputSDK`. Since Phase 1 selected Approach B (text convention with XML `<app-response>` tags), the streaming pipeline types (`AIStreamEvent`, `AIContentBlock`, `StreamAccumulator`) were left unchanged — no `.structuredOutput` case needed. `responseDescriptors` added to `AIClientOptions` with a default of `[]` to keep all existing callers unmodified. `AIResponseRouter` uses `NSLock` for thread safety since it's a reference type needing `@unchecked Sendable`.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
