@@ -4,17 +4,20 @@ import CLISDK
 public struct GitCLI {
 
     @CLICommand
-    public struct Init {}
-
-    @CLICommand
-    public struct Fetch {
-        @Positional public var remote: String
-        @Positional public var branch: String
+    public struct Add {
+        @Flag("-A") public var all: Bool = false
+        @Positional public var files: [String]
     }
 
     @CLICommand
-    public struct Add {
-        @Positional public var files: [String]
+    public struct Branch {
+        @Positional public var name: String
+    }
+
+    @CLICommand
+    public struct Checkout {
+        @Flag("-b") public var createBranch: Bool = false
+        @Positional public var ref: String
     }
 
     @CLICommand
@@ -23,13 +26,38 @@ public struct GitCLI {
     }
 
     @CLICommand
-    public struct Status {
-        @Flag public var porcelain: Bool = false
+    public struct Diff {
+        @Flag("--cached") public var cached: Bool = false
+        @Flag("--name-only") public var nameOnly: Bool = false
     }
 
     @CLICommand
-    public struct Branch {
-        @Positional public var name: String
+    public struct Fetch {
+        @Positional public var remote: String
+        @Positional public var branch: String
+    }
+
+    @CLICommand
+    public struct Init {}
+
+    @CLICommand
+    public struct Push {
+        @Flag("-u") public var setUpstream: Bool = false
+        @Positional public var remote: String
+        @Positional public var branch: String
+    }
+
+    @CLICommand
+    public struct Remote {
+        @CLICommand("get-url")
+        public struct GetURL {
+            @Positional public var name: String
+        }
+    }
+
+    @CLICommand
+    public struct Status {
+        @Flag public var porcelain: Bool = false
     }
 
     @CLICommand

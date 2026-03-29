@@ -2,45 +2,55 @@
 import Foundation
 
 /// Base error for continuous refactoring operations
-public struct ContinuousRefactoringError: Error {
+public struct ContinuousRefactoringError: LocalizedError {
     public let message: String
-    
+
+    public var errorDescription: String? { message }
+
     public init(_ message: String) {
         self.message = message
     }
 }
 
 /// Configuration file issues
-public struct ConfigurationError: Error {
+public struct ConfigurationError: LocalizedError {
     public let message: String
-    
+
+    public var errorDescription: String? { message }
+
     public init(_ message: String) {
         self.message = message
     }
 }
 
 /// Missing required files
-public struct FileNotFoundError: Error {
+public struct FileNotFoundError: LocalizedError {
     public let message: String
-    
+
+    public var errorDescription: String? { message }
+
     public init(_ message: String) {
         self.message = message
     }
 }
 
 /// Git operation failures
-public struct GitError: Error {
+public struct GitError: LocalizedError {
     public let message: String
-    
+
+    public var errorDescription: String? { message }
+
     public init(_ message: String) {
         self.message = message
     }
 }
 
 /// GitHub API call failures
-public struct GitHubAPIError: Error {
+public struct GitHubAPIError: LocalizedError {
     public let message: String
-    
+
+    public var errorDescription: String? { message }
+
     public init(_ message: String) {
         self.message = message
     }

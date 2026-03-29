@@ -3,6 +3,7 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitSDK
 
 public struct RunChainTaskUseCase: Sendable {
 
@@ -64,9 +65,11 @@ public struct RunChainTaskUseCase: Sendable {
     }
 
     private let client: any AIClient
+    private let git: GitClient
 
-    public init(client: any AIClient) {
+    public init(client: any AIClient, git: GitClient = GitClient()) {
         self.client = client
+        self.git = git
     }
 
     public func run(
@@ -108,8 +111,9 @@ public struct RunChainTaskUseCase: Sendable {
         phasesCompleted += 1
 
         // Create branch
+        let repoDir = options.repoPath.path
         let branchName = PRService.formatBranchName(projectName: options.projectName, taskHash: task.taskHash)
-        _ = try GitOperations.runGitCommand(args: ["checkout", "-b", branchName])
+        try await git.checkout(ref: branchName, createBranch: true, workingDirectory: repoDir)
 
         let baseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
 
@@ -162,26 +166,26 @@ public struct RunChainTaskUseCase: Sendable {
         onProgress?(.finalizing)
 
         // Commit any uncommitted changes
-        let statusOutput = try GitOperations.runGitCommand(args: ["status", "--porcelain"])
-        if !statusOutput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            _ = try GitOperations.runGitCommand(args: ["add", "-A"])
-            let stagedStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
-            if !stagedStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Complete task: \(task.description)"])
+        let statusLines = try await git.status(workingDirectory: repoDir)
+        if !statusLines.isEmpty {
+            try await git.addAll(workingDirectory: repoDir)
+            let stagedFiles = try await git.diffCachedNames(workingDirectory: repoDir)
+            if !stagedFiles.isEmpty {
+                try await git.commit(message: "Complete task: \(task.description)", workingDirectory: repoDir)
             }
         }
 
         // Mark task complete in spec.md
-        let specFilePath = options.repoPath.appendingPathComponent(project.specPath).path
+        let specFilePath = project.specPath
         try TaskService.markTaskComplete(planFile: specFilePath, task: task.description)
-        _ = try GitOperations.runGitCommand(args: ["add", specFilePath])
-        let specStatus = try GitOperations.runGitCommand(args: ["diff", "--cached", "--name-only"])
-        if !specStatus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            _ = try GitOperations.runGitCommand(args: ["commit", "-m", "Mark task \(task.index) as complete in spec.md"])
+        try await git.add(files: [specFilePath], workingDirectory: repoDir)
+        let specStagedFiles = try await git.diffCachedNames(workingDirectory: repoDir)
+        if !specStagedFiles.isEmpty {
+            try await git.commit(message: "Mark task \(task.index) as complete in spec.md", workingDirectory: repoDir)
         }
 
         // Push branch
-        _ = try GitOperations.runGitCommand(args: ["push", "-u", "origin", branchName])
+        try await git.push(remote: "origin", branch: branchName, setUpstream: true, workingDirectory: repoDir)
 
         // Create draft PR
         let prTitle = buildPRTitle(projectName: options.projectName, task: task.description)
@@ -256,7 +260,7 @@ public struct RunChainTaskUseCase: Sendable {
                     projectName: options.projectName,
                     task: task.description,
                     costBreakdown: costBreakdown,
-                    repo: detectRepo(),
+                    repo: await detectRepo(workingDirectory: repoDir),
                     runID: "",
                     summaryContent: summaryContent,
                     progressInfo: [
@@ -361,22 +365,19 @@ public struct RunChainTaskUseCase: Sendable {
         return String(number)
     }
 
-    private func detectRepo() -> String {
+    private func detectRepo(workingDirectory: String) async -> String {
         if let repo = ProcessInfo.processInfo.environment["GITHUB_REPOSITORY"], !repo.isEmpty {
             return repo
         }
-        // Try to detect from git remote
-        if let remoteURL = try? GitOperations.runGitCommand(args: ["remote", "get-url", "origin"]) {
-            let trimmed = remoteURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            // Parse "https://github.com/owner/repo.git" or "git@github.com:owner/repo.git"
-            if trimmed.contains("github.com") {
-                let cleaned = trimmed
-                    .replacingOccurrences(of: "git@github.com:", with: "")
-                    .replacingOccurrences(of: "https://github.com/", with: "")
-                    .replacingOccurrences(of: ".git", with: "")
-                return cleaned
-            }
+        guard let remoteURL = try? await git.remoteGetURL(workingDirectory: workingDirectory) else {
+            return ""
         }
-        return ""
+        guard remoteURL.contains("github.com") else {
+            return ""
+        }
+        return remoteURL
+            .replacingOccurrences(of: "git@github.com:", with: "")
+            .replacingOccurrences(of: "https://github.com/", with: "")
+            .replacingOccurrences(of: ".git", with: "")
     }
 }
