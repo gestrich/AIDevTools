@@ -82,7 +82,10 @@ Opens the socket, sends request, reads response, closes. If the socket file does
 
 **Package.swift**: Add `AppIPCSDK` target; add as dependency to `AIDevToolsKitCLI`.
 
-## - [ ] Phase 2: AppIPCServer in Mac app
+## - [x] Phase 2: AppIPCServer in Mac app
+
+**Skills used**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
+**Principles applied**: Kept `AppIPCServer` internal to `AIDevToolsKitMac` (no `public`) and started it from `AIDevToolsKitMacEntryView` via `.task` rather than the outer `AIDevToolsApp` struct, which cannot see internal types. `currentTab` and `selectedPlanName` are read from `UserDefaults` directly (the backing store for `@AppStorage`), avoiding the need to pass model references into the server. Static `nonisolated` helpers handle the blocking accept loop off the main actor.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
 

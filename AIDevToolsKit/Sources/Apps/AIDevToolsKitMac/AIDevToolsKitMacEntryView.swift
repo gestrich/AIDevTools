@@ -14,6 +14,7 @@ public struct AIDevToolsKitMacEntryView: View {
     @State private var architecturePlannerModel: ArchitecturePlannerModel
     @State private var claudeChainModel: ClaudeChainModel
     @State private var credentialModel = CredentialModel()
+    @State private var ipcServer = AppIPCServer()
     @State private var markdownPlannerModel: MarkdownPlannerModel
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
@@ -74,6 +75,7 @@ public struct AIDevToolsKitMacEntryView: View {
             .environment(providerModel)
             .environment(workspaceModel)
             .frame(minWidth: 800, minHeight: 600)
+            .task { await ipcServer.start() }
     }
 }
 

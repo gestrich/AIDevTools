@@ -101,6 +101,7 @@ let package = Package(
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 "AIOutputSDK",
                 "AnthropicSDK",
+                "AppIPCSDK",
                 "ArchitecturePlannerFeature",
                 "ArchitecturePlannerService",
                 "ChatFeature",
