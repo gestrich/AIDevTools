@@ -162,6 +162,8 @@ let package = Package(
             name: "PipelineFeature",
             dependencies: [
                 "AIOutputSDK",
+                .product(name: "CLISDK", package: "SwiftCLI"),
+                "GitSDK",
                 "PipelineSDK",
             ],
             path: "Sources/Features/PipelineFeature"

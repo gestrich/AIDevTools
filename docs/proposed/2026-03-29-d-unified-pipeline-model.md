@@ -155,7 +155,10 @@ AppModel (app lifetime) → PipelineExecutionService actor → MarkdownPipelineS
 
 This is not needed for the initial implementation but worth revisiting before building the Mac UI for this feature.
 
-## - [ ] Phase 4: Implement Step Handlers (Features layer)
+## - [x] Phase 4: Implement Step Handlers (Features layer)
+
+**Skills used**: none (skill not found; architecture conventions applied from prior phases and existing codebase patterns)
+**Principles applied**: Three concrete `StepHandler` types added to `PipelineFeature/handlers/`: `CodeChangeStepHandler` injects `AIClient` and forwards `step.prompt` directly; `ReviewStepHandler` uses `CLIClient` to run `git diff` based on scope, calls `AIClient.runStructured()` with a fixes schema, and returns `[CodeChangeStep]` for dynamic insertion; `CreatePRStepHandler` uses `GitClient.push()` + `CLIClient` for `gh pr create --draft` + Claude for the PR summary comment. Added `GitSDK` and `CLISDK` (from SwiftCLI) to `PipelineFeature` dependencies to avoid raw `Foundation.Process` concurrency issues in Swift 6.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
