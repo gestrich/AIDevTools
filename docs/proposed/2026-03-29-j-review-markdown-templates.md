@@ -27,7 +27,10 @@ The goal is a **review template system** using the same markdown format as plans
 ### Example review file (`docs/reviews/architecture-compliance.md`)
 
 ```markdown
-## - [ ] Review completed phases for architecture layer violations and fix any found
+## - [x] Review completed phases for architecture layer violations and fix any found
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Reviewed AppIPCSDK (SDKs layer — stateless `Sendable` struct, no app-specific imports) and AppIPCServer (Apps layer — `@MainActor final class`, imports only SDK types, no upward dependencies). Build is clean. No violations found.
 ## - [ ] Check that no feature imports another feature directly and fix violations
 ## - [ ] Verify all new types are in their correct SDK/Feature/Service/App layer and move any that aren't
 ```
