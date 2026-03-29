@@ -78,6 +78,13 @@ struct PlansContainer: View {
                     PlanListRow(plan: plan)
                         .tag(plan.name)
                         .contextMenu {
+                            Button {
+                                let path = plan.relativePath(to: repository.path)
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(path, forType: .string)
+                            } label: {
+                                Label("Copy Path", systemImage: "doc.on.doc")
+                            }
                             Button(role: .destructive) {
                                 if selectedPlanName == plan.name { selectedPlanName = nil }
                                 try? markdownPlannerModel.deletePlan(plan)
