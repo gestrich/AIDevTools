@@ -1,7 +1,8 @@
 import ArgumentParser
-import ClaudeChainService
-import ClaudeChainSDK
 import ClaudeChainFeature
+import ClaudeChainSDK
+import ClaudeChainService
+import CredentialService
 import Foundation
 
 public struct PrepareCommand: ParsableCommand {
@@ -26,7 +27,21 @@ public struct PrepareCommand: ParsableCommand {
             // === Get common dependencies ===
             let env = ProcessInfo.processInfo.environment
             let repo = env["GITHUB_REPOSITORY"] ?? ""
-            
+
+            // Resolve GH_TOKEN via CredentialResolver so all child gh processes authenticate.
+            // CredentialResolver checks GITHUB_TOKEN env → .env → keychain.
+            // Falls back to GH_TOKEN env var for GitHub Actions compatibility.
+            let credentialAccount = env["GITHUB_CREDENTIAL_ACCOUNT"] ?? "default"
+            let credentialResolver = CredentialResolver(
+                settingsService: CredentialSettingsService(),
+                githubAccount: credentialAccount
+            )
+            if case .token(let token) = credentialResolver.getGitHubAuth() {
+                setenv("GH_TOKEN", token, 1)
+            } else if let existingToken = env["GH_TOKEN"], !existingToken.isEmpty {
+                setenv("GH_TOKEN", existingToken, 1)
+            }
+
             // Initialize infrastructure
             let projectRepository = ProjectRepository(repo: repo)
             

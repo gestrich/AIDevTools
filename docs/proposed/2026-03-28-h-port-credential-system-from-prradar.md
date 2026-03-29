@@ -214,7 +214,10 @@ Replace the current ad-hoc credential resolution with `CredentialResolver`.
 - Verify Mac app still resolves Anthropic key (now from keychain after storing via Credential Management)
 - Verify CLI still resolves from `ANTHROPIC_API_KEY` env var
 
-## - [ ] Phase 7: Wire CredentialResolver into ClaudeChain for GH_TOKEN injection
+## - [x] Phase 7: Wire CredentialResolver into ClaudeChain for GH_TOKEN injection
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Used setenv() approach in PrepareCommand/FinalizeCommand so all child gh processes inherit GH_TOKEN; CredentialResolver resolves GITHUB_TOKEN (env → .env → keychain) with GH_TOKEN env fallback for GitHub Actions compatibility; ExecuteChainUseCase accepts optional githubAccount and injects GH_TOKEN into subprocess environment; kept alphabetical import ordering
 
 **Skills to read**: `swift-architecture`
 

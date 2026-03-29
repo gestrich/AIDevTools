@@ -1,16 +1,19 @@
 import ClaudeChainSDK
 import ClaudeChainService
+import CredentialService
 import Foundation
 
 public struct ExecuteChainUseCase: Sendable {
 
     public struct Options: Sendable {
-        public let repoPath: URL
+        public let githubAccount: String?
         public let projectName: String
+        public let repoPath: URL
 
-        public init(repoPath: URL, projectName: String) {
-            self.repoPath = repoPath
+        public init(repoPath: URL, projectName: String, githubAccount: String? = nil) {
+            self.githubAccount = githubAccount
             self.projectName = projectName
+            self.repoPath = repoPath
         }
     }
 
@@ -52,6 +55,20 @@ public struct ExecuteChainUseCase: Sendable {
             )
         }
 
+        // Resolve GH_TOKEN from credential system when a github account is configured
+        var processEnv: [String: String]?
+        if let githubAccount = options.githubAccount {
+            let resolver = CredentialResolver(
+                settingsService: CredentialSettingsService(),
+                githubAccount: githubAccount
+            )
+            if case .token(let token) = resolver.getGitHubAuth() {
+                var env = ProcessInfo.processInfo.environment
+                env["GH_TOKEN"] = token
+                processEnv = env
+            }
+        }
+
         let branchName = PRService.formatBranchName(projectName: options.projectName, taskHash: task.taskHash)
 
         try runProcess(
@@ -76,7 +93,8 @@ public struct ExecuteChainUseCase: Sendable {
 
         try runProcess(
             arguments: ["claude", "-p", claudePrompt, "--dangerously-skip-permissions"],
-            workingDirectory: options.repoPath
+            workingDirectory: options.repoPath,
+            environment: processEnv
         )
 
         let prTitle = "[\(options.projectName)] \(task.description)"
@@ -88,7 +106,8 @@ public struct ExecuteChainUseCase: Sendable {
                 "--body", prBody,
                 "--draft",
             ],
-            workingDirectory: options.repoPath
+            workingDirectory: options.repoPath,
+            environment: processEnv
         )
 
         let prURL = prResult.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -100,11 +119,14 @@ public struct ExecuteChainUseCase: Sendable {
     }
 
     @discardableResult
-    private func runProcess(arguments: [String], workingDirectory: URL) throws -> String {
+    private func runProcess(arguments: [String], workingDirectory: URL, environment: [String: String]? = nil) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = arguments
         process.currentDirectoryURL = workingDirectory
+        if let environment {
+            process.environment = environment
+        }
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()

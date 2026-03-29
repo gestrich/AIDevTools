@@ -310,6 +310,7 @@ let package = Package(
                 "ClaudeChainSDK",
                 "ClaudeChainService",
                 "ClaudeChainFeature",
+                "CredentialService",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Apps/ClaudeChainCLI"
@@ -333,7 +334,7 @@ let package = Package(
         ),
         .target(
             name: "ClaudeChainFeature",
-            dependencies: ["ClaudeChainSDK", "ClaudeChainService"],
+            dependencies: ["ClaudeChainSDK", "ClaudeChainService", "CredentialService"],
             path: "Sources/Features/ClaudeChainFeature"
         ),
 
