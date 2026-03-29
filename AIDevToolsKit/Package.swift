@@ -41,6 +41,7 @@ let package = Package(
         .library(name: "PRRadarCLIService", targets: ["PRRadarCLIService"]),
         .library(name: "PRRadarConfigService", targets: ["PRRadarConfigService"]),
         .library(name: "PRRadarModels", targets: ["PRRadarModels"]),
+        .library(name: "PRReviewFeature", targets: ["PRReviewFeature"]),
         .library(name: "ProviderRegistryService", targets: ["ProviderRegistryService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
@@ -175,6 +176,19 @@ let package = Package(
                 "PipelineService",
             ],
             path: "Sources/Features/PipelineFeature"
+        ),
+        .target(
+            name: "PRReviewFeature",
+            dependencies: [
+                .product(name: "CLISDK", package: "SwiftCLI"),
+                "ClaudeAgentSDK",
+                "EnvironmentSDK",
+                "LoggingSDK",
+                "PRRadarCLIService",
+                "PRRadarConfigService",
+                "PRRadarModels",
+            ],
+            path: "Sources/Features/PRReviewFeature"
         ),
         .target(
             name: "SkillBrowserFeature",

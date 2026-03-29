@@ -1,0 +1,154 @@
+import Foundation
+import PRRadarCLIService
+import PRRadarConfigService
+import PRRadarModels
+
+public struct SyncSnapshot: Sendable {
+    public let prDiff: PRDiff?
+    public let files: [String]
+    public let commentCount: Int
+    public let reviewCount: Int
+    public let reviewCommentCount: Int
+    public let commitHash: String?
+
+    public init(
+        prDiff: PRDiff? = nil,
+        files: [String],
+        commentCount: Int = 0,
+        reviewCount: Int = 0,
+        reviewCommentCount: Int = 0,
+        commitHash: String? = nil
+    ) {
+        self.prDiff = prDiff
+        self.files = files
+        self.commentCount = commentCount
+        self.reviewCount = reviewCount
+        self.reviewCommentCount = reviewCommentCount
+        self.commitHash = commitHash
+    }
+}
+
+public struct SyncPRUseCase: Sendable {
+
+    private let config: RepositoryConfiguration
+
+    public init(config: RepositoryConfiguration) {
+        self.config = config
+    }
+
+    public static func parseOutput(config: RepositoryConfiguration, prNumber: Int, commitHash: String? = nil) -> SyncSnapshot {
+        let resolvedCommit = commitHash ?? resolveCommitHash(config: config, prNumber: prNumber)
+
+        let files = OutputFileReader.files(
+            in: config,
+            prNumber: prNumber,
+            phase: .diff,
+            commitHash: resolvedCommit
+        )
+
+        let prDiff = LoadPRDiffUseCase(config: config).execute(prNumber: prNumber, commitHash: resolvedCommit)
+
+        let comments: GitHubPullRequestComments? = try? PhaseOutputParser.parsePhaseOutput(
+            config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghCommentsFilename
+        )
+
+        return SyncSnapshot(
+            prDiff: prDiff,
+            files: files,
+            commentCount: comments?.comments.count ?? 0,
+            reviewCount: comments?.reviews.count ?? 0,
+            reviewCommentCount: comments?.reviewComments.count ?? 0,
+            commitHash: resolvedCommit
+        )
+    }
+
+    /// Resolve the commit hash from metadata/gh-pr.json, or scan analysis/ for the latest commit directory.
+    public static func resolveCommitHash(config: RepositoryConfiguration, prNumber: Int) -> String? {
+        if let pr = PRDiscoveryService.loadGitHubPR(outputDir: config.resolvedOutputDir, prNumber: prNumber),
+           let fullHash = pr.headRefOid {
+            return String(fullHash.prefix(7))
+        }
+        let analysisRoot = "\(config.resolvedOutputDir)/\(prNumber)/\(PRRadarPhasePaths.analysisDirectoryName)"
+        if let dirs = try? FileManager.default.contentsOfDirectory(atPath: analysisRoot) {
+            return dirs.sorted().last
+        }
+        return nil
+    }
+
+    public func execute(prNumber: Int, force: Bool = false) -> AsyncThrowingStream<PhaseProgress<SyncSnapshot>, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(.running(phase: .diff))
+
+            Task {
+                do {
+                    try Task.checkCancellation()
+
+                    let (gitHub, gitOps) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: config.githubAccount)
+
+                    try Task.checkCancellation()
+
+                    if !force {
+                        let cachedPR: GitHubPullRequest? = try? PhaseOutputParser.parsePhaseOutput(
+                            config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghPRFilename
+                        )
+                        if let cachedUpdatedAt = cachedPR?.updatedAt {
+                            let currentUpdatedAt = try await gitHub.getPRUpdatedAt(number: prNumber)
+                            if cachedUpdatedAt == currentUpdatedAt {
+                                let snapshot = Self.parseOutput(config: config, prNumber: prNumber)
+                                continuation.yield(.completed(output: snapshot))
+                                continuation.finish()
+                                return
+                            }
+                        }
+                    }
+
+                    let prMetadata = try await gitHub.getPullRequest(number: prNumber)
+                    guard let baseBranch = prMetadata.baseRefName,
+                          let headBranch = prMetadata.headRefName else {
+                        throw PRAcquisitionService.AcquisitionError.missingHeadCommitSHA
+                    }
+                    let historyProvider = GitHubServiceFactory.createHistoryProvider(
+                        diffSource: config.diffSource,
+                        gitHub: gitHub,
+                        gitOps: gitOps,
+                        repoPath: config.repoPath,
+                        prNumber: prNumber,
+                        baseBranch: baseBranch,
+                        headBranch: headBranch
+                    )
+                    let acquisition = PRAcquisitionService(gitHub: gitHub, gitOps: gitOps, historyProvider: historyProvider)
+                    let authorCache = AuthorCacheService()
+
+                    continuation.yield(.log(text: "Fetching PR #\(prNumber) from GitHub...\n"))
+
+                    let result = try await acquisition.acquire(
+                        prNumber: prNumber,
+                        outputDir: config.resolvedOutputDir,
+                        authorCache: authorCache
+                    )
+
+                    try Task.checkCancellation()
+
+                    let comments = result.comments
+                    continuation.yield(.log(text: "Diff acquired: \(result.diff.hunks.count) hunks across \(result.diff.uniqueFiles.count) files\n"))
+                    continuation.yield(.log(text: "Comments: \(comments.comments.count) issue, \(comments.reviews.count) reviews, \(comments.reviewComments.count) inline\n"))
+
+                    for rc in comments.reviewComments {
+                        let author = rc.author?.login ?? "unknown"
+                        let file = rc.path.split(separator: "/").last.map(String.init) ?? rc.path
+                        continuation.yield(.log(text: "  [\(author)] \(file):\(rc.line ?? 0) — \(rc.body.prefix(80))\n"))
+                    }
+
+                    let snapshot = Self.parseOutput(config: config, prNumber: prNumber, commitHash: result.commitHash)
+                    continuation.yield(.completed(output: snapshot))
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish(throwing: CancellationError())
+                } catch {
+                    continuation.yield(.failed(error: error.localizedDescription, logs: ""))
+                    continuation.finish()
+                }
+            }
+        }
+    }
+}

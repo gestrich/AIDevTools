@@ -1,0 +1,364 @@
+import Foundation
+import PRRadarCLIService
+import PRRadarConfigService
+import PRRadarModels
+
+public struct AnalyzeUseCase: Sendable {
+
+    private let config: RepositoryConfiguration
+
+    public init(config: RepositoryConfiguration) {
+        self.config = config
+    }
+
+    // MARK: - Public API
+
+    public func execute(request: PRReviewRequest) -> AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error> {
+        if let filter = request.filter {
+            executeFiltered(prNumber: request.prNumber, filter: filter, analysisMode: request.analysisMode, commitHash: request.commitHash, tasks: request.tasks)
+        } else {
+            executeFullRun(prNumber: request.prNumber, analysisMode: request.analysisMode, commitHash: request.commitHash, tasks: request.tasks)
+        }
+    }
+
+    // MARK: - Full Run
+
+    private func executeFullRun(prNumber: Int, analysisMode: AnalysisMode, commitHash: String?, tasks: [RuleRequest]) -> AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(.running(phase: .analyze))
+
+            Task {
+                do {
+                    let resolvedCommit = commitHash ?? SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+
+                    let allTasks = tasks.sorted().filter { analysisMode.matches($0) }
+
+                    let evalsDir = PRRadarPhasePaths.phaseDirectory(
+                        outputDir: config.resolvedOutputDir,
+                        prNumber: prNumber,
+                        phase: .analyze,
+                        commitHash: resolvedCommit
+                    )
+
+                    if allTasks.isEmpty {
+                        continuation.yield(.log(text: "No tasks to evaluate (phase completed successfully with 0 tasks)\n"))
+
+                        try PRRadarPhasePaths.ensureDirectoryExists(at: evalsDir)
+
+                        let encoder = JSONEncoder()
+                        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+                        let summary = PRReviewSummary(
+                            prNumber: prNumber,
+                            evaluatedAt: ISO8601DateFormatter().string(from: Date()),
+                            totalTasks: 0,
+                            violationsFound: 0,
+                            totalCostUsd: 0.0,
+                            totalDurationMs: 0
+                        )
+                        let summaryData = try encoder.encode(summary)
+                        try summaryData.write(to: URL(fileURLWithPath: "\(evalsDir)/\(PRRadarPhasePaths.summaryJSONFilename)"))
+
+                        try PhaseResultWriter.writeSuccess(
+                            phase: .analyze,
+                            outputDir: config.resolvedOutputDir,
+                            prNumber: prNumber,
+                            commitHash: resolvedCommit,
+                            stats: PhaseStats(artifactsProduced: 0)
+                        )
+
+                        let output = PRReviewResult(taskEvaluations: [], summary: summary)
+                        continuation.yield(.completed(output: output))
+                        continuation.finish()
+                        return
+                    }
+
+                    let evalResult = try await runEvaluations(
+                        tasks: allTasks, allTasks: allTasks, prNumber: prNumber,
+                        commitHash: resolvedCommit, evalsDir: evalsDir, continuation: continuation
+                    )
+
+                    try AnalysisCacheService.writeTaskSnapshots(tasks: allTasks, evalsDir: evalsDir)
+
+                    let allResults = evalResult.cached + evalResult.fresh
+                    let violationCount = allResults.compactMap(\.success).flatMap(\.violations).count
+
+                    let cumulativeCounts = Self.cumulativeEvalCounts(evalsDir: evalsDir)
+
+                    let summary = PRReviewSummary(
+                        prNumber: prNumber,
+                        evaluatedAt: ISO8601DateFormatter().string(from: Date()),
+                        totalTasks: cumulativeCounts.totalTasks,
+                        violationsFound: cumulativeCounts.violationsFound,
+                        totalCostUsd: cumulativeCounts.totalCostUsd,
+                        totalDurationMs: evalResult.durationMs
+                    )
+
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                    let summaryData = try encoder.encode(summary)
+                    try summaryData.write(to: URL(fileURLWithPath: "\(evalsDir)/\(PRRadarPhasePaths.summaryJSONFilename)"))
+
+                    try PhaseResultWriter.writeSuccess(
+                        phase: .analyze,
+                        outputDir: config.resolvedOutputDir,
+                        prNumber: prNumber,
+                        commitHash: resolvedCommit,
+                        stats: PhaseStats(
+                            artifactsProduced: cumulativeCounts.totalTasks,
+                            durationMs: evalResult.durationMs,
+                            costUsd: cumulativeCounts.totalCostUsd
+                        )
+                    )
+
+                    continuation.yield(.log(text: AnalysisCacheService.completionMessage(freshCount: evalResult.fresh.count, cachedCount: evalResult.cached.count, totalCount: allTasks.count, violationCount: violationCount) + "\n"))
+
+                    let output = PRReviewResult(tasks: allTasks, outcomes: allResults, summary: summary, cachedCount: evalResult.cached.count)
+                    continuation.yield(.completed(output: output))
+                    continuation.finish()
+                } catch {
+                    continuation.yield(.failed(error: error.localizedDescription, logs: ""))
+                    continuation.finish()
+                }
+            }
+        }
+    }
+
+    // MARK: - Filtered Run
+
+    private func executeFiltered(prNumber: Int, filter: RuleFilter, analysisMode: AnalysisMode, commitHash: String?, tasks: [RuleRequest]) -> AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(.running(phase: .analyze))
+
+            Task {
+                do {
+                    let resolvedCommit = commitHash ?? SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+
+                    let allTasks = tasks.sorted()
+
+                    let filteredTasks = allTasks.filter { filter.matches($0) && analysisMode.matches($0) }
+
+                    if filteredTasks.isEmpty {
+                        continuation.yield(.log(text: "No tasks match the filter criteria\n"))
+                        let output = try Self.buildMergedOutput(
+                            config: config, prNumber: prNumber, allTasks: allTasks,
+                            cachedCount: 0, commitHash: resolvedCommit
+                        )
+                        continuation.yield(.completed(output: output))
+                        continuation.finish()
+                        return
+                    }
+
+                    let evalsDir = PRRadarPhasePaths.phaseDirectory(
+                        outputDir: config.resolvedOutputDir,
+                        prNumber: prNumber,
+                        phase: .analyze,
+                        commitHash: resolvedCommit
+                    )
+
+                    continuation.yield(.log(text: "Selective evaluation: \(filteredTasks.count) tasks match filter\n"))
+
+                    let evalResult = try await runEvaluations(
+                        tasks: filteredTasks, allTasks: allTasks, prNumber: prNumber,
+                        commitHash: resolvedCommit, evalsDir: evalsDir, continuation: continuation
+                    )
+
+                    let violationCount = (evalResult.cached + evalResult.fresh).compactMap(\.success).flatMap(\.violations).count
+                    continuation.yield(.log(text: AnalysisCacheService.completionMessage(freshCount: evalResult.fresh.count, cachedCount: evalResult.cached.count, totalCount: filteredTasks.count, violationCount: violationCount) + "\n"))
+
+                    let output = try Self.buildMergedOutput(
+                        config: config, prNumber: prNumber, allTasks: allTasks,
+                        cachedCount: evalResult.cached.count, commitHash: resolvedCommit
+                    )
+                    continuation.yield(.completed(output: output))
+                    continuation.finish()
+                } catch {
+                    continuation.yield(.failed(error: error.localizedDescription, logs: ""))
+                    continuation.finish()
+                }
+            }
+        }
+    }
+
+    // MARK: - Shared Evaluation Loop
+
+    private func runEvaluations(
+        tasks: [RuleRequest],
+        allTasks: [RuleRequest],
+        prNumber: Int,
+        commitHash: String?,
+        evalsDir: String,
+        continuation: AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error>.Continuation
+    ) async throws -> (cached: [RuleOutcome], fresh: [RuleOutcome], durationMs: Int, totalCost: Double) {
+        let prOutputDir = "\(config.resolvedOutputDir)/\(prNumber)"
+        let (cachedResults, tasksToEvaluate) = AnalysisCacheService.partitionTasks(
+            tasks: tasks, evalsDir: evalsDir, prOutputDir: prOutputDir
+        )
+
+        let cachedCount = cachedResults.count
+        let totalCount = tasks.count
+
+        continuation.yield(.log(text: AnalysisCacheService.startMessage(cachedCount: cachedCount, freshCount: tasksToEvaluate.count, totalCount: totalCount) + "\n"))
+
+        let taskMap = Dictionary(uniqueKeysWithValues: allTasks.map { ($0.taskId, $0) })
+
+        for (index, result) in cachedResults.enumerated() {
+            continuation.yield(.log(text: AnalysisCacheService.cachedTaskMessage(index: index + 1, totalCount: totalCount, result: result) + "\n"))
+            if let task = taskMap[result.taskId] {
+                continuation.yield(.taskEvent(task: task, event: .completed(result: result)))
+            }
+        }
+
+        var freshResults: [RuleOutcome] = []
+        var durationMs = 0
+        var totalCost = 0.0
+
+        if !tasksToEvaluate.isEmpty {
+            let needsCheckout = tasksToEvaluate.contains { $0.rule.analysisType != .regex }
+            if needsCheckout {
+                try await checkoutPRCommit(prNumber: prNumber, continuation: continuation)
+            }
+
+            let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config)
+            let startTime = Date()
+
+            let prDiff = PhaseOutputParser.loadPRDiff(config: config, prNumber: prNumber, commitHash: commitHash)
+
+            for (index, task) in tasksToEvaluate.enumerated() {
+                let globalIndex = cachedCount + index + 1
+                let fileName = (task.focusArea.filePath as NSString).lastPathComponent
+                continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(fileName) — \(task.rule.name)...\n"))
+
+                for try await event in singleTaskUseCase.execute(
+                    task: task, prNumber: prNumber, commitHash: commitHash,
+                    prDiff: prDiff
+                ) {
+                    continuation.yield(.taskEvent(task: task, event: event))
+                    if case .completed(let result) = event {
+                        freshResults.append(result)
+                        let status: String
+                        switch result {
+                        case .success(let s):
+                            if s.violatesRule {
+                                let maxScore = s.violations.map(\.score).max() ?? 0
+                                status = "VIOLATION (\(s.violations.count) finding\(s.violations.count == 1 ? "" : "s"), max \(maxScore)/10)"
+                            } else {
+                                status = "OK"
+                            }
+                        case .error(let e):
+                            status = "ERROR: \(e.errorMessage)"
+                        }
+                        continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(status)\n"))
+                    }
+                }
+            }
+
+            durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+            totalCost = freshResults.compactMap(\.costUsd).reduce(0, +)
+        }
+
+        return (cached: cachedResults, fresh: freshResults, durationMs: durationMs, totalCost: totalCost)
+    }
+
+    // MARK: - Checkout
+
+    private func checkoutPRCommit(
+        prNumber: Int,
+        continuation: AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error>.Continuation
+    ) async throws {
+        guard let pr = PRDiscoveryService.loadGitHubPR(outputDir: config.resolvedOutputDir, prNumber: prNumber),
+              let fullHash = pr.headRefOid else {
+            continuation.yield(.log(text: "Warning: Could not read head commit from metadata — skipping checkout\n"))
+            return
+        }
+
+        let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: config.githubAccount)
+        continuation.yield(.log(text: "Checking out PR #\(prNumber) commit \(String(fullHash.prefix(7)))...\n"))
+        try await gitOps.fetchBranch(remote: "origin", branch: "pull/\(prNumber)/head", repoPath: config.repoPath)
+        try await gitOps.checkoutCommit(sha: fullHash, repoPath: config.repoPath)
+    }
+
+    // MARK: - Helpers
+
+    private static func cumulativeEvalCounts(evalsDir: String) -> (totalTasks: Int, violationsFound: Int, totalCostUsd: Double) {
+        let fm = FileManager.default 
+        guard let files = try? fm.contentsOfDirectory(atPath: evalsDir) else {
+            return (0, 0, 0.0)
+        }
+        let dataFiles = files.filter { $0.hasPrefix(PRRadarPhasePaths.dataFilePrefix) }
+        var violations = 0
+        var cost = 0.0
+        for file in dataFiles {
+            guard let data = fm.contents(atPath: "\(evalsDir)/\(file)"),
+                  let outcome = try? JSONDecoder().decode(RuleOutcome.self, from: data) else { continue }
+            if let s = outcome.success, s.violatesRule {
+                violations += s.violations.count
+            }
+            if let c = outcome.costUsd { cost += c }
+        }
+        return (dataFiles.count, violations, cost)
+    }
+
+    private static func buildMergedOutput(
+        config: RepositoryConfiguration,
+        prNumber: Int,
+        allTasks: [RuleRequest],
+        cachedCount: Int,
+        commitHash: String? = nil
+    ) throws -> PRReviewResult {
+        let evalFiles = PhaseOutputParser.listPhaseFiles(
+            config: config, prNumber: prNumber, phase: .analyze, commitHash: commitHash
+        ).filter { $0.hasPrefix(PRRadarPhasePaths.dataFilePrefix) }
+
+        var evaluations: [RuleOutcome] = []
+        for file in evalFiles {
+            let evaluation: RuleOutcome = try PhaseOutputParser.parsePhaseOutput(
+                config: config, prNumber: prNumber, phase: .analyze, filename: file, commitHash: commitHash
+            )
+            evaluations.append(evaluation)
+        }
+
+        let violationCount = evaluations.compactMap(\.success).flatMap(\.violations).count
+        let summary = PRReviewSummary(
+            prNumber: prNumber,
+            evaluatedAt: ISO8601DateFormatter().string(from: Date()),
+            totalTasks: evaluations.count,
+            violationsFound: violationCount,
+            totalCostUsd: evaluations.compactMap(\.costUsd).reduce(0, +),
+            totalDurationMs: evaluations.map(\.durationMs).reduce(0, +)
+        )
+
+        return PRReviewResult(
+            tasks: allTasks,
+            outcomes: evaluations,
+            summary: summary,
+            cachedCount: cachedCount
+        )
+    }
+
+    public static func parseOutput(config: RepositoryConfiguration, prNumber: Int, commitHash: String? = nil) throws -> PRReviewResult {
+        let resolvedCommit = commitHash ?? SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+
+        let summary: PRReviewSummary = try PhaseOutputParser.parsePhaseOutput(
+            config: config, prNumber: prNumber, phase: .analyze, filename: PRRadarPhasePaths.summaryJSONFilename, commitHash: resolvedCommit
+        )
+
+        let evalFiles = PhaseOutputParser.listPhaseFiles(
+            config: config, prNumber: prNumber, phase: .analyze, commitHash: resolvedCommit
+        ).filter { $0.hasPrefix(PRRadarPhasePaths.dataFilePrefix) }
+
+        var evaluations: [RuleOutcome] = []
+        for file in evalFiles {
+            let evaluation: RuleOutcome = try PhaseOutputParser.parsePhaseOutput(
+                config: config, prNumber: prNumber, phase: .analyze, filename: file, commitHash: resolvedCommit
+            )
+            evaluations.append(evaluation)
+        }
+
+        let tasks: [RuleRequest] = (try? PhaseOutputParser.parseAllPhaseFiles(
+            config: config, prNumber: prNumber, phase: .prepare, subdirectory: PRRadarPhasePaths.prepareTasksSubdir, commitHash: resolvedCommit
+        )) ?? []
+
+        return PRReviewResult(tasks: tasks, outcomes: evaluations, summary: summary)
+    }
+}

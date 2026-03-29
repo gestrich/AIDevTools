@@ -185,7 +185,10 @@ All PRRadar domain models and services build in AIDevTools.
 
 **Verification:** `swift build --target PRRadarCLIService` succeeds.
 
-## - [ ] Phase 4: Migrate feature layer
+## - [x] Phase 4: Migrate feature layer
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Dropped credential/settings use cases (`CredentialStatusLoader`, `ListCredentialAccountsUseCase`, `LoadCredentialStatusUseCase`, `RemoveCredentialsUseCase`, `SaveCredentialsUseCase`, `LoadSettingsUseCase`, `SaveConfigurationUseCase`, `RemoveConfigurationUseCase`, `SetDefaultConfigurationUseCase`, `UpdateOutputDirUseCase`) since they reference `SettingsService`/`AppSettings`/`RepositoryConfigurationJSON` removed in Phase 3 — equivalent functionality lives in AIDevTools' `CredentialFeature`. Updated `CredentialResolver(settingsService:)` calls to `CredentialResolver.createPlatform(githubAccount:)`. Replaced `DataPathsService.` with `PRRadarPhasePaths.` throughout. Added `import EnvironmentSDK` for `PythonEnvironment`. Updated `readLastRun()` → `readLastRun(marker: "Analysis started")` to match AIDevTools' parameterized API.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
