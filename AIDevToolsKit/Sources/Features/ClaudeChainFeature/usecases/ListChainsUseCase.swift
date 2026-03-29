@@ -54,7 +54,8 @@ public struct ListChainsUseCase: Sendable {
                 name: project.name,
                 basePath: (chainDir as NSString).appendingPathComponent(project.name)
             )
-            let repository = ProjectRepository(repo: "")
+            let githubClient = GitHubClient(workingDirectory: chainDir)
+            let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
             guard let spec = try? repository.loadLocalSpec(project: absoluteProject) else {
                 return nil
             }

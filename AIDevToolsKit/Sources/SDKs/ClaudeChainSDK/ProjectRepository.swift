@@ -10,7 +10,7 @@ public class ProjectRepository {
     ///
     /// - Parameter repo: GitHub repository in format 'owner/name'
     /// - Parameter gitHubOperations: GitHubOperations instance for dependency injection (defaults to real GitHubOperations)
-    public init(repo: String, gitHubOperations: GitHubOperationsProtocol = GitHubOperations()) {
+    public init(repo: String, gitHubOperations: GitHubOperationsProtocol) {
         self.repo = repo
         self.gitHubOperations = gitHubOperations
     }

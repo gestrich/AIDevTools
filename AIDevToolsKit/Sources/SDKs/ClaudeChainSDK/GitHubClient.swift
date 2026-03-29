@@ -7,7 +7,7 @@ public struct GitHubClient: Sendable {
     private let environment: [String: String]?
     private let workingDirectory: String
 
-    public init(client: CLIClient = CLIClient(), environment: [String: String]? = nil, workingDirectory: String = ".") {
+    public init(client: CLIClient = CLIClient(), environment: [String: String]? = nil, workingDirectory: String) {
         self.client = client
         self.environment = environment
         self.workingDirectory = workingDirectory

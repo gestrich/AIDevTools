@@ -48,7 +48,8 @@ public struct PrepareCommand: AsyncParsableCommand {
             }
 
             // Initialize infrastructure
-            let projectRepository = ProjectRepository(repo: repo)
+            let githubClient = GitHubClient(workingDirectory: workingDirectory)
+            let projectRepository = ProjectRepository(repo: repo, gitHubOperations: GitHubOperations(githubClient: githubClient))
             
             // Initialize services
             let prService = PRService(repo: repo)

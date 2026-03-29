@@ -9,7 +9,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     private let repositoryService: RepositoryService
     
     /// Public initializer for dependency injection
-    public init(githubClient: GitHubClient = GitHubClient(), repositoryService: RepositoryService = RepositoryService()) {
+    public init(githubClient: GitHubClient, repositoryService: RepositoryService = RepositoryService()) {
         self.githubClient = githubClient
         self.repositoryService = repositoryService
     }
