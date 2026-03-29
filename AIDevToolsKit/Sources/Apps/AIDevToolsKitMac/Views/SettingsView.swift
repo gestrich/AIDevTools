@@ -40,6 +40,7 @@ struct SettingsView: View {
                 casesDirectory: workspaceModel.casesDirectory(for: config),
                 completedDirectory: workspaceModel.completedDirectory(for: config),
                 proposedDirectory: workspaceModel.proposedDirectory(for: config),
+                prradarSettings: workspaceModel.prradarSettings(for: config),
                 isNew: isAddingNew
             ) { updatedConfig, casesDirectory, completedDirectory, proposedDirectory in
                 if isAddingNew {
@@ -59,6 +60,13 @@ struct SettingsView: View {
                     )
                 }
                 isAddingNew = false
+            } onSavePRRadarSettings: { settings in
+                workspaceModel.updatePRRadarSettings(
+                    for: settings.repoId,
+                    rulePaths: settings.rulePaths,
+                    diffSource: settings.diffSource,
+                    agentScriptPath: settings.agentScriptPath
+                )
             } onCancel: {
                 isAddingNew = false
             }

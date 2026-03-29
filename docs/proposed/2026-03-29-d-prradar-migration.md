@@ -200,7 +200,10 @@ PRReviewFeature builds in AIDevTools.
 
 **Verification:** `swift build --target PRReviewFeature` succeeds.
 
-## - [ ] Phase 5: Migrate Mac app views as new workspace tab
+## - [x] Phase 5: Migrate Mac app views as new workspace tab
+
+**Skills used**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
+**Principles applied**: Dropped PRRadar's `AppModel` and `SettingsModel` entirely — repo selection handled by `WorkspaceModel`, credential management by AIDevTools' `CredentialFeature`. `PRRadarContentView` takes `repository: RepositoryInfo` and uses `.task(id: repository.id)` to rebuild `AllPRsModel` on repo change. `agentScriptPath` added as a stored field on `PRRadarRepoSettings` (users configure it in Settings → Repositories → PR Radar section). `Markdown` module from `swift-markdown` added to `AIDevToolsKitMac` target for `MarkupHTMLConverter`. Config sidebar removed from `PRRadarContentView` — two-column layout (PR list + detail) replacing original three-column layout.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`, `swift-app-architecture:swift-swiftui`
 

@@ -3,6 +3,7 @@ import CodexCLISDK
 import DataPathsService
 import EvalService
 import MarkdownPlannerService
+import PRRadarConfigService
 import ProviderRegistryService
 import RepositorySDK
 
@@ -12,6 +13,7 @@ struct CompositionRoot {
     let evalSettingsStore: EvalRepoSettingsStore
     let evalProviderRegistry: EvalProviderRegistry
     let planSettingsStore: MarkdownPlannerRepoSettingsStore
+    let prradarSettingsStore: PRRadarRepoSettingsStore
     let providerModel: ProviderModel
     let repositoryStore: RepositoryStore
     let settingsModel: SettingsModel
@@ -30,6 +32,9 @@ struct CompositionRoot {
         let planSettingsStore = MarkdownPlannerRepoSettingsStore(
             filePath: try dataPathsService.path(for: .planSettings).appending(path: "plan-settings.json")
         )
+        let prradarSettingsStore = PRRadarRepoSettingsStore(
+            filePath: try dataPathsService.path(for: .prradarSettings).appending(path: "prradar-settings.json")
+        )
 
         let evalProviderRegistry = EvalProviderRegistry(entries: [
             EvalProviderEntry(client: ClaudeProvider()),
@@ -41,6 +46,7 @@ struct CompositionRoot {
             evalSettingsStore: evalSettingsStore,
             evalProviderRegistry: evalProviderRegistry,
             planSettingsStore: planSettingsStore,
+            prradarSettingsStore: prradarSettingsStore,
             providerModel: ProviderModel(),
             repositoryStore: repositoryStore,
             settingsModel: settingsModel

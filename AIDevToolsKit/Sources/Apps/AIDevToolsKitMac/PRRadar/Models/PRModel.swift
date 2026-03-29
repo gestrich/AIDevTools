@@ -1,0 +1,958 @@
+import Foundation
+import Logging
+import PRRadarCLIService
+import PRRadarConfigService
+import PRRadarModels
+import PRReviewFeature
+
+private let logger = Logger(label: "PRRadar.PRModel")
+
+@Observable
+@MainActor
+final class PRModel: Identifiable, Hashable {
+
+    private(set) var metadata: PRMetadata
+    let config: RepositoryConfiguration
+
+    nonisolated let id: Int
+
+    private(set) var analysisState: AnalysisState = .loading
+    private(set) var detailLoaded = false
+    private(set) var phaseStates: [PRRadarPhase: PhaseState] = [:]
+
+    private(set) var detail: PRDetail?
+    private(set) var resolvedDiff: ResolvedDiff?
+    private var inProgressAnalysis: PRReviewResult?
+    private(set) var comments: CommentPhaseOutput?
+
+    private(set) var commentPostingState: CommentPostingState = .idle
+    private(set) var submittingCommentIds: Set<String> = []
+    private(set) var submittedCommentIds: Set<String> = []
+
+    private(set) var evaluations: [String: TaskEvaluation] = [:]
+    private(set) var reviewComments: [ReviewComment] = []
+    private var prepareAccumulator: LiveTranscriptAccumulator?
+    private(set) var operationMode: OperationMode = .idle
+    var currentViolationIndex: Int = -1
+    var pendingViolationNavigation: ViolationNavigation?
+    private var refreshTask: Task<Void, Never>?
+
+    enum ViolationNavigation: Equatable {
+        case first
+        case last
+        case next
+        case previous
+    }
+
+    // MARK: - Forwarding Properties
+
+    var syncSnapshot: SyncSnapshot? { detail?.syncSnapshot }
+    var preparation: PrepareOutput? { detail?.preparation }
+    var analysis: PRReviewResult? { inProgressAnalysis ?? detail?.analysis }
+
+    func ruleGroups(forFile filePath: String) -> [RuleGroup] {
+        RuleGroup.fromTasks((preparation?.tasks ?? []).filter { $0.focusArea.filePath == filePath })
+    }
+
+    func ruleGroups(forFocusArea focusAreaId: String) -> [RuleGroup] {
+        RuleGroup.fromTasks((preparation?.tasks ?? []).filter { $0.focusArea.focusId == focusAreaId })
+    }
+
+    func focusAreas(forFile filePath: String) -> [FocusArea] {
+        let tasks = preparation?.tasks ?? []
+        var seen = Set<String>()
+        return tasks.compactMap { task in
+            guard task.focusArea.filePath == filePath,
+                  seen.insert(task.focusArea.focusId).inserted else { return nil }
+            return task.focusArea
+        }
+    }
+    var report: ReportPhaseOutput? { detail?.report }
+    var postedComments: GitHubPullRequestComments? { detail?.postedComments }
+    var imageURLMap: [String: String] { detail?.imageURLMap ?? [:] }
+    var imageBaseDir: String? { detail?.imageBaseDir }
+    var savedOutputs: [PRRadarPhase: [EvaluationOutput]] { detail?.savedOutputs ?? [:] }
+    var currentCommitHash: String? { detail?.commitHash }
+    var availableCommits: [String] { detail?.availableCommits ?? [] }
+
+    init(metadata: PRMetadata, config: RepositoryConfiguration) {
+        self.id = metadata.id
+        self.metadata = metadata
+        self.config = config
+    }
+
+    // MARK: - Summary Loading (lightweight, for list badges)
+
+    func loadSummary() {
+        let commitHash = SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+
+        let analysisSummary: PRReviewSummary? = try? PhaseOutputParser.parsePhaseOutput(
+            config: config,
+            prNumber: prNumber,
+            phase: .analyze,
+            filename: PRRadarPhasePaths.summaryJSONFilename,
+            commitHash: commitHash
+        )
+
+        guard let summary = analysisSummary else {
+            analysisState = .unavailable
+            reviewComments = FetchReviewCommentsUseCase(config: config)
+                .execute(prNumber: prNumber, minScore: 1, commitHash: commitHash)
+            return
+        }
+
+        let postedComments: GitHubPullRequestComments? = try? PhaseOutputParser.parsePhaseOutput(
+            config: config,
+            prNumber: prNumber,
+            phase: .metadata,
+            filename: PRRadarPhasePaths.ghCommentsFilename
+        )
+        let postedCount = postedComments?.reviewComments.count ?? 0
+        analysisState = .loaded(
+            violationCount: summary.violationsFound,
+            evaluatedAt: summary.evaluatedAt,
+            postedCommentCount: postedCount
+        )
+
+        reviewComments = FetchReviewCommentsUseCase(config: config)
+            .execute(prNumber: prNumber, minScore: 1, commitHash: commitHash)
+    }
+
+    // MARK: - Computed Properties
+
+    var prNumber: Int {
+        metadata.number
+    }
+
+    var prDiff: PRDiff? {
+        resolvedDiff?.prDiff
+    }
+
+    var fullDiff: GitDiff? {
+        resolvedDiff?.fullDiff
+    }
+
+    var effectiveDiff: GitDiff? {
+        resolvedDiff?.effectiveDiff
+    }
+
+    var moveReport: MoveReport? {
+        prDiff?.derivedMoveReport
+    }
+
+    var diffFiles: [String]? {
+        syncSnapshot?.files
+    }
+
+    var isAnyPhaseRunning: Bool {
+        phaseStates.values.contains {
+            switch $0 {
+            case .running, .refreshing: return true
+            default: return false
+            }
+        }
+    }
+
+    var isAIPhaseRunning: Bool {
+        prepareAccumulator != nil || evaluations.values.contains { $0.isStreaming }
+    }
+
+    var allOutputs: [PRRadarPhase: [EvaluationOutput]] {
+        var result: [PRRadarPhase: [EvaluationOutput]] = [:]
+
+        if let acc = prepareAccumulator {
+            result[.prepare] = [acc.toEvaluationOutput()]
+        } else if let prepareOutputs = savedOutputs[.prepare], !prepareOutputs.isEmpty {
+            result[.prepare] = prepareOutputs
+        }
+
+        let analyzeOutputs = evaluations.values
+            .sorted(by: { $0.request < $1.request })
+            .compactMap { $0.evaluationOutput }
+        if !analyzeOutputs.isEmpty {
+            result[.analyze] = analyzeOutputs
+        }
+
+        return result
+    }
+
+    func phaseForOutput(identifier: String) -> PRRadarPhase? {
+        let outputs = allOutputs
+        for phase in [PRRadarPhase.prepare, .analyze] {
+            if let phaseOutputs = outputs[phase],
+               phaseOutputs.contains(where: { $0.identifier == identifier }) {
+                return phase
+            }
+        }
+        return nil
+    }
+
+    var pendingCommentCount: Int {
+        reviewComments.filter { $0.state == .new && !submittedCommentIds.contains($0.id) }.count
+    }
+
+    var hasPendingComments: Bool {
+        pendingCommentCount > 0
+    }
+
+    struct ViolationLocation {
+        let file: String
+        let commentID: String
+    }
+
+    var orderedViolations: [ViolationLocation] {
+        guard let fullDiff = resolvedDiff?.fullDiff else { return [] }
+        let mapping = DiffCommentMapper.map(diff: fullDiff, comments: reviewComments)
+        var result: [ViolationLocation] = []
+        for file in fullDiff.changedFiles {
+            if let lineMap = mapping.byFileAndLine[file] {
+                for line in lineMap.keys.sorted() {
+                    for comment in lineMap[line, default: []] where comment.readyForPosting {
+                        result.append(ViolationLocation(file: file, commentID: comment.id))
+                    }
+                }
+            }
+            if let fileLevel = mapping.unmatchedByFile[file] {
+                for comment in fileLevel where comment.readyForPosting {
+                    result.append(ViolationLocation(file: file, commentID: comment.id))
+                }
+            }
+        }
+        return result
+    }
+
+    func violationPosition(for commentID: String) -> Int? {
+        guard let index = orderedViolations.firstIndex(where: { $0.commentID == commentID }) else { return nil }
+        return index + 1
+    }
+
+    func updateMetadata(_ newMetadata: PRMetadata) {
+        metadata = newMetadata
+    }
+
+    func resetAfterDataDeletion(metadata newMetadata: PRMetadata) {
+        metadata = newMetadata
+        detail = nil
+        resolvedDiff = nil
+        inProgressAnalysis = nil
+        comments = nil
+        reviewComments = []
+        analysisState = .loading
+        detailLoaded = false
+        phaseStates = [:]
+        commentPostingState = .idle
+        submittingCommentIds = []
+        submittedCommentIds = []
+        evaluations = [:]
+        prepareAccumulator = nil
+        operationMode = .idle
+        refreshTask?.cancel()
+        refreshTask = nil
+        reloadDetail()
+    }
+
+    // MARK: - Detail Loading
+
+    private func reloadDetail(commitHash: String? = nil) {
+        let newDetail = LoadPRDetailUseCase(config: config)
+            .execute(prNumber: prNumber, commitHash: commitHash ?? detail?.commitHash)
+        applyDetail(newDetail)
+        detailLoaded = true
+    }
+
+    private func reloadDetailAsync(commitHash: String? = nil) async {
+        let useCase = LoadPRDetailUseCase(config: config)
+        let prNum = prNumber
+        let commit = commitHash ?? detail?.commitHash
+        let newDetail = await Task.detached {
+            useCase.execute(prNumber: prNum, commitHash: commit)
+        }.value
+        applyDetail(newDetail)
+        detailLoaded = true
+    }
+
+    private func applyDetail(_ newDetail: PRDetail) {
+        self.detail = newDetail
+
+        if let prDiff = newDetail.prDiff {
+            resolvedDiff = ResolvedDiff(prDiff: prDiff, storedEffectiveDiff: newDetail.storedEffectiveDiff)
+        } else {
+            resolvedDiff = nil
+        }
+
+        for (phase, status) in newDetail.phaseStatuses {
+            if case .running = phaseStates[phase] { continue }
+            if case .refreshing = phaseStates[phase] { continue }
+            if status.isComplete {
+                phaseStates[phase] = .completed(logs: "")
+            } else if !status.exists {
+                phaseStates[phase] = .idle
+            } else {
+                phaseStates[phase] = .failed(error: status.missingItems.first ?? "Incomplete", logs: "")
+            }
+        }
+
+        if let taskEvals = newDetail.taskEvaluations {
+            let outputMap = Dictionary(
+                (newDetail.savedOutputs[.analyze] ?? []).map {
+                    ($0.identifier, $0)
+                },
+                uniquingKeysWith: { _, new in new }
+            )
+            var newEvaluations: [String: TaskEvaluation] = [:]
+            for var eval in taskEvals {
+                eval.savedOutput = outputMap[eval.request.taskId]
+                newEvaluations[eval.request.taskId] = eval
+            }
+            evaluations = newEvaluations
+        }
+
+        if let summary = newDetail.analysisSummary {
+            let postedCount = newDetail.postedComments?.reviewComments.count ?? 0
+            analysisState = .loaded(
+                violationCount: summary.violationsFound,
+                evaluatedAt: summary.evaluatedAt,
+                postedCommentCount: postedCount
+            )
+        } else {
+            analysisState = .unavailable
+        }
+
+        reloadReviewComments()
+    }
+
+    private func reloadReviewComments() {
+        reviewComments = FetchReviewCommentsUseCase(config: config)
+            .execute(prNumber: prNumber, minScore: 1, commitHash: currentCommitHash)
+    }
+
+    func loadDetail() {
+        guard !detailLoaded else { return }
+        reloadDetail()
+    }
+
+    func loadDetailAsync() async {
+        guard !detailLoaded else { return }
+        await reloadDetailAsync()
+    }
+
+    // MARK: - Refresh PR Data
+
+    func refreshPRData() async {
+        operationMode = .refreshing
+        defer { operationMode = .idle }
+        await refreshDiff(force: true)
+    }
+
+    // MARK: - Diff Refresh
+
+    func refreshDiff(force: Bool = false) async {
+        refreshTask?.cancel()
+
+        let hasCachedData = syncSnapshot != nil
+        if hasCachedData {
+            phaseStates[.diff] = .refreshing(logs: "Checking PR #\(prNumber)...\n")
+        } else {
+            phaseStates[.diff] = .running(logs: "Fetching diff for PR #\(prNumber)...\n")
+        }
+
+        let useCase = SyncPRUseCase(config: config)
+
+        let task = Task {
+            do {
+                for try await progress in useCase.execute(prNumber: prNumber, force: force) {
+                    try Task.checkCancellation()
+                    switch progress {
+                    case .running:
+                        break
+                    case .progress:
+                        break
+                    case .log(let text):
+                        appendLog(text, to: .diff)
+                    case .prepareOutput: break
+                    case .prepareToolUse: break
+                    case .taskEvent: break
+                    case .completed(let snapshot):
+                        reloadDetail(commitHash: snapshot.commitHash)
+                        let logs = runningLogs(for: .diff)
+                        phaseStates[.diff] = .completed(logs: logs)
+                    case .failed(let error, let logs):
+                        let existingLogs = runningLogs(for: .diff)
+                        failPhase(.diff, error: error, logs: existingLogs + logs)
+                    }
+                }
+            } catch is CancellationError {
+                if syncSnapshot != nil {
+                    phaseStates[.diff] = .completed(logs: "")
+                } else {
+                    phaseStates[.diff] = .idle
+                }
+            } catch {
+                let logs = runningLogs(for: .diff)
+                failPhase(.diff, error: error.localizedDescription, logs: logs)
+            }
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    func cancelRefresh() {
+        refreshTask?.cancel()
+        refreshTask = nil
+        if syncSnapshot != nil {
+            phaseStates[.diff] = .completed(logs: "")
+        } else {
+            phaseStates[.diff] = .idle
+        }
+    }
+
+    // MARK: - State Queries
+
+    func stateFor(_ phase: PRRadarPhase) -> PhaseState {
+        phaseStates[phase] ?? .idle
+    }
+
+    func canRunPhase(_ phase: PRRadarPhase) -> Bool {
+        guard !isAnyPhaseRunning else { return false }
+
+        switch phase {
+        case .metadata:
+            return true
+        case .diff:
+            return true
+        case .prepare:
+            return isPhaseCompleted(.diff)
+        case .analyze:
+            return isPhaseCompleted(.prepare)
+        case .report:
+            return isPhaseCompleted(.analyze)
+        }
+    }
+
+    func isPhaseCompleted(_ phase: PRRadarPhase) -> Bool {
+        if case .completed = stateFor(phase) { return true }
+        return false
+    }
+
+    // MARK: - Commit Switching
+
+    func switchToCommit(_ commitHash: String) {
+        inProgressAnalysis = nil
+        comments = nil
+        phaseStates = [:]
+        reloadDetail(commitHash: commitHash)
+    }
+
+    // MARK: - Phase Execution
+
+    func runPhase(_ phase: PRRadarPhase) async {
+        let shouldManageMode = operationMode == .idle
+        if shouldManageMode {
+            operationMode = phase == .diff ? .refreshing : .analyzing
+        }
+        defer { if shouldManageMode { operationMode = .idle } }
+        switch phase {
+        case .metadata: break
+        case .diff: await runSync()
+        case .prepare: await runPrepare()
+        case .analyze: await runAnalyze()
+        case .report: await runReport()
+        }
+    }
+
+    @discardableResult
+    func runAnalysis(ruleFilePaths: [String]? = nil) async -> Bool {
+        logger.info("Analysis started", metadata: ["prNumber": "\(prNumber)", "ruleFilePaths": "\(ruleFilePaths ?? [])"])
+        loadDetail()
+        operationMode = .analyzing
+        defer { operationMode = .idle }
+
+        let phases: [PRRadarPhase] = [.diff, .prepare, .analyze, .report]
+        for phase in phases {
+            logger.info("Phase starting", metadata: ["phase": "\(phase)", "canRun": "\(canRunPhase(phase))"])
+            if phase == .analyze, let ruleFilePaths {
+                let filter = RuleFilter(ruleFilePaths: ruleFilePaths)
+                startPhase(.analyze)
+                await runFilteredAnalysis(filter: filter)
+                completePhase(.analyze)
+                continue
+            }
+            guard canRunPhase(phase) else {
+                logger.warning("Phase skipped", metadata: ["phase": "\(phase)"])
+                break
+            }
+            await runPhase(phase)
+            if case .failed(let error, _) = stateFor(phase) {
+                logger.error("Phase failed", metadata: ["phase": "\(phase)", "error": "\(error)"])
+                break
+            }
+            logger.info("Phase completed", metadata: ["phase": "\(phase)"])
+        }
+        let success = isPhaseCompleted(.report)
+        logger.info("Analysis completed", metadata: ["prNumber": "\(prNumber)", "success": "\(success)"])
+        reloadReviewComments()
+        return success
+    }
+
+    func resetPhase(_ phase: PRRadarPhase) {
+        phaseStates[phase] = .idle
+        switch phase {
+        case .metadata:
+            break
+        case .diff, .prepare, .report:
+            reloadDetail()
+        case .analyze:
+            inProgressAnalysis = nil
+            reloadDetail()
+        }
+    }
+
+    // MARK: - Phase Runners
+
+    func runSync() async {
+        await refreshDiff(force: true)
+    }
+
+    func runComments(dryRun: Bool) async {
+        logger.info("Comment submission started", metadata: ["prNumber": "\(prNumber)", "dryRun": "\(dryRun)"])
+        commentPostingState = .running(logs: "Posting comments...\n")
+
+        let useCase = PostCommentsUseCase(config: config)
+
+        do {
+            for try await progress in useCase.execute(prNumber: prNumber, dryRun: dryRun, commitHash: currentCommitHash) {
+                switch progress {
+                case .running:
+                    break
+                case .progress:
+                    break
+                case .log(let text):
+                    appendCommentLog(text)
+                case .prepareOutput: break
+                case .prepareToolUse: break
+                case .taskEvent: break
+                case .completed(let output):
+                    comments = output
+                    let logs = commentPostingLogs
+                    commentPostingState = .completed(logs: logs)
+                case .failed(let error, let logs):
+                    commentPostingState = .failed(error: error, logs: logs)
+                }
+            }
+        } catch {
+            let logs = commentPostingLogs
+            commentPostingState = .failed(error: error.localizedDescription, logs: logs)
+        }
+    }
+
+    // MARK: - Single Comment Submission
+
+    func submitSingleComment(_ reviewComment: ReviewComment) async {
+        guard let fullDiff, let comment = reviewComment.pending else { return }
+        let commitSHA = fullDiff.commitHash
+
+        let suppressedCount = reviewComments.suppressedCount(
+            forRule: comment.ruleName, filePath: comment.filePath
+        )
+
+        submittingCommentIds.insert(reviewComment.id)
+
+        let useCase = PostSingleCommentUseCase(config: config)
+
+        do {
+            let success = try await useCase.execute(
+                comment: comment,
+                suppressedCount: suppressedCount,
+                commitSHA: commitSHA,
+                prNumber: prNumber
+            )
+
+            submittingCommentIds.remove(reviewComment.id)
+            if success {
+                submittedCommentIds.insert(reviewComment.id)
+                await refreshReviewCommentsFromGitHub()
+            }
+        } catch {
+            submittingCommentIds.remove(reviewComment.id)
+        }
+    }
+
+    // MARK: - Manual Comment Posting
+
+    func postManualComment(filePath: String, lineNumber: Int, body: String) async {
+        guard let commitSHA = fullDiff?.commitHash else { return }
+
+        let useCase = PostManualCommentUseCase(config: config)
+        let success = try? await useCase.execute(
+            prNumber: prNumber,
+            filePath: filePath,
+            lineNumber: lineNumber,
+            body: body,
+            commitSHA: commitSHA
+        )
+
+        guard success == true else { return }
+
+        await refreshReviewCommentsFromGitHub()
+    }
+
+    private func refreshReviewCommentsFromGitHub() async {
+        let fetchUseCase = FetchReviewCommentsUseCase(config: config)
+        if let updated = try? await fetchUseCase.execute(
+            prNumber: prNumber,
+            minScore: 1,
+            commitHash: currentCommitHash,
+            cachedOnly: false
+        ) {
+            reviewComments = updated
+            submittedCommentIds = []
+        }
+    }
+
+    // MARK: - File Access
+
+    func readFileFromRepo(_ relativePath: String) -> String? {
+        let fullPath = "\(config.repoPath)/\(relativePath)"
+        return try? String(contentsOfFile: fullPath, encoding: .utf8)
+    }
+
+    // MARK: - Hashable
+
+    nonisolated static func == (lhs: PRModel, rhs: PRModel) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    nonisolated func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    // MARK: - Helpers
+
+    private func runningLogs(for phase: PRRadarPhase) -> String {
+        switch phaseStates[phase] {
+        case .running(let logs), .refreshing(let logs): return logs
+        default: return ""
+        }
+    }
+
+    private func appendLog(_ text: String, to phase: PRRadarPhase) {
+        let existing: String
+        let isRefreshing: Bool
+        switch phaseStates[phase] {
+        case .running(let logs):
+            existing = logs
+            isRefreshing = false
+        case .refreshing(let logs):
+            existing = logs
+            isRefreshing = true
+        default:
+            existing = ""
+            isRefreshing = false
+        }
+        if isRefreshing {
+            phaseStates[phase] = .refreshing(logs: existing + text)
+        } else {
+            phaseStates[phase] = .running(logs: existing + text)
+        }
+    }
+
+    private var commentPostingLogs: String {
+        if case .running(let logs) = commentPostingState { return logs }
+        return ""
+    }
+
+    private func appendCommentLog(_ text: String) {
+        let existing = commentPostingLogs
+        commentPostingState = .running(logs: existing + text)
+    }
+
+    func isFileStreaming(_ filePath: String) -> Bool {
+        evaluations.values.contains { $0.isStreaming && $0.request.focusArea.filePath == filePath }
+    }
+
+    func isFocusAreaStreaming(_ focusId: String) -> Bool {
+        evaluations.values.contains { $0.isStreaming && $0.request.focusArea.focusId == focusId }
+    }
+
+    func firstOutputId(forFile filePath: String) -> String? {
+        for eval in evaluations.values where eval.request.focusArea.filePath == filePath {
+            if eval.evaluationOutput != nil {
+                return eval.request.taskId
+            }
+        }
+        return nil
+    }
+
+    func evaluationState(forTaskId taskId: String) -> TaskEvaluationState {
+        guard let eval = evaluations[taskId] else { return .none }
+        if eval.isStreaming { return .streaming }
+        if eval.isComplete { return .complete(hasOutput: eval.evaluationOutput != nil) }
+        return .queued
+    }
+
+    private func startPhase(_ phase: PRRadarPhase, logs: String = "") {
+        phaseStates[phase] = .running(logs: logs)
+    }
+
+    private func completePhase(_ phase: PRRadarPhase) {
+        let logs = runningLogs(for: phase)
+        reloadDetail()
+        phaseStates[phase] = .completed(logs: logs)
+    }
+
+    private func failPhase(_ phase: PRRadarPhase, error: String, logs: String) {
+        phaseStates[phase] = .failed(error: error, logs: logs)
+    }
+
+    private func runPrepare() async {
+        startPhase(.prepare)
+        prepareAccumulator = nil
+
+        let useCase = PrepareUseCase(config: config)
+
+        do {
+            for try await progress in useCase.execute(prNumber: prNumber, rulesDirs: config.allResolvedRulesDirs, commitHash: currentCommitHash) {
+                switch progress {
+                case .running:
+                    break
+                case .progress:
+                    break
+                case .log(let text):
+                    appendLog(text, to: .prepare)
+                case .prepareOutput(let text):
+                    if prepareAccumulator == nil {
+                        prepareAccumulator = LiveTranscriptAccumulator(
+                            identifier: "prepare",
+                            prompt: "",
+                            startedAt: Date()
+                        )
+                    }
+                    prepareAccumulator?.textChunks += text
+                case .prepareToolUse(let name):
+                    prepareAccumulator?.flushTextAndAppendToolUse(name)
+                case .taskEvent: break
+                case .completed:
+                    prepareAccumulator = nil
+                    logger.info("Prepare phase completed", metadata: ["tasks": "\(preparation?.tasks.count ?? 0)"])
+                    reloadDetail()
+                    completePhase(.prepare)
+                case .failed(let error, let logs):
+                    prepareAccumulator = nil
+                    failPhase(.prepare, error: error, logs: logs)
+                }
+            }
+        } catch {
+            prepareAccumulator = nil
+            failPhase(.prepare, error: error.localizedDescription, logs: "")
+        }
+    }
+
+    private func runAnalyze() async {
+        let tasks = preparation?.tasks ?? []
+        logger.info("Analyze phase started", metadata: ["taskCount": "\(tasks.count)"])
+        startPhase(.analyze, logs: "Running evaluations...\n")
+        for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+        inProgressAnalysis = PRReviewResult(streaming: tasks)
+        let useCase = AnalyzeUseCase(config: config)
+        let request = PRReviewRequest(prNumber: prNumber, commitHash: currentCommitHash, tasks: tasks)
+
+        do {
+            for try await progress in useCase.execute(request: request) {
+                switch progress {
+                case .running:
+                    break
+                case .progress:
+                    break
+                case .log(let text):
+                    appendLog(text, to: .analyze)
+                case .prepareOutput: break
+                case .prepareToolUse: break
+                case .taskEvent(let task, let event):
+                    handleTaskEvent(task, event)
+                case .completed:
+                    inProgressAnalysis = nil
+                    for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+                    completePhase(.analyze)
+                case .failed(let error, let logs):
+                    for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+                    failPhase(.analyze, error: error, logs: logs)
+                }
+            }
+        } catch {
+            for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+            let logs = runningLogs(for: .analyze)
+            failPhase(.analyze, error: error.localizedDescription, logs: logs)
+        }
+    }
+
+    private func runFilteredAnalysis(filter: RuleFilter, analysisMode: AnalysisMode = .all) async {
+        inProgressAnalysis = detail?.analysis ?? PRReviewResult(streaming: preparation?.tasks ?? [])
+        for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+
+        let useCase = AnalyzeUseCase(config: config)
+        let tasks = preparation?.tasks ?? []
+        let request = PRReviewRequest(prNumber: prNumber, filter: filter, commitHash: currentCommitHash, analysisMode: analysisMode, tasks: tasks)
+
+        do {
+            for try await progress in useCase.execute(request: request) {
+                switch progress {
+                case .running:
+                    break
+                case .progress:
+                    break
+                case .log(let text):
+                    appendLog(text, to: .analyze)
+                case .prepareOutput: break
+                case .prepareToolUse: break
+                case .taskEvent(let task, let event):
+                    handleTaskEvent(task, event)
+                case .completed:
+                    inProgressAnalysis = nil
+                    for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+                    reloadDetail()
+                case .failed:
+                    for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+                }
+            }
+        } catch {
+            for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+        }
+    }
+
+    private func handleTaskEvent(_ task: RuleRequest, _ event: TaskProgress) {
+        switch event {
+        case .prompt(let text):
+            logger.info("Evaluation task started", metadata: ["taskId": "\(task.taskId)", "rule": "\(task.rule.name)", "file": "\(task.focusArea.filePath)"])
+            let count = evaluations.values.filter { $0.accumulator != nil }.count
+            evaluations[task.taskId]?.accumulator = LiveTranscriptAccumulator(
+                identifier: "task-\(count + 1)",
+                prompt: text,
+                filePath: task.focusArea.filePath,
+                rule: task.rule,
+                startedAt: Date()
+            )
+        case .output(let text):
+            evaluations[task.taskId]?.accumulator?.textChunks += text
+        case .toolUse(let name):
+            evaluations[task.taskId]?.accumulator?.flushTextAndAppendToolUse(name)
+        case .completed(let result):
+            logger.info("Evaluation task completed", metadata: ["taskId": "\(task.taskId)", "rule": "\(task.rule.name)"])
+            evaluations[task.taskId]?.outcome = result
+            inProgressAnalysis?.appendResult(result, prNumber: prNumber)
+            reloadReviewComments()
+        }
+    }
+
+    func startSelectiveAnalysis(filter: RuleFilter, analysisMode: AnalysisMode = .all) {
+        guard let tasks = preparation?.tasks, !tasks.isEmpty else { return }
+        let matchingTasks = tasks.filter { filter.matches($0) && analysisMode.matches($0) }
+        guard !matchingTasks.isEmpty else { return }
+
+        if matchingTasks.count == 1, let task = matchingTasks.first {
+            Task {
+                await runSingleAnalysis(task: task)
+            }
+        } else {
+            Task {
+                await runFilteredAnalysis(filter: filter, analysisMode: analysisMode)
+            }
+        }
+    }
+
+    private func runSingleAnalysis(task: RuleRequest) async {
+        evaluations[task.taskId]?.accumulator = nil
+        inProgressAnalysis = detail?.analysis ?? PRReviewResult(streaming: preparation?.tasks ?? [])
+
+        let useCase = AnalyzeSingleTaskUseCase(config: config)
+
+        do {
+            for try await event in useCase.execute(task: task, prNumber: prNumber, commitHash: currentCommitHash) {
+                handleTaskEvent(task, event)
+            }
+            evaluations[task.taskId]?.accumulator = nil
+            reloadDetail()
+        } catch {
+            evaluations[task.taskId]?.accumulator = nil
+            failPhase(.analyze, error: error.localizedDescription, logs: "")
+        }
+
+        inProgressAnalysis = nil
+    }
+
+    private func runReport() async {
+        startPhase(.report, logs: "Generating report...\n")
+
+        let useCase = GenerateReportUseCase(config: config)
+
+        do {
+            for try await progress in useCase.execute(prNumber: prNumber, commitHash: currentCommitHash) {
+                switch progress {
+                case .running:
+                    break
+                case .progress:
+                    break
+                case .log(let text):
+                    appendLog(text, to: .report)
+                case .prepareOutput: break
+                case .prepareToolUse: break
+                case .taskEvent: break
+                case .completed:
+                    completePhase(.report)
+                case .failed(let error, let logs):
+                    failPhase(.report, error: error, logs: logs)
+                }
+            }
+        } catch {
+            let logs = runningLogs(for: .report)
+            failPhase(.report, error: error.localizedDescription, logs: logs)
+        }
+    }
+
+    // MARK: - Nested Types
+
+    struct ResolvedDiff {
+        let prDiff: PRDiff
+        let fullDiff: GitDiff
+        let effectiveDiff: GitDiff
+
+        init(prDiff: PRDiff, storedEffectiveDiff: GitDiff?) {
+            self.prDiff = prDiff
+            self.fullDiff = prDiff.toGitDiff()
+            self.effectiveDiff = storedEffectiveDiff ?? prDiff.toEffectiveGitDiff()
+        }
+    }
+
+    enum OperationMode {
+        case idle
+        case refreshing
+        case analyzing
+    }
+
+    enum AnalysisState {
+        case loading
+        case loaded(violationCount: Int, evaluatedAt: String, postedCommentCount: Int)
+        case unavailable
+    }
+
+    enum PhaseState: Sendable {
+        case idle
+        case running(logs: String)
+        case refreshing(logs: String)
+        case completed(logs: String)
+        case failed(error: String, logs: String)
+    }
+
+    enum CommentPostingState {
+        case idle
+        case running(logs: String)
+        case completed(logs: String)
+        case failed(error: String, logs: String)
+    }
+
+    enum TaskEvaluationState {
+        case none
+        case queued
+        case streaming
+        case complete(hasOutput: Bool)
+    }
+}

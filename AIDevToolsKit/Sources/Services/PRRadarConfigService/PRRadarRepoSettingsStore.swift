@@ -27,13 +27,14 @@ public struct PRRadarRepoSettingsStore: Sendable {
         try loadAll().first { $0.repoId == repoId }
     }
 
-    public func update(repoId: UUID, rulePaths: [RulePath], diffSource: DiffSource) throws {
+    public func update(repoId: UUID, rulePaths: [RulePath], diffSource: DiffSource, agentScriptPath: String = "") throws {
         var all = try loadAll()
         if let index = all.firstIndex(where: { $0.repoId == repoId }) {
             all[index].rulePaths = rulePaths
             all[index].diffSource = diffSource
+            all[index].agentScriptPath = agentScriptPath
         } else {
-            all.append(PRRadarRepoSettings(repoId: repoId, rulePaths: rulePaths, diffSource: diffSource))
+            all.append(PRRadarRepoSettings(repoId: repoId, rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath))
         }
         try save(all)
     }

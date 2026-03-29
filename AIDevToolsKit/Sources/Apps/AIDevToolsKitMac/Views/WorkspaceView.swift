@@ -68,6 +68,10 @@ struct WorkspaceView: View {
                 .tabItem { Label("Plans", systemImage: "doc.text") }
                 .tag("plans")
 
+            PRRadarContentView(repository: repo)
+                .tabItem { Label("PR Radar", systemImage: "eye") }
+                .tag("prradar")
+
             SkillsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
                 .tabItem { Label("Skills", systemImage: "star") }
                 .tag("skills")

@@ -1,6 +1,7 @@
 import EvalService
 import Foundation
 import MarkdownPlannerService
+import PRRadarConfigService
 import RepositorySDK
 import SkillBrowserFeature
 import SkillScannerSDK
@@ -24,6 +25,7 @@ final class WorkspaceModel {
     private let dataPath: URL
     private let evalSettingsStore: EvalRepoSettingsStore
     private let planSettingsStore: MarkdownPlannerRepoSettingsStore
+    private let prradarSettingsStore: PRRadarRepoSettingsStore
     private let loadRepositories: LoadRepositoriesUseCase
     private let loadSkills: LoadSkillsUseCase
     private let configureNewRepository: ConfigureNewRepositoryUseCase
@@ -34,6 +36,7 @@ final class WorkspaceModel {
         dataPath: URL,
         evalSettingsStore: EvalRepoSettingsStore,
         planSettingsStore: MarkdownPlannerRepoSettingsStore,
+        prradarSettingsStore: PRRadarRepoSettingsStore,
         loadRepositories: LoadRepositoriesUseCase,
         loadSkills: LoadSkillsUseCase,
         configureNewRepository: ConfigureNewRepositoryUseCase,
@@ -43,6 +46,7 @@ final class WorkspaceModel {
         self.dataPath = dataPath
         self.evalSettingsStore = evalSettingsStore
         self.planSettingsStore = planSettingsStore
+        self.prradarSettingsStore = prradarSettingsStore
         self.loadRepositories = loadRepositories
         self.loadSkills = loadSkills
         self.configureNewRepository = configureNewRepository
@@ -156,6 +160,33 @@ final class WorkspaceModel {
 
     func completedDirectory(for repo: RepositoryInfo) -> String? {
         try? planSettingsStore.settings(forRepoId: repo.id)?.completedDirectory
+    }
+
+    func prradarSettings(for repo: RepositoryInfo) -> PRRadarRepoSettings {
+        (try? prradarSettingsStore.settings(forRepoId: repo.id)) ?? PRRadarRepoSettings(repoId: repo.id)
+    }
+
+    func prradarConfig(for repo: RepositoryInfo) -> RepositoryConfiguration? {
+        guard !repo.path.path(percentEncoded: false).isEmpty else { return nil }
+        let settings = prradarSettings(for: repo)
+        let outputDir = dataPath
+            .appendingPathComponent("prradar/repos/\(repo.name)")
+            .path(percentEncoded: false)
+        return RepositoryConfiguration.make(
+            from: repo,
+            settings: settings,
+            outputDir: outputDir,
+            agentScriptPath: settings.agentScriptPath
+        )
+    }
+
+    func updatePRRadarSettings(for repoID: UUID, rulePaths: [RulePath], diffSource: DiffSource, agentScriptPath: String) {
+        try? prradarSettingsStore.update(
+            repoId: repoID,
+            rulePaths: rulePaths,
+            diffSource: diffSource,
+            agentScriptPath: agentScriptPath
+        )
     }
 
     func updatePlanDirectories(for repoID: UUID, proposedDirectory: String?, completedDirectory: String?) {

@@ -91,6 +91,7 @@ let package = Package(
         .target(
             name: "AIDevToolsKitMac",
             dependencies: [
+                .product(name: "Markdown", package: "swift-markdown"),
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
                 "AIOutputSDK",
                 "AnthropicSDK",
@@ -110,6 +111,11 @@ let package = Package(
                 "LoggingSDK",
                 "MarkdownPlannerFeature",
                 "MarkdownPlannerService",
+                "OctokitSDK",
+                "PRRadarCLIService",
+                "PRRadarConfigService",
+                "PRRadarModels",
+                "PRReviewFeature",
                 "ProviderRegistryService",
                 "RepositorySDK",
                 "SkillBrowserFeature",

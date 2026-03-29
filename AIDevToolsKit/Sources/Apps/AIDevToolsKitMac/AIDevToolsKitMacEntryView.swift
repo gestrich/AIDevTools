@@ -30,6 +30,7 @@ public struct AIDevToolsKitMacEntryView: View {
             dataPath: root.settingsModel.dataPath,
             evalSettingsStore: root.evalSettingsStore,
             planSettingsStore: root.planSettingsStore,
+            prradarSettingsStore: root.prradarSettingsStore,
             loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
             loadSkills: LoadSkillsUseCase(),
             configureNewRepository: ConfigureNewRepositoryUseCase(
@@ -92,6 +93,7 @@ public struct AIDevToolsSettingsView: View {
             dataPath: root.settingsModel.dataPath,
             evalSettingsStore: root.evalSettingsStore,
             planSettingsStore: root.planSettingsStore,
+            prradarSettingsStore: root.prradarSettingsStore,
             loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
             loadSkills: LoadSkillsUseCase(),
             configureNewRepository: ConfigureNewRepositoryUseCase(

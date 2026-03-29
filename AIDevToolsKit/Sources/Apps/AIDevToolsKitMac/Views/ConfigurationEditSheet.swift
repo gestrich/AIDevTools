@@ -1,3 +1,4 @@
+import PRRadarConfigService
 import RepositorySDK
 import SwiftUI
 
@@ -19,8 +20,12 @@ struct ConfigurationEditSheet: View {
     @State private var prBranchNamingText: String
     @State private var prTemplateText: String
     @State private var prNotesText: String
+    @State private var prradarRulePathsText: String
+    @State private var prradarDiffSource: DiffSource
+    @State private var prradarAgentScriptPathText: String
     let isNew: Bool
     let onSave: (RepositoryInfo, String?, String?, String?) -> Void
+    let onSavePRRadarSettings: ((PRRadarRepoSettings) -> Void)?
     let onCancel: () -> Void
     @Environment(CredentialModel.self) private var credentialModel
     @Environment(\.dismiss) private var dismiss
@@ -30,13 +35,16 @@ struct ConfigurationEditSheet: View {
         casesDirectory: String?,
         completedDirectory: String?,
         proposedDirectory: String?,
+        prradarSettings: PRRadarRepoSettings? = nil,
         isNew: Bool,
         onSave: @escaping (RepositoryInfo, String?, String?, String?) -> Void,
+        onSavePRRadarSettings: ((PRRadarRepoSettings) -> Void)? = nil,
         onCancel: @escaping () -> Void
     ) {
         self.config = config
         self.isNew = isNew
         self.onSave = onSave
+        self.onSavePRRadarSettings = onSavePRRadarSettings
         self.onCancel = onCancel
         _nameText = State(initialValue: config.name)
         _repoPathText = State(initialValue: isNew ? "" : config.path.path(percentEncoded: false))
@@ -54,6 +62,10 @@ struct ConfigurationEditSheet: View {
         _prBranchNamingText = State(initialValue: config.pullRequest?.branchNamingConvention ?? PullRequestConfig.defaultBranchNamingConvention)
         _prTemplateText = State(initialValue: config.pullRequest?.template ?? "")
         _prNotesText = State(initialValue: config.pullRequest?.notes ?? "")
+        let settings = prradarSettings
+        _prradarRulePathsText = State(initialValue: (settings?.rulePaths ?? []).map { "\($0.name):\($0.path)" }.joined(separator: "\n"))
+        _prradarDiffSource = State(initialValue: settings?.diffSource ?? .git)
+        _prradarAgentScriptPathText = State(initialValue: settings?.agentScriptPath ?? "")
     }
 
     var body: some View {
@@ -119,6 +131,22 @@ struct ConfigurationEditSheet: View {
                         TextField("Optional verification notes", text: $verificationNotesText)
                             .textFieldStyle(.roundedBorder)
                     }
+                }
+
+                Section("PR Radar") {
+                    LabeledContent("Rule Paths") {
+                        multilineField(text: $prradarRulePathsText, placeholder: "name:path — one per line, e.g. default:code-review-rules")
+                    }
+                    LabeledContent("Diff Source") {
+                        Picker("", selection: $prradarDiffSource) {
+                            ForEach(DiffSource.allCases, id: \.self) { source in
+                                Text(source.displayName).tag(source)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                    }
+                    pathField(label: "Agent Script Path", text: $prradarAgentScriptPathText, placeholder: "Optional — path to claude_agent.py")
                 }
 
                 Section("Pull Requests") {
@@ -195,6 +223,18 @@ struct ConfigurationEditSheet: View {
             pullRequest: pullRequest
         )
         onSave(updated, cases, completed, proposed)
+
+        if let onSavePRRadarSettings {
+            let rulePaths = parsePRRadarRulePaths(prradarRulePathsText)
+            let settings = PRRadarRepoSettings(
+                repoId: updated.id,
+                rulePaths: rulePaths,
+                diffSource: prradarDiffSource,
+                agentScriptPath: prradarAgentScriptPathText
+            )
+            onSavePRRadarSettings(settings)
+        }
+
         dismiss()
     }
 
@@ -202,6 +242,20 @@ struct ConfigurationEditSheet: View {
         text.split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+    }
+
+    private func parsePRRadarRulePaths(_ text: String) -> [RulePath] {
+        text.split(separator: "\n")
+            .compactMap { line -> RulePath? in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty else { return nil }
+                let parts = trimmed.split(separator: ":", maxSplits: 1).map(String.init)
+                if parts.count == 2 {
+                    return RulePath(name: parts[0], path: parts[1])
+                } else {
+                    return RulePath(name: trimmed, path: trimmed)
+                }
+            }
     }
 
     private func multilineField(text: Binding<String>, placeholder: String) -> some View {
