@@ -31,6 +31,9 @@ struct ClaudeChainView: View {
             }
         }
         .navigationTitle("Claude Chain")
+        .task {
+            model.loadChains(for: repository.path)
+        }
         .onChange(of: model.lastLoadedProjects) { _, newProjects in
             guard !newProjects.isEmpty else { return }
             if let selected = selectedProject {
@@ -53,7 +56,7 @@ struct ClaudeChainView: View {
                 ChainProjectRow(project: project)
                     .tag(project)
             }
-            .frame(minWidth: 200, idealWidth: 250, maxHeight: .infinity)
+            .workspaceSidebar()
 
             if let project = selectedProject {
                 ChainProjectDetailView(project: project, repository: repository)
