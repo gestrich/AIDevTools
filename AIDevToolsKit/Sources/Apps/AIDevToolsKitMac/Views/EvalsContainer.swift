@@ -24,8 +24,10 @@ struct EvalsContainer: View {
             if let config = model.evalConfig(for: repository) {
                 let runner = EvalRunnerModel(config: config, registry: evalProviderRegistry)
                 evalRunnerModel = runner
-                if selectedSuiteName == nil, !storedSuiteName.isEmpty {
+                if !storedSuiteName.isEmpty {
                     selectedSuiteName = storedSuiteName
+                    let suite = runner.suites.first(where: { $0.name == storedSuiteName })
+                    runner.selectSuite(suite)
                 }
             } else {
                 evalRunnerModel = nil
@@ -42,13 +44,10 @@ struct EvalsContainer: View {
 
     private var sidebar: some View {
         WorkspaceSidebar {
-            // Evals are discovered from files, no creation action
+            // Evals are discovered from files
         } content: {
             List(selection: $selectedSuiteName) {
                 if let runner = evalRunnerModel {
-                    Text("All Suites")
-                        .tag(String?.none as String?)
-
                     ForEach(runner.suites) { suite in
                         HStack {
                             Text(suite.name)
@@ -72,12 +71,8 @@ struct EvalsContainer: View {
 
     @ViewBuilder
     private var detail: some View {
-        if let config = model.evalConfig(for: repository) {
-            EvalResultsView(
-                config: config,
-                skillName: nil,
-                registry: evalProviderRegistry
-            )
+        if let runner = evalRunnerModel {
+            EvalResultsView(model: runner, registry: evalProviderRegistry)
         } else {
             ContentUnavailableView("No Evals Configured", systemImage: "checkmark.shield", description: Text("This repository has no eval cases configured."))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

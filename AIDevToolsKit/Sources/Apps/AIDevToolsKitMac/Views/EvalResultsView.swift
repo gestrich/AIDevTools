@@ -8,13 +8,23 @@ struct EvalResultsView: View {
     let config: RepositoryEvalConfig
     let skillName: String?
     let registry: EvalProviderRegistry
+    let hideSuitePicker: Bool
     @State private var evalRunnerModel: EvalRunnerModel
 
-    init(config: RepositoryEvalConfig, skillName: String? = nil, registry: EvalProviderRegistry) {
+    init(config: RepositoryEvalConfig, skillName: String? = nil, registry: EvalProviderRegistry, hideSuitePicker: Bool = false) {
         self.config = config
         self.skillName = skillName
         self.registry = registry
+        self.hideSuitePicker = hideSuitePicker
         _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName, registry: registry))
+    }
+
+    init(model: EvalRunnerModel, registry: EvalProviderRegistry) {
+        self.config = model.evalConfig
+        self.skillName = nil
+        self.registry = registry
+        self.hideSuitePicker = true
+        _evalRunnerModel = State(initialValue: model)
     }
 
     @State private var showDirtyRepoAlert = false
@@ -100,7 +110,7 @@ struct EvalResultsView: View {
 
     private var headerBar: some View {
         HStack(spacing: 12) {
-            if evalRunnerModel.suites.count > 1 {
+            if !hideSuitePicker, evalRunnerModel.suites.count > 1 {
                 Picker("Suite", selection: Binding(
                     get: { evalRunnerModel.selectedSuite?.id },
                     set: { newID in
