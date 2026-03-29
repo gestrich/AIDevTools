@@ -14,6 +14,7 @@ struct SystemPromptBuilder {
         }
 
         parts.append(cliInstructions(workingDirectory: context.chatWorkingDirectory))
+        parts.append(deepLinkInstructions())
         parts.append(context.chatSystemPrompt)
 
         return parts.joined(separator: "\n\n")
@@ -59,6 +60,16 @@ struct SystemPromptBuilder {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private func deepLinkInstructions() -> String {
+        let path = DeepLinkWatcher.fileURL.path(percentEncoded: false)
+        return """
+        After CLI commands that modify data the app is displaying, write a deep link to \(path) to trigger navigation.
+        Supported URLs:
+        - aidevtools://tab/{tabName} — switch to a tab (architecture, claudeChain, evals, plans, prradar, skills)
+        Example: echo "aidevtools://tab/plans" > "\(path)"
+        """
     }
 
     private func cliInstructions(workingDirectory: String) -> String {

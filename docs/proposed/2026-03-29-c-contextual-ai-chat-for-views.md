@@ -376,7 +376,10 @@ First concrete implementation using the Plans tab.
 **Files to modify:**
 - `AIDevToolsKitMac/Views/PlansContainer.swift`
 
-## - [ ] Phase 6: Deep link file watching for cross-process triggers
+## - [x] Phase 6: Deep link file watching for cross-process triggers
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Verified `ActivePlanModel` already handles CLI-driven plan file changes via `WatchPlanUseCase`. Added `DeepLinkWatcher` (`@MainActor final class`) and `DeepLinkRouter` in a new `Navigation/` folder under `AIDevToolsKitMac`. `DeepLinkWatcher` uses the existing `FileWatcher` SDK to watch `~/Library/Application Support/AIDevTools/deeplink.txt`, creates the file if absent, and routes URL writes via `DeepLinkRouter`. `DeepLinkRouter` currently handles `aidevtools://tab/{tabName}` by writing to `UserDefaults.standard` with `"selectedWorkspaceTab"` (same key as `@AppStorage` in `WorkspaceView`). `WorkspaceView` owns the watcher as `@State` and starts it in `.task`. `SystemPromptBuilder` now includes a `deepLinkInstructions()` section so the AI knows to write a deep link URL after CLI modifications. `DeepLinkWatcher.fileURL` is `nonisolated` since it computes a pure `Foundation` path.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

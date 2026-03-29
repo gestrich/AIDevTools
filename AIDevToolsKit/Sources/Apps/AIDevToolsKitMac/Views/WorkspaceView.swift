@@ -11,6 +11,7 @@ struct WorkspaceView: View {
 
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedWorkspaceTab") private var selectedTab: String = "claudeChain"
+    @State private var deepLinkWatcher = DeepLinkWatcher()
     @State private var selectedRepoID: UUID?
 
     var body: some View {
@@ -37,6 +38,7 @@ struct WorkspaceView: View {
             }
         }
         .task {
+            deepLinkWatcher.start()
             model.load()
             if let id = UUID(uuidString: storedRepoID),
                let repo = model.repositories.first(where: { $0.id == id }) {
