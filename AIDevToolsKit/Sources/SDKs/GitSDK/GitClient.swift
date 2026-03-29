@@ -4,9 +4,11 @@ import CLISDK
 public struct GitClient: Sendable {
 
     private let client: CLIClient
+    private let environment: [String: String]?
 
-    public init(client: CLIClient = CLIClient()) {
+    public init(client: CLIClient = CLIClient(), environment: [String: String]? = nil) {
         self.client = client
+        self.environment = environment
     }
 
     @discardableResult
@@ -86,11 +88,22 @@ public struct GitClient: Sendable {
     }
 
     func execute(_ command: some CLICommand, workingDirectory: String) async throws -> ExecutionResult {
-        try await client.execute(
+        let result = try await client.execute(
             command: GitCLI.programName,
             arguments: command.commandArguments,
             workingDirectory: workingDirectory,
+            environment: environment,
             printCommand: false
         )
+        if result.exitCode != 0 {
+            let args = command.commandArguments.joined(separator: " ")
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw CLIClientError.executionFailed(
+                command: "git \(args)",
+                exitCode: result.exitCode,
+                output: stderr.isEmpty ? result.stdout : stderr
+            )
+        }
+        return result
     }
 }

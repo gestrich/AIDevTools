@@ -6,6 +6,7 @@ import ClaudeCLISDK
 import CodexCLISDK
 import CredentialService
 import Foundation
+import GitSDK
 import ProviderRegistryService
 
 struct RunTaskCommand: AsyncParsableCommand {
@@ -41,8 +42,10 @@ struct RunTaskCommand: AsyncParsableCommand {
         let account = githubAccount ?? (try? service.listCredentialAccounts())?.first ?? "default"
         let resolver = CredentialResolver(settingsService: service, githubAccount: account)
 
+        var gitEnvironment: [String: String]?
         if case .token(let token) = resolver.getGitHubAuth() {
             setenv("GH_TOKEN", token, 1)
+            gitEnvironment = ["GH_TOKEN": token]
         }
 
         // Build provider registry and resolve AI client
@@ -58,7 +61,8 @@ struct RunTaskCommand: AsyncParsableCommand {
         print("Provider: \(client.name)")
         print()
 
-        let useCase = RunChainTaskUseCase(client: client)
+        let git = GitClient(environment: gitEnvironment)
+        let useCase = RunChainTaskUseCase(client: client, git: git)
         let options = RunChainTaskUseCase.Options(
             repoPath: repoURL,
             projectName: project

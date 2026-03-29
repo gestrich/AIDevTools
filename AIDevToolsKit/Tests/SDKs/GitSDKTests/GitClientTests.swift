@@ -123,7 +123,8 @@ struct GitClientTests {
         let repo = try await makeTempRepo()
         defer { cleanup(repo) }
 
-        let result = try await client.commit(message: "empty", workingDirectory: repo)
-        #expect(!result.isSuccess)
+        await #expect(throws: (any Error).self) {
+            try await client.commit(message: "empty", workingDirectory: repo)
+        }
     }
 }

@@ -316,6 +316,7 @@ let package = Package(
                 "ClaudeCLISDK",
                 "CodexCLISDK",
                 "CredentialService",
+                "GitSDK",
                 "ProviderRegistryService",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
