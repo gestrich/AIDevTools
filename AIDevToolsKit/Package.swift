@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "EvalSDK", targets: ["EvalSDK"]),
         .library(name: "EvalService", targets: ["EvalService"]),
         .library(name: "GitSDK", targets: ["GitSDK"]),
+        .library(name: "KeychainSDK", targets: ["KeychainSDK"]),
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
         .library(name: "MarkdownPlannerFeature", targets: ["MarkdownPlannerFeature"]),
         .library(name: "MarkdownPlannerService", targets: ["MarkdownPlannerService"]),
@@ -260,6 +261,10 @@ let package = Package(
             path: "Sources/SDKs/GitSDK"
         ),
         .target(
+            name: "KeychainSDK",
+            path: "Sources/SDKs/KeychainSDK"
+        ),
+        .target(
             name: "LoggingSDK",
             dependencies: [
                 .product(name: "Logging", package: "swift-log"),
@@ -409,6 +414,11 @@ let package = Package(
             name: "GitSDKTests",
             dependencies: ["GitSDK"],
             path: "Tests/SDKs/GitSDKTests"
+        ),
+        .testTarget(
+            name: "KeychainSDKTests",
+            dependencies: ["KeychainSDK"],
+            path: "Tests/SDKs/KeychainSDKTests"
         ),
         .testTarget(
             name: "MarkdownPlannerFeatureTests",
