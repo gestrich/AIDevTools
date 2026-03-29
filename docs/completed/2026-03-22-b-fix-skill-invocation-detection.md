@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Completed. The skill invocation detection fix was implemented with InvocationMethod enum distinguishing between .explicit (Claude Skill tool use), .discovered (Claude accidental file read), and .inferred (Codex heuristic). Provider-specific logic in ClaudeProvider+EvalCapable and CodexProvider+EvalCapable handles the different detection paths described in the plan.
+
 ## Relevant Skills
 
 | Skill | Description |
@@ -78,7 +80,7 @@ For Claude, the fix is straightforward: Path 1 alone is the reliable signal for 
 
 For Codex, there is no fix possible with current data — the heuristic is the best we can do.
 
-## - [ ] Phase 2: Fix Claude skill invocation detection
+## - [x] Phase 2: Fix Claude skill invocation detection
 
 **Skills to read**: `ai-dev-tools-debug`
 
@@ -89,7 +91,7 @@ Update `skillWasInvoked()` in `DeterministicGrader.swift` to distinguish between
 
 The grader already receives `providerCapabilities` — add a way to determine the provider so the detection logic can branch. Alternatively, check whether `toolEvents` contains any events with `name == "Skill"` or `name == "Read"` (Claude-specific tool names) to infer the provider.
 
-## - [ ] Phase 3: Add skill invocation indicator to CLI/UI output
+## - [x] Phase 3: Add skill invocation indicator to CLI/UI output
 
 **Skills to read**: `ai-dev-tools-debug`
 
@@ -101,7 +103,7 @@ When a `skillMustBeInvoked` or `skillMustNotBeInvoked` assertion is evaluated du
 
 This helps users understand the confidence level of skill invocation assertions per provider.
 
-## - [ ] Phase 4: Update tests
+## - [x] Phase 4: Update tests
 
 **Skills to read**: `swift-testing`
 
@@ -112,7 +114,7 @@ Update `DeterministicGraderTests.swift`:
 - Add test: Codex trace command with skill path still passes `skillMustBeInvoked` (heuristic, only option)
 - Verify existing nested skill path tests still work for Codex path
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
 **Skills to read**: `ai-dev-tools-debug`, `swift-testing`
 

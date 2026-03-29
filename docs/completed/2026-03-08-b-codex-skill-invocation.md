@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Obsolete. Codex skill invocation detection was already comprehensively implemented in the completed plan "2026-03-08-b-skill-invocation-detection.md" which added provider-agnostic skill detection, reference file reading checks, and support for both Claude (tool calls) and Codex (shell command trace analysis).
+
 ## Relevant Skills
 
 | Skill | Description |

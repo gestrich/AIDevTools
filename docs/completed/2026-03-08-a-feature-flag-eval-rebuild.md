@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Obsolete. Feature-flags evaluation suite was already built in the completed plan "2026-03-07-a-skill-eval-integration.md" which created 7 cases covering flag creation, Swift/ObjC querying, typed accessors, lifecycle cleanup, etc. This rebuild effort is no longer needed.
+
 ## Relevant Skills
 
 | Skill | Description |

@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Plan reviewed, still relevant. No eval generation skill exists in .agents/skills/ directory. This would still be a valuable automation tool for teams to bootstrap eval suites from existing skills, reducing manual JSONL editing effort.
+
 ## Relevant Skills
 
 | Skill | Description |

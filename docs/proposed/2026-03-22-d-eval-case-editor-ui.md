@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Plan reviewed, still relevant. The Mac app currently only has read-only views for eval cases (EvalsContainer, EvalResultsView). No eval case editor UI has been implemented - users still need to manually edit JSONL files. This functionality would still be valuable for teams.
+
 ## Relevant Skills
 
 | Skill | Description |

@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Partially done. SwiftData models and basic structure exist, but significant core functionality is incomplete: use cases are stubs without architectural context (no ARCHITECTURE.md reading, no guideline seeding), execution only generates text without code changes, Mac app lacks approve/revise flows, and CLI only handles 3 of 10 steps. The foundation exists but major implementation work remains.
+
 ## Implementation Phases
 
 - [x] Phase 1: SwiftData models in ArchitecturePlannerService — **DONE** (all 11 models with relationships)

@@ -14,7 +14,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// - Throws: GitHubAPIError if gh command fails
     public static func runGhCommand(args: [String]) throws -> String {
         do {
-            let result = try GitOperations.runCommand(cmd: ["gh"] + args)
+            let result = try ProcessRunner.runCommand(cmd: ["gh"] + args)
             return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
             throw GitHubAPIError("GitHub CLI command failed: \(args.joined(separator: " "))\n\(error.localizedDescription)")

@@ -190,7 +190,7 @@ private func hasClaudeChainWorkflow(repoPath: String) -> Bool {
 /// Get the current git branch name
 private func getCurrentBranch(repoPath: String) -> String {
     do {
-        let result = try GitOperations.runCommand(cmd: ["git", "-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"])
+        let result = try ProcessRunner.runCommand(cmd: ["git", "-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"])
         let branch = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         // "HEAD" is returned in detached HEAD state
         if !branch.isEmpty && branch != "HEAD" {
@@ -671,7 +671,7 @@ private func runFirstWorkflow(repoPath: String, workflowName: String, projectNam
     if promptYesNo(question: "  Proceed?", defaultValue: true) {
         print("\n  Running workflow...")
         do {
-            _ = try GitOperations.runCommand(cmd: command, check: true, captureOutput: true)
+            _ = try ProcessRunner.runCommand(cmd: command, check: true, captureOutput: true)
             print("  Workflow triggered successfully!")
             print("\n  Check the Actions tab in GitHub to monitor progress.")
         } catch {

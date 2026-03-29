@@ -62,8 +62,8 @@ public struct GitClient: Sendable {
     }
 
     @discardableResult
-    public func push(remote: String = "origin", branch: String, setUpstream: Bool = false, workingDirectory: String) async throws -> ExecutionResult {
-        let command = GitCLI.Push(setUpstream: setUpstream, remote: remote, branch: branch)
+    public func push(remote: String = "origin", branch: String, setUpstream: Bool = false, force: Bool = false, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Push(setUpstream: setUpstream, force: force, remote: remote, branch: branch)
         return try await execute(command, workingDirectory: workingDirectory)
     }
 
@@ -85,6 +85,126 @@ public struct GitClient: Sendable {
         return result.stdout
             .components(separatedBy: .newlines)
             .filter { !$0.isEmpty }
+    }
+
+    @discardableResult
+    public func config(key: String, value: String, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Config(key: key, value: value)
+        return try await execute(command, workingDirectory: workingDirectory)
+    }
+
+    public func catFile(type: Bool = true, object: String, workingDirectory: String) async throws -> String {
+        let command = GitCLI.CatFile(type: type, object: object)
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func revListCount(range: String, workingDirectory: String) async throws -> Int {
+        let command = GitCLI.RevList(count: true, range: range)
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        let countString = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Int(countString) ?? 0
+    }
+
+    @discardableResult
+    public func fetchDepth(remote: String = "origin", ref: String, depth: Int = 1, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Fetch(depth: String(depth), remote: remote, branch: ref)
+        return try await execute(command, workingDirectory: workingDirectory)
+    }
+
+    @discardableResult
+    public func remoteSetURL(name: String, url: String, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Remote.SetURL(name: name, url: url)
+        return try await execute(command, workingDirectory: workingDirectory)
+    }
+
+    /// Ensure a git ref is available locally, fetching if needed.
+    ///
+    /// For shallow clones, specific refs may not be available. This function
+    /// checks if the ref exists locally and fetches it on-demand if not.
+    ///
+    /// - Parameter ref: Git reference (commit SHA, branch name, etc.)
+    /// - Parameter workingDirectory: Working directory for git commands
+    /// - Throws: Error if ref cannot be fetched
+    public func ensureRefAvailable(ref: String, workingDirectory: String) async throws {
+        do {
+            _ = try await catFile(type: true, object: ref, workingDirectory: workingDirectory)
+        } catch {
+            print("Fetching ref \(String(ref.prefix(12)))...")
+            _ = try await fetchDepth(remote: "origin", ref: ref, depth: 1, workingDirectory: workingDirectory)
+        }
+    }
+
+    public func diffChangedFiles(ref1: String, ref2: String, pattern: String, workingDirectory: String) async throws -> [String] {
+        try await ensureRefAvailable(ref: ref1, workingDirectory: workingDirectory)
+        try await ensureRefAvailable(ref: ref2, workingDirectory: workingDirectory)
+        
+        let command = GitCLI.Diff(
+            cached: false,
+            nameOnly: true,
+            diffFilter: "AM",
+            ref1: ref1,
+            ref2: ref2,
+            pattern: pattern
+        )
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        
+        guard !result.stdout.isEmpty else {
+            return []
+        }
+        
+        return result.stdout.components(separatedBy: "\n").compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+
+    public func diffDeletedFiles(ref1: String, ref2: String, pattern: String, workingDirectory: String) async throws -> [String] {
+        try await ensureRefAvailable(ref: ref1, workingDirectory: workingDirectory)
+        try await ensureRefAvailable(ref: ref2, workingDirectory: workingDirectory)
+        
+        let command = GitCLI.Diff(
+            cached: false,
+            nameOnly: true,
+            diffFilter: "D",
+            ref1: ref1,
+            ref2: ref2,
+            pattern: pattern
+        )
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        
+        guard !result.stdout.isEmpty else {
+            return []
+        }
+        
+        return result.stdout.components(separatedBy: "\n").compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+
+    /// Extract project name from a spec.md file path
+    ///
+    /// Expected path format: claude-chain/{project_name}/spec.md
+    ///
+    /// - Parameter path: File path to parse
+    /// - Returns: Project name if path matches expected format, nil otherwise
+    ///
+    /// Examples:
+    ///     parseSpecPathToProject("claude-chain/my-project/spec.md")  // returns "my-project"
+    ///     parseSpecPathToProject("claude-chain/another/spec.md")    // returns "another" 
+    ///     parseSpecPathToProject("invalid/path/spec.md")           // returns nil
+    public static func parseSpecPathToProject(path: String) -> String? {
+        let parts = path.components(separatedBy: "/")
+        
+        // Expected format: claude-chain/{project_name}/spec.md
+        guard parts.count == 3,
+              parts[0] == "claude-chain",
+              parts[2] == "spec.md" else {
+            return nil
+        }
+        
+        return parts[1]
     }
 
     func execute(_ command: some CLICommand, workingDirectory: String) async throws -> ExecutionResult {
