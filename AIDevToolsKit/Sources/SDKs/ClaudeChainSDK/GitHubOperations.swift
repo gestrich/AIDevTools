@@ -5,11 +5,13 @@ import CLISDK
 /// GitHub CLI and API operations
 public struct GitHubOperations: GitHubOperationsProtocol {
     
-    private let cliClient: CLIClient
+    private let githubClient: GitHubClient
+    private let repositoryService: RepositoryService
     
     /// Public initializer for dependency injection
-    public init(cliClient: CLIClient = CLIClient()) {
-        self.cliClient = cliClient
+    public init(githubClient: GitHubClient, repositoryService: RepositoryService = RepositoryService()) {
+        self.githubClient = githubClient
+        self.repositoryService = repositoryService
     }
     
     /// Run a GitHub CLI command and return stdout
@@ -17,8 +19,9 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// - Parameter args: gh command arguments (without 'gh' prefix)
     /// - Returns: Command stdout as string
     /// - Throws: GitHubAPIError if gh command fails
+    @available(*, deprecated, message: "Use specific GitHubClient methods instead")
     public static func runGhCommand(args: [String]) throws -> String {
-        // Use CLIClient synchronously for now to avoid changing all method signatures
+        // Use CLIClient synchronously for backwards compatibility
         let cliClient = CLIClient()
         
         // Create a sync wrapper using RunLoop
@@ -66,6 +69,23 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// - Parameter method: HTTP method (GET, POST, etc.)
     /// - Returns: Parsed JSON response
     /// - Throws: GitHubAPIError if API call fails
+    public func ghApiCall(endpoint: String, method: String = "GET") async throws -> [String: Any] {
+        let output = try await githubClient.apiCall(endpoint: endpoint, method: method)
+        
+        if output.isEmpty {
+            return [:]
+        }
+        
+        guard let data = output.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+            throw GitHubAPIError("Invalid JSON from API: \(output)")
+        }
+        
+        return json
+    }
+    
+    /// Static version for backwards compatibility
+    @available(*, deprecated, message: "Use instance method instead")
     public static func ghApiCall(endpoint: String, method: String = "GET") throws -> [String: Any] {
         let output = try runGhCommand(args: ["api", endpoint, "--method", method])
         
@@ -592,6 +612,61 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         }
     }
     
+    /// Get the current repository name from git remote
+    ///
+    /// Determines the GitHub repository name by parsing the git remote origin URL.
+    /// Works with both HTTPS and SSH remote URLs.
+    ///
+    /// - Parameter workingDirectory: Directory to run git commands in (default: current directory)
+    /// - Returns: Repository name in "owner/repo" format
+    /// - Throws: GitHubAPIError if unable to determine repository
+    ///
+    /// Example:
+    ///     // Get current repo
+    ///     let repo = getCurrentRepository()  // Returns "owner/repo"
+    ///     
+    ///     // Get repo from specific directory  
+    ///     let repo = getCurrentRepository(workingDirectory: "/path/to/repo")
+    public func getCurrentRepository(workingDirectory: String) async throws -> String {
+        do {
+            return try await repositoryService.getCurrentRepository(workingDirectory: workingDirectory)
+        } catch {
+            throw GitHubAPIError("Unable to determine repository: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Static version for backwards compatibility
+    @available(*, deprecated, message: "Use instance method instead")
+    public static func getCurrentRepository(workingDirectory: String) throws -> String {
+        // Create a sync wrapper for backwards compatibility
+        let repositoryService = RepositoryService()
+        var result: String?
+        var error: Error?
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        Task {
+            do {
+                result = try await repositoryService.getCurrentRepository(workingDirectory: workingDirectory)
+            } catch let e {
+                error = e
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        
+        if let error = error {
+            throw GitHubAPIError("Unable to determine repository: \(error.localizedDescription)")
+        }
+        
+        guard let result = result else {
+            throw GitHubAPIError("Unable to determine repository: No result")
+        }
+        
+        return result
+    }
+    
     // MARK: - Workflow operations
     
     /// List workflow runs for a specific workflow and branch
@@ -834,6 +909,45 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         _ = try runGhCommand(args: args)
     }
     
+    // MARK: - Comment operations
+    
+    /// Post a comment on a pull request
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prNumber: Pull request number to comment on
+    /// - Parameter body: Comment text to post
+    /// - Throws: GitHubAPIError if gh command fails
+    ///
+    /// Example:
+    ///     // Post a comment on PR #123
+    ///     postPRComment(repo: "owner/repo", prNumber: 123, body: "Great work!")
+    @available(*, deprecated, message: "Use instance method postPRCommentAsync instead")
+    public static func postPRComment(repo: String, prNumber: Int, body: String) throws {
+        // Use gh pr comment command
+        let args = [
+            "pr", "comment", String(prNumber),
+            "--repo", repo,
+            "--body", body
+        ]
+        
+        // Execute command (no output expected)
+        _ = try runGhCommand(args: args)
+    }
+    
+    /// Post a comment on a pull request (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prNumber: Pull request number to comment on
+    /// - Parameter body: Comment text to post
+    /// - Throws: GitHubAPIError if gh command fails
+    public func postPRCommentAsync(repo: String, prNumber: Int, body: String) async throws {
+        do {
+            _ = try await githubClient.commentOnPullRequest(repo: repo, prNumber: prNumber, body: body)
+        } catch {
+            throw GitHubAPIError("Failed to post PR comment: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Branch operations
     
     /// Delete a remote branch
@@ -845,6 +959,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// Example:
     ///     // Delete a remote branch
     ///     deleteBranch(repo: "owner/repo", branch: "feature-branch")
+    @available(*, deprecated, message: "Use instance method deleteBranchAsync instead")
     public static func deleteBranch(repo: String, branch: String) throws {
         // Use GitHub API to delete the branch
         let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
@@ -856,6 +971,24 @@ public struct GitHubOperations: GitHubOperationsProtocol {
             // Ignore 404 errors (branch already deleted)
             if !error.localizedDescription.contains("404") {
                 throw error
+            }
+        }
+    }
+    
+    /// Delete a remote branch (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter branch: Branch name to delete
+    /// - Throws: GitHubAPIError if gh command fails
+    public func deleteBranchAsync(repo: String, branch: String) async throws {
+        let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
+        
+        do {
+            _ = try await githubClient.apiCall(endpoint: endpoint, method: "DELETE")
+        } catch {
+            // Ignore 404 errors (branch already deleted)
+            if !error.localizedDescription.contains("404") {
+                throw GitHubAPIError("Failed to delete branch: \(error.localizedDescription)")
             }
         }
     }
@@ -876,6 +1009,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     ///     for branch in testBranches {
     ///         print(branch)
     ///     }
+    @available(*, deprecated, message: "Use instance method listBranchesAsync instead")
     public static func listBranches(repo: String, prefix: String? = nil) -> [String] {
         // Use GitHub API to list branches
         let endpoint = "/repos/\(repo)/branches"
@@ -903,6 +1037,38 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         } catch {
             // Return empty list on error
             return []
+        }
+    }
+    
+    /// List remote branches, optionally filtered by prefix (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prefix: Optional prefix to filter branches (e.g., "claude-chain-")
+    /// - Returns: Array of branch names
+    /// - Throws: GitHubAPIError if gh command fails
+    public func listBranchesAsync(repo: String, prefix: String? = nil) async throws -> [String] {
+        let endpoint = "/repos/\(repo)/branches?per_page=100"
+        
+        do {
+            let output = try await githubClient.apiCall(endpoint: endpoint, method: "GET")
+            
+            guard !output.isEmpty,
+                  let data = output.data(using: .utf8),
+                  let branchArray = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] else {
+                return []
+            }
+            
+            let branches = branchArray.compactMap { $0["name"] as? String }
+            
+            // Filter by prefix if specified
+            if let prefix = prefix {
+                return branches.filter { $0.hasPrefix(prefix) }
+            }
+            
+            return branches
+            
+        } catch {
+            throw GitHubAPIError("Failed to list branches: \(error.localizedDescription)")
         }
     }
 }

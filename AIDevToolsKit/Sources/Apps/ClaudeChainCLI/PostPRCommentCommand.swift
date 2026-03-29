@@ -132,58 +132,29 @@ public struct PostPRCommentCommand: ParsableCommand {
             let formatter = MarkdownReportFormatter()
             let comment = formatter.format(report.buildCommentElements())
             
-            // Write comment to temporary file
-            let tempDirectory = FileManager.default.temporaryDirectory
-            let tempFileName = "pr_comment_\(UUID().uuidString).md"
-            let tempFileURL = tempDirectory.appendingPathComponent(tempFileName)
-            
-            try comment.write(to: tempFileURL, atomically: true, encoding: .utf8)
-            
-            defer {
-                try? FileManager.default.removeItem(at: tempFileURL)
-            }
-            
-            // Post comment to PR using gh CLI
+            // Post comment to PR using GitHubOperations
             print("Posting PR comment to PR #\(prNumber)...")
             
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["gh", "pr", "comment", prNumber, "--body-file", tempFileURL.path]
-            
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            process.standardOutput = outputPipe
-            process.standardError = errorPipe
-            
             do {
-                try process.run()
-                process.waitUntilExit()
+                try GitHubOperations.postPRComment(repo: repo, prNumber: Int(prNumber)!, body: comment)
                 
-                if process.terminationStatus == 0 {
-                    print("✅ PR comment posted to PR #\(prNumber)")
-                    if summary.hasContent {
-                        print("   - AI-generated summary included")
-                    }
-                    print("   - Main task: \(Formatting.formatUSD(costBreakdown.mainCost))")
-                    print("   - PR summary: \(Formatting.formatUSD(costBreakdown.summaryCost))")
-                    print("   - Total: \(Formatting.formatUSD(costBreakdown.totalCost))")
-                    
-                    // Write workflow summary to GITHUB_STEP_SUMMARY
-                    let workflowSummary = formatter.format(report.buildWorkflowSummaryElements())
-                    gh.writeStepSummary(text: workflowSummary)
-                    
-                    gh.writeOutput(name: "comment_posted", value: "true")
-                    return 0
-                } else {
-                    // Read error output
-                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                    let errorString = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-                    
-                    gh.setError(message: "Failed to post comment: \(errorString)")
-                    return 1
+                print("✅ PR comment posted to PR #\(prNumber)")
+                if summary.hasContent {
+                    print("   - AI-generated summary included")
                 }
+                print("   - Main task: \(Formatting.formatUSD(costBreakdown.mainCost))")
+                print("   - PR summary: \(Formatting.formatUSD(costBreakdown.summaryCost))")
+                print("   - Total: \(Formatting.formatUSD(costBreakdown.totalCost))")
+                
+                // Write workflow summary to GITHUB_STEP_SUMMARY
+                let workflowSummary = formatter.format(report.buildWorkflowSummaryElements())
+                gh.writeStepSummary(text: workflowSummary)
+                
+                gh.writeOutput(name: "comment_posted", value: "true")
+                return 0
+                
             } catch {
-                gh.setError(message: "Failed to execute gh command: \(error.localizedDescription)")
+                gh.setError(message: "Failed to post comment: \(error.localizedDescription)")
                 return 1
             }
             

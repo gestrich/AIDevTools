@@ -30,6 +30,10 @@ public struct ClaudeChainConstants {
     
     /// Default allowed tools for Claude
     public static let defaultAllowedTools = "computer_20241022"
+    
+    /// Workflow input parameter keys
+    public static let workflowProjectNameKey = "project_name"
+    public static let workflowBaseBranchKey = "base_branch"
 }
 
 /// Backwards compatibility alias

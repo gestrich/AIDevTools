@@ -595,7 +595,7 @@ private func deployToGitHub(repoPath: String) async throws -> Int {
 
   Once merged, you can trigger the workflow:
     - Go to GitHub -> Actions -> \(workflowName) -> Run workflow
-    - Or run: gh workflow run "\(workflowName)" --ref \(baseBranch) -f project_name=\(projectName) -f base_branch=\(baseBranch)
+    - Or run: gh workflow run "\(workflowName)" --ref \(baseBranch) -f \(ClaudeChainConstants.workflowProjectNameKey)=\(projectName) -f \(ClaudeChainConstants.workflowBaseBranchKey)=\(baseBranch)
 """)
         }
     } else {
@@ -627,7 +627,7 @@ private func deployToGitHub(repoPath: String) async throws -> Int {
 
   You can trigger it later:
     - Go to GitHub -> Actions -> \(workflowName) -> Run workflow
-    - Or run: gh workflow run "\(workflowName)" --ref \(baseBranch) -f project_name=\(projectName) -f base_branch=\(baseBranch)
+    - Or run: gh workflow run "\(workflowName)" --ref \(baseBranch) -f \(ClaudeChainConstants.workflowProjectNameKey)=\(projectName) -f \(ClaudeChainConstants.workflowBaseBranchKey)=\(baseBranch)
 """)
             }
         }
@@ -651,54 +651,44 @@ Happy automating!
 
 /// Trigger the first workflow run
 private func runFirstWorkflow(repoPath: String, workflowName: String, projectName: String, baseBranch: String) async throws {
-    let command = [
-        "gh", "workflow", "run", workflowName,
-        "--ref", baseBranch,
-        "-f", "project_name=\(projectName)",
-        "-f", "base_branch=\(baseBranch)"
+    let inputs = [
+        ClaudeChainConstants.workflowProjectNameKey: projectName,
+        ClaudeChainConstants.workflowBaseBranchKey: baseBranch
     ]
-    let commandStr = command.map { $0.contains(" ") ? "\"\($0)\"" : $0 }.joined(separator: " ")
     
     print("""
 
-  I'll run this command:
-    \(commandStr)
+  I'll trigger the workflow with these inputs:
+    - Workflow: \(workflowName)
+    - Project: \(projectName)
+    - Branch: \(baseBranch)
 """)
     
     if promptYesNo(question: "  Proceed?", defaultValue: true) {
         print("\n  Running workflow...")
         do {
-            let cliClient = CLIClient()
-            let result = try await cliClient.execute(
-                command: command[0],
-                arguments: Array(command.dropFirst()),
-                workingDirectory: ".",
-                environment: nil,
-                printCommand: false
+            // Get the repository name from git remote
+            let repo = try GitHubOperations.getCurrentRepository(workingDirectory: repoPath)
+            
+            // Trigger the workflow using GitHubOperations
+            try GitHubOperations.triggerWorkflow(
+                repo: repo,
+                workflowName: workflowName,
+                inputs: inputs,
+                ref: baseBranch
             )
-            if result.exitCode != 0 {
-                let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                throw CLIClientError.executionFailed(
-                    command: command.joined(separator: " "),
-                    exitCode: result.exitCode,
-                    output: stderr.isEmpty ? result.stdout : stderr
-                )
-            }
+            
             print("  Workflow triggered successfully!")
             print("\n  Check the Actions tab in GitHub to monitor progress.")
         } catch {
-            if let nsError = error as NSError? {
-                print("  Error triggering workflow: \(nsError.localizedDescription)")
-            } else {
-                print("  Error triggering workflow: \(error)")
-            }
-            print("\n  You can try running this manually:")
-            print("    cd \(repoPath)")
-            print("    \(commandStr)")
+            print("  ❌ Failed to trigger workflow: \(error.localizedDescription)")
+            print("\n  You can trigger it manually:")
+            print("    - Go to GitHub -> Actions -> \(workflowName) -> Run workflow")
+            print("    - Or run: gh workflow run \"\(workflowName)\" --ref \(baseBranch) -f \(ClaudeChainConstants.workflowProjectNameKey)=\(projectName) -f \(ClaudeChainConstants.workflowBaseBranchKey)=\(baseBranch)")
         }
     } else {
-        print("  Skipped. You can run it later with:")
-        print("    \(commandStr)")
+        print("  Skipped. You can trigger it later with:")
+        print("    gh workflow run \"\(workflowName)\" --ref \(baseBranch) -f \(ClaudeChainConstants.workflowProjectNameKey)=\(projectName) -f \(ClaudeChainConstants.workflowBaseBranchKey)=\(baseBranch)")
     }
 }
 

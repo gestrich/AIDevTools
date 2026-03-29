@@ -53,8 +53,8 @@ public class WorkflowService {
         do {
             _ = try GitHubOperations.runGhCommand(args: [
                 "workflow", "run", "claudechain.yml",
-                "-f", "project_name=\(projectName)",
-                "-f", "base_branch=\(baseBranch)",
+                "-f", "\(ClaudeChainConstants.workflowProjectNameKey)=\(projectName)",
+                "-f", "\(ClaudeChainConstants.workflowBaseBranchKey)=\(baseBranch)",
                 "-f", "checkout_ref=\(checkoutRef)"
             ])
         } catch {

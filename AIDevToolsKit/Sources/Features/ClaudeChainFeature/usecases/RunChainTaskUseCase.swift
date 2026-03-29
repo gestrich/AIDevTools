@@ -86,7 +86,8 @@ public struct RunChainTaskUseCase: Sendable {
             name: options.projectName,
             basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
         )
-        let repository = ProjectRepository(repo: "")
+        let githubClient = GitHubClient(workingDirectory: chainDir)
+        let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
 
         let config = (try? repository.loadLocalConfiguration(project: project))
             ?? ProjectConfiguration.default(project: project)

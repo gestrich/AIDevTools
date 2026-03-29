@@ -339,6 +339,7 @@ let package = Package(
             name: "ClaudeChainService",
             dependencies: [
                 .product(name: "Yams", package: "Yams"),
+                "GitSDK",
             ],
             path: "Sources/Services/ClaudeChainService"
         ),

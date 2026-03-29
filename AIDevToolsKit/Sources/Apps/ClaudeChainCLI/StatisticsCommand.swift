@@ -72,7 +72,8 @@ public struct StatisticsCommand: ParsableCommand {
         
         do {
             // Initialize services (dependency injection pattern)
-            let projectRepository = ProjectRepository(repo: repoName)
+            let githubClient = GitHubClient(workingDirectory: FileManager.default.currentDirectoryPath)
+            let projectRepository = ProjectRepository(repo: repoName, gitHubOperations: GitHubOperations(githubClient: githubClient))
             let prService = PRService(repo: repoName)
             let statisticsService = StatisticsService(repo: repoName, projectRepository: projectRepository, prService: prService, workflowFile: workflowFileName)
             
