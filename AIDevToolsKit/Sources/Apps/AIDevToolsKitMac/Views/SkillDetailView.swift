@@ -61,7 +61,8 @@ struct SkillDetailView: View {
                             }
                             .padding([.horizontal, .top])
                         }
-                        EvalResultsView(config: evalConfig, skillName: skill.name, registry: evalRegistry!)
+                        EvalResultsView(registry: evalRegistry!)
+                            .environment(EvalRunnerModel(config: evalConfig, skillName: skill.name, registry: evalRegistry!))
                             .id(skill.name)
                     }
                 }

@@ -72,7 +72,8 @@ struct EvalsContainer: View {
     @ViewBuilder
     private var detail: some View {
         if let runner = evalRunnerModel {
-            EvalResultsView(model: runner, registry: evalProviderRegistry)
+            EvalResultsView(registry: evalProviderRegistry, hideSuitePicker: true)
+                .environment(runner)
         } else {
             ContentUnavailableView("No Evals Configured", systemImage: "checkmark.shield", description: Text("This repository has no eval cases configured."))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

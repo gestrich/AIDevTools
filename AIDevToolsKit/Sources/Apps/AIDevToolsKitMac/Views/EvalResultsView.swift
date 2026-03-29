@@ -5,26 +5,13 @@ import ProviderRegistryService
 import SwiftUI
 
 struct EvalResultsView: View {
-    let config: RepositoryEvalConfig
-    let skillName: String?
     let registry: EvalProviderRegistry
     let hideSuitePicker: Bool
-    @State private var evalRunnerModel: EvalRunnerModel
+    @Environment(EvalRunnerModel.self) var evalRunnerModel
 
-    init(config: RepositoryEvalConfig, skillName: String? = nil, registry: EvalProviderRegistry, hideSuitePicker: Bool = false) {
-        self.config = config
-        self.skillName = skillName
+    init(registry: EvalProviderRegistry, hideSuitePicker: Bool = false) {
         self.registry = registry
         self.hideSuitePicker = hideSuitePicker
-        _evalRunnerModel = State(initialValue: EvalRunnerModel(config: config, skillName: skillName, registry: registry))
-    }
-
-    init(model: EvalRunnerModel, registry: EvalProviderRegistry) {
-        self.config = model.evalConfig
-        self.skillName = nil
-        self.registry = registry
-        self.hideSuitePicker = true
-        _evalRunnerModel = State(initialValue: model)
     }
 
     @State private var showDirtyRepoAlert = false
