@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Completed. All phases marked [x] complete and credential system components exist in the codebase: KeychainSDK, CredentialService, CredentialFeature, CLI commands, and Mac app UI. The credential system has been successfully ported from PRRadar to AIDevTools.
+
 ## Relevant Skills
 
 | Skill | Description |

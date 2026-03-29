@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Completed. All phases marked [x] complete. Repository-to-credential-account linking has been implemented, including UI updates, CLI support, GH_TOKEN injection for plan execution, and removal of deprecated githubUser field.
+
 ## Relevant Skills
 
 | Skill | Description |

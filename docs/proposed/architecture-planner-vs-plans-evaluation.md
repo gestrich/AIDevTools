@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Plan reviewed, still relevant. This comparison document clarifies the distinct purposes of Architecture Planner (analysis & scoring) vs Plans (code generation & execution). Useful documentation for understanding feature boundaries and use cases.
+
 # Architecture Planner vs Plans: Feature Evaluation
 
 ## Overview

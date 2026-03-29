@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Completed. All phases marked [x] complete and RunChainTaskUseCase exists in the codebase. ClaudeChain now has inline AI execution instead of relying on external GitHub Actions, with streaming output, provider swappability, and single-command operation.
+
 ## Relevant Skills
 
 | Skill | Description |
