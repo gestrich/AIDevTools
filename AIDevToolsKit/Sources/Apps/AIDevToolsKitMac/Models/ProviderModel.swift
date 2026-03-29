@@ -2,8 +2,13 @@ import AIOutputSDK
 import AnthropicSDK
 import ClaudeCLISDK
 import CodexCLISDK
+import CredentialService
 import Foundation
 import ProviderRegistryService
+
+extension Notification.Name {
+    static let credentialsDidChange = Notification.Name("credentialsDidChange")
+}
 
 @MainActor @Observable
 final class ProviderModel {
@@ -11,7 +16,9 @@ final class ProviderModel {
     private let anthropicAPIKeySource: @Sendable () -> String?
 
     init(anthropicAPIKeySource: @escaping @Sendable () -> String? = {
-        UserDefaults.standard.string(forKey: "anthropicAPIKey")
+        let service = CredentialSettingsService()
+        let account = (try? service.listCredentialAccounts())?.first ?? "default"
+        return CredentialResolver(settingsService: service, githubAccount: account).getAnthropicKey()
     }) {
         self.anthropicAPIKeySource = anthropicAPIKeySource
         self.providerRegistry = Self.buildRegistry(anthropicAPIKey: anthropicAPIKeySource())

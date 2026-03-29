@@ -1,6 +1,7 @@
 import AIOutputSDK
 import ArchitecturePlannerService
 import ClaudeChainFeature
+import Combine
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
@@ -29,7 +30,6 @@ struct WorkspaceView: View {
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedPlanName") private var storedPlanName: String?
     @AppStorage("selectedSkillName") private var storedSkillName: String?
-    @AppStorage("anthropicAPIKey") private var apiKey = ""
     @State private var selectedRepoID: UUID?
     @State private var selectedItem: WorkspaceItem?
     @State private var showGenerateSheet = false
@@ -152,7 +152,7 @@ struct WorkspaceView: View {
                 }
             }
         }
-        .onChange(of: apiKey) { _, _ in
+        .onReceive(NotificationCenter.default.publisher(for: .credentialsDidChange)) { _ in
             providerModel.refreshProviders()
         }
     }

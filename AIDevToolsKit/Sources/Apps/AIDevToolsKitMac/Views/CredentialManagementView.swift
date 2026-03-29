@@ -111,6 +111,7 @@ struct CredentialManagementView: View {
                         gitHubAuth: updated.buildGitHubAuth(),
                         anthropicKey: updated.anthropicKey.isEmpty ? nil : updated.anthropicKey
                     )
+                    NotificationCenter.default.post(name: .credentialsDidChange, object: nil)
                 } catch {
                     currentError = error
                 }
@@ -131,6 +132,7 @@ struct CredentialManagementView: View {
                 do {
                     try credentialModel.removeCredentials(account: account)
                     selectedAccount = nil
+                    NotificationCenter.default.post(name: .credentialsDidChange, object: nil)
                 } catch {
                     currentError = error
                 }

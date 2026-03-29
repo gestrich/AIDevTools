@@ -186,7 +186,10 @@ Port the Mac app credential management UI.
 5. Add `CredentialFeature` and `CredentialService` to `AIDevToolsKitMac` target dependencies in `Package.swift` (if not already added in Phase 4)
 6. Build: `swift build --target AIDevToolsKitMac`
 
-## - [ ] Phase 6: Wire CredentialResolver into ProviderModel and CLIRegistryFactory
+## - [x] Phase 6: Wire CredentialResolver into ProviderModel and CLIRegistryFactory
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Replaced ad-hoc UserDefaults credential storage with CredentialResolver's 3-tier resolution (env → .env → keychain); used NotificationCenter to bridge credential changes from settings window to main window's ProviderModel; kept closure-based API in ProviderModel for testability
 
 **Skills to read**: `swift-architecture`
 
