@@ -17,11 +17,13 @@ public struct ProcessDiagnostics: Sendable {
 
     /// Counts of each event type seen in the JSONL stream (e.g. ["system": 1, "assistant": 5])
     public var eventTypeCounts: [String: Int] = [:]
-    /// Number of stdout lines that failed JSON decoding
+    /// Number of stdout lines that failed JSON decoding as a ClaudeEventEnvelope
     public var jsonDecodeFailures: Int = 0
+    /// Number of lines whose envelope decoded as type "result" but failed to decode as ClaudeResultEvent
+    public var resultEventDecodeFailures: Int = 0
     /// Session ID from the system init event, if found
     public var sessionId: String?
-    /// Last few non-empty lines of stdout for context
+    /// Last 1000 characters of stdout for context (trailing whitespace stripped)
     public var stdoutTail: String = ""
 
     public init(exitCode: Int32, stderr: String, stdout: String) {
@@ -32,10 +34,8 @@ public struct ProcessDiagnostics: Sendable {
         self.stderrSnippet = lines.joined(separator: "\n")
         self.stdoutLineCount = stdout.components(separatedBy: "\n").count
         self.stdoutByteCount = stdout.utf8.count
-        let tailLines = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: "\n")
-            .suffix(5)
-        self.stdoutTail = tailLines.joined(separator: "\n")
+        let trimmed = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.stdoutTail = String(trimmed.suffix(1000))
     }
 
     public var summary: String {
@@ -48,6 +48,9 @@ public struct ProcessDiagnostics: Sendable {
         if jsonDecodeFailures > 0 {
             parts.append("json_failures=\(jsonDecodeFailures)")
         }
+        if resultEventDecodeFailures > 0 {
+            parts.append("result_decode_failures=\(resultEventDecodeFailures)")
+        }
         if let sessionId {
             parts.append("session=\(sessionId)")
         }
@@ -55,7 +58,7 @@ public struct ProcessDiagnostics: Sendable {
             parts.append("stderr: \(stderrSnippet.prefix(300))")
         }
         if !stdoutTail.isEmpty {
-            parts.append("stdout_tail: \(stdoutTail.prefix(500))")
+            parts.append("stdout_tail: \(stdoutTail)")
         }
         return parts.joined(separator: ", ")
     }
@@ -126,6 +129,7 @@ public struct ClaudeStructuredOutputParser: Sendable {
         var enrichedDiagnostics = diagnostics
         var eventTypeCounts: [String: Int] = [:]
         var jsonDecodeFailures = 0
+        var resultEventDecodeFailures = 0
         var sessionId: String?
 
         for line in stdout.components(separatedBy: "\n") {
@@ -138,7 +142,8 @@ public struct ClaudeStructuredOutputParser: Sendable {
             } catch {
                 jsonDecodeFailures += 1
                 logger.error("Failed to decode event envelope: \(error.localizedDescription)", metadata: [
-                    "line": "\(trimmed.prefix(200))"
+                    "line_preview": "\(trimmed.prefix(500))",
+                    "line_length": "\(trimmed.count)"
                 ])
                 continue
             }
@@ -155,8 +160,13 @@ public struct ClaudeStructuredOutputParser: Sendable {
                 let event = try decoder.decode(ClaudeResultEvent.self, from: data)
                 lastResult = event
             } catch {
-                logger.error("Failed to decode result event: \(error.localizedDescription)", metadata: [
-                    "line": "\(trimmed.prefix(200))"
+                // A line with type="result" was present but couldn't be decoded into ClaudeResultEvent.
+                // This is distinct from a missing result event — the envelope was valid but the shape
+                // of the result payload was unexpected. Track separately so diagnostics show both cases.
+                resultEventDecodeFailures += 1
+                logger.error("Found result envelope but failed to decode as ClaudeResultEvent: \(error.localizedDescription)", metadata: [
+                    "line_preview": "\(trimmed.prefix(500))",
+                    "line_length": "\(trimmed.count)"
                 ])
             }
         }
@@ -164,6 +174,7 @@ public struct ClaudeStructuredOutputParser: Sendable {
         guard let result = lastResult else {
             enrichedDiagnostics?.eventTypeCounts = eventTypeCounts
             enrichedDiagnostics?.jsonDecodeFailures = jsonDecodeFailures
+            enrichedDiagnostics?.resultEventDecodeFailures = resultEventDecodeFailures
             enrichedDiagnostics?.sessionId = sessionId
             throw ClaudeStructuredOutputError.noResultEvent(enrichedDiagnostics)
         }
