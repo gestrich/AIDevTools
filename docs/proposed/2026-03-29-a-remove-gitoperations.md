@@ -24,7 +24,7 @@
 
 ## Phases
 
-## - [ ] Phase 1: Decouple `GitHubOperations` from `GitOperations`
+## - [x] Phase 1: Decouple `GitHubOperations` from `GitOperations`
 
 **Skills to read**: `swift-architecture`
 
@@ -34,7 +34,7 @@
 - Update `GitHubOperations.runGhCommand` to use the new helper instead of `GitOperations.runCommand`.
 - Update `SetupCommand` similarly — it calls `GitOperations.runCommand` for `git -C <path> rev-parse`. Replace with the same process helper or migrate to `GitClient`.
 
-## - [ ] Phase 2: Add missing git commands to `GitCLI` / `GitClient`
+## - [x] Phase 2: Add missing git commands to `GitCLI` / `GitClient`
 
 **Skills to read**: `swift-architecture`
 

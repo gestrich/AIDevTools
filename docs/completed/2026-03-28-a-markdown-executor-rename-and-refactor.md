@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Obsolete. This refactoring was already completed in "2026-03-28-b-markdown-executor-rename-and-refactor.md" but renamed to "MarkdownPlanner" instead of "MarkdownExecutor". The same goals were achieved: dynamic phase generation removed, skill conventions adopted, provider selection added, and execute-next vs execute-all support.
+
 ## Relevant Skills
 
 | Skill | Description |

@@ -1,3 +1,5 @@
+> **2026-03-29 Obsolescence Evaluation:** Plan reviewed, still relevant. This research document analyzes provider output richness gaps and provides concrete improvement recommendations. While not in standard plan format, it identifies actionable improvements like tracking tool_use_id → name mapping, handling thinking deltas for Anthropic API, and supporting array tool results.
+
 # Provider Output Richness Research
 
 This document captures the mapping from each provider's raw stream events to `AIContentBlock` cases,
