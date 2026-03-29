@@ -244,7 +244,10 @@ This is the phase that fixes the original `gh auth switch` problem.
 - `swift build --target ClaudeChainMain`
 - Test: store a GitHub token via `ai-dev-tools-kit credentials add gestrich --github-token <token>`, then run `claude-chain prepare` without `gh auth switch` — it should use the keychain token
 
-## - [ ] Phase 8: Validation
+## - [x] Phase 8: Validation
+
+**Skills used**: `swift-testing`
+**Principles applied**: Verified all 6 targets build; all 41 credential tests pass (KeychainSDKTests: 18, CredentialServiceTests: 14, CredentialFeatureTests: 9); full build succeeds; no stale UserDefaults/AppStorage anthropicAPIKey usage; GH_TOKEN env usage is proper fallback pattern (CredentialResolver first, env fallback for GitHub Actions)
 
 **Skills to read**: `swift-testing`
 
