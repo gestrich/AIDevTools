@@ -1,4 +1,5 @@
 import AIOutputSDK
+import ChatFeature
 import ClaudeChainFeature
 import Foundation
 import ProviderRegistryService
@@ -37,6 +38,7 @@ final class ClaudeChainModel {
         case loadingChains
     }
 
+    private(set) var lastLoadedProjects: [ChainProject] = []
     private(set) var state: State = .idle
     var executionProgressObserver: (@MainActor (RunChainTaskUseCase.Progress) -> Void)?
 
@@ -77,6 +79,7 @@ final class ClaudeChainModel {
         Task {
             do {
                 let projects = try listChainsUseCase.run(options: .init(repoPath: repoPath))
+                lastLoadedProjects = projects
                 state = .loaded(projects)
             } catch {
                 state = .error(error)
@@ -113,6 +116,21 @@ final class ClaudeChainModel {
                 state = .error(error)
             }
         }
+    }
+
+    func makeChatModel(workingDirectory: String) -> ChatModel {
+        let settings = ChatSettings()
+        settings.resumeLastSession = false
+        return ChatModel(
+            getSessionDetailsUseCase: GetSessionDetailsUseCase(client: activeClient),
+            listSessionsUseCase: ListSessionsUseCase(client: activeClient),
+            loadSessionMessagesUseCase: LoadSessionMessagesUseCase(client: activeClient),
+            sendMessageUseCase: SendChatMessageUseCase(client: activeClient),
+            providerDisplayName: activeClient.displayName,
+            providerName: activeClient.name,
+            workingDirectory: workingDirectory,
+            settings: settings
+        )
     }
 
     func reset() {

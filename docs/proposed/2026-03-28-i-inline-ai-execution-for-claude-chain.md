@@ -189,7 +189,10 @@ struct PhaseInfo: Identifiable {
   - Updates `ExecutionProgress` state for phase transitions
   - Forwards to `executionProgressObserver` for ChatModel streaming
 
-## - [ ] Phase 5: Update `ClaudeChainView` with phase display and chat output
+## - [x] Phase 5: Update `ClaudeChainView` with phase display and chat output
+
+**Skills used**: `swift-swiftui`
+**Principles applied**: Followed MarkdownPlannerDetailView pattern for VSplitView with ChatMessagesView. StreamAccumulator bridges aiStreamEvent/summaryStreamEvent to ChatModel for streaming display. Added lastLoadedProjects to model so project list persists during executing/completed states. Phase status icons use enum-based switching (pending/running/completed/failed/skipped). Task list shows in-progress indicator for currently executing task.
 
 **Skills to read**: `swift-swiftui`
 
