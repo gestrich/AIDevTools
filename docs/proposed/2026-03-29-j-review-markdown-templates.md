@@ -43,9 +43,10 @@ The goal is a **review template system** using the same markdown format as plans
 
 ## Phases
 
-## - [ ] Phase 1: `docs/reviews/` convention and sample files
+## - [x] Phase 1: `docs/reviews/` convention and sample files
 
-**Skills to read**: `swift-app-architecture:swift-architecture`
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: `docs/reviews/` already existed with `architecture-compliance.md` and `code-quality.md`. Created the two missing files: `build-quality.md` (warnings, TODOs, commented-out code, debug artifacts) and `swift-testing.md` (Swift Testing macros, `@Test` naming, async patterns, AAA structure, single-behavior tests). Each file follows the same `## - [ ]` heading format as the existing review files.
 
 Establish the directory and seed it with useful review templates.
 
