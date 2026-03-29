@@ -22,6 +22,7 @@ public struct ClaudeChainCLI: AsyncParsableCommand {
             RunTaskCommand.self,
             SetupCommand.self,
             StatisticsCommand.self,
+            StatusCommand.self,
         ]
     )
     

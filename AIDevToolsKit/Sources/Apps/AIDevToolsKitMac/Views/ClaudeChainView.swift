@@ -73,6 +73,8 @@ private struct ChainProjectRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(project.name)
                 .font(.body)
+            ProgressView(value: Double(project.completedTasks), total: max(Double(project.totalTasks), 1))
+                .tint(project.completedTasks == project.totalTasks ? .green : .accentColor)
             HStack(spacing: 4) {
                 Text("\(project.completedTasks)/\(project.totalTasks) tasks completed")
                 if project.pendingTasks > 0 {
@@ -213,6 +215,8 @@ private struct ChainProjectDetailView: View {
             LabeledContent("Progress") {
                 Text("\(project.completedTasks)/\(project.totalTasks) tasks completed")
             }
+            ProgressView(value: Double(project.completedTasks), total: max(Double(project.totalTasks), 1))
+                .tint(project.completedTasks == project.totalTasks ? .green : .accentColor)
         }
     }
 
