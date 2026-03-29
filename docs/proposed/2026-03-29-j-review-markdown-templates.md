@@ -31,7 +31,10 @@ The goal is a **review template system** using the same markdown format as plans
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Reviewed AppIPCSDK (SDKs layer — stateless `Sendable` struct, no app-specific imports) and AppIPCServer (Apps layer — `@MainActor final class`, imports only SDK types, no upward dependencies). Build is clean. No violations found.
-## - [ ] Check that no feature imports another feature directly and fix violations
+## - [x] Check that no feature imports another feature directly and fix violations
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Searched all Feature source files for cross-feature `import` statements and audited Package.swift for feature-to-feature target dependencies. No violations found — each Feature depends only on Services, SDKs, and external packages. Build is clean.
 ## - [ ] Verify all new types are in their correct SDK/Feature/Service/App layer and move any that aren't
 ```
 
