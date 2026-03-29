@@ -148,18 +148,18 @@ public struct GitClient: Sendable {
     ///   - ref1: First git reference (base)
     ///   - ref2: Second git reference (head)
     ///   - pattern: File pattern to match (e.g., "*.swift", "**/spec.md")
-    ///   - diffFilter: Git diff filter for change types. "A" = Added, "M" = Modified, "D" = Deleted, etc. Default: "AM" (Added + Modified)
+    ///   - diffFilters: Git diff filters for change types. Default: [.added, .modified]
     ///   - workingDirectory: Working directory for git commands
     /// - Returns: Array of file paths that match the criteria
     /// - Throws: Error if git command fails
-    public func diffChangedFiles(ref1: String, ref2: String, pattern: String, diffFilter: String = "AM", workingDirectory: String) async throws -> [String] {
+    public func diffChangedFiles(ref1: String, ref2: String, pattern: String, diffFilters: [DiffFilter] = [.added, .modified], workingDirectory: String) async throws -> [String] {
         try await ensureRefAvailable(ref: ref1, workingDirectory: workingDirectory)
         try await ensureRefAvailable(ref: ref2, workingDirectory: workingDirectory)
         
         let command = GitCLI.Diff(
             cached: false,
             nameOnly: true,
-            diffFilter: diffFilter,
+            diffFilter: diffFilters.gitFilterString,
             ref1: ref1,
             ref2: ref2,
             pattern: pattern
@@ -192,7 +192,7 @@ public struct GitClient: Sendable {
         let command = GitCLI.Diff(
             cached: false,
             nameOnly: true,
-            diffFilter: "D",
+            diffFilter: [DiffFilter.deleted].gitFilterString,
             ref1: ref1,
             ref2: ref2,
             pattern: pattern
@@ -207,6 +207,23 @@ public struct GitClient: Sendable {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? nil : trimmed
         }
+    }
+
+    /// Get the current branch name
+    ///
+    /// - Parameter workingDirectory: Working directory for git commands
+    /// - Returns: Current branch name, or "main" as fallback
+    /// - Throws: Error if git command fails
+    public func getCurrentBranch(workingDirectory: String) async throws -> String {
+        let command = GitCLI.RevParse(abbrevRef: true, ref: "HEAD")
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        
+        let branch = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        // "HEAD" is returned in detached HEAD state
+        if !branch.isEmpty && branch != "HEAD" {
+            return branch
+        }
+        return "main"  // fallback
     }
 
     // Claude Chain specific logic moved to ClaudeChainService layer

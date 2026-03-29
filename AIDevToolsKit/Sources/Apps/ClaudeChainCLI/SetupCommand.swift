@@ -1,8 +1,9 @@
 import ArgumentParser
-import Foundation
-import ClaudeChainService
-import ClaudeChainSDK
 import CLISDK
+import ClaudeChainSDK
+import ClaudeChainService
+import Foundation
+import GitSDK
 
 public struct SetupCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
@@ -191,25 +192,10 @@ private func hasClaudeChainWorkflow(repoPath: String) -> Bool {
 /// Get the current git branch name
 private func getCurrentBranch(repoPath: String) async -> String {
     do {
-        let cliClient = CLIClient()
-        let result = try await cliClient.execute(
-            command: "git",
-            arguments: ["-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD"],
-            workingDirectory: ".",
-            environment: nil,
-            printCommand: false
-        )
-        if result.exitCode != 0 {
-            return "main"  // fallback
-        }
-        let branch = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        // "HEAD" is returned in detached HEAD state
-        if !branch.isEmpty && branch != "HEAD" {
-            return branch
-        }
-        return "main"
+        let gitClient = GitClient()
+        return try await gitClient.getCurrentBranch(workingDirectory: repoPath)
     } catch {
-        return "main"
+        return "main"  // fallback on error
     }
 }
 

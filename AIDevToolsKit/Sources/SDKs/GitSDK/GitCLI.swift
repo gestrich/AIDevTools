@@ -107,4 +107,10 @@ public struct GitCLI {
         @Flag("--count") public var count: Bool = false
         @Positional public var range: String
     }
+
+    @CLICommand("rev-parse")
+    public struct RevParse {
+        @Flag("--abbrev-ref") public var abbrevRef: Bool = false
+        @Positional public var ref: String
+    }
 }
