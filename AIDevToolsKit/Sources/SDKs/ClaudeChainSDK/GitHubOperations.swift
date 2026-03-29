@@ -921,6 +921,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// Example:
     ///     // Post a comment on PR #123
     ///     postPRComment(repo: "owner/repo", prNumber: 123, body: "Great work!")
+    @available(*, deprecated, message: "Use instance method postPRCommentAsync instead")
     public static func postPRComment(repo: String, prNumber: Int, body: String) throws {
         // Use gh pr comment command
         let args = [
@@ -931,6 +932,20 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         
         // Execute command (no output expected)
         _ = try runGhCommand(args: args)
+    }
+    
+    /// Post a comment on a pull request (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prNumber: Pull request number to comment on
+    /// - Parameter body: Comment text to post
+    /// - Throws: GitHubAPIError if gh command fails
+    public func postPRCommentAsync(repo: String, prNumber: Int, body: String) async throws {
+        do {
+            _ = try await githubClient.commentOnPullRequest(repo: repo, prNumber: prNumber, body: body)
+        } catch {
+            throw GitHubAPIError("Failed to post PR comment: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Branch operations
@@ -944,6 +959,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// Example:
     ///     // Delete a remote branch
     ///     deleteBranch(repo: "owner/repo", branch: "feature-branch")
+    @available(*, deprecated, message: "Use instance method deleteBranchAsync instead")
     public static func deleteBranch(repo: String, branch: String) throws {
         // Use GitHub API to delete the branch
         let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
@@ -955,6 +971,24 @@ public struct GitHubOperations: GitHubOperationsProtocol {
             // Ignore 404 errors (branch already deleted)
             if !error.localizedDescription.contains("404") {
                 throw error
+            }
+        }
+    }
+    
+    /// Delete a remote branch (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter branch: Branch name to delete
+    /// - Throws: GitHubAPIError if gh command fails
+    public func deleteBranchAsync(repo: String, branch: String) async throws {
+        let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
+        
+        do {
+            _ = try await githubClient.apiCall(endpoint: endpoint, method: "DELETE")
+        } catch {
+            // Ignore 404 errors (branch already deleted)
+            if !error.localizedDescription.contains("404") {
+                throw GitHubAPIError("Failed to delete branch: \(error.localizedDescription)")
             }
         }
     }
@@ -975,6 +1009,7 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     ///     for branch in testBranches {
     ///         print(branch)
     ///     }
+    @available(*, deprecated, message: "Use instance method listBranchesAsync instead")
     public static func listBranches(repo: String, prefix: String? = nil) -> [String] {
         // Use GitHub API to list branches
         let endpoint = "/repos/\(repo)/branches"
@@ -1002,6 +1037,38 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         } catch {
             // Return empty list on error
             return []
+        }
+    }
+    
+    /// List remote branches, optionally filtered by prefix (async version using GitHubClient)
+    ///
+    /// - Parameter repo: GitHub repository (owner/name)
+    /// - Parameter prefix: Optional prefix to filter branches (e.g., "claude-chain-")
+    /// - Returns: Array of branch names
+    /// - Throws: GitHubAPIError if gh command fails
+    public func listBranchesAsync(repo: String, prefix: String? = nil) async throws -> [String] {
+        let endpoint = "/repos/\(repo)/branches?per_page=100"
+        
+        do {
+            let output = try await githubClient.apiCall(endpoint: endpoint, method: "GET")
+            
+            guard !output.isEmpty,
+                  let data = output.data(using: .utf8),
+                  let branchArray = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] else {
+                return []
+            }
+            
+            let branches = branchArray.compactMap { $0["name"] as? String }
+            
+            // Filter by prefix if specified
+            if let prefix = prefix {
+                return branches.filter { $0.hasPrefix(prefix) }
+            }
+            
+            return branches
+            
+        } catch {
+            throw GitHubAPIError("Failed to list branches: \(error.localizedDescription)")
         }
     }
 }

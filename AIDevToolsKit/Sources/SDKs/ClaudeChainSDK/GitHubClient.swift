@@ -5,10 +5,12 @@ public struct GitHubClient: Sendable {
 
     private let client: CLIClient
     private let environment: [String: String]?
+    private let workingDirectory: String
 
-    public init(client: CLIClient = CLIClient(), environment: [String: String]? = nil) {
+    public init(client: CLIClient = CLIClient(), environment: [String: String]? = nil, workingDirectory: String = ".") {
         self.client = client
         self.environment = environment
+        self.workingDirectory = workingDirectory
     }
 
     // MARK: - API Operations
@@ -282,7 +284,7 @@ public struct GitHubClient: Sendable {
         let result = try await client.execute(
             command: GitHubCLI.programName,
             arguments: command.commandArguments,
-            workingDirectory: ".",
+            workingDirectory: workingDirectory,
             environment: environment,
             printCommand: false
         )
