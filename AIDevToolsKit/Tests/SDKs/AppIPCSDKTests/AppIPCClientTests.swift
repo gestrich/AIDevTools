@@ -54,10 +54,7 @@ struct AppIPCClientTests {
 
     @Test("getUIState throws appNotRunning when socket file is absent")
     func getUIStateThrowsWhenSocketAbsent() async throws {
-        let socketPath = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AIDevTools/app.sock")
-            .path
+        let socketPath = AppIPCClient.socketFilePath
         guard !FileManager.default.fileExists(atPath: socketPath) else {
             return  // App is running — skip this case
         }

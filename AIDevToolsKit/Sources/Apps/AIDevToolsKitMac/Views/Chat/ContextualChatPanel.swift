@@ -1,12 +1,12 @@
 import ChatFeature
-import Foundation
+import DataPathsService
 import ProviderRegistryService
 import SwiftUI
 
 /// A collapsible chat panel that is aware of the current view's context.
 ///
 /// Owns a `ChatModel` built from the context's system prompt.
-/// The MCP config is written once at model creation and passed to the CLI via `--mcp-config`.
+/// The MCP config is written once at app startup (CompositionRoot) and referenced here by path.
 struct ContextualChatPanel: View {
     let context: any ViewChatContext
 
@@ -89,33 +89,10 @@ struct ContextualChatPanel: View {
 
         chatModel = ChatModel(configuration: ChatModelConfiguration(
             client: client,
-            mcpConfigPath: writeMCPConfig(),
+            mcpConfigPath: DataPathsService.mcpConfigFileURL.path,
             settings: settings,
             systemPrompt: context.chatSystemPrompt,
             workingDirectory: context.chatWorkingDirectory
         ))
-    }
-
-    private func writeMCPConfig() -> String? {
-        let config = """
-        {
-          "mcpServers": {
-            "ai-dev-tools-kit": {
-              "command": "ai-dev-tools-kit",
-              "args": ["mcp"]
-            }
-          }
-        }
-        """
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let dir = appSupport.appendingPathComponent("AIDevTools")
-        let fileURL = dir.appendingPathComponent("mcp-config.json")
-        do {
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try config.write(to: fileURL, atomically: true, encoding: .utf8)
-            return fileURL.path
-        } catch {
-            return nil
-        }
     }
 }

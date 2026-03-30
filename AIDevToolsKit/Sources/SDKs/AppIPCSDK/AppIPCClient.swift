@@ -20,10 +20,18 @@ public enum IPCError: Error, LocalizedError, Sendable {
 
 public struct AppIPCClient: Sendable {
 
+    /// Canonical path to the Unix domain socket used for Mac app IPC.
+    public static var socketFilePath: String {
+        FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("AIDevTools/app.sock")
+            .path
+    }
+
     public init() {}
 
     public func getUIState() async throws -> IPCUIState {
-        let path = socketFilePath()
+        let path = Self.socketFilePath
         guard FileManager.default.fileExists(atPath: path) else {
             throw IPCError.appNotRunning
         }
@@ -81,10 +89,4 @@ public struct AppIPCClient: Sendable {
         return try JSONDecoder().decode(IPCUIState.self, from: responseData)
     }
 
-    private func socketFilePath() -> String {
-        FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AIDevTools/app.sock")
-            .path
-    }
 }

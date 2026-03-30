@@ -1,6 +1,7 @@
 import ClaudeCLISDK
 import CodexCLISDK
 import DataPathsService
+import Foundation
 import EvalService
 import MarkdownPlannerService
 import PRRadarConfigService
@@ -41,6 +42,8 @@ struct CompositionRoot {
             EvalProviderEntry(client: CodexProvider()),
         ])
 
+        writeMCPConfig()
+
         return CompositionRoot(
             dataPathsService: dataPathsService,
             evalSettingsStore: evalSettingsStore,
@@ -51,5 +54,24 @@ struct CompositionRoot {
             repositoryStore: repositoryStore,
             settingsModel: settingsModel
         )
+    }
+
+    private static func writeMCPConfig() {
+        let config = """
+        {
+          "mcpServers": {
+            "ai-dev-tools-kit": {
+              "command": "ai-dev-tools-kit",
+              "args": ["mcp"]
+            }
+          }
+        }
+        """
+        let fileURL = DataPathsService.mcpConfigFileURL
+        try? FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try? config.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }

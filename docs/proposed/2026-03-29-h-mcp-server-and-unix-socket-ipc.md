@@ -234,17 +234,21 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 - Execution/iteration chat in `MarkdownPlannerDetailView` unchanged
 - `ClaudeChainModel` chat unchanged
 - PRRadar unaffected
-## - [ ] Find new features architected as afterthoughts and refactor them to integrate cleanly with the existing system
-## - [ ] Identify the architectural layer for every new or modified file; read the reference doc for that layer before reviewing anything else
-## - [ ] Find code placed in the wrong layer entirely and move it to the correct one
-## - [ ] Find upward dependencies (lower layers importing higher layers) and remove them
-## - [ ] Find `@Observable` or `@MainActor` outside the Apps layer and move it up
-## - [ ] Find multi-step orchestration that belongs in a use case and extract it
-## - [ ] Find feature-to-feature imports and replace with a shared Service or SDK abstraction
-## - [ ] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
-## - [ ] Find SDK methods that orchestrate multiple operations and split them into single-operation methods
-## - [ ] Find SDK types that hold mutable state and refactor to stateless structs
-## - [ ] Find error swallowing across all layers and replace with proper propagation
-## - [ ] Verify use case types are structs conforming to `UseCase` or `StreamingUseCase`, not classes or actors
-## - [ ] Verify type names follow the `<Name><Layer>` convention and rename any that don't
-## - [ ] Verify both a Mac app model and a CLI command consume each new use case
+## - [x] Find new features architected as afterthoughts and refactor them to integrate cleanly with the existing system
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Three scattered app-level paths (`app.sock`, `deeplink.txt`, `mcp-config.json`) were each hardcoded independently in 2–3 files — a classic afterthought pattern. Fixed by (1) adding `DataPathsService.deepLinkFileURL` and `DataPathsService.mcpConfigFileURL` as static constants so both CLI and Mac app targets share a single source of truth, and (2) promoting `AppIPCClient.socketFilePath` to `public static` so `AppIPCServer` derives the path from the SDK rather than recomputing it. Also moved MCP config file writing out of the SwiftUI `ContextualChatPanel` View (wrong layer for I/O) into `CompositionRoot.create()` at app startup — the View now references the well-known path constant instead of writing the file itself.
+
+## - [x] Identify the architectural layer for every new or modified file; read the reference doc for that layer before reviewing anything else
+## - [x] Find code placed in the wrong layer entirely and move it to the correct one
+## - [x] Find upward dependencies (lower layers importing higher layers) and remove them
+## - [x] Find `@Observable` or `@MainActor` outside the Apps layer and move it up
+## - [x] Find multi-step orchestration that belongs in a use case and extract it
+## - [x] Find feature-to-feature imports and replace with a shared Service or SDK abstraction
+## - [x] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
+## - [x] Find SDK methods that orchestrate multiple operations and split them into single-operation methods
+## - [x] Find SDK types that hold mutable state and refactor to stateless structs
+## - [x] Find error swallowing across all layers and replace with proper propagation
+## - [x] Verify use case types are structs conforming to `UseCase` or `StreamingUseCase`, not classes or actors
+## - [x] Verify type names follow the `<Name><Layer>` convention and rename any that don't
+## - [x] Verify both a Mac app model and a CLI command consume each new use case

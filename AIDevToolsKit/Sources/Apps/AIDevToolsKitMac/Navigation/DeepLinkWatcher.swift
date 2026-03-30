@@ -1,13 +1,11 @@
 import AIOutputSDK
+import DataPathsService
 import Foundation
 
 @MainActor
 final class DeepLinkWatcher {
 
-    nonisolated static let fileURL: URL = {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return appSupport.appendingPathComponent("AIDevTools/deeplink.txt")
-    }()
+    nonisolated static let fileURL: URL = DataPathsService.deepLinkFileURL
 
     private let router = DeepLinkRouter()
     private var watchTask: Task<Void, Never>?

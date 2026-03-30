@@ -1,5 +1,6 @@
 import AppIPCSDK
 import ArgumentParser
+import DataPathsService
 import Foundation
 import MCP
 import MarkdownPlannerFeature
@@ -188,8 +189,7 @@ struct MCPCommand: AsyncParsableCommand {
     // MARK: - Deep link helper
 
     private static func writeDeepLink(_ urlString: String) throws {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let fileURL = appSupport.appendingPathComponent("AIDevTools/deeplink.txt")
+        let fileURL = DataPathsService.deepLinkFileURL
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try urlString.write(to: fileURL, atomically: true, encoding: .utf8)
     }

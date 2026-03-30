@@ -1,4 +1,5 @@
 @testable import AIDevToolsKitCLI
+import AppIPCSDK
 import Foundation
 import MCP
 import Testing
@@ -25,10 +26,7 @@ struct MCPCommandTests {
 
     @Test("get_ui_state returns non-error result when app is not running")
     func getUIStateHandlesAppNotRunning() async throws {
-        let socketPath = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AIDevTools/app.sock")
-            .path
+        let socketPath = AppIPCClient.socketFilePath
         guard !FileManager.default.fileExists(atPath: socketPath) else {
             return  // App is running — skip this case
         }

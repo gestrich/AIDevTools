@@ -5,10 +5,7 @@ import Foundation
 @MainActor
 final class AppIPCServer {
 
-    private nonisolated let socketPath: String = FileManager.default
-        .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("AIDevTools/app.sock")
-        .path
+    private nonisolated var socketPath: String { AppIPCClient.socketFilePath }
 
     func start() async {
         try? FileManager.default.removeItem(atPath: socketPath)
