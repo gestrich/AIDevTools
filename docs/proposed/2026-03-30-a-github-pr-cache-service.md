@@ -203,7 +203,10 @@ Functional checks via CLI:
 
 **Skills used**: `swift-architecture`
 **Principles applied**: Found two naming violations in the `GitHubService` module. (1) `GitHubPRCache` (internal actor, Services layer) lacked the `Service` suffix — renamed to `GitHubPRCacheService`. (2) `GitHubAPIClientProtocol` used `Client` rather than the layer-appropriate `Service` suffix — renamed to `GitHubAPIServiceProtocol`, with the conformance in `PRRadarCLIService/GitHubService.swift` updated accordingly. Supporting output types (`FetchPRListResult`, `SyncSnapshot`) are data types scoped to their use cases and correctly carry no layer suffix.
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify both a Mac app model and a CLI command consume each new use case, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Verify both a Mac app model and a CLI command consume each new use case, and make the necessary code changes
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Audited all three use cases modified in this chain. `FetchPRListUseCase` and `SyncPRUseCase` already had both Mac model consumers (`AllPRsModel`, `PRModel`) and CLI commands (`refresh`, `refresh-pr`/`sync`). `FetchReviewCommentsUseCase` had four Mac model call sites in `PRModel` but no direct CLI command — it was only reachable via `PostCommentsUseCase`. Added `PRRadarViolationsCommand` (`violations`) that calls `FetchReviewCommentsUseCase` directly to list pending violations for a PR, with `--refresh` flag for GitHub fetch and `--min-score` option.
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Split files that define multiple unrelated types into one file per type, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Move supporting enums and nested types below their primary type, not above it, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find fallback values that hide failures and suppressed errors — remove or replace both with proper propagation, and make the necessary code changes
