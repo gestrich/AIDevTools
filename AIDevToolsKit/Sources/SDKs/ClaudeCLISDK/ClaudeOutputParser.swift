@@ -15,31 +15,38 @@ public struct ClaudeOutputParser: Sendable {
     public func buildResult(from stdout: String, provider: Provider) -> ProviderResult {
         let output = parse(stdout)
 
-        var result = ProviderResult(
-            provider: provider,
-            events: output.rawEvents,
-            toolEvents: output.toolEvents,
-            toolCallSummary: output.toolCallSummary
-        )
-
         guard let resultEvent = output.resultEvent else {
-            result.error = ProviderError(
-                message: "no result event found in Claude stream-json output",
-                subtype: ProviderErrorSubtype.missingResult
+            return ProviderResult(
+                provider: provider,
+                events: output.rawEvents,
+                toolEvents: output.toolEvents,
+                error: ProviderError(
+                    message: "no result event found in Claude stream-json output",
+                    subtype: ProviderErrorSubtype.missingResult
+                ),
+                toolCallSummary: output.toolCallSummary
             )
-            return result
         }
 
         if let error = resultEvent.providerError {
-            result.error = error
-            return result
+            return ProviderResult(
+                provider: provider,
+                events: output.rawEvents,
+                toolEvents: output.toolEvents,
+                error: error,
+                toolCallSummary: output.toolCallSummary
+            )
         }
 
-        result.structuredOutput = resultEvent.structuredOutput
-        result.resultText = resultEvent.structuredOutput?[StructuredOutputKey.result]?.stringValue ?? ""
-        result.metrics = resultEvent.metrics
-
-        return result
+        return ProviderResult(
+            provider: provider,
+            structuredOutput: resultEvent.structuredOutput,
+            resultText: resultEvent.structuredOutput?[StructuredOutputKey.result]?.stringValue ?? "",
+            events: output.rawEvents,
+            toolEvents: output.toolEvents,
+            metrics: resultEvent.metrics,
+            toolCallSummary: output.toolCallSummary
+        )
     }
 
     public func parse(_ stdout: String) -> Output {
@@ -47,7 +54,10 @@ public struct ClaudeOutputParser: Sendable {
         var toolEvents: [ToolEvent] = []
         var resultEvent: ClaudeResultEvent?
         var pendingToolCalls: [String: Int] = [:]
-        var summary = ToolCallSummary()
+        var attempted = 0
+        var rejected = 0
+        var errored = 0
+        var succeeded = 0
         let decoder = JSONDecoder()
 
         for line in stdout.components(separatedBy: "\n") {
@@ -66,13 +76,20 @@ public struct ClaudeOutputParser: Sendable {
                     if let id = toolEvent.toolUseId {
                         pendingToolCalls[id] = toolEvents.count - 1
                     }
-                    summary.attempted += 1
+                    attempted += 1
                 }
             }
 
             if let event = try? decoder.decode(ClaudeUserEvent.self, from: data),
                event.type == ClaudeEventType.user {
-                applyToolResults(from: event, toolEvents: &toolEvents, pendingCalls: &pendingToolCalls, summary: &summary)
+                applyToolResults(
+                    from: event,
+                    toolEvents: &toolEvents,
+                    pendingCalls: &pendingToolCalls,
+                    rejected: &rejected,
+                    errored: &errored,
+                    succeeded: &succeeded
+                )
             }
 
             if let event = try? decoder.decode(ClaudeResultEvent.self, from: data),
@@ -81,6 +98,7 @@ public struct ClaudeOutputParser: Sendable {
             }
         }
 
+        let summary = ToolCallSummary(attempted: attempted, succeeded: succeeded, rejected: rejected, errored: errored)
         return Output(rawEvents: rawEvents, toolEvents: toolEvents, resultEvent: resultEvent, toolCallSummary: summary)
     }
 
@@ -110,7 +128,9 @@ public struct ClaudeOutputParser: Sendable {
         from event: ClaudeUserEvent,
         toolEvents: inout [ToolEvent],
         pendingCalls: inout [String: Int],
-        summary: inout ToolCallSummary
+        rejected: inout Int,
+        errored: inout Int,
+        succeeded: inout Int
     ) {
         guard let content = event.message?.content else { return }
         for block in content {
@@ -126,12 +146,12 @@ public struct ClaudeOutputParser: Sendable {
                 let isRejected = outputText?.contains("requires approval") == true
                     || outputText?.contains("not allowed") == true
                 if isRejected {
-                    summary.rejected += 1
+                    rejected += 1
                 } else {
-                    summary.errored += 1
+                    errored += 1
                 }
             } else {
-                summary.succeeded += 1
+                succeeded += 1
             }
         }
     }

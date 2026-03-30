@@ -2,16 +2,16 @@ import Foundation
 
 public struct ProviderResult: Sendable {
     public let provider: Provider
-    public var error: ProviderError?
-    public var events: [[String: JSONValue]]
-    public var metrics: ProviderMetrics?
-    public var rawStderrPath: URL?
-    public var rawStdoutPath: URL?
-    public var rawTracePath: URL?
-    public var resultText: String?
-    public var structuredOutput: [String: JSONValue]?
-    public var toolCallSummary: ToolCallSummary?
-    public var toolEvents: [ToolEvent]
+    public let error: ProviderError?
+    public let events: [[String: JSONValue]]
+    public let metrics: ProviderMetrics?
+    public let rawStderrPath: URL?
+    public let rawStdoutPath: URL?
+    public let rawTracePath: URL?
+    public let resultText: String?
+    public let structuredOutput: [String: JSONValue]?
+    public let toolCallSummary: ToolCallSummary?
+    public let toolEvents: [ToolEvent]
 
     public init(
         provider: Provider,

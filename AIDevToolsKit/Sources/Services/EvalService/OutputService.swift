@@ -39,7 +39,7 @@ public struct OutputService: Sendable {
         caseId: String,
         artifactsDirectory: URL
     ) throws -> ProviderResult {
-        var result = evalOutput.result
+        let sourceResult = evalOutput.result
 
         let rawDir = artifactsDirectory
             .appendingPathComponent("raw")
@@ -48,22 +48,32 @@ public struct OutputService: Sendable {
 
         let stdoutPath = rawDir.appendingPathComponent("\(caseId).stdout")
         try evalOutput.rawStdout.write(to: stdoutPath, atomically: true, encoding: .utf8)
-        result.rawStdoutPath = stdoutPath
 
         let stderrPath = rawDir.appendingPathComponent("\(caseId).stderr")
         try evalOutput.stderr.write(to: stderrPath, atomically: true, encoding: .utf8)
-        result.rawStderrPath = stderrPath
 
         let providerDir = Self.providerDirectory(artifactsDirectory: artifactsDirectory, provider: provider.rawValue)
         try FileManager.default.createDirectory(at: providerDir, withIntermediateDirectories: true)
-        if let structured = result.structuredOutput {
+        if let structured = sourceResult.structuredOutput {
             let outputFile = providerDir.appendingPathComponent("\(caseId).json")
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(structured).write(to: outputFile)
         }
 
-        return result
+        return ProviderResult(
+            provider: sourceResult.provider,
+            structuredOutput: sourceResult.structuredOutput,
+            resultText: sourceResult.resultText,
+            events: sourceResult.events,
+            toolEvents: sourceResult.toolEvents,
+            metrics: sourceResult.metrics,
+            rawStdoutPath: stdoutPath,
+            rawStderrPath: stderrPath,
+            rawTracePath: sourceResult.rawTracePath,
+            error: sourceResult.error,
+            toolCallSummary: sourceResult.toolCallSummary
+        )
     }
 
     public func writeSummary(

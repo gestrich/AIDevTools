@@ -74,20 +74,44 @@ extension CodexProvider: EvalCapable {
             return EvalRunOutput(result: errorResult, rawStdout: result.stdout, stderr: result.stderr)
         }
 
-        var providerResult = CodexOutputParser().buildResult(from: result.stdout, provider: Provider(client: self))
+        let baseResult = CodexOutputParser().buildResult(from: result.stdout, provider: Provider(client: self))
 
+        let finalResult: ProviderResult
         do {
             let data = try Data(contentsOf: outputFile)
             let payload = try JSONDecoder().decode([String: JSONValue].self, from: data)
-            providerResult.structuredOutput = payload
-            providerResult.resultText = payload[StructuredOutputKey.result]?.stringValue ?? ""
+            finalResult = ProviderResult(
+                provider: baseResult.provider,
+                structuredOutput: payload,
+                resultText: payload[StructuredOutputKey.result]?.stringValue ?? "",
+                events: baseResult.events,
+                toolEvents: baseResult.toolEvents,
+                metrics: baseResult.metrics,
+                rawStdoutPath: baseResult.rawStdoutPath,
+                rawStderrPath: baseResult.rawStderrPath,
+                rawTracePath: baseResult.rawTracePath,
+                error: baseResult.error,
+                toolCallSummary: baseResult.toolCallSummary
+            )
         } catch {
-            providerResult.error = ProviderError(
-                message: "invalid primary output JSON: \(error.localizedDescription)",
-                subtype: ProviderErrorSubtype.parseError
+            finalResult = ProviderResult(
+                provider: baseResult.provider,
+                structuredOutput: baseResult.structuredOutput,
+                resultText: baseResult.resultText,
+                events: baseResult.events,
+                toolEvents: baseResult.toolEvents,
+                metrics: baseResult.metrics,
+                rawStdoutPath: baseResult.rawStdoutPath,
+                rawStderrPath: baseResult.rawStderrPath,
+                rawTracePath: baseResult.rawTracePath,
+                error: ProviderError(
+                    message: "invalid primary output JSON: \(error.localizedDescription)",
+                    subtype: ProviderErrorSubtype.parseError
+                ),
+                toolCallSummary: baseResult.toolCallSummary
             )
         }
 
-        return EvalRunOutput(result: providerResult, rawStdout: result.stdout, stderr: result.stderr)
+        return EvalRunOutput(result: finalResult, rawStdout: result.stdout, stderr: result.stderr)
     }
 }

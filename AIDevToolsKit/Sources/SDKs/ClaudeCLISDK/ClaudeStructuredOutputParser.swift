@@ -16,21 +16,21 @@ public struct ProcessDiagnostics: Sendable {
     public let stdoutByteCount: Int
 
     /// Counts of each event type seen in the JSONL stream (e.g. ["system": 1, "assistant": 5])
-    public var eventTypeCounts: [String: Int] = [:]
+    public let eventTypeCounts: [String: Int]
     /// Number of stdout lines that failed JSON decoding as a ClaudeEventEnvelope
-    public var jsonDecodeFailures: Int = 0
+    public let jsonDecodeFailures: Int
     /// Number of lines whose envelope decoded as type "result" but failed to decode as ClaudeResultEvent
-    public var resultEventDecodeFailures: Int = 0
+    public let resultEventDecodeFailures: Int
     /// Session ID from the system init event, if found
-    public var sessionId: String?
+    public let sessionId: String?
     /// Last 1000 characters of stdout for context (trailing whitespace stripped)
-    public var stdoutTail: String = ""
+    public let stdoutTail: String
     /// DIAGNOSTIC FIELD — retained to investigate a suspected GCD race in the pipe drain.
     /// See: docs/proposed/2026-03-29-f-cli-pipe-drain-and-diagnostics.md
     ///
     /// Populated from ExecutionResult.drainByteCount (SwiftCLI). Appears as drain_bytes=N in
     /// the MarkdownPlanner error log. Once the race is confirmed and fixed, this can be removed.
-    public var drainByteCount: Int = 0
+    public let drainByteCount: Int
 
     public init(exitCode: Int32, stderr: String, stdout: String, drainByteCount: Int = 0) {
         self.exitCode = exitCode
@@ -43,6 +43,54 @@ public struct ProcessDiagnostics: Sendable {
         let trimmed = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         self.stdoutTail = String(trimmed.suffix(1000))
         self.drainByteCount = drainByteCount
+        self.eventTypeCounts = [:]
+        self.jsonDecodeFailures = 0
+        self.resultEventDecodeFailures = 0
+        self.sessionId = nil
+    }
+
+    func enriched(
+        eventTypeCounts: [String: Int],
+        jsonDecodeFailures: Int,
+        resultEventDecodeFailures: Int,
+        sessionId: String?
+    ) -> ProcessDiagnostics {
+        ProcessDiagnostics(
+            exitCode: exitCode,
+            stderrSnippet: stderrSnippet,
+            stdoutLineCount: stdoutLineCount,
+            stdoutByteCount: stdoutByteCount,
+            stdoutTail: stdoutTail,
+            drainByteCount: drainByteCount,
+            eventTypeCounts: eventTypeCounts,
+            jsonDecodeFailures: jsonDecodeFailures,
+            resultEventDecodeFailures: resultEventDecodeFailures,
+            sessionId: sessionId
+        )
+    }
+
+    init(
+        exitCode: Int32,
+        stderrSnippet: String,
+        stdoutLineCount: Int,
+        stdoutByteCount: Int,
+        stdoutTail: String,
+        drainByteCount: Int,
+        eventTypeCounts: [String: Int],
+        jsonDecodeFailures: Int,
+        resultEventDecodeFailures: Int,
+        sessionId: String?
+    ) {
+        self.exitCode = exitCode
+        self.stderrSnippet = stderrSnippet
+        self.stdoutLineCount = stdoutLineCount
+        self.stdoutByteCount = stdoutByteCount
+        self.stdoutTail = stdoutTail
+        self.drainByteCount = drainByteCount
+        self.eventTypeCounts = eventTypeCounts
+        self.jsonDecodeFailures = jsonDecodeFailures
+        self.resultEventDecodeFailures = resultEventDecodeFailures
+        self.sessionId = sessionId
     }
 
     public var summary: String {
@@ -134,7 +182,6 @@ public struct ClaudeStructuredOutputParser: Sendable {
     public func findResultEvent(in stdout: String, diagnostics: ProcessDiagnostics? = nil) throws -> ClaudeResultEvent {
         let decoder = JSONDecoder()
         var lastResult: ClaudeResultEvent?
-        var enrichedDiagnostics = diagnostics
         var eventTypeCounts: [String: Int] = [:]
         var jsonDecodeFailures = 0
         var resultEventDecodeFailures = 0
@@ -180,11 +227,13 @@ public struct ClaudeStructuredOutputParser: Sendable {
         }
 
         guard let result = lastResult else {
-            enrichedDiagnostics?.eventTypeCounts = eventTypeCounts
-            enrichedDiagnostics?.jsonDecodeFailures = jsonDecodeFailures
-            enrichedDiagnostics?.resultEventDecodeFailures = resultEventDecodeFailures
-            enrichedDiagnostics?.sessionId = sessionId
-            throw ClaudeStructuredOutputError.noResultEvent(enrichedDiagnostics)
+            let enriched = diagnostics?.enriched(
+                eventTypeCounts: eventTypeCounts,
+                jsonDecodeFailures: jsonDecodeFailures,
+                resultEventDecodeFailures: resultEventDecodeFailures,
+                sessionId: sessionId
+            )
+            throw ClaudeStructuredOutputError.noResultEvent(enriched)
         }
         return result
     }

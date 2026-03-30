@@ -24,7 +24,9 @@ public struct CodexOutputParser: Sendable {
     public func parse(_ stdout: String) -> Output {
         var rawEvents: [[String: JSONValue]] = []
         var toolEvents: [ToolEvent] = []
-        var summary = ToolCallSummary()
+        var attempted = 0
+        var errored = 0
+        var succeeded = 0
         let decoder = JSONDecoder()
 
         for line in stdout.components(separatedBy: "\n") {
@@ -46,17 +48,18 @@ public struct CodexOutputParser: Sendable {
                     exitCode: item.exitCode
                 ))
 
-                summary.attempted += 1
+                attempted += 1
                 if let exitCode = item.exitCode {
                     if exitCode == 0 {
-                        summary.succeeded += 1
+                        succeeded += 1
                     } else {
-                        summary.errored += 1
+                        errored += 1
                     }
                 }
             }
         }
 
+        let summary = ToolCallSummary(attempted: attempted, succeeded: succeeded, errored: errored)
         return Output(rawEvents: rawEvents, toolEvents: toolEvents, toolCallSummary: summary)
     }
 }

@@ -2,14 +2,10 @@ import Foundation
 @preconcurrency import SwiftAnthropic
 
 public actor AnthropicAPIClient {
-    private var apiKey: String
+    private let apiKey: String
 
     public init(apiKey: String) {
         self.apiKey = apiKey
-    }
-
-    public func updateAPIKey(_ newKey: String) {
-        self.apiKey = newKey
     }
 
     public func getAPIKey() -> String {

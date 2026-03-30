@@ -2,8 +2,8 @@ import Foundation
 
 public struct Pipeline: Sendable {
     public let id: String
-    public var steps: [any PipelineStep]
-    public var metadata: PipelineMetadata
+    public let steps: [any PipelineStep]
+    public let metadata: PipelineMetadata
 
     public init(id: String, steps: [any PipelineStep], metadata: PipelineMetadata) {
         self.id = id

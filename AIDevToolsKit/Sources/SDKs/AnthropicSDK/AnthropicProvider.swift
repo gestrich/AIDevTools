@@ -8,7 +8,6 @@ public actor AnthropicProvider: AIClient {
 
     private let apiClient: AnthropicAPIClient
     private let storage: AnthropicSessionStorage
-    private var conversations: [String: [MessageParameter.Message]] = [:]
 
     public init(apiClient: AnthropicAPIClient, storageDirectory: URL? = nil) {
         self.apiClient = apiClient
@@ -23,19 +22,13 @@ public actor AnthropicProvider: AIClient {
     ) async throws -> AIClientResult {
         let sessionId = options.sessionId ?? UUID().uuidString
 
-        if conversations[sessionId] == nil {
-            let persisted = await storage.loadPersistedMessages(sessionId: sessionId)
-            if !persisted.isEmpty {
-                conversations[sessionId] = persisted.map { msg in
-                    MessageParameter.Message(
-                        role: msg.role == "user" ? .user : .assistant,
-                        content: .text(msg.content)
-                    )
-                }
-            }
+        let persisted = await storage.loadPersistedMessages(sessionId: sessionId)
+        var history: [MessageParameter.Message] = persisted.map { msg in
+            MessageParameter.Message(
+                role: msg.role == "user" ? .user : .assistant,
+                content: .text(msg.content)
+            )
         }
-
-        var history = conversations[sessionId] ?? []
 
         let userMessage = MessageParameter.Message(role: .user, content: .text(prompt))
         history.append(userMessage)
@@ -76,7 +69,6 @@ public actor AnthropicProvider: AIClient {
 
         let assistantMessage = MessageParameter.Message(role: .assistant, content: .text(fullResponse))
         history.append(assistantMessage)
-        conversations[sessionId] = history
 
         let messageTuples = history.map { msg -> (role: String, content: String) in
             let role = msg.role == "user" ? "user" : "assistant"
