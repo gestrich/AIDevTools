@@ -179,7 +179,10 @@ Functional checks via CLI:
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Scanned all Feature target dependencies in Package.swift and all `import` statements in every Swift source file under `Sources/Features/`. Found zero feature-to-feature imports — every Feature target depends only on Services and SDKs. `ClaudeChainFeature` imports `GitHubService` (Service), `ClaudeChainService` (Service), and SDKs; `PRReviewFeature` imports `PRRadarCLIService`, `PRRadarConfigService`, `PRRadarModelsService` (all Services) and SDKs. No code changes required.
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters, and make the necessary code changes
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Reviewed all 19 SDK targets (104 Swift source files). No SDK file imports any Service, Feature, or App module — every import is Foundation, another SDK, or an external package. All public method signatures use only primitive types, SDK-local types (e.g. `ReviewCommentData`, `CompareResult`), or OctoKit/OctoKit-wrapped types. No violations found; no code changes required.
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that orchestrate multiple operations and split them into single-operation methods, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK types that hold mutable state and refactor to stateless structs, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find error swallowing across all layers and replace with proper propagation, and make the necessary code changes
