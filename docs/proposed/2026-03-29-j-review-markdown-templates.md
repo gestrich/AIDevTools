@@ -138,7 +138,10 @@ Popover contents:
 **Files to modify:**
 - `AIDevToolsKitMac/Views/MarkdownPlannerDetailView.swift`
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Added `ReviewTemplateServiceTests` to `MarkdownPlannerServiceTests` target covering: alphabetical sorting of `availableTemplates()`, skipping non-`.md` files, hyphen-to-space name conversion, parsing unchecked `## - [ ]` lines, including completed `## - [x]` lines (returned as-is so they re-append as unchecked), and skipping non-heading content. All tests use temp directories with `defer { cleanup }` following existing test conventions. Build of `MarkdownPlannerServiceTests` is clean.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
