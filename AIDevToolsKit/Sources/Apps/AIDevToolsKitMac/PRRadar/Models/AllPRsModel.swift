@@ -9,53 +9,6 @@ import PRReviewFeature
 @MainActor
 final class AllPRsModel {
 
-    enum State {
-        case uninitialized
-        case loading
-        case ready([PRModel])
-        case refreshing([PRModel])
-        case failed(String, prior: [PRModel]?)
-    }
-
-    enum RefreshAllState {
-        case idle
-        case running(logs: String, current: Int, total: Int)
-        case completed(logs: String)
-
-        var isRunning: Bool {
-            switch self {
-            case .idle, .completed: return false
-            case .running: return true
-            }
-        }
-
-        var progressText: String? {
-            if case .running(_, let current, let total) = self, total > 0 {
-                return "\(current)/\(total)"
-            }
-            return nil
-        }
-    }
-
-    enum AnalyzeAllState {
-        case idle
-        case running(logs: String, current: Int, total: Int)
-        case completed(logs: String)
-        case failed(error: String, logs: String)
-
-        var isRunning: Bool {
-            if case .running = self { return true }
-            return false
-        }
-        
-        var progressText: String? {
-            if case .running(_, let current, let total) = self {
-                return "\(current)/\(total)"
-            }
-            return nil
-        }
-    }
-
     private(set) var state: State = .uninitialized
     private(set) var refreshAllState: RefreshAllState = .idle
     private(set) var analyzeAllState: AnalyzeAllState = .idle
@@ -318,6 +271,53 @@ final class AllPRsModel {
             let model = PRModel(metadata: meta, config: config)
             model.loadSummary()
             return model
+        }
+    }
+
+    enum State {
+        case uninitialized
+        case loading
+        case ready([PRModel])
+        case refreshing([PRModel])
+        case failed(String, prior: [PRModel]?)
+    }
+
+    enum RefreshAllState {
+        case idle
+        case running(logs: String, current: Int, total: Int)
+        case completed(logs: String)
+
+        var isRunning: Bool {
+            switch self {
+            case .idle, .completed: return false
+            case .running: return true
+            }
+        }
+
+        var progressText: String? {
+            if case .running(_, let current, let total) = self, total > 0 {
+                return "\(current)/\(total)"
+            }
+            return nil
+        }
+    }
+
+    enum AnalyzeAllState {
+        case idle
+        case running(logs: String, current: Int, total: Int)
+        case completed(logs: String)
+        case failed(error: String, logs: String)
+
+        var isRunning: Bool {
+            if case .running = self { return true }
+            return false
+        }
+
+        var progressText: String? {
+            if case .running(_, let current, let total) = self {
+                return "\(current)/\(total)"
+            }
+            return nil
         }
     }
 

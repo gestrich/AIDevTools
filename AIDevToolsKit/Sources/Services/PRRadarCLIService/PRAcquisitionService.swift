@@ -7,29 +7,6 @@ import PRRadarModelsService
 
 public struct PRAcquisitionService: Sendable {
 
-    public enum AcquisitionError: LocalizedError {
-        case fetchRepositoryFailed(underlying: Error)
-        case fetchDiffFailed(underlying: Error)
-        case fetchMetadataFailed(underlying: Error)
-        case fetchCommentsFailed(underlying: Error)
-        case missingHeadCommitSHA
-
-        public var errorDescription: String? {
-            switch self {
-            case .fetchRepositoryFailed(let error):
-                "Failed to fetch repository info: \(error.localizedDescription)"
-            case .fetchDiffFailed(let error):
-                "Failed to fetch PR diff: \(error.localizedDescription)"
-            case .fetchMetadataFailed(let error):
-                "Failed to fetch PR metadata: \(error.localizedDescription)"
-            case .fetchCommentsFailed(let error):
-                "Failed to fetch PR comments: \(error.localizedDescription)"
-            case .missingHeadCommitSHA:
-                "PR is missing headRefOid (head commit SHA)"
-            }
-        }
-    }
-
     private let gitHub: GitHubService
     private let gitOps: GitOperationsService
     private let historyProvider: GitHistoryProvider
@@ -48,14 +25,6 @@ public struct PRAcquisitionService: Sendable {
         self.historyProvider = historyProvider
         self.gitHubPRService = gitHubPRService
         self.imageDownload = imageDownload
-    }
-
-    public struct AcquisitionResult: Sendable {
-        public let pullRequest: GitHubPullRequest
-        public let diff: GitDiff
-        public let comments: GitHubPullRequestComments
-        public let repository: GitHubRepository
-        public let commitHash: String
     }
 
     /// Fetch comments from GitHub, resolve author names, and write to cache.
@@ -377,6 +346,37 @@ public struct PRAcquisitionService: Sendable {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    public enum AcquisitionError: LocalizedError {
+        case fetchRepositoryFailed(underlying: Error)
+        case fetchDiffFailed(underlying: Error)
+        case fetchMetadataFailed(underlying: Error)
+        case fetchCommentsFailed(underlying: Error)
+        case missingHeadCommitSHA
+
+        public var errorDescription: String? {
+            switch self {
+            case .fetchRepositoryFailed(let error):
+                "Failed to fetch repository info: \(error.localizedDescription)"
+            case .fetchDiffFailed(let error):
+                "Failed to fetch PR diff: \(error.localizedDescription)"
+            case .fetchMetadataFailed(let error):
+                "Failed to fetch PR metadata: \(error.localizedDescription)"
+            case .fetchCommentsFailed(let error):
+                "Failed to fetch PR comments: \(error.localizedDescription)"
+            case .missingHeadCommitSHA:
+                "PR is missing headRefOid (head commit SHA)"
+            }
+        }
+    }
+
+    public struct AcquisitionResult: Sendable {
+        public let pullRequest: GitHubPullRequest
+        public let diff: GitDiff
+        public let comments: GitHubPullRequestComments
+        public let repository: GitHubRepository
+        public let commitHash: String
     }
 }
 
