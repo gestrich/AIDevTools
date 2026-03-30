@@ -227,7 +227,10 @@ Functional checks via CLI:
 
 **Skills used**: none
 **Principles applied**: Found two issues. (1) `FetchPRListUseCase.execute()` had `limit: String? = nil` and `repoSlug: String? = nil` parameters that were vestiges of the old implementation — both unused in the new body that calls `updateAllPRs()`. Removed both parameters and updated callers in `PRRadarRefreshCommand` (also removed the now-dead `--limit` CLI option) and `AllPRsModel`. (2) `PRRadarViolationsCommand` (new in Phase 19) used `[String: Any]` + `JSONSerialization` to build JSON output — replaced with a private `ViolationOutput: Codable` struct and `JSONEncoder`.
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Replace optional types with non-optional where the value must be present, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Replace optional types with non-optional where the value must be present, and make the necessary code changes
+
+**Skills used**: none
+**Principles applied**: Found one issue: `PRAcquisitionService.refreshComments(prNumber:authorCache:)` and `acquire(prNumber:outputDir:authorCache:)` both declared `authorCache: AuthorCacheService? = nil`, but every caller provides an `AuthorCacheService()` instance — nil was never a valid state. Made both parameters non-optional and removed the `if let authorCache` guards, collapsing the inner `if let prLogin = pullRequest.author?.login` check (which remains optional, coming from the GitHub API model).
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Remove AI-changelog-style comments and replace with concise documentation or remove entirely, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find duplicated logic and consolidate into a single shared implementation, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Replace force unwraps with proper optional handling, and make the necessary code changes

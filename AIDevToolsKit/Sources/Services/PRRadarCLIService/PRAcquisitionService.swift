@@ -30,7 +30,7 @@ public struct PRAcquisitionService: Sendable {
     /// Fetch comments from GitHub, resolve author names, and write to the shared GitHub cache.
     public func refreshComments(
         prNumber: Int,
-        authorCache: AuthorCacheService? = nil
+        authorCache: AuthorCacheService
     ) async throws -> GitHubPullRequestComments {
         var comments: GitHubPullRequestComments
         do {
@@ -39,12 +39,10 @@ public struct PRAcquisitionService: Sendable {
             throw AcquisitionError.fetchCommentsFailed(underlying: error)
         }
 
-        if let authorCache {
-            let logins = collectCommentAuthorLogins(comments: comments)
-            if !logins.isEmpty {
-                let nameMap = try await gitHub.resolveAuthorNames(logins: logins, cache: authorCache)
-                comments = comments.withAuthorNames(from: nameMap)
-            }
+        let logins = collectCommentAuthorLogins(comments: comments)
+        if !logins.isEmpty {
+            let nameMap = try await gitHub.resolveAuthorNames(logins: logins, cache: authorCache)
+            comments = comments.withAuthorNames(from: nameMap)
         }
 
         if !comments.reviewComments.isEmpty {
@@ -65,7 +63,7 @@ public struct PRAcquisitionService: Sendable {
     public func acquire(
         prNumber: Int,
         outputDir: String,
-        authorCache: AuthorCacheService? = nil
+        authorCache: AuthorCacheService
     ) async throws -> AcquisitionResult {
         // --- Fetch PR metadata ---
 
@@ -97,13 +95,10 @@ public struct PRAcquisitionService: Sendable {
             authorCache: authorCache
         )
 
-        if let authorCache {
-            let prLogin = pullRequest.author?.login
-            if let prLogin {
-                let nameMap = try await gitHub.resolveAuthorNames(logins: [prLogin], cache: authorCache)
-                pullRequest = pullRequest.withAuthorNames(from: nameMap)
-                try await gitHubPRService.writePR(pullRequest, number: prNumber)
-            }
+        if let prLogin = pullRequest.author?.login {
+            let nameMap = try await gitHub.resolveAuthorNames(logins: [prLogin], cache: authorCache)
+            pullRequest = pullRequest.withAuthorNames(from: nameMap)
+            try await gitHubPRService.writePR(pullRequest, number: prNumber)
         }
 
         guard let fullCommitHash = pullRequest.headRefOid,
