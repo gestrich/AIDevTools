@@ -136,9 +136,10 @@ The `analysis/<commit>/` subdirectories (diff, prepare, evaluate, report) and `P
 - No full integration in this plan — just ensure `GitHubPRService` is injectable and available to `ClaudeChainFeature`
 - Add `GitHubService` as a dependency of `ClaudeChainFeature` in `Package.swift`
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
-**Skills to read**: `pr-radar-debug`
+**Skills used**: `pr-radar-debug`
+**Principles applied**: Ran all CLI validation checks against the `PRRadar-TestRepo` config. Confirmed metadata files are written to `~/Desktop/ai-dev-tools/github/gestrich-PRRadar-TestRepo/<pr-number>/` (new path), analysis artifacts remain in `prradar/repos/PRRadar-TestRepo/<pr-number>/analysis/<commit>/diff/`, full-sweep `refresh` fetched all 16 PRs into the github cache, targeted `refresh-pr 3` updated only PR 3, and `status` correctly discovered PRs via the new cache path.
 
 Build verification:
 - `swift build` for `AIDevToolsKit` and all CLI targets — no regressions
