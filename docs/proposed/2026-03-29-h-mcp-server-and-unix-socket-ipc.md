@@ -279,7 +279,10 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Audited all 9 Feature modules (`ArchitecturePlannerFeature`, `ChatFeature`, `ClaudeChainFeature`, `CredentialFeature`, `EvalFeature`, `MarkdownPlannerFeature`, `PipelineFeature`, `PRReviewFeature`, `SkillBrowserFeature`). No feature imports another feature — every Feature target's dependencies in `Package.swift` point only to Services, SDKs, and external packages. Architecture is fully compliant; no changes required.
-## - [ ] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
+## - [x] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Audited all 18 SDK modules (90 Swift files) for public methods accepting or returning Feature/App layer types. All SDK public APIs exclusively use Swift standard library types, SDK-defined Codable/Sendable types, and primitives — zero imports of Feature or Service modules found. No changes required; architecture is fully compliant.
 ## - [ ] Find SDK methods that orchestrate multiple operations and split them into single-operation methods
 ## - [ ] Find SDK types that hold mutable state and refactor to stateless structs
 ## - [ ] Find error swallowing across all layers and replace with proper propagation
