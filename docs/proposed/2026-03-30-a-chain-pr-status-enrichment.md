@@ -251,11 +251,89 @@ Wire `GetChainDetailUseCase` using the same injected services as the Mac app. Th
 
 **Skills to read**: `ai-dev-tools-debug`, `pr-radar-debug`
 
-Build and functional verification:
-- `swift build` for both `claude-chain` CLI and `AIDevToolsKitMac` — clean compile
-- CLI local-only: `swift run claude-chain status --repo-path /Users/bill/Developer/work/ios ios-26-ins-policy-AFWXBriefs-to-Diag` — still works unchanged
-- CLI enriched: `swift run claude-chain status --github --repo-path /Users/bill/Developer/work/ios ios-26-ins-policy-AFWXBriefs-to-Diag` — PR data appears for open PRs
-- Verify review state, build status, and draft indicators match what `chain-check.sh` shows for the same project
-- Test with a completed project (no open PRs) — clean output with no PR data, no action items
-- Test list view with `--github` flag across all projects — action item counts appear
-- Mac app: select a chain project in the detail view and confirm enriched PR data loads and displays; confirm action items banner appears when relevant
+Primary test repo: `/Users/bill/Developer/personal/claude-chain-demo` (remote: `gestrich/claude-chain-demo`). This is a dedicated demo repo with simple chain projects — safe to create new chains and run tasks freely without affecting real work.
+
+### Step 1: Build
+
+```bash
+cd AIDevToolsKit
+swift build --target claude-chain
+swift build --target AIDevToolsKitMac
+```
+
+Both targets must compile cleanly.
+
+### Step 2: Prepare a test chain in claude-chain-demo
+
+The repo already has `async-test` (1/4 complete) and `hello-world` (4/5 complete). Create a new chain specifically for this validation so we control which PRs are open:
+
+1. Create `claude-chain-demo/claude-chain/enrichment-test/spec.md` with 3 simple tasks (e.g., create `enrichment-test/file-1.txt`, `enrichment-test/file-2.txt`, `enrichment-test/file-3.txt`)
+2. Run two tasks to get two real open PRs against `gestrich/claude-chain-demo`:
+   ```bash
+   swift run claude-chain run-task --repo-path /Users/bill/Developer/personal/claude-chain-demo enrichment-test
+   swift run claude-chain run-task --repo-path /Users/bill/Developer/personal/claude-chain-demo enrichment-test
+   ```
+3. Confirm two PRs are open on GitHub: `gh pr list --repo gestrich/claude-chain-demo`
+
+### Step 3: CLI — local-only (no regression)
+
+```bash
+swift run claude-chain status --repo-path /Users/bill/Developer/personal/claude-chain-demo
+```
+
+Output must show all three projects with progress bars. No GitHub calls. Completes instantly.
+
+### Step 4: CLI — enriched output
+
+```bash
+swift run claude-chain status --github --repo-path /Users/bill/Developer/personal/claude-chain-demo enrichment-test
+```
+
+Expected output for `enrichment-test`:
+- Two tasks show linked PR numbers with age badge
+- Review indicator shown (likely "no reviewers" initially)
+- Build indicator shown (passing/pending depending on CI)
+- No action items for the third task (no open PR yet)
+
+```bash
+# Also test list view across all projects
+swift run claude-chain status --github --repo-path /Users/bill/Developer/personal/claude-chain-demo
+```
+
+Projects with open PRs show action item count badges; `hello-world` (no open PRs after completion) shows clean.
+
+### Step 5: Verify GitHub cache was written
+
+```bash
+ls ~/Desktop/ai-dev-tools/github/gestrich-claude-chain-demo/
+```
+
+Should show numbered directories (one per open PR), each containing `gh-pr.json`, `gh-reviews.json`, `gh-checks.json`.
+
+### Step 6: Verify `changes()` stream (cache reuse)
+
+Run the enriched status command a second time:
+
+```bash
+swift run claude-chain status --github --repo-path /Users/bill/Developer/personal/claude-chain-demo enrichment-test
+```
+
+The second run should complete noticeably faster — PR metadata and reviews served from cache, not re-fetched from GitHub.
+
+### Step 7: Test with ios work repo (realistic scenario)
+
+```bash
+swift run claude-chain status --github --repo-path /Users/bill/Developer/work/ios ios-26-ins-policy-AFWXBriefs-to-Diag
+```
+
+Verify PR data appears for open PRs, review states and CI status match what `chain-check.sh` shows for the same project.
+
+### Step 8: Mac app
+
+Ask Bill to open the Mac app, select the `claude-chain-demo` repo, switch to the Claude Chain tab, and select the `enrichment-test` project. Verify:
+- Project list loads immediately (local data)
+- Enrichment spinner appears briefly then disappears
+- PR indicators appear in the task list for the two tasks with open PRs
+- Action items banner appears if any conditions are met (e.g., no reviewers assigned)
+- Sidebar badge shows action count for the project
+- "Refresh GitHub" button re-fetches and updates the view
