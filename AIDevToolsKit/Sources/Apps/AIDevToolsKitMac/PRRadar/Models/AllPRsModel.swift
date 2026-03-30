@@ -89,9 +89,7 @@ final class AllPRsModel {
                 case .taskEvent: break
                 case .completed(let result):
                     updatedMetadata = PRDiscoveryService.discoverPRs(config: config)
-                    if let service = result.gitHubPRService {
-                        startObservingChanges(service: service)
-                    }
+                    startObservingChanges(service: result.gitHubPRService)
                 case .failed(let error, _):
                     self.state = .failed(error, prior: prior)
                     refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(error)\n")

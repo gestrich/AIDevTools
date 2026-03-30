@@ -62,19 +62,13 @@ public struct SyncPRUseCase: StreamingUseCase {
 
                     try Task.checkCancellation()
 
-                    let gitHubPRService: (any GitHubPRServiceProtocol)? = config.gitHubCacheURL.map { cacheURL in
-                        GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+                    guard let cacheURL = config.gitHubCacheURL else {
+                        throw SyncError.noDataRoot
                     }
+                    let gitHubPRService = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
 
                     if !force {
-                        let cachedPR: GitHubPullRequest?
-                        if let gitHubPRService {
-                            cachedPR = try? await gitHubPRService.pullRequest(number: prNumber, useCache: true)
-                        } else {
-                            cachedPR = try? PhaseOutputParser.parsePhaseOutput(
-                                config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghPRFilename
-                            )
-                        }
+                        let cachedPR = try? await gitHubPRService.pullRequest(number: prNumber, useCache: true)
                         if let cachedUpdatedAt = cachedPR?.updatedAt {
                             let currentUpdatedAt = try await gitHub.getPRUpdatedAt(number: prNumber)
                             if cachedUpdatedAt == currentUpdatedAt {
@@ -140,6 +134,14 @@ public struct SyncPRUseCase: StreamingUseCase {
                     continuation.finish()
                 }
             }
+        }
+    }
+
+    private enum SyncError: LocalizedError {
+        case noDataRoot
+
+        var errorDescription: String? {
+            "GitHub cache URL not configured; ensure dataRootURL is set on RepositoryConfiguration"
         }
     }
 }

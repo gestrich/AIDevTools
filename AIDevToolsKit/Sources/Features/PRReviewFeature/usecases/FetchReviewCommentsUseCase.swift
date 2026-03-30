@@ -24,12 +24,13 @@ public struct FetchReviewCommentsUseCase: UseCase {
         cachedOnly: Bool
     ) async throws -> [ReviewComment] {
         if !cachedOnly {
+            guard let cacheURL = config.gitHubCacheURL else {
+                throw FetchError.noDataRoot
+            }
             let (gitHub, gitOps) = try await GitHubServiceFactory.create(
                 repoPath: config.repoPath, githubAccount: config.githubAccount
             )
-            let gitHubPRService: (any GitHubPRServiceProtocol)? = config.gitHubCacheURL.map { cacheURL in
-                GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
-            }
+            let gitHubPRService = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
             let historyProvider = LocalGitHistoryProvider(gitOps: gitOps, repoPath: config.repoPath)
             let acquisition = PRAcquisitionService(
                 gitHub: gitHub,
@@ -39,7 +40,6 @@ public struct FetchReviewCommentsUseCase: UseCase {
             )
             _ = try await acquisition.refreshComments(
                 prNumber: prNumber,
-                outputDir: config.resolvedOutputDir,
                 authorCache: AuthorCacheService()
             )
         }
@@ -69,5 +69,13 @@ public struct FetchReviewCommentsUseCase: UseCase {
 
         let reconciled = ViolationService.reconcile(pending: pending, posted: posted)
         return CommentSuppressionService.applySuppression(to: reconciled).comments
+    }
+
+    private enum FetchError: LocalizedError {
+        case noDataRoot
+
+        var errorDescription: String? {
+            "GitHub cache URL not configured; ensure dataRootURL is set on RepositoryConfiguration"
+        }
     }
 }

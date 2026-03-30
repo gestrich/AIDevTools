@@ -10,14 +10,14 @@ public struct PRAcquisitionService: Sendable {
     private let gitHub: GitHubService
     private let gitOps: GitOperationsService
     private let historyProvider: GitHistoryProvider
-    private let gitHubPRService: (any GitHubPRServiceProtocol)?
+    private let gitHubPRService: any GitHubPRServiceProtocol
     private let imageDownload: ImageDownloadService
 
     public init(
         gitHub: GitHubService,
         gitOps: GitOperationsService,
         historyProvider: GitHistoryProvider,
-        gitHubPRService: (any GitHubPRServiceProtocol)? = nil,
+        gitHubPRService: any GitHubPRServiceProtocol,
         imageDownload: ImageDownloadService = ImageDownloadService()
     ) {
         self.gitHub = gitHub
@@ -27,22 +27,14 @@ public struct PRAcquisitionService: Sendable {
         self.imageDownload = imageDownload
     }
 
-    /// Fetch comments from GitHub, resolve author names, and write to cache.
-    ///
-    /// When `gitHubPRService` is set, writes to the shared GitHub cache. Otherwise writes to
-    /// `metadata/gh-comments.json` in the PRRadar output directory.
+    /// Fetch comments from GitHub, resolve author names, and write to the shared GitHub cache.
     public func refreshComments(
         prNumber: Int,
-        outputDir: String,
         authorCache: AuthorCacheService? = nil
     ) async throws -> GitHubPullRequestComments {
         var comments: GitHubPullRequestComments
         do {
-            if let gitHubPRService {
-                comments = try await gitHubPRService.comments(number: prNumber, useCache: false)
-            } else {
-                comments = try await gitHub.getPullRequestComments(number: prNumber)
-            }
+            comments = try await gitHubPRService.comments(number: prNumber, useCache: false)
         } catch {
             throw AcquisitionError.fetchCommentsFailed(underlying: error)
         }
@@ -60,19 +52,7 @@ public struct PRAcquisitionService: Sendable {
             comments = comments.withReviewThreadResolution(resolvedCommentIDs: resolvedIDs)
         }
 
-        if let gitHubPRService {
-            try await gitHubPRService.writeComments(comments, number: prNumber)
-        } else {
-            let metadataDir = PRRadarPhasePaths.phaseDirectory(
-                outputDir: outputDir,
-                prNumber: prNumber,
-                phase: .metadata
-            )
-            try PRRadarPhasePaths.ensureDirectoryExists(at: metadataDir)
-
-            let commentsJSON = try JSONEncoder.prettyPrinted.encode(comments)
-            try write(commentsJSON, to: "\(metadataDir)/\(PRRadarPhasePaths.ghCommentsFilename)")
-        }
+        try await gitHubPRService.writeComments(comments, number: prNumber)
 
         return comments
     }
@@ -80,8 +60,7 @@ public struct PRAcquisitionService: Sendable {
     /// Fetch all PR data artifacts and write them to disk.
     ///
     /// Metadata (`gh-pr.json`, `gh-comments.json`, `gh-repo.json`) is written to the shared
-    /// GitHub cache when `gitHubPRService` is set. Images and phase results remain in the
-    /// PRRadar output directory under `metadata/`.
+    /// GitHub cache. Images and phase results remain in the PRRadar output directory under `metadata/`.
     /// Diff artifacts are written to `analysis/<commit>/diff/`.
     public func acquire(
         prNumber: Int,
@@ -93,30 +72,17 @@ public struct PRAcquisitionService: Sendable {
         let repository: GitHubRepository
         var pullRequest: GitHubPullRequest
 
-        if let gitHubPRService {
-            do {
-                try await gitHubPRService.updateRepository()
-                repository = try await gitHubPRService.repository(useCache: true)
-            } catch {
-                throw AcquisitionError.fetchRepositoryFailed(underlying: error)
-            }
-            do {
-                try await gitHubPRService.updatePR(number: prNumber)
-                pullRequest = try await gitHubPRService.pullRequest(number: prNumber, useCache: true)
-            } catch {
-                throw AcquisitionError.fetchMetadataFailed(underlying: error)
-            }
-        } else {
-            do {
-                repository = try await gitHub.getRepository()
-            } catch {
-                throw AcquisitionError.fetchRepositoryFailed(underlying: error)
-            }
-            do {
-                pullRequest = try await gitHub.getPullRequest(number: prNumber)
-            } catch {
-                throw AcquisitionError.fetchMetadataFailed(underlying: error)
-            }
+        do {
+            try await gitHubPRService.updateRepository()
+            repository = try await gitHubPRService.repository(useCache: true)
+        } catch {
+            throw AcquisitionError.fetchRepositoryFailed(underlying: error)
+        }
+        do {
+            try await gitHubPRService.updatePR(number: prNumber)
+            pullRequest = try await gitHubPRService.pullRequest(number: prNumber, useCache: true)
+        } catch {
+            throw AcquisitionError.fetchMetadataFailed(underlying: error)
         }
 
         let rawDiff: String
@@ -128,7 +94,6 @@ public struct PRAcquisitionService: Sendable {
 
         let comments = try await refreshComments(
             prNumber: prNumber,
-            outputDir: outputDir,
             authorCache: authorCache
         )
 
@@ -137,9 +102,7 @@ public struct PRAcquisitionService: Sendable {
             if let prLogin {
                 let nameMap = try await gitHub.resolveAuthorNames(logins: [prLogin], cache: authorCache)
                 pullRequest = pullRequest.withAuthorNames(from: nameMap)
-                if let gitHubPRService {
-                    try await gitHubPRService.writePR(pullRequest, number: prNumber)
-                }
+                try await gitHubPRService.writePR(pullRequest, number: prNumber)
             }
         }
 
@@ -157,14 +120,6 @@ public struct PRAcquisitionService: Sendable {
             phase: .metadata
         )
         try PRRadarPhasePaths.ensureDirectoryExists(at: metadataDir)
-
-        if gitHubPRService == nil {
-            let prJSON = try JSONEncoder.prettyPrinted.encode(pullRequest)
-            try write(prJSON, to: "\(metadataDir)/\(PRRadarPhasePaths.ghPRFilename)")
-
-            let repoJSON = try JSONEncoder.prettyPrinted.encode(repository)
-            try write(repoJSON, to: "\(metadataDir)/\(PRRadarPhasePaths.ghRepoFilename)")
-        }
 
         let imageURLMap = try await downloadImages(
             prNumber: prNumber,
