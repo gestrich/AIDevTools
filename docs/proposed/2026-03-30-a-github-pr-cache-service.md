@@ -21,7 +21,10 @@ The commit-hash-based analysis paths (`analysis/<commit>/diff`, `prepare`, `eval
 
 ## Phases
 
-## - [ ] Phase 1: Add `github` path to `DataPathsService`
+## - [x] Phase 1: Add `github` path to `DataPathsService`
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added `github(repoSlug: String)` case to `ServicePath` enum in alphabetical order, following the existing `prradarOutput(String)` pattern for parameterized paths.
 
 **Skills to read**: `swift-architecture`
 
@@ -138,3 +141,26 @@ Functional checks via CLI:
 - Run targeted update for a single PR number and verify only that PR is re-fetched
 - Verify PRDiscovery still finds PRs correctly from the new path
 - Confirm `DataPathsService.path(for: .github(repoSlug:))` creates the correct directory on first use
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find new features architected as afterthoughts and refactor them to integrate cleanly with the existing system, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Identify the architectural layer for every new or modified file; read the reference doc for that layer before reviewing anything else, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find code placed in the wrong layer entirely and move it to the correct one, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find upward dependencies (lower layers importing higher layers) and remove them, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find `@Observable` or `@MainActor` outside the Apps layer and move it up, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find multi-step orchestration that belongs in a use case and extract it, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find feature-to-feature imports and replace with a shared Service or SDK abstraction, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that orchestrate multiple operations and split them into single-operation methods, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK types that hold mutable state and refactor to stateless structs, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find error swallowing across all layers and replace with proper propagation, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify use case types are structs conforming to `UseCase` or `StreamingUseCase`, not classes or actors, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify type names follow the `<Name><Layer>` convention and rename any that don't, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify both a Mac app model and a CLI command consume each new use case, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Split files that define multiple unrelated types into one file per type, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Move supporting enums and nested types below their primary type, not above it, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find fallback values that hide failures and suppressed errors — remove or replace both with proper propagation, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Remove backwards compatibility shims added before release — there is no backwards compatibility obligation for unreleased code, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Replace `String`, `[String: Any]`, and raw dictionary types in APIs with proper typed models, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Replace optional types with non-optional where the value must be present, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Remove AI-changelog-style comments and replace with concise documentation or remove entirely, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find duplicated logic and consolidate into a single shared implementation, and make the necessary code changes
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Replace force unwraps with proper optional handling, and make the necessary code changes

@@ -20,6 +20,7 @@ public enum DataPathsError: Error, LocalizedError {
 public enum ServicePath {
     case architecturePlanner
     case evalSettings
+    case github(repoSlug: String)
     case planSettings
     case prradarOutput(String)
     case prradarSettings
@@ -32,6 +33,8 @@ public enum ServicePath {
             return "architecture-planner"
         case .evalSettings:
             return "eval/settings"
+        case .github(let repoSlug):
+            return "github/\(repoSlug)"
         case .planSettings:
             return "plan/settings"
         case .prradarOutput(let repoName):
