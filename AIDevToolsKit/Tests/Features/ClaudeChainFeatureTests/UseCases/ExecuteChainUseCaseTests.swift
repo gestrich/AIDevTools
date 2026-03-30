@@ -17,7 +17,7 @@ struct ExecuteChainUseCaseSpecTests {
             name: "hello-world",
             basePath: (chainDir as NSString).appendingPathComponent("hello-world")
         )
-        let repository = ProjectRepository(repo: "")
+        let repository = ProjectRepository(repo: "", gitHubOperations: MockGitHubOperations())
         let spec = try #require(try repository.loadLocalSpec(project: project))
 
         let nextTask = try #require(spec.getNextAvailableTask())
@@ -33,7 +33,7 @@ struct ExecuteChainUseCaseSpecTests {
             name: "async-test",
             basePath: (chainDir as NSString).appendingPathComponent("async-test")
         )
-        let repository = ProjectRepository(repo: "")
+        let repository = ProjectRepository(repo: "", gitHubOperations: MockGitHubOperations())
         let spec = try #require(try repository.loadLocalSpec(project: project))
 
         let nextTask = try #require(spec.getNextAvailableTask())
@@ -48,7 +48,7 @@ struct ExecuteChainUseCaseSpecTests {
             name: "hello-world",
             basePath: (chainDir as NSString).appendingPathComponent("hello-world")
         )
-        let repository = ProjectRepository(repo: "")
+        let repository = ProjectRepository(repo: "", gitHubOperations: MockGitHubOperations())
         let spec = try #require(try repository.loadLocalSpec(project: project))
         let task = try #require(spec.getNextAvailableTask())
 
@@ -73,6 +73,12 @@ struct ExecuteChainUseCaseSpecTests {
 }
 
 // MARK: - Test Doubles
+
+private class MockGitHubOperations: GitHubOperationsProtocol {
+    func getFileFromBranch(repo: String, branch: String, filePath: String) throws -> String? {
+        return nil
+    }
+}
 
 private struct StubAIClient: AIClient {
     let displayName = "Stub"

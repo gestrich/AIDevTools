@@ -223,7 +223,7 @@ struct MarkdownPipelineSourceTests {
         defer { cleanup(url) }
 
         let source = MarkdownPipelineSource(fileURL: url, format: .task, appendCreatePRStep: false)
-        let prStep = CreatePRStep(id: "pr", description: "Create PR", titleTemplate: "title", bodyTemplate: "body")
+        let prStep = CreatePRStep(id: "pr", description: "Create PR", isCompleted: false, titleTemplate: "title", bodyTemplate: "body", label: nil)
 
         // Should not throw
         try await source.markStepCompleted(prStep)
@@ -240,7 +240,7 @@ struct MarkdownPipelineSourceTests {
         defer { cleanup(url) }
 
         let source = MarkdownPipelineSource(fileURL: url, format: .phase)
-        let newStep = CodeChangeStep(id: "new", description: "Phase 2", prompt: "Do phase 2")
+        let newStep = CodeChangeStep(id: "new", description: "Phase 2", isCompleted: false, prompt: "Do phase 2", skills: [], context: .empty)
 
         try await source.appendSteps([newStep])
 
@@ -254,7 +254,7 @@ struct MarkdownPipelineSourceTests {
         defer { cleanup(url) }
 
         let source = MarkdownPipelineSource(fileURL: url, format: .task, appendCreatePRStep: false)
-        let newStep = CodeChangeStep(id: "new", description: "Task 2", prompt: "Do task 2")
+        let newStep = CodeChangeStep(id: "new", description: "Task 2", isCompleted: false, prompt: "Do task 2", skills: [], context: .empty)
 
         try await source.appendSteps([newStep])
 

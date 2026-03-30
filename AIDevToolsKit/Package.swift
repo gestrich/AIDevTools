@@ -478,7 +478,15 @@ let package = Package(
         ),
         .testTarget(
             name: "AIDevToolsKitCLITests",
-            dependencies: ["AIDevToolsKitCLI"]
+            dependencies: [
+                "AIDevToolsKitCLI",
+                .product(name: "MCP", package: "swift-sdk"),
+            ]
+        ),
+        .testTarget(
+            name: "AppIPCSDKTests",
+            dependencies: ["AppIPCSDK"],
+            path: "Tests/SDKs/AppIPCSDKTests"
         ),
         .testTarget(
             name: "ArchitecturePlannerFeatureTests",

@@ -207,7 +207,10 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 
 **Update callers**: `MarkdownPlannerModel.makeChatModel()` and `ClaudeChainModel.makeChatModel()` — remove response handler wiring.
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Added `AppIPCSDKTests` as a new SDK-layer test target covering Codable encoding/decoding of IPC types and the `appNotRunning` error path. Added `MCPCommandTests` in `AIDevToolsKitCLITests` covering command configuration and tool handler behavior (graceful app-not-running handling, list_plans shape). Made `handleCallTool` internal (removed `private`) to enable `@testable import` testing. Fixed pre-existing compilation errors in `ClaudeChainSDKTests`, `ClaudeChainFeatureTests`, and `PipelineSDKTests` (missing required parameters added to initializers) so the full test suite compiles. Build passes cleanly; 679 tests run, 3 pre-existing failures from missing local fixture files unrelated to this phase.
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

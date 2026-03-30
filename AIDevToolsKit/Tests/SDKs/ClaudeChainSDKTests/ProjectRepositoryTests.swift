@@ -16,8 +16,8 @@ final class ProjectRepositoryTests: XCTestCase {
         // Should create repository with GitHub repo name
         
         // Arrange & Act
-        let repo = ProjectRepository(repo: "owner/repo-name")
-        
+        let repo = ProjectRepository(repo: "owner/repo-name", gitHubOperations: MockGitHubOperations())
+
         // Assert
         XCTAssertNotNil(repo)
     }
@@ -497,11 +497,11 @@ allowedTools: Read,Write,Edit
         try configContent.write(to: configFile, atomically: true, encoding: .utf8)
         
         let project = Project(name: "my-project", basePath: projectDir.path)
-        let repo = ProjectRepository(repo: "owner/repo")
-        
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
         // Act
         let config = try repo.loadLocalConfiguration(project: project)
-        
+
         // Assert
         XCTAssertNotNil(config)
         XCTAssertEqual(config.project, project)
@@ -520,11 +520,11 @@ allowedTools: Read,Write,Edit
         // No config file created
         
         let project = Project(name: "my-project", basePath: projectDir.path)
-        let repo = ProjectRepository(repo: "owner/repo")
-        
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
         // Act
         let config = try repo.loadLocalConfiguration(project: project)
-        
+
         // Assert - returns default config, not nil
         XCTAssertNotNil(config)
         XCTAssertEqual(config.project, project)
@@ -551,11 +551,11 @@ allowedTools: Read,Write,Edit
         try specContent.write(to: specFile, atomically: true, encoding: .utf8)
         
         let project = Project(name: "my-project", basePath: projectDir.path)
-        let repo = ProjectRepository(repo: "owner/repo")
-        
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
         // Act
         let spec = try repo.loadLocalSpec(project: project)
-        
+
         // Assert
         XCTAssertNotNil(spec)
         XCTAssertEqual(spec?.project, project)
@@ -573,11 +573,11 @@ allowedTools: Read,Write,Edit
         // No spec file created
         
         let project = Project(name: "my-project", basePath: projectDir.path)
-        let repo = ProjectRepository(repo: "owner/repo")
-        
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
         // Act
         let spec = try repo.loadLocalSpec(project: project)
-        
+
         // Assert
         XCTAssertNil(spec)
     }

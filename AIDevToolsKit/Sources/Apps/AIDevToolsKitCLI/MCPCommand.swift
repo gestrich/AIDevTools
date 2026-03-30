@@ -91,7 +91,7 @@ struct MCPCommand: AsyncParsableCommand {
 
     // MARK: - Tool dispatch
 
-    private static func handleCallTool(_ params: CallTool.Parameters) async throws -> CallTool.Result {
+    static func handleCallTool(_ params: CallTool.Parameters) async throws -> CallTool.Result {
         switch params.name {
         case "get_plan_details":
             return try await handleGetPlanDetails(params.arguments ?? [:])
