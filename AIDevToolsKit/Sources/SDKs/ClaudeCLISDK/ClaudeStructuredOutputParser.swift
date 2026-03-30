@@ -25,8 +25,12 @@ public struct ProcessDiagnostics: Sendable {
     public var sessionId: String?
     /// Last 1000 characters of stdout for context (trailing whitespace stripped)
     public var stdoutTail: String = ""
+    /// Bytes recovered by the post-exit pipe drain in CLIClient. Zero means readDataToEndOfFile()
+    /// returned empty — the kernel pipe buffer was already consumed by a concurrent readabilityHandler
+    /// callback, confirming the GCD race hypothesis.
+    public var drainByteCount: Int = 0
 
-    public init(exitCode: Int32, stderr: String, stdout: String) {
+    public init(exitCode: Int32, stderr: String, stdout: String, drainByteCount: Int = 0) {
         self.exitCode = exitCode
         let lines = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: "\n")
@@ -36,6 +40,7 @@ public struct ProcessDiagnostics: Sendable {
         self.stdoutByteCount = stdout.utf8.count
         let trimmed = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         self.stdoutTail = String(trimmed.suffix(1000))
+        self.drainByteCount = drainByteCount
     }
 
     public var summary: String {
@@ -45,6 +50,7 @@ public struct ProcessDiagnostics: Sendable {
             let counts = sorted.map { "\($0.key):\($0.value)" }.joined(separator: " ")
             parts.append("events=[\(counts)]")
         }
+        parts.append("drain_bytes=\(drainByteCount)")
         if jsonDecodeFailures > 0 {
             parts.append("json_failures=\(jsonDecodeFailures)")
         }
@@ -101,7 +107,7 @@ public struct ClaudeStructuredOutputParser: Sendable {
     public init() {}
 
     public func parse<T: Decodable & Sendable>(_ type: T.Type, from result: ExecutionResult) throws -> ClaudeStructuredOutput<T> {
-        let diagnostics = ProcessDiagnostics(exitCode: result.exitCode, stderr: result.stderr, stdout: result.stdout)
+        let diagnostics = ProcessDiagnostics(exitCode: result.exitCode, stderr: result.stderr, stdout: result.stdout, drainByteCount: result.drainByteCount)
         let resultEvent = try findResultEvent(in: result.stdout, diagnostics: diagnostics)
 
         // Use subtype as the authoritative success signal, matching claude-code-action behavior.
