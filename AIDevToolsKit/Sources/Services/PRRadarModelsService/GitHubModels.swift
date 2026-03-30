@@ -84,6 +84,14 @@ public struct GitHubComment: Codable, Sendable {
     }
 }
 
+public enum GitHubReviewState: String, Codable, Sendable {
+    case approved = "APPROVED"
+    case changesRequested = "CHANGES_REQUESTED"
+    case commented = "COMMENTED"
+    case dismissed = "DISMISSED"
+    case pending = "PENDING"
+}
+
 public struct GitHubReview: Codable, Sendable {
     public let id: String
     public let body: String
@@ -104,6 +112,21 @@ public struct GitHubReview: Codable, Sendable {
         self.author = author
         self.submittedAt = submittedAt
     }
+}
+
+public struct GitHubCheckRun: Codable, Sendable {
+    public let name: String
+    public let status: String
+    public let conclusion: String?
+
+    public init(name: String, status: String, conclusion: String? = nil) {
+        self.name = name
+        self.status = status
+        self.conclusion = conclusion
+    }
+
+    public var isPassing: Bool { conclusion == "success" }
+    public var isFailing: Bool { conclusion == "failure" }
 }
 
 public struct GitHubOwner: Codable, Sendable {
@@ -131,7 +154,7 @@ public struct GitHubPullRequest: Codable, Sendable {
     public let title: String
     public let body: String?
     public let state: String?
-    public let isDraft: Bool?
+    public let isDraft: Bool
     public let url: String?
     public let baseRefName: String?
     public let headRefName: String?
@@ -148,12 +171,21 @@ public struct GitHubPullRequest: Codable, Sendable {
     public let files: [GitHubFile]?
     public let commits: [GitHubCommit]?
 
+    private enum CodingKeys: String, CodingKey {
+        case number, title, body, state
+        case isDraft = "draft"
+        case url, baseRefName, headRefName, headRefOid
+        case additions, deletions, changedFiles
+        case createdAt, updatedAt, mergedAt, closedAt
+        case author, labels, files, commits
+    }
+
     public init(
         number: Int,
         title: String,
         body: String? = nil,
         state: String? = nil,
-        isDraft: Bool? = nil,
+        isDraft: Bool = false,
         url: String? = nil,
         baseRefName: String? = nil,
         headRefName: String? = nil,
@@ -192,10 +224,34 @@ public struct GitHubPullRequest: Codable, Sendable {
         self.commits = commits
     }
 
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        number = try container.decode(Int.self, forKey: .number)
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decodeIfPresent(String.self, forKey: .body)
+        state = try container.decodeIfPresent(String.self, forKey: .state)
+        isDraft = try container.decodeIfPresent(Bool.self, forKey: .isDraft) ?? false
+        url = try container.decodeIfPresent(String.self, forKey: .url)
+        baseRefName = try container.decodeIfPresent(String.self, forKey: .baseRefName)
+        headRefName = try container.decodeIfPresent(String.self, forKey: .headRefName)
+        headRefOid = try container.decodeIfPresent(String.self, forKey: .headRefOid)
+        additions = try container.decodeIfPresent(Int.self, forKey: .additions)
+        deletions = try container.decodeIfPresent(Int.self, forKey: .deletions)
+        changedFiles = try container.decodeIfPresent(Int.self, forKey: .changedFiles)
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+        mergedAt = try container.decodeIfPresent(String.self, forKey: .mergedAt)
+        closedAt = try container.decodeIfPresent(String.self, forKey: .closedAt)
+        author = try container.decodeIfPresent(GitHubAuthor.self, forKey: .author)
+        labels = try container.decodeIfPresent([GitHubLabel].self, forKey: .labels)
+        files = try container.decodeIfPresent([GitHubFile].self, forKey: .files)
+        commits = try container.decodeIfPresent([GitHubCommit].self, forKey: .commits)
+    }
+
     public var enhancedState: PRState {
         switch (state ?? "").lowercased() {
         case "open":
-            return (isDraft == true) ? .draft : .open
+            return isDraft ? .draft : .open
         case "closed":
             return (mergedAt != nil) ? .merged : .closed
         default:

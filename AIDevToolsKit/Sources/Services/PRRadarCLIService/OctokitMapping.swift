@@ -19,7 +19,7 @@ extension OctoKit.PullRequest {
             title: title ?? "",
             body: body,
             state: state?.rawValue,
-            isDraft: draft,
+            isDraft: draft ?? false,
             url: htmlURL?.absoluteString,
             baseRefName: base?.ref,
             headRefName: head?.ref,

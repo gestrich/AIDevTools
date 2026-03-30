@@ -40,7 +40,10 @@ The enriched data we want to show per task:
 
 ## Phases
 
-## - [ ] Phase 1: Add `isDraft` to `GitHubPullRequest` and new shared GitHub types
+## - [x] Phase 1: Add `isDraft` to `GitHubPullRequest` and new shared GitHub types
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Changed `isDraft: Bool?` to `isDraft: Bool` with `CodingKeys` mapping to `"draft"` and custom `init(from:)` defaulting to `false` when absent. Kept the existing `GitHubReview` struct intact (already used by PRRadar for PR comments) and added `GitHubReviewState` alongside it. Added `GitHubCheckRun` with computed `isPassing`/`isFailing` properties. Updated `OctokitMapping.swift` to use `draft ?? false` for the non-optional field.
 
 **Skills to read**: `swift-architecture`
 
