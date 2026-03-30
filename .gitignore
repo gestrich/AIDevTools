@@ -5,4 +5,4 @@ DerivedData/
 .DS_Store
 Examples/evals/artifacts/
 .env
-.env
+*.profraw
