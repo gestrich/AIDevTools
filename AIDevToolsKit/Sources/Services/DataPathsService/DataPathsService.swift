@@ -1,54 +1,5 @@
 import Foundation
 
-public enum DataPathsError: Error, LocalizedError {
-    case directoryCreationFailed(String, Error)
-    case invalidPath(String)
-    case invalidServiceName(String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .directoryCreationFailed(let path, let error):
-            return "Failed to create directory at \(path): \(error.localizedDescription)"
-        case .invalidPath(let path):
-            return "Invalid data path: \(path)"
-        case .invalidServiceName(let name):
-            return "Invalid service name: \(name)"
-        }
-    }
-}
-
-public enum ServicePath {
-    case architecturePlanner
-    case evalSettings
-    case github(repoSlug: String)
-    case planSettings
-    case prradarOutput(String)
-    case prradarSettings
-    case repoOutput(String)
-    case repositories
-
-    var relativePath: String {
-        switch self {
-        case .architecturePlanner:
-            return "architecture-planner"
-        case .evalSettings:
-            return "eval/settings"
-        case .github(let repoSlug):
-            return "github/\(repoSlug)"
-        case .planSettings:
-            return "plan/settings"
-        case .prradarOutput(let repoName):
-            return "prradar/repos/\(repoName)"
-        case .prradarSettings:
-            return "prradar/settings"
-        case .repoOutput(let repoName):
-            return "repos/\(repoName)"
-        case .repositories:
-            return "repositories"
-        }
-    }
-}
-
 public final class DataPathsService: @unchecked Sendable {
     public let rootPath: URL
     private let fileManager: FileManager
