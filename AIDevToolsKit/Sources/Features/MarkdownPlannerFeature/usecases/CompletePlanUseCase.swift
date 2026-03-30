@@ -1,6 +1,7 @@
 import Foundation
+import UseCaseSDK
 
-public struct CompletePlanUseCase: Sendable {
+public struct CompletePlanUseCase: UseCase {
 
     public enum CompletionError: Error, LocalizedError {
         case notFound(String)

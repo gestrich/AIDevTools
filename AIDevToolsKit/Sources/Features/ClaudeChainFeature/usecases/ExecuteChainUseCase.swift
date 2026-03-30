@@ -3,8 +3,9 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import UseCaseSDK
 
-public struct ExecuteChainUseCase: Sendable {
+public struct ExecuteChainUseCase: UseCase {
 
     public struct Options: Sendable {
         public let githubAccount: String?

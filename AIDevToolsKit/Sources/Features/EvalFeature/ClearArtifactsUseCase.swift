@@ -1,6 +1,7 @@
 import Foundation
+import UseCaseSDK
 
-public struct ClearArtifactsUseCase: Sendable {
+public struct ClearArtifactsUseCase: UseCase {
 
     public init() {}
 

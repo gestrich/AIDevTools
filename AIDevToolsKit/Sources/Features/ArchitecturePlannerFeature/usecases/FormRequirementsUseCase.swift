@@ -2,9 +2,10 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Extracts discrete requirements from the user's feature description using AI.
-public struct FormRequirementsUseCase: Sendable {
+public struct FormRequirementsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

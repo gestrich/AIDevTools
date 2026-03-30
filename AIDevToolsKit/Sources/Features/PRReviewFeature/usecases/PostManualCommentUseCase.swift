@@ -1,7 +1,8 @@
 import PRRadarCLIService
 import PRRadarConfigService
+import UseCaseSDK
 
-public struct PostManualCommentUseCase: Sendable {
+public struct PostManualCommentUseCase: UseCase {
 
     private let config: RepositoryConfiguration
 

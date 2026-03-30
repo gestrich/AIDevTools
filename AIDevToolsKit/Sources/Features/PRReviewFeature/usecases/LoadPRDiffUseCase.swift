@@ -1,8 +1,9 @@
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
-public struct LoadPRDiffUseCase: Sendable {
+public struct LoadPRDiffUseCase: UseCase {
 
     private let config: RepositoryConfiguration
 

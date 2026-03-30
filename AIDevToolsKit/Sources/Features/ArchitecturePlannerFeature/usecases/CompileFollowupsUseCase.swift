@@ -2,10 +2,11 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Collects unclear flags and open questions into followup items,
 /// then uses AI to identify additional deferred work from the implementation plan.
-public struct CompileFollowupsUseCase: Sendable {
+public struct CompileFollowupsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

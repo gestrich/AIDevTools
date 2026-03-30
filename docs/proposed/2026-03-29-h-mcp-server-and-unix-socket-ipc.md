@@ -295,6 +295,9 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 
 **Skills used**: none
 **Principles applied**: Fixed `try?` in `AIRunSession` (5 sites across `run`, `runStructured`, `startRun`, `startStructuredRun`, and the deprecated closure-based `run`) and in `AnthropicProvider.run` (session persistence). Intentional partial-failure patterns were left in place: `RuleLoaderService` (git URL decoration is non-fatal to rule loading), `CommentService` (batch comment operations count failures and return them to the caller), `FocusGeneratorService`/`AnalysisService` (transcript writes are non-fatal to the analysis result).
-## - [ ] Verify use case types are structs conforming to `UseCase` or `StreamingUseCase`, not classes or actors
+## - [x] Verify use case types are structs conforming to `UseCase` or `StreamingUseCase`, not classes or actors
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Created a new `UseCaseSDK` module with `UseCase` and `StreamingUseCase` marker protocols (both refining `Sendable`). Added `UseCaseSDK` as a dependency to all 9 Feature targets plus `DataPathsService` (which hosts 2 service-layer use cases). Added `UseCase` conformance to 58 regular use cases and `StreamingUseCase` conformance to 10 streaming ones (those returning `AsyncThrowingStream` or `AsyncStream`). All 68 `*UseCase` types were already structs — zero class or actor violations found. Build passes cleanly.
 ## - [ ] Verify type names follow the `<Name><Layer>` convention and rename any that don't
 ## - [ ] Verify both a Mac app model and a CLI command consume each new use case

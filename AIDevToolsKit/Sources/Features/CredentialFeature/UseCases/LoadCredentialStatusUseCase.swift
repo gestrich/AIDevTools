@@ -1,7 +1,8 @@
 import Foundation
 import CredentialService
+import UseCaseSDK
 
-public struct LoadCredentialStatusUseCase: Sendable {
+public struct LoadCredentialStatusUseCase: UseCase {
 
     private let settingsService: CredentialSettingsService
 

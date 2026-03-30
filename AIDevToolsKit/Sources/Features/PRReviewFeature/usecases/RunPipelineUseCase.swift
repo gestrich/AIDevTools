@@ -2,6 +2,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 public struct RunPipelineOutput: Sendable {
     public let files: [PRRadarPhase: [String]]
@@ -13,7 +14,7 @@ public struct RunPipelineOutput: Sendable {
     }
 }
 
-public struct RunPipelineUseCase: Sendable {
+public struct RunPipelineUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

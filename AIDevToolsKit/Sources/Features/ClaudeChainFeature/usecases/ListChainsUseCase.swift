@@ -1,6 +1,7 @@
 import ClaudeChainSDK
 import ClaudeChainService
 import Foundation
+import UseCaseSDK
 
 public struct ChainProject: Hashable, Sendable {
     public let completedTasks: Int
@@ -33,7 +34,7 @@ public struct ChainTask: Hashable, Identifiable, Sendable {
     }
 }
 
-public struct ListChainsUseCase: Sendable {
+public struct ListChainsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let repoPath: URL

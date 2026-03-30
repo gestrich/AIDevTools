@@ -1,8 +1,9 @@
 import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
+import UseCaseSDK
 
-public struct RunPlanningStepUseCase {
+public struct RunPlanningStepUseCase: UseCase {
 
     private let compileArchInfo: CompileArchitectureInfoUseCase
     private let compileFollowups: CompileFollowupsUseCase

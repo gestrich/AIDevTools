@@ -4,8 +4,9 @@ import EvalService
 import Foundation
 import ProviderRegistryService
 import SkillScannerSDK
+import UseCaseSDK
 
-public struct RunEvalsUseCase: Sendable {
+public struct RunEvalsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let casesDirectory: URL

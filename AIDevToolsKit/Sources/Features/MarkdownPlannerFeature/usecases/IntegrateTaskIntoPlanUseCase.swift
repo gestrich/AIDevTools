@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct IntegrateTaskIntoPlanUseCase: Sendable {
+public struct IntegrateTaskIntoPlanUseCase: UseCase {
 
     public struct Options: Sendable {
         public let planPath: URL

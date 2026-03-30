@@ -2,8 +2,9 @@ import EvalService
 import Foundation
 import MarkdownPlannerService
 import RepositorySDK
+import UseCaseSDK
 
-public struct ConfigureNewRepositoryUseCase: Sendable {
+public struct ConfigureNewRepositoryUseCase: UseCase {
     private let addRepository: AddRepositoryUseCase
     private let updateRepository: UpdateRepositoryUseCase
     private let evalSettingsStore: EvalRepoSettingsStore

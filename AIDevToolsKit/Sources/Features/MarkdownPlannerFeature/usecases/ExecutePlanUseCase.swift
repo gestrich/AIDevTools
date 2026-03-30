@@ -6,8 +6,9 @@ import Logging
 import MarkdownPlannerService
 import PipelineSDK
 import RepositorySDK
+import UseCaseSDK
 
-public struct ExecutePlanUseCase: Sendable {
+public struct ExecutePlanUseCase: UseCase {
 
     public enum ExecuteMode: Sendable {
         case all

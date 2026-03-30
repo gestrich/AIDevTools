@@ -1,6 +1,7 @@
 import Foundation
+import UseCaseSDK
 
-public struct ResolveDataPathUseCase: Sendable {
+public struct ResolveDataPathUseCase: UseCase {
 
     public enum Source: Sendable {
         case explicit

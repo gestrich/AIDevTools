@@ -2,8 +2,9 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
-public struct AnalyzeUseCase: Sendable {
+public struct AnalyzeUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

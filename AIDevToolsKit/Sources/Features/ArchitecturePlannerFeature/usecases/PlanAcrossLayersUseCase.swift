@@ -2,9 +2,10 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Determines where each piece of logic belongs across architectural layers.
-public struct PlanAcrossLayersUseCase: Sendable {
+public struct PlanAcrossLayersUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

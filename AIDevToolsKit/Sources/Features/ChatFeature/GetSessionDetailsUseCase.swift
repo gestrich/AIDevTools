@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct GetSessionDetailsUseCase: Sendable {
+public struct GetSessionDetailsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let lastModified: Date

@@ -5,8 +5,9 @@ import CredentialService
 import Foundation
 import GitSDK
 import PipelineSDK
+import UseCaseSDK
 
-public struct RunChainTaskUseCase: Sendable {
+public struct RunChainTaskUseCase: UseCase {
 
     public struct Options: Sendable {
         public let projectName: String

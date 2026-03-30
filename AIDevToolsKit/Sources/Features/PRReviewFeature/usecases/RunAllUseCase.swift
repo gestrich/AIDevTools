@@ -2,13 +2,14 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 public struct RunAllOutput: Sendable {
     public let analyzedCount: Int
     public let failedCount: Int
 }
 
-public struct RunAllUseCase: Sendable {
+public struct RunAllUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

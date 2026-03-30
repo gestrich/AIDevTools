@@ -48,6 +48,7 @@ let package = Package(
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
         .library(name: "SkillScannerSDK", targets: ["SkillScannerSDK"]),
         .library(name: "SkillService", targets: ["SkillService"]),
+        .library(name: "UseCaseSDK", targets: ["UseCaseSDK"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
@@ -142,6 +143,7 @@ let package = Package(
                 "ArchitecturePlannerService",
                 "DataPathsService",
                 "RepositorySDK",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/ArchitecturePlannerFeature"
         ),
@@ -150,6 +152,7 @@ let package = Package(
             dependencies: [
                 "AIOutputSDK",
                 "SkillScannerSDK",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/ChatFeature"
         ),
@@ -157,6 +160,7 @@ let package = Package(
             name: "CredentialFeature",
             dependencies: [
                 "CredentialService",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/CredentialFeature"
         ),
@@ -168,6 +172,7 @@ let package = Package(
                 "EvalService",
                 "ProviderRegistryService",
                 "SkillScannerSDK",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/EvalFeature"
         ),
@@ -181,6 +186,7 @@ let package = Package(
                 "MarkdownPlannerService",
                 "PipelineSDK",
                 "RepositorySDK",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/MarkdownPlannerFeature"
         ),
@@ -189,6 +195,7 @@ let package = Package(
             dependencies: [
                 "PipelineSDK",
                 "PipelineService",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/PipelineFeature"
         ),
@@ -202,6 +209,7 @@ let package = Package(
                 "PRRadarCLIService",
                 "PRRadarConfigService",
                 "PRRadarModels",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/PRReviewFeature"
         ),
@@ -212,6 +220,7 @@ let package = Package(
                 "MarkdownPlannerService",
                 "RepositorySDK",
                 "SkillScannerSDK",
+                "UseCaseSDK",
             ],
             path: "Sources/Features/SkillBrowserFeature"
         ),
@@ -239,7 +248,9 @@ let package = Package(
         ),
         .target(
             name: "DataPathsService",
-            dependencies: [],
+            dependencies: [
+                "UseCaseSDK",
+            ],
             path: "Sources/Services/DataPathsService"
         ),
         .target(
@@ -418,6 +429,10 @@ let package = Package(
             dependencies: [],
             path: "Sources/SDKs/SkillScannerSDK"
         ),
+        .target(
+            name: "UseCaseSDK",
+            path: "Sources/SDKs/UseCaseSDK"
+        ),
 
         // ClaudeChain Targets
         .target(
@@ -461,7 +476,7 @@ let package = Package(
         ),
         .target(
             name: "ClaudeChainFeature",
-            dependencies: ["AIOutputSDK", "ClaudeChainSDK", "ClaudeChainService", "CredentialService", "GitSDK", "PipelineSDK"],
+            dependencies: ["AIOutputSDK", "ClaudeChainSDK", "ClaudeChainService", "CredentialService", "GitSDK", "PipelineSDK", "UseCaseSDK"],
             path: "Sources/Features/ClaudeChainFeature"
         ),
 

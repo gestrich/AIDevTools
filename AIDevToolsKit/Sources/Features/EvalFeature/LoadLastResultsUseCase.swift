@@ -1,7 +1,8 @@
 import EvalService
 import Foundation
+import UseCaseSDK
 
-public struct LoadLastResultsUseCase: Sendable {
+public struct LoadLastResultsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let outputDirectory: URL

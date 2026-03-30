@@ -1,10 +1,11 @@
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Seeds the guideline store with bundled architecture knowledge and ARCHITECTURE.md content.
 /// Idempotent — skips seeding if guidelines already exist for the repo.
-public struct SeedGuidelinesUseCase: Sendable {
+public struct SeedGuidelinesUseCase: UseCase {
 
     public struct Options: Sendable {
         public let repoName: String

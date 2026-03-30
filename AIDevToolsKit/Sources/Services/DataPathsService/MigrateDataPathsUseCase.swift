@@ -1,7 +1,8 @@
 import Foundation
+import UseCaseSDK
 import os
 
-public struct MigrateDataPathsUseCase {
+public struct MigrateDataPathsUseCase: UseCase {
     private static let logger = Logger(subsystem: "com.aidevtools", category: "Migration")
 
     private let dataPathsService: DataPathsService

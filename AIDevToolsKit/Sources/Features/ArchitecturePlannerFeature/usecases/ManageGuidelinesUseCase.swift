@@ -1,9 +1,10 @@
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// CRUD operations for guidelines and categories.
-public struct ManageGuidelinesUseCase: Sendable {
+public struct ManageGuidelinesUseCase: UseCase {
 
     public init() {}
 

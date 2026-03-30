@@ -1,7 +1,8 @@
 import Foundation
 import MarkdownPlannerService
+import UseCaseSDK
 
-public struct GetPlanDetailsUseCase: Sendable {
+public struct GetPlanDetailsUseCase: UseCase {
 
     public enum GetPlanDetailsError: LocalizedError {
         case planNotFound(String)

@@ -5,6 +5,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 public struct PrepareOutput: Sendable {
     public let focusAreas: [FocusArea]
@@ -18,7 +19,7 @@ public struct PrepareOutput: Sendable {
     }
 }
 
-public struct PrepareUseCase: Sendable {
+public struct PrepareUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

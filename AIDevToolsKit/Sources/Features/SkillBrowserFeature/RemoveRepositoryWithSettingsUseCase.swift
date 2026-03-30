@@ -2,8 +2,9 @@ import EvalService
 import Foundation
 import MarkdownPlannerService
 import RepositorySDK
+import UseCaseSDK
 
-public struct RemoveRepositoryWithSettingsUseCase: Sendable {
+public struct RemoveRepositoryWithSettingsUseCase: UseCase {
     private let evalSettingsStore: EvalRepoSettingsStore
     private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let removeRepository: RemoveRepositoryUseCase

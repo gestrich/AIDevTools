@@ -1,8 +1,9 @@
 import AIOutputSDK
 import Foundation
 import RepositorySDK
+import UseCaseSDK
 
-public struct GeneratePlanUseCase: Sendable {
+public struct GeneratePlanUseCase: UseCase {
 
     public struct Options: Sendable {
         public let prompt: String

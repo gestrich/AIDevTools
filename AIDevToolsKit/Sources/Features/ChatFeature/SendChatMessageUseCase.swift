@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct SendChatMessageUseCase: Sendable {
+public struct SendChatMessageUseCase: UseCase {
 
     public struct Options: Sendable {
         public let images: [ImageAttachment]

@@ -1,7 +1,8 @@
 import Foundation
 import RepositorySDK
+import UseCaseSDK
 
-public struct UpdateRepositoryUseCase: Sendable {
+public struct UpdateRepositoryUseCase: UseCase {
     private let store: RepositoryStore
 
     public init(store: RepositoryStore) {

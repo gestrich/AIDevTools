@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct LoadSessionMessagesUseCase: Sendable {
+public struct LoadSessionMessagesUseCase: UseCase {
 
     public struct Options: Sendable {
         public let sessionId: String

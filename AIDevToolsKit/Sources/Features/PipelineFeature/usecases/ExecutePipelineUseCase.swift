@@ -1,7 +1,8 @@
 import Foundation
 import PipelineSDK
+import UseCaseSDK
 
-public struct ExecutePipelineUseCase: Sendable {
+public struct ExecutePipelineUseCase: UseCase {
 
     public init() {}
 

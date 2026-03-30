@@ -1,7 +1,8 @@
 import Foundation
 import EvalService
+import UseCaseSDK
 
-public struct ListEvalCasesUseCase: Sendable {
+public struct ListEvalCasesUseCase: UseCase {
 
     public struct Options: Sendable {
         public let casesDirectory: URL

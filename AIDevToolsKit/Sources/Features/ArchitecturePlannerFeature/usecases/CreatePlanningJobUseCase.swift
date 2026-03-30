@@ -1,9 +1,10 @@
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Creates a new PlanningJob with default process steps and an initial request.
-public struct CreatePlanningJobUseCase: Sendable {
+public struct CreatePlanningJobUseCase: UseCase {
 
     public struct Options: Sendable {
         public let repoName: String

@@ -1,8 +1,9 @@
 import Foundation
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
-public struct DeletePRDataUseCase: Sendable {
+public struct DeletePRDataUseCase: UseCase {
 
     private let config: RepositoryConfiguration
 

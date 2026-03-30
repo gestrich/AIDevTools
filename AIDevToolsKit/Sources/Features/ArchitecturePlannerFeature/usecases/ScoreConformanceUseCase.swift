@@ -2,9 +2,10 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Scores each implementation component against applicable guidelines.
-public struct ScoreConformanceUseCase: Sendable {
+public struct ScoreConformanceUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

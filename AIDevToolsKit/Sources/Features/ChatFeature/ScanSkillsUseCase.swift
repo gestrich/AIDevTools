@@ -1,7 +1,8 @@
 import Foundation
 import SkillScannerSDK
+import UseCaseSDK
 
-public struct ScanSkillsUseCase: Sendable {
+public struct ScanSkillsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let query: String?

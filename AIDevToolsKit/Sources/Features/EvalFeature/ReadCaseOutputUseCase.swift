@@ -2,8 +2,9 @@ import AIOutputSDK
 import EvalSDK
 import EvalService
 import Foundation
+import UseCaseSDK
 
-public struct ReadCaseOutputUseCase: Sendable {
+public struct ReadCaseOutputUseCase: UseCase {
 
     public struct Options: Sendable {
         public let caseId: String

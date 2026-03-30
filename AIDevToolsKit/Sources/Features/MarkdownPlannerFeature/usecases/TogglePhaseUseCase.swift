@@ -1,6 +1,7 @@
 import Foundation
+import UseCaseSDK
 
-public struct TogglePhaseUseCase: Sendable {
+public struct TogglePhaseUseCase: UseCase {
 
     public init() {}
 

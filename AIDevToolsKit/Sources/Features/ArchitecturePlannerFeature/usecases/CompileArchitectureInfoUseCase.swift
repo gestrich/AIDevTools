@@ -2,9 +2,10 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Identifies application layers and loads high-level guideline overviews.
-public struct CompileArchitectureInfoUseCase: Sendable {
+public struct CompileArchitectureInfoUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

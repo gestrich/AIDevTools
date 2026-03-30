@@ -3,8 +3,9 @@ import EvalSDK
 import EvalService
 import Foundation
 import SkillScannerSDK
+import UseCaseSDK
 
-public struct RunCaseUseCase: Sendable {
+public struct RunCaseUseCase: UseCase {
 
     public struct Options: Sendable {
         public let evalCase: EvalCase

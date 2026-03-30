@@ -2,8 +2,9 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
-public struct FetchReviewCommentsUseCase: Sendable {
+public struct FetchReviewCommentsUseCase: UseCase {
 
     private let config: RepositoryConfiguration
 

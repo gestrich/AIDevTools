@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct ListSessionsUseCase: Sendable {
+public struct ListSessionsUseCase: UseCase {
 
     public struct Options: Sendable {
         public let workingDirectory: String

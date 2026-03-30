@@ -2,6 +2,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 private let defaultMinScore = 5
 
@@ -27,7 +28,7 @@ public struct CommentPhaseOutput: Sendable {
     }
 }
 
-public struct PostCommentsUseCase: Sendable {
+public struct PostCommentsUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

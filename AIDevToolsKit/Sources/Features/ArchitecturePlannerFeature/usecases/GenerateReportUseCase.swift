@@ -1,9 +1,10 @@
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Generates a final report summarizing the entire architecture planning flow.
-public struct GenerateReportUseCase: Sendable {
+public struct GenerateReportUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

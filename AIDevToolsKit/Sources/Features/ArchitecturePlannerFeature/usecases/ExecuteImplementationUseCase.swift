@@ -2,9 +2,10 @@ import AIOutputSDK
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Executes the implementation plan phase-by-phase with guideline evaluation after each phase.
-public struct ExecuteImplementationUseCase: Sendable {
+public struct ExecuteImplementationUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

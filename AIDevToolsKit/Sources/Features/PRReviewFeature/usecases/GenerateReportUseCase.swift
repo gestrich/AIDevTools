@@ -2,6 +2,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 public struct ReportPhaseOutput: Sendable {
     public let report: ReviewReport
@@ -13,7 +14,7 @@ public struct ReportPhaseOutput: Sendable {
     }
 }
 
-public struct GenerateReportUseCase: Sendable {
+public struct GenerateReportUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

@@ -1,7 +1,8 @@
 import AIOutputSDK
 import Foundation
+import UseCaseSDK
 
-public struct WatchPlanUseCase: Sendable {
+public struct WatchPlanUseCase: StreamingUseCase {
 
     public init() {}
 

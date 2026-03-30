@@ -2,6 +2,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModels
+import UseCaseSDK
 
 public struct SyncSnapshot: Sendable {
     public let prDiff: PRDiff?
@@ -28,7 +29,7 @@ public struct SyncSnapshot: Sendable {
     }
 }
 
-public struct SyncPRUseCase: Sendable {
+public struct SyncPRUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
 

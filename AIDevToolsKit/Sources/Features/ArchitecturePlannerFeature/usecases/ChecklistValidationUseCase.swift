@@ -1,9 +1,10 @@
 import ArchitecturePlannerService
 import Foundation
 import SwiftData
+import UseCaseSDK
 
 /// Validates that the implementation plan covers all requirements and has guideline mappings.
-public struct ChecklistValidationUseCase: Sendable {
+public struct ChecklistValidationUseCase: UseCase {
 
     public struct Options: Sendable {
         public let jobId: UUID

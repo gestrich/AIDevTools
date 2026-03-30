@@ -1,5 +1,6 @@
 import Foundation
 import LoggingSDK
+import UseCaseSDK
 
 public enum LogQuery: Sendable {
     case lastRun
@@ -7,7 +8,7 @@ public enum LogQuery: Sendable {
     case all
 }
 
-public struct FetchLogsUseCase: Sendable {
+public struct FetchLogsUseCase: UseCase {
     private let logReader: LogReaderService
 
     public init(logReader: LogReaderService = LogReaderService()) {

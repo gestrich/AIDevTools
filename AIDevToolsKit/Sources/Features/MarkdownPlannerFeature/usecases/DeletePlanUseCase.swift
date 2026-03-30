@@ -1,6 +1,7 @@
 import Foundation
+import UseCaseSDK
 
-public struct DeletePlanUseCase: Sendable {
+public struct DeletePlanUseCase: UseCase {
 
     public enum DeleteError: Error, LocalizedError {
         case notFound(String)

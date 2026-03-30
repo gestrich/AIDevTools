@@ -1,8 +1,9 @@
 import Foundation
 import RepositorySDK
 import SkillScannerSDK
+import UseCaseSDK
 
-public struct LoadSkillsUseCase: Sendable {
+public struct LoadSkillsUseCase: UseCase {
     private let scanner: SkillScanner
 
     public init(scanner: SkillScanner = SkillScanner()) {

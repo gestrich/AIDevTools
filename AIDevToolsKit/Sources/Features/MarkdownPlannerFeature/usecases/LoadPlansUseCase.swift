@@ -1,7 +1,8 @@
 import Foundation
 import MarkdownPlannerService
+import UseCaseSDK
 
-public struct LoadPlansUseCase: Sendable {
+public struct LoadPlansUseCase: UseCase {
 
     private let proposedDirectory: URL
 
