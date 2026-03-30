@@ -275,7 +275,10 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Found `MCPCommand.handleGetPlanDetails()` in the Apps layer doing 3 sequential operations: load all plans via `LoadPlansUseCase`, find a plan by name, read its file content. Extracted into `GetPlanDetailsUseCase` in `MarkdownPlannerFeature` — the correct Feature layer — with a typed error enum (`planNotFound`, `contentUnreadable`). `MCPCommand.handleGetPlanDetails()` now delegates to the use case and maps the thrown errors to MCP tool results.
-## - [ ] Find feature-to-feature imports and replace with a shared Service or SDK abstraction
+## - [x] Find feature-to-feature imports and replace with a shared Service or SDK abstraction
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Audited all 9 Feature modules (`ArchitecturePlannerFeature`, `ChatFeature`, `ClaudeChainFeature`, `CredentialFeature`, `EvalFeature`, `MarkdownPlannerFeature`, `PipelineFeature`, `PRReviewFeature`, `SkillBrowserFeature`). No feature imports another feature — every Feature target's dependencies in `Package.swift` point only to Services, SDKs, and external packages. Architecture is fully compliant; no changes required.
 ## - [ ] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
 ## - [ ] Find SDK methods that orchestrate multiple operations and split them into single-operation methods
 ## - [ ] Find SDK types that hold mutable state and refactor to stateless structs
