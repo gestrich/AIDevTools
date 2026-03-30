@@ -86,7 +86,8 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
             agentScriptPath: config.agentScriptPath,
             githubAccount: config.githubAccount,
             diffSource: diffSource,
-            defaultBaseBranch: config.defaultBaseBranch
+            defaultBaseBranch: config.defaultBaseBranch,
+            dataRootURL: config.dataRootURL
         )
     }
 

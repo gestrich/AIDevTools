@@ -30,9 +30,7 @@ public struct FetchPRListUseCase: StreamingUseCase {
 
                     let limitNum = limit.flatMap(Int.init) ?? 300
 
-                    if let dataRootURL = config.dataRootURL {
-                        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
-                        let cacheURL = dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
+                    if let cacheURL = config.gitHubCacheURL {
                         let service = gitHubPRService ?? GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
 
                         _ = try await service.updateAllPRs()

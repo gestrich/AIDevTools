@@ -151,7 +151,10 @@ Functional checks via CLI:
 - Run targeted update for a single PR number and verify only that PR is re-fetched
 - Verify PRDiscovery still finds PRs correctly from the new path
 - Confirm `DataPathsService.path(for: .github(repoSlug:))` creates the correct directory on first use
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find new features architected as afterthoughts and refactor them to integrate cleanly with the existing system, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Find new features architected as afterthoughts and refactor them to integrate cleanly with the existing system, and make the necessary code changes
+
+**Skills used**: `swift-architecture`, `pr-radar-debug`
+**Principles applied**: Found three afterthoughts where new integration points were bypassed. (1) `resolvePRRadarConfig` reconstructed `RepositoryConfiguration` without `dataRootURL` when overriding `diffSource`, so any CLI `--diff-source` flag silently disabled the GitHub cache — fixed by forwarding `dataRootURL`. (2) `FetchPRListUseCase` manually recomputed the cache URL from `config.dataRootURL + gitHub.repoSlug` instead of using `config.gitHubCacheURL`, the canonical integration point added for exactly this purpose — replaced with `config.gitHubCacheURL`. (3) `SyncPRUseCase` had the same duplication — same fix applied.
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Identify the architectural layer for every new or modified file; read the reference doc for that layer before reviewing anything else, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find code placed in the wrong layer entirely and move it to the correct one, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find upward dependencies (lower layers importing higher layers) and remove them, and make the necessary code changes

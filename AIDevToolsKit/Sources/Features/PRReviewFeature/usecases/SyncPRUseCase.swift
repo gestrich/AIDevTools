@@ -87,10 +87,8 @@ public struct SyncPRUseCase: StreamingUseCase {
 
                     try Task.checkCancellation()
 
-                    let gitHubPRService: (any GitHubPRServiceProtocol)? = config.dataRootURL.map { dataRootURL in
-                        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
-                        let cacheURL = dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
-                        return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+                    let gitHubPRService: (any GitHubPRServiceProtocol)? = config.gitHubCacheURL.map { cacheURL in
+                        GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
                     }
 
                     if !force {
