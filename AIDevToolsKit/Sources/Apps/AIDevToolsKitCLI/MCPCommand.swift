@@ -135,14 +135,12 @@ struct MCPCommand: AsyncParsableCommand {
 
         let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         let proposedDir = cwd.appendingPathComponent(MarkdownPlannerRepoSettings.defaultProposedDirectory)
-        let plans = await LoadPlansUseCase(proposedDirectory: proposedDir).run()
-
-        guard let plan = plans.first(where: { $0.name == name }) else {
-            return .init(content: [.text(text: "Plan not found: \(name)", annotations: nil, _meta: nil)], isError: true)
+        do {
+            let content = try await GetPlanDetailsUseCase(proposedDirectory: proposedDir).run(planName: name)
+            return .init(content: [.text(text: content, annotations: nil, _meta: nil)], isError: false)
+        } catch {
+            return .init(content: [.text(text: error.localizedDescription, annotations: nil, _meta: nil)], isError: true)
         }
-
-        let content = (try? String(contentsOf: plan.planURL, encoding: .utf8)) ?? "(unable to read plan content)"
-        return .init(content: [.text(text: content, annotations: nil, _meta: nil)], isError: false)
     }
 
     private static func handleSelectPlan(_ arguments: [String: Value]) async throws -> CallTool.Result {

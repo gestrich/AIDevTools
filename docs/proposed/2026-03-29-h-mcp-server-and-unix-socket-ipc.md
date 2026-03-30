@@ -271,7 +271,10 @@ With MCP handling tool dispatch natively, the XML tag infrastructure is no longe
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Searched all layers for `@Observable` and `@MainActor` usage. `@Observable` is correctly confined to `Apps/AIDevToolsKitMac/Models/` and `Apps/AIDevToolsKitMac/PRRadar/Models/` — no violations. `@MainActor` appears on methods in `ArchitecturePlannerFeature` use cases (12 files) and `ArchitecturePlannerService/ArchitecturePlannerStore.createContext()` — but this is a SwiftData constraint: `ModelContext` is declared `@MainActor final class`, so any code that creates or accesses a `ModelContext` must be `@MainActor`. This cascades from `ArchitecturePlannerStore.createContext()` through all ArchitecturePlanner use cases. These are SwiftData-mandated, not architectural mistakes. The proper fix (migrating to `@ModelActor` background persistence) would be a significant refactor and is tracked as future work. No changes required; build confirmed clean.
-## - [ ] Find multi-step orchestration that belongs in a use case and extract it
+## - [x] Find multi-step orchestration that belongs in a use case and extract it
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Found `MCPCommand.handleGetPlanDetails()` in the Apps layer doing 3 sequential operations: load all plans via `LoadPlansUseCase`, find a plan by name, read its file content. Extracted into `GetPlanDetailsUseCase` in `MarkdownPlannerFeature` — the correct Feature layer — with a typed error enum (`planNotFound`, `contentUnreadable`). `MCPCommand.handleGetPlanDetails()` now delegates to the use case and maps the thrown errors to MCP tool results.
 ## - [ ] Find feature-to-feature imports and replace with a shared Service or SDK abstraction
 ## - [ ] Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters
 ## - [ ] Find SDK methods that orchestrate multiple operations and split them into single-operation methods
