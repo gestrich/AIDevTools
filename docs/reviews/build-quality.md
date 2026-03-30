@@ -1,4 +1,4 @@
-## - [ ] Build the project and confirm zero warnings before merging
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Build the project and confirm zero warnings before merging, and make the necessary code changes
 
 Run the project build and verify there are no compiler warnings in new or modified files. A warning-free build is a prerequisite for merging — warnings become noise that hides real problems.
 
@@ -8,7 +8,7 @@ Fix: address every warning, even if it appears in code you didn't author. If a w
 
 ---
 
-## - [ ] Remove TODO and FIXME comments that were left in production code
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Remove TODO and FIXME comments that were left in production code, and make the necessary code changes
 
 Search for `// TODO:`, `// FIXME:`, `// HACK:`, and `// XXX:` in every new or modified file. A comment that says "fix this later" and ships is a promise that was broken before it was kept.
 
@@ -16,7 +16,7 @@ Fix: either complete the work now (preferred), open a tracked issue and replace 
 
 ---
 
-## - [ ] Remove commented-out code and dead code blocks
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Remove commented-out code and dead code blocks, and make the necessary code changes
 
 Look for blocks of code wrapped in `/* */` or lines prefixed with `//` that are clearly commented-out rather than explanatory. Also look for `#if false` blocks, unreachable `else` branches after `fatalError()`, and dead `case` arms in exhaustive switches.
 
@@ -24,7 +24,7 @@ Fix: delete commented-out code entirely — git history is the right place for r
 
 ---
 
-## - [ ] Verify no debug artifacts were left in the code
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify no debug artifacts were left in the code, and make the necessary code changes
 
 Look for: `print(...)` statements added for debugging (not part of the intended logging strategy), `debugPrint(...)`, `dump(...)`, `Swift.print(...)`, hardcoded test values, `fatalError("not implemented")` on paths that can be reached in production, and temporary `return` statements that short-circuit logic during development.
 

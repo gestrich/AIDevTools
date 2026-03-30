@@ -1,4 +1,4 @@
-## - [ ] Verify new tests use Swift Testing (`#expect`, `#require`) rather than XCTest assertions
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify new tests use Swift Testing (`#expect`, `#require`) rather than XCTest assertions, and make the necessary code changes
 
 Look for `XCTAssert`, `XCTAssertEqual`, `XCTAssertNil`, `XCTAssertNotNil`, `XCTAssertTrue`, `XCTAssertFalse`, `XCTAssertThrowsError`, and `XCTFail` in new test files. New tests should use the Swift Testing framework's `#expect` and `#require` macros instead.
 
@@ -14,7 +14,7 @@ If the test file already uses `XCTestCase`, migrate the entire file to `@Suite` 
 
 ---
 
-## - [ ] Verify test functions use `@Test` and descriptive names in sentence form
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify test functions use `@Test` and descriptive names in sentence form, and make the necessary code changes
 
 Look for test functions named `testFoo`, `test_foo`, or `testFooWhenBarExpectsBaz`. Swift Testing uses `@Test` with a descriptive string label instead.
 
@@ -25,7 +25,7 @@ Group related tests under a `@Suite` struct (named after the type under test) an
 
 ---
 
-## - [ ] Verify async tests use `async throws` rather than `XCTestExpectation`
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify async tests use `async throws` rather than `XCTestExpectation`, and make the necessary code changes
 
 Look for `XCTestExpectation`, `fulfill()`, `waitForExpectations(timeout:)`, and `wait(for:timeout:)` in test files. These are XCTest concurrency patterns; Swift Testing supports `async` natively.
 
@@ -49,7 +49,7 @@ func asyncLoad() async throws {
 
 ---
 
-## - [ ] Verify tests follow Arrange-Act-Assert structure with a blank line between sections
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify tests follow Arrange-Act-Assert structure with a blank line between sections, and make the necessary code changes
 
 Look for test functions that intermix setup, invocation, and assertion without clear visual separation.
 
@@ -62,7 +62,7 @@ If the arrange section is more than ~5 lines, extract a helper or use `@Suite` `
 
 ---
 
-## - [ ] Verify each test covers exactly one behavior and rename or split tests that cover multiple
+## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify each test covers exactly one behavior and rename or split tests that cover multiple, and make the necessary code changes
 
 Look for test functions that contain multiple unrelated `#expect` calls on different outcomes, or that test both the happy path and an error path in the same function.
 
