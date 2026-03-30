@@ -45,7 +45,7 @@ struct PRRadarViolationsCommand: AsyncParsableCommand {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(encoded)
-            print(String(data: data, encoding: .utf8)!)
+            print(String(decoding: data, as: UTF8.self))
         } else {
             if pending.isEmpty {
                 print("No pending violations for PR #\(options.prNumber).")
