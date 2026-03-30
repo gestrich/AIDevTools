@@ -85,6 +85,11 @@ public protocol AIClient: Sendable {
 }
 
 extension AIClient {
+    /// Returns a new independent instance of this client with its own underlying resources.
+    /// CLI-based providers override this to return a fresh instance with its own CLIClient actor,
+    /// preventing serialization of concurrent calls (e.g., plan execution vs. interactive chat).
+    public func makeIndependentCopy() -> any AIClient { self }
+
     public func run(
         prompt: String,
         options: AIClientOptions,

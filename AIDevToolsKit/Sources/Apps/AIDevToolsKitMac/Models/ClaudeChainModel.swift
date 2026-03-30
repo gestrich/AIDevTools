@@ -121,7 +121,7 @@ final class ClaudeChainModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
         return ChatModel(configuration: ChatModelConfiguration(
-            client: activeClient,
+            client: activeClient.makeIndependentCopy(),
             settings: settings,
             workingDirectory: workingDirectory
         ))

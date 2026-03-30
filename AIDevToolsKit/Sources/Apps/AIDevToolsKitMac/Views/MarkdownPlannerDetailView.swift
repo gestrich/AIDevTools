@@ -115,7 +115,7 @@ struct MarkdownPlannerDetailView: View {
     @ViewBuilder
     private var chatBottomPanel: some View {
         if let chatModel {
-            if let executionModel = executionChatModel {
+            if let executionModel = executionChatModel, !executionModel.messages.isEmpty {
                 VSplitView {
                     ChatMessagesView()
                         .environment(executionModel)

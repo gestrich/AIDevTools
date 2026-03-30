@@ -251,7 +251,7 @@ final class MarkdownPlannerModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
         return ChatModel(configuration: ChatModelConfiguration(
-            client: activeClient,
+            client: activeClient.makeIndependentCopy(),
             settings: settings,
             systemPrompt: systemPrompt,
             workingDirectory: workingDirectory

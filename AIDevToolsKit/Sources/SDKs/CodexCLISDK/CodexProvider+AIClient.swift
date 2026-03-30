@@ -5,6 +5,8 @@ extension CodexProvider: AIClient {
     public var name: String { "codex" }
     public var displayName: String { "Codex CLI" }
 
+    public func makeIndependentCopy() -> any AIClient { CodexProvider() }
+
     public static let outputFileEnvironmentKey = "CODEX_OUTPUT_FILE"
     public static let outputSchemaPathEnvironmentKey = "CODEX_OUTPUT_SCHEMA_PATH"
 
