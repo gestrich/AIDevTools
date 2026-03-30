@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
@@ -15,7 +16,7 @@ public struct FetchReviewCommentsUseCase: UseCase {
     /// Loads review comments, optionally fetching fresh data from GitHub first.
     ///
     /// When `cachedOnly` is `false`, fetches comments from GitHub via
-    /// `PRAcquisitionService.refreshComments()` and writes them to disk before loading.
+    /// `PRAcquisitionService.refreshComments()` and writes them to cache before loading.
     public func execute(
         prNumber: Int,
         minScore: Int = 5,
@@ -26,8 +27,18 @@ public struct FetchReviewCommentsUseCase: UseCase {
             let (gitHub, gitOps) = try await GitHubServiceFactory.create(
                 repoPath: config.repoPath, githubAccount: config.githubAccount
             )
+            let gitHubPRService: (any GitHubPRServiceProtocol)? = config.dataRootURL.map { dataRootURL in
+                let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
+                let cacheURL = dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
+                return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+            }
             let historyProvider = LocalGitHistoryProvider(gitOps: gitOps, repoPath: config.repoPath)
-            let acquisition = PRAcquisitionService(gitHub: gitHub, gitOps: gitOps, historyProvider: historyProvider)
+            let acquisition = PRAcquisitionService(
+                gitHub: gitHub,
+                gitOps: gitOps,
+                historyProvider: historyProvider,
+                gitHubPRService: gitHubPRService
+            )
             _ = try await acquisition.refreshComments(
                 prNumber: prNumber,
                 outputDir: config.resolvedOutputDir,
@@ -55,15 +66,8 @@ public struct FetchReviewCommentsUseCase: UseCase {
             minScore: minScore
         )
 
-        let posted: [GitHubReviewComment] = {
-            guard let comments: GitHubPullRequestComments = try? PhaseOutputParser.parsePhaseOutput(
-                config: config,
-                prNumber: prNumber,
-                phase: .metadata,
-                filename: PRRadarPhasePaths.ghCommentsFilename
-            ) else { return [] }
-            return comments.reviewComments
-        }()
+        let posted: [GitHubReviewComment] =
+            PRDiscoveryService.loadComments(config: config, prNumber: prNumber)?.reviewComments ?? []
 
         let reconciled = ViolationService.reconcile(pending: pending, posted: posted)
         return CommentSuppressionService.applySuppression(to: reconciled).comments

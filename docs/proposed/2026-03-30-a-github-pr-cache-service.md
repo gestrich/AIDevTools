@@ -96,7 +96,10 @@ public protocol GitHubPRServiceProtocol: Sendable {
 
 Add `GitHubService` target to `Package.swift` with dependencies on `OctokitSDK`, `PRRadarModels` (for shared model types), and `DataPathsService`.
 
-## - [ ] Phase 3: Migrate PRRadar to use `GitHubPRService`
+## - [x] Phase 3: Migrate PRRadar to use `GitHubPRService`
+
+**Skills used**: `swift-architecture`, `pr-radar-debug`
+**Principles applied**: Added `dataRootURL: URL?` to `RepositoryConfiguration` and a `gitHubCacheURL` computed property (reads repo slug from git config). Made `GitHubService` (PRRadarCLIService) conform to `GitHubAPIClientProtocol` and exposed `repoSlug`. Extended `GitHubPRServiceProtocol` with `repository(useCache:)`, `updateRepository()`, `writePR(_:number:)`, and `writeComments(_:number:)`. `PRAcquisitionService` now accepts an optional `GitHubPRServiceProtocol` — when set, all metadata writes go through the shared cache; when nil, legacy write behavior is preserved. Added config-aware overloads to `PRDiscoveryService` (`discoverPRs(config:)`, `loadGitHubPR(config:prNumber:)`, `loadComments(config:prNumber:)`) that prefer the shared cache over the PRRadar output path. All read sites in use cases and the Mac app model updated to use these config-aware helpers.
 
 **Skills to read**: `swift-architecture`, `pr-radar-debug`
 

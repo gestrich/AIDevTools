@@ -93,8 +93,7 @@ final class AllPRsModel {
     /// `PRModel` instances to keep SwiftUI `List` selection stable.
     @discardableResult
     private func discoverAndMerge() -> [PRModel] {
-        let slug = PRDiscoveryService.repoSlug(fromRepoPath: config.repoPath)
-        let metadata = PRDiscoveryService.discoverPRs(outputDir: config.outputDir, repoSlug: slug)
+        let metadata = PRDiscoveryService.discoverPRs(config: config)
         let models = buildPRModels(from: metadata, reusingExisting: currentPRModels)
         state = .ready(models)
         return models
@@ -131,12 +130,11 @@ final class AllPRsModel {
         self.state = .refreshing(prior ?? [])
         refreshAllState = .running(logs: "Fetching PR list from GitHub...\n", current: 0, total: 0)
 
-        let slug = PRDiscoveryService.repoSlug(fromRepoPath: config.repoPath)
         let useCase = FetchPRListUseCase(config: config)
 
         var updatedMetadata: [PRMetadata]?
         do {
-            for try await progress in useCase.execute(filter: filter, repoSlug: slug) {
+            for try await progress in useCase.execute(filter: filter, repoSlug: nil) {
                 switch progress {
                 case .running, .progress:
                     break
@@ -146,7 +144,7 @@ final class AllPRsModel {
                 case .prepareToolUse: break
                 case .taskEvent: break
                 case .completed:
-                    updatedMetadata = PRDiscoveryService.discoverPRs(outputDir: config.outputDir, repoSlug: slug)
+                    updatedMetadata = PRDiscoveryService.discoverPRs(config: config)
                 case .failed(let error, _):
                     self.state = .failed(error, prior: prior)
                     refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(error)\n")

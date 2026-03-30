@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
@@ -49,9 +50,7 @@ public struct SyncPRUseCase: StreamingUseCase {
 
         let prDiff = LoadPRDiffUseCase(config: config).execute(prNumber: prNumber, commitHash: resolvedCommit)
 
-        let comments: GitHubPullRequestComments? = try? PhaseOutputParser.parsePhaseOutput(
-            config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghCommentsFilename
-        )
+        let comments = PRDiscoveryService.loadComments(config: config, prNumber: prNumber)
 
         return SyncSnapshot(
             prDiff: prDiff,
@@ -63,9 +62,9 @@ public struct SyncPRUseCase: StreamingUseCase {
         )
     }
 
-    /// Resolve the commit hash from metadata/gh-pr.json, or scan analysis/ for the latest commit directory.
+    /// Resolve the commit hash from cached PR metadata, or scan analysis/ for the latest commit directory.
     public static func resolveCommitHash(config: RepositoryConfiguration, prNumber: Int) -> String? {
-        if let pr = PRDiscoveryService.loadGitHubPR(outputDir: config.resolvedOutputDir, prNumber: prNumber),
+        if let pr = PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber),
            let fullHash = pr.headRefOid {
             return String(fullHash.prefix(7))
         }
@@ -88,15 +87,25 @@ public struct SyncPRUseCase: StreamingUseCase {
 
                     try Task.checkCancellation()
 
+                    let gitHubPRService: (any GitHubPRServiceProtocol)? = config.dataRootURL.map { dataRootURL in
+                        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
+                        let cacheURL = dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
+                        return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+                    }
+
                     if !force {
-                        let cachedPR: GitHubPullRequest? = try? PhaseOutputParser.parsePhaseOutput(
-                            config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghPRFilename
-                        )
+                        let cachedPR: GitHubPullRequest?
+                        if let gitHubPRService {
+                            cachedPR = try? await gitHubPRService.pullRequest(number: prNumber, useCache: true)
+                        } else {
+                            cachedPR = try? PhaseOutputParser.parsePhaseOutput(
+                                config: config, prNumber: prNumber, phase: .metadata, filename: PRRadarPhasePaths.ghPRFilename
+                            )
+                        }
                         if let cachedUpdatedAt = cachedPR?.updatedAt {
                             let currentUpdatedAt = try await gitHub.getPRUpdatedAt(number: prNumber)
                             if cachedUpdatedAt == currentUpdatedAt {
                                 let snapshot = Self.parseOutput(config: config, prNumber: prNumber)
-                                // Only use cache if diff data was actually acquired (not just metadata from refresh)
                                 if snapshot.prDiff != nil {
                                     continuation.yield(.completed(output: snapshot))
                                     continuation.finish()
@@ -120,7 +129,12 @@ public struct SyncPRUseCase: StreamingUseCase {
                         baseBranch: baseBranch,
                         headBranch: headBranch
                     )
-                    let acquisition = PRAcquisitionService(gitHub: gitHub, gitOps: gitOps, historyProvider: historyProvider)
+                    let acquisition = PRAcquisitionService(
+                        gitHub: gitHub,
+                        gitOps: gitOps,
+                        historyProvider: historyProvider,
+                        gitHubPRService: gitHubPRService
+                    )
                     let authorCache = AuthorCacheService()
 
                     continuation.yield(.log(text: "Fetching PR #\(prNumber) from GitHub...\n"))

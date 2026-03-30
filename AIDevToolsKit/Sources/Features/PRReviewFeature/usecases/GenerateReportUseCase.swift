@@ -45,7 +45,7 @@ public struct GenerateReportUseCase: StreamingUseCase {
                         subdirectory: PRRadarPhasePaths.prepareFocusAreasSubdir, commitHash: resolvedCommit
                     )
 
-                    let baseRefName = PRDiscoveryService.loadGitHubPR(outputDir: config.resolvedOutputDir, prNumber: prNumber)?.baseRefName
+                    let baseRefName = PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber)?.baseRefName
 
                     let reportService = ReportGeneratorService()
                     let report = try reportService.generateReport(

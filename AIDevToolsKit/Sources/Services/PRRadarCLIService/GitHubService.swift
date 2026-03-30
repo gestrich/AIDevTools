@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 @preconcurrency import OctoKit
 import OctokitSDK
 import PRRadarConfigService
@@ -14,6 +15,8 @@ public struct GitHubService: Sendable {
         self.owner = owner
         self.repo = repo
     }
+
+    public var repoSlug: String { "\(owner)/\(repo)" }
 
     // MARK: - Pull Request Operations
 
@@ -306,3 +309,5 @@ public struct GitHubService: Sendable {
         return nil
     }
 }
+
+extension GitHubService: GitHubAPIClientProtocol {}

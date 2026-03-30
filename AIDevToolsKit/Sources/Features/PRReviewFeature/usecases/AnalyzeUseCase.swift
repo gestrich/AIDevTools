@@ -267,7 +267,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
         prNumber: Int,
         continuation: AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error>.Continuation
     ) async throws {
-        guard let pr = PRDiscoveryService.loadGitHubPR(outputDir: config.resolvedOutputDir, prNumber: prNumber),
+        guard let pr = PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber),
               let fullHash = pr.headRefOid else {
             continuation.yield(.log(text: "Warning: Could not read head commit from metadata — skipping checkout\n"))
             return

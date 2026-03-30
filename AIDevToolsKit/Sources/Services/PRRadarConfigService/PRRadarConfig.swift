@@ -13,6 +13,7 @@ public struct RepositoryConfiguration: Sendable {
     public let githubAccount: String
     public let diffSource: DiffSource
     public let defaultBaseBranch: String
+    public let dataRootURL: URL?
 
     public init(
         id: UUID = UUID(),
@@ -23,7 +24,8 @@ public struct RepositoryConfiguration: Sendable {
         agentScriptPath: String,
         githubAccount: String,
         diffSource: DiffSource = .git,
-        defaultBaseBranch: String
+        defaultBaseBranch: String,
+        dataRootURL: URL? = nil
     ) {
         self.id = id
         self.name = name
@@ -34,13 +36,15 @@ public struct RepositoryConfiguration: Sendable {
         self.githubAccount = githubAccount
         self.diffSource = diffSource
         self.defaultBaseBranch = defaultBaseBranch
+        self.dataRootURL = dataRootURL
     }
 
     public static func make(
         from info: RepositoryInfo,
         settings: PRRadarRepoSettings,
         outputDir: String,
-        agentScriptPath: String
+        agentScriptPath: String,
+        dataRootURL: URL? = nil
     ) -> RepositoryConfiguration {
         RepositoryConfiguration(
             id: info.id,
@@ -51,7 +55,8 @@ public struct RepositoryConfiguration: Sendable {
             agentScriptPath: agentScriptPath,
             githubAccount: info.credentialAccount ?? "",
             diffSource: settings.diffSource,
-            defaultBaseBranch: info.pullRequest?.baseBranch ?? "main"
+            defaultBaseBranch: info.pullRequest?.baseBranch ?? "main",
+            dataRootURL: dataRootURL
         )
     }
 
@@ -89,6 +94,16 @@ public struct RepositoryConfiguration: Sendable {
 
     public func prDataDirectory(for prNumber: Int) -> String {
         "\(resolvedOutputDir)/\(prNumber)"
+    }
+
+    /// URL for the shared GitHub PR cache for this repo, if a data root is available.
+    ///
+    /// Computed from `dataRootURL` and the `owner-repo` slug derived from the local git config.
+    public var gitHubCacheURL: URL? {
+        guard let dataRootURL,
+              let slug = PRDiscoveryService.repoSlug(fromRepoPath: repoPath) else { return nil }
+        let normalizedSlug = slug.replacingOccurrences(of: "/", with: "-")
+        return dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
     }
 
     public func makeFilter(

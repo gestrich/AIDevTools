@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
@@ -28,43 +29,51 @@ public struct FetchPRListUseCase: StreamingUseCase {
 
                     let limitNum = limit.flatMap(Int.init) ?? 300
 
-                    let prs = try await gitHub.listPullRequests(
-                        limit: limitNum,
-                        filter: filter
-                    )
+                    if let dataRootURL = config.dataRootURL {
+                        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
+                        let cacheURL = dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
+                        let gitHubPRService = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
 
-                    // Fetch repository info once (needed by PRDiscoveryService when filtering by repoSlug)
-                    let repo = try await gitHub.getRepository()
+                        _ = try await gitHubPRService.updateAllPRs()
+                        try await gitHubPRService.updateRepository()
 
-                    // Resolve author display names via cache
-                    let authorCache = AuthorCacheService()
-                    let authorLogins = Set(prs.compactMap { $0.author?.login })
-                    let nameMap = authorLogins.isEmpty ? [:] : try await gitHub.resolveAuthorNames(logins: authorLogins, cache: authorCache)
+                        let discoveredPRs = PRDiscoveryService.discoverPRs(gitHubCacheURL: cacheURL)
+                        let filteredPRs = discoveredPRs.filter { filter.matches($0) }
+                        continuation.yield(.completed(output: filteredPRs))
+                        continuation.finish()
+                    } else {
+                        let prs = try await gitHub.listPullRequests(limit: limitNum, filter: filter)
 
-                    // Write PR data to output dir so PRDiscoveryService can find them
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                        let repo = try await gitHub.getRepository()
 
-                    for pr in prs.map({ $0.withAuthorNames(from: nameMap) }) {
-                        let metadataDir = PRRadarPhasePaths.metadataDirectory(
+                        let authorCache = AuthorCacheService()
+                        let authorLogins = Set(prs.compactMap { $0.author?.login })
+                        let nameMap = authorLogins.isEmpty ? [:] : try await gitHub.resolveAuthorNames(logins: authorLogins, cache: authorCache)
+
+                        let encoder = JSONEncoder()
+                        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+                        for pr in prs.map({ $0.withAuthorNames(from: nameMap) }) {
+                            let metadataDir = PRRadarPhasePaths.metadataDirectory(
+                                outputDir: config.resolvedOutputDir,
+                                prNumber: pr.number
+                            )
+                            try PRRadarPhasePaths.ensureDirectoryExists(at: metadataDir)
+                            let prData = try encoder.encode(pr)
+                            try prData.write(to: URL(fileURLWithPath: "\(metadataDir)/\(PRRadarPhasePaths.ghPRFilename)"))
+
+                            let repoData = try encoder.encode(repo)
+                            try repoData.write(to: URL(fileURLWithPath: "\(metadataDir)/\(PRRadarPhasePaths.ghRepoFilename)"))
+                        }
+
+                        let discoveredPRs = PRDiscoveryService.discoverPRs(
                             outputDir: config.resolvedOutputDir,
-                            prNumber: pr.number
+                            repoSlug: repoSlug
                         )
-                        try PRRadarPhasePaths.ensureDirectoryExists(at: metadataDir)
-                        let prData = try encoder.encode(pr)
-                        try prData.write(to: URL(fileURLWithPath: "\(metadataDir)/\(PRRadarPhasePaths.ghPRFilename)"))
-
-                        let repoData = try encoder.encode(repo)
-                        try repoData.write(to: URL(fileURLWithPath: "\(metadataDir)/\(PRRadarPhasePaths.ghRepoFilename)"))
+                        let filteredPRs = discoveredPRs.filter { filter.matches($0) }
+                        continuation.yield(.completed(output: filteredPRs))
+                        continuation.finish()
                     }
-
-                    let discoveredPRs = PRDiscoveryService.discoverPRs(
-                        outputDir: config.resolvedOutputDir,
-                        repoSlug: repoSlug
-                    )
-                    let filteredPRs = discoveredPRs.filter { filter.matches($0) }
-                    continuation.yield(.completed(output: filteredPRs))
-                    continuation.finish()
                 } catch {
                     continuation.yield(.failed(error: error.localizedDescription, logs: ""))
                     continuation.finish()

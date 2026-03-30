@@ -72,7 +72,8 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
         from: repo,
         settings: settings,
         outputDir: outputDirString,
-        agentScriptPath: settings.agentScriptPath
+        agentScriptPath: settings.agentScriptPath,
+        dataRootURL: dataPathsService.rootPath
     )
 
     if let diffSource {

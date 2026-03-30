@@ -31,6 +31,15 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         return fetched
     }
 
+    public func repository(useCache: Bool) async throws -> GitHubRepository {
+        if useCache, let cached = try await cache.readRepository() {
+            return cached
+        }
+        let repo = try await apiClient.getRepository()
+        try await cache.writeRepository(repo)
+        return repo
+    }
+
     public func updatePR(number: Int) async throws {
         let pr = try await apiClient.getPullRequest(number: number)
         try await cache.writePR(pr, number: number)
@@ -48,6 +57,19 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
             try await cache.writePR(pr, number: pr.number)
         }
         return prs
+    }
+
+    public func updateRepository() async throws {
+        let repo = try await apiClient.getRepository()
+        try await cache.writeRepository(repo)
+    }
+
+    public func writePR(_ pr: GitHubPullRequest, number: Int) async throws {
+        try await cache.writePR(pr, number: number)
+    }
+
+    public func writeComments(_ comments: GitHubPullRequestComments, number: Int) async throws {
+        try await cache.writeComments(comments, number: number)
     }
 
     public func changes() -> AsyncStream<Int> {

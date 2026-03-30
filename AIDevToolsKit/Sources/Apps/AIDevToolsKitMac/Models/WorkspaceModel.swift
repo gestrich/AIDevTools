@@ -176,7 +176,8 @@ final class WorkspaceModel {
             from: repo,
             settings: settings,
             outputDir: outputDir,
-            agentScriptPath: settings.agentScriptPath
+            agentScriptPath: settings.agentScriptPath,
+            dataRootURL: dataPath
         )
     }
 
