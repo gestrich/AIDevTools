@@ -114,7 +114,10 @@ The model already owns the plan URL when a plan is selected — no new state nee
 **Files to modify:**
 - `AIDevToolsKitMac/Models/MarkdownPlannerModel.swift`
 
-## - [ ] Phase 4: UI — review picker in `PlansContainer` / `MarkdownPlannerDetailView`
+## - [x] Phase 4: UI — review picker in `PlansContainer` / `MarkdownPlannerDetailView`
+
+**Skills used**: `swift-app-architecture:swift-swiftui`
+**Principles applied**: Added "Append Review" button to `MarkdownPlannerDetailView` header bar (disabled when busy). Button opens a `.popover` backed by a private `AppendReviewPopover` struct that loads templates from `repository.path/docs/reviews` via `ReviewTemplateService` on appear. Tapping a template calls `markdownPlannerModel.appendReviewTemplate(_:to:)`, shows a green success indicator for 1 second, calls `loadPlan()` to refresh local phase list, then auto-dismisses. Errors surface inline in the popover. No new state on the model; all view-local state lives in `@State` vars per the MV pattern.
 
 **Skills to read**: `swift-app-architecture:swift-swiftui`
 

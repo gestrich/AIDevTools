@@ -23,6 +23,7 @@ struct MarkdownPlannerDetailView: View {
     @State private var iterationChatModel: ChatModel?
     @State private var activePlanModel = ActivePlanModel()
     @State private var isAddTaskPopoverPresented = false
+    @State private var isAppendReviewPopoverPresented = false
     @State private var newTaskDescription = ""
 
     private var activeChatModel: ChatModel? {
@@ -249,6 +250,20 @@ struct MarkdownPlannerDetailView: View {
                 Label("Complete", systemImage: "checkmark.circle")
             }
             .disabled(isBusy)
+
+            Button {
+                isAppendReviewPopoverPresented = true
+            } label: {
+                Label("Append Review", systemImage: "doc.badge.plus")
+            }
+            .disabled(isBusy)
+            .popover(isPresented: $isAppendReviewPopoverPresented) {
+                AppendReviewPopover(
+                    plan: plan,
+                    reviewsDirectory: repository.path.appending(path: "docs/reviews"),
+                    onAppended: { loadPlan() }
+                )
+            }
 
             Button {
                 isAddTaskPopoverPresented = true
@@ -543,5 +558,71 @@ struct MarkdownPlannerDetailView: View {
             return "\(minutes)m \(seconds)s"
         }
         return "\(seconds)s"
+    }
+}
+
+// MARK: - Append Review Popover
+
+private struct AppendReviewPopover: View {
+    let plan: MarkdownPlanEntry
+    let reviewsDirectory: URL
+    let onAppended: () -> Void
+    @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var templates: [ReviewTemplate] = []
+    @State private var loadError: String?
+    @State private var appendedName: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Append Review")
+                .font(.headline)
+
+            if let appendedName {
+                Label("\(appendedName) appended", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.subheadline)
+            } else if let loadError {
+                Text(loadError)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            } else if templates.isEmpty {
+                Text("No templates found in docs/reviews/")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            } else {
+                ForEach(templates) { template in
+                    Button {
+                        Task {
+                            do {
+                                try await markdownPlannerModel.appendReviewTemplate(template, to: plan.planURL)
+                                appendedName = template.name
+                                onAppended()
+                                try? await Task.sleep(for: .seconds(1))
+                                dismiss()
+                            } catch {
+                                loadError = error.localizedDescription
+                            }
+                        }
+                    } label: {
+                        Text(template.name)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+        .padding()
+        .frame(minWidth: 220)
+        .task {
+            do {
+                let service = ReviewTemplateService(reviewsDirectory: reviewsDirectory)
+                templates = try service.availableTemplates()
+            } catch {
+                loadError = error.localizedDescription
+            }
+        }
     }
 }
