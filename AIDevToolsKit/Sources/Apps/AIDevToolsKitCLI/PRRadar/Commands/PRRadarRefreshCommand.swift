@@ -42,7 +42,8 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
             case .prepareOutput: break
             case .prepareToolUse: break
             case .taskEvent: break
-            case .completed(let prs):
+            case .completed(let result):
+                let prs = result.prList
                 if json {
                     let encoded = prs.map { pr in
                         [

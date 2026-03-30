@@ -133,12 +133,11 @@ final class AllPRsModel {
         self.state = .refreshing(prior ?? [])
         refreshAllState = .running(logs: "Fetching PR list from GitHub...\n", current: 0, total: 0)
 
-        let sharedService = await makeGitHubPRService()
         let useCase = FetchPRListUseCase(config: config)
 
         var updatedMetadata: [PRMetadata]?
         do {
-            for try await progress in useCase.execute(filter: filter, repoSlug: nil, gitHubPRService: sharedService) {
+            for try await progress in useCase.execute(filter: filter, repoSlug: nil) {
                 switch progress {
                 case .running, .progress:
                     break
@@ -147,8 +146,11 @@ final class AllPRsModel {
                 case .prepareOutput: break
                 case .prepareToolUse: break
                 case .taskEvent: break
-                case .completed:
+                case .completed(let result):
                     updatedMetadata = PRDiscoveryService.discoverPRs(config: config)
+                    if let service = result.gitHubPRService {
+                        startObservingChanges(service: service)
+                    }
                 case .failed(let error, _):
                     self.state = .failed(error, prior: prior)
                     refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(error)\n")
@@ -267,20 +269,6 @@ final class AllPRsModel {
     }
 
     // MARK: - GitHub PR Service
-
-    private func makeGitHubPRService() async -> (any GitHubPRServiceProtocol)? {
-        if let existing = gitHubPRService {
-            return existing
-        }
-        guard let cacheURL = config.gitHubCacheURL else { return nil }
-        guard let (gitHub, _) = try? await GitHubServiceFactory.create(
-            repoPath: config.repoPath,
-            githubAccount: config.githubAccount
-        ) else { return nil }
-        let service = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
-        startObservingChanges(service: service)
-        return service
-    }
 
     private func startObservingChanges(service: any GitHubPRServiceProtocol) {
         changesTask?.cancel()

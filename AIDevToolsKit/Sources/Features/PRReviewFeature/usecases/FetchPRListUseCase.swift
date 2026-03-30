@@ -5,6 +5,13 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
+public struct FetchPRListResult: Sendable {
+    public let prList: [PRMetadata]
+    /// The `GitHubPRService` created during the fetch, when the shared GitHub cache is configured.
+    /// Callers that need reactive updates (e.g. Mac app models) can subscribe to `gitHubPRService.changes()`.
+    public let gitHubPRService: (any GitHubPRServiceProtocol)?
+}
+
 public struct FetchPRListUseCase: StreamingUseCase {
 
     private let config: RepositoryConfiguration
@@ -16,9 +23,8 @@ public struct FetchPRListUseCase: StreamingUseCase {
     public func execute(
         limit: String? = nil,
         filter: PRFilter,
-        repoSlug: String? = nil,
-        gitHubPRService: (any GitHubPRServiceProtocol)? = nil
-    ) -> AsyncThrowingStream<PhaseProgress<[PRMetadata]>, Error> {
+        repoSlug: String? = nil
+    ) -> AsyncThrowingStream<PhaseProgress<FetchPRListResult>, Error> {
         AsyncThrowingStream { continuation in
             continuation.yield(.running(phase: .diff))
 
@@ -31,14 +37,14 @@ public struct FetchPRListUseCase: StreamingUseCase {
                     let limitNum = limit.flatMap(Int.init) ?? 300
 
                     if let cacheURL = config.gitHubCacheURL {
-                        let service = gitHubPRService ?? GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+                        let service = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
 
                         _ = try await service.updateAllPRs()
                         try await service.updateRepository()
 
                         let discoveredPRs = PRDiscoveryService.discoverPRs(gitHubCacheURL: cacheURL)
                         let filteredPRs = discoveredPRs.filter { filter.matches($0) }
-                        continuation.yield(.completed(output: filteredPRs))
+                        continuation.yield(.completed(output: FetchPRListResult(prList: filteredPRs, gitHubPRService: service)))
                         continuation.finish()
                     } else {
                         let prs = try await gitHub.listPullRequests(limit: limitNum, filter: filter)
@@ -70,7 +76,7 @@ public struct FetchPRListUseCase: StreamingUseCase {
                             repoSlug: repoSlug
                         )
                         let filteredPRs = discoveredPRs.filter { filter.matches($0) }
-                        continuation.yield(.completed(output: filteredPRs))
+                        continuation.yield(.completed(output: FetchPRListResult(prList: filteredPRs, gitHubPRService: nil)))
                         continuation.finish()
                     }
                 } catch {

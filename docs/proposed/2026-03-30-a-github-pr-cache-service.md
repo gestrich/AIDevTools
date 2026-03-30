@@ -171,7 +171,10 @@ Functional checks via CLI:
 
 **Skills used**: `swift-app-architecture:swift-architecture`
 **Principles applied**: Grepped all files changed in phases 1–9 for `@Observable` and `@MainActor`. Found zero violations — all occurrences are in the Apps layer (`AllPRsModel.swift`, `WorkspaceModel.swift`). The new `GitHubService` module (Services), `PRReviewFeature` use cases (Features), and all modified Services files contain no `@Observable` or `@MainActor` annotations. No code changes required.
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find multi-step orchestration that belongs in a use case and extract it, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Find multi-step orchestration that belongs in a use case and extract it, and make the necessary code changes
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Found one violation: Phase 4 added `makeGitHubPRService()` to `AllPRsModel` — a multi-step async method that created the `GitHubPRService`, then started observation, then passed the service into `FetchPRListUseCase`. This put service creation orchestration in the App layer when it belongs in the use case. Fixed by moving `GitHubPRService` creation into `FetchPRListUseCase.execute()` and returning it in a new `FetchPRListResult` output type. `AllPRsModel.refresh()` now calls the use case without a pre-created service and subscribes to observation from the returned service in the `.completed` case. Removed `makeGitHubPRService()` from `AllPRsModel`.
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find feature-to-feature imports and replace with a shared Service or SDK abstraction, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that accept or return app-specific or feature-specific types and replace them with generic parameters, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Find SDK methods that orchestrate multiple operations and split them into single-operation methods, and make the necessary code changes
