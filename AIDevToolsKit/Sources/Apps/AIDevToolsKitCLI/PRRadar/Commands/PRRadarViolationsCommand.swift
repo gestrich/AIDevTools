@@ -33,19 +33,18 @@ struct PRRadarViolationsCommand: AsyncParsableCommand {
 
         if options.json {
             let encoded = pending.map { comment in
-                var obj: [String: Any] = [
-                    "file": comment.filePath,
-                    "state": comment.state.description,
-                ]
-                if let line = comment.lineNumber { obj["line"] = line }
-                if let score = comment.score { obj["score"] = score }
-                if let rule = comment.ruleName { obj["rule"] = rule }
-                if let body = comment.pending?.comment {
-                    obj["body"] = String(body.prefix(200))
-                }
-                return obj
+                ViolationOutput(
+                    file: comment.filePath,
+                    state: comment.state.description,
+                    line: comment.lineNumber,
+                    score: comment.score,
+                    rule: comment.ruleName,
+                    body: comment.pending.map { String($0.comment.prefix(200)) }
+                )
             }
-            let data = try JSONSerialization.data(withJSONObject: encoded, options: [.prettyPrinted, .sortedKeys])
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(encoded)
             print(String(data: data, encoding: .utf8)!)
         } else {
             if pending.isEmpty {
@@ -62,6 +61,15 @@ struct PRRadarViolationsCommand: AsyncParsableCommand {
             }
         }
     }
+}
+
+private struct ViolationOutput: Codable {
+    let file: String
+    let state: String
+    let line: Int?
+    let score: Int?
+    let rule: String?
+    let body: String?
 }
 
 extension ReviewComment.State {

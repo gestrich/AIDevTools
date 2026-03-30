@@ -78,7 +78,7 @@ final class AllPRsModel {
 
         var updatedMetadata: [PRMetadata]?
         do {
-            for try await progress in useCase.execute(filter: filter, repoSlug: nil) {
+            for try await progress in useCase.execute(filter: filter) {
                 switch progress {
                 case .running, .progress:
                     break

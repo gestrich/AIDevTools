@@ -15,9 +15,6 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Repository name (from repos list)")
     var config: String?
 
-    @Option(name: .long, help: "Maximum number of PRs to fetch")
-    var limit: String?
-
     @Flag(name: .long, help: "Output results as JSON")
     var json: Bool = false
 
@@ -26,12 +23,11 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
         let prFilter = try filterOptions.buildFilter(config: prRadarConfig)
 
         let useCase = FetchPRListUseCase(config: prRadarConfig)
-        let repoSlug = PRDiscoveryService.repoSlug(fromRepoPath: prRadarConfig.repoPath)
 
         if !json {
             print("Fetching recent PRs from GitHub...")
         }
-        for try await progress in useCase.execute(limit: limit, filter: prFilter, repoSlug: repoSlug) {
+        for try await progress in useCase.execute(filter: prFilter) {
             switch progress {
             case .running:
                 break

@@ -14,9 +14,7 @@ public struct FetchPRListUseCase: StreamingUseCase {
     }
 
     public func execute(
-        limit: String? = nil,
-        filter: PRFilter,
-        repoSlug: String? = nil
+        filter: PRFilter
     ) -> AsyncThrowingStream<PhaseProgress<FetchPRListResult>, Error> {
         AsyncThrowingStream { continuation in
             continuation.yield(.running(phase: .diff))
