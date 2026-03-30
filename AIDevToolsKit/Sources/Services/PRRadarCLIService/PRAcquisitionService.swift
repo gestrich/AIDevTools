@@ -320,12 +320,3 @@ public struct PRAcquisitionService: Sendable {
     }
 }
 
-// MARK: - JSONEncoder Extension
-
-private extension JSONEncoder {
-    static var prettyPrinted: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
-    }
-}

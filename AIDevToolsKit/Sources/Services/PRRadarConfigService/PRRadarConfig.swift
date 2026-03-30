@@ -106,6 +106,14 @@ public struct RepositoryConfiguration: Sendable {
         return dataRootURL.appendingPathComponent("github/\(normalizedSlug)")
     }
 
+    /// Returns the shared GitHub PR cache URL, or throws if `dataRootURL` is not configured.
+    public func requireGitHubCacheURL() throws -> URL {
+        guard let url = gitHubCacheURL else {
+            throw RepositoryConfigurationError.noDataRoot
+        }
+        return url
+    }
+
     public func makeFilter(
         dateFilter: PRDateFilter? = nil,
         state: PRState? = nil,
