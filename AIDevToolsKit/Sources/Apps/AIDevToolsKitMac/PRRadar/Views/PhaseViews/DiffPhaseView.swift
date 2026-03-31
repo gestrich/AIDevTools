@@ -4,7 +4,7 @@ import PRRadarModelsService
 import PRReviewFeature
 import SwiftUI
 
-private let logger = Logger(label: "PRRadar.DiffPhaseView")
+private let logger = Logger(label: "DiffPhaseView")
 
 struct DiffPhaseView: View {
 

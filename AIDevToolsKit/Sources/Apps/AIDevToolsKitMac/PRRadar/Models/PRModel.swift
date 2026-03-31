@@ -5,7 +5,7 @@ import PRRadarConfigService
 import PRRadarModelsService
 import PRReviewFeature
 
-private let logger = Logger(label: "PRRadar.PRModel")
+private let logger = Logger(label: "PRModel")
 
 @Observable
 @MainActor

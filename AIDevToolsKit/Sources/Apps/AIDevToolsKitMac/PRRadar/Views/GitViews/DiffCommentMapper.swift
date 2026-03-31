@@ -1,7 +1,7 @@
 import Logging
 import PRRadarModelsService
 
-private let logger = Logger(label: "PRRadar.DiffCommentMapper")
+private let logger = Logger(label: "DiffCommentMapper")
 
 struct DiffCommentMapping {
     let byFileAndLine: [String: [Int: [ReviewComment]]]

@@ -35,7 +35,8 @@ public struct FileLogHandler: LogHandler, Sendable {
             level: "\(level)",
             label: label,
             message: "\(message)",
-            metadata: merged.isEmpty ? nil : merged.mapValues { "\($0)" }
+            metadata: merged.isEmpty ? nil : merged.mapValues { "\($0)" },
+            source: source
         )
 
         guard let data = try? JSONEncoder().encode(entry),
@@ -69,6 +70,7 @@ public struct LogEntry: Codable, Sendable {
     public let label: String
     public let message: String
     public let metadata: [String: String]?
+    public let source: String?
 
     public var date: Date? {
         ISO8601DateFormatter().date(from: timestamp)

@@ -26,9 +26,13 @@ struct SettingsView: View {
                     currentError: $currentError
                 )
             }
+
+            Tab("Diagnostics", systemImage: "doc.text.magnifyingglass") {
+                DiagnosticsView()
+            }
         }
         .tabViewStyle(.tabBarOnly)
-        .frame(width: 700, height: 500)
+        .frame(width: 800, height: 550)
         .alert("Settings Error", isPresented: isErrorPresented, presenting: currentError) { _ in
             Button("OK") { currentError = nil }
         } message: { error in

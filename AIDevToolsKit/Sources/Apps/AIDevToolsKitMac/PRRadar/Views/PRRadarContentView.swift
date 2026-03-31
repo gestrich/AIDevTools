@@ -7,7 +7,7 @@ import SwiftUI
 
 struct PRRadarContentView: View {
 
-    private let logger = Logger(label: "AIDevTools.PRRadarContentView")
+    private let logger = Logger(label: "PRRadarContentView")
 
     let repository: RepositoryInfo
 

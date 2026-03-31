@@ -18,7 +18,6 @@ let package = Package(
         .library(name: "ClaudeChainService", targets: ["ClaudeChainService"]),
         .library(name: "ClaudeChainSDK", targets: ["ClaudeChainSDK"]),
         .library(name: "ClaudeChainFeature", targets: ["ClaudeChainFeature"]),
-        .executable(name: "claude-chain", targets: ["ClaudeChainMain"]),
         .library(name: "ClaudeCLISDK", targets: ["ClaudeCLISDK"]),
         .library(name: "ClaudePythonSDK", targets: ["ClaudePythonSDK"]),
         .library(name: "CodexCLISDK", targets: ["CodexCLISDK"]),
@@ -75,6 +74,7 @@ let package = Package(
                 "ArchitecturePlannerFeature",
                 "ArchitecturePlannerService",
                 "ChatFeature",
+                "ClaudeChainCLI",
                 "ClaudeChainFeature",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
@@ -474,11 +474,6 @@ let package = Package(
                 .product(name: "CLISDK", package: "SwiftCLI"),
             ],
             path: "Sources/SDKs/ClaudeChainSDK"
-        ),
-        .executableTarget(
-            name: "ClaudeChainMain",
-            dependencies: ["ClaudeChainCLI"],
-            path: "Sources/Apps/ClaudeChainMain"
         ),
         .target(
             name: "ClaudeChainService",

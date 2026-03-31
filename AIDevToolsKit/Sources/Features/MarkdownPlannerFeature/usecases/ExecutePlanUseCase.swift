@@ -99,7 +99,7 @@ public struct ExecutePlanUseCase: UseCase {
     private let completedDirectory: URL?
     private let dataPath: URL
     private let gitClient: GitClient
-    private let logger = Logger(label: "MarkdownPlanner")
+    private let logger = Logger(label: "ExecutePlanUseCase")
 
     public init(
         client: any AIClient,

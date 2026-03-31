@@ -83,6 +83,7 @@ public struct AIDevToolsKitMacEntryView: View {
 
 public struct AIDevToolsSettingsView: View {
     @State private var credentialModel = CredentialModel()
+    @State private var logsModel = LogsModel()
     @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
@@ -118,6 +119,7 @@ public struct AIDevToolsSettingsView: View {
     public var body: some View {
         SettingsView()
             .environment(credentialModel)
+            .environment(logsModel)
             .environment(providerModel)
             .environment(settingsModel)
             .environment(workspaceModel)

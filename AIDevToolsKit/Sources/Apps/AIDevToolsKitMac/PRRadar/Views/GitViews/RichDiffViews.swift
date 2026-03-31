@@ -3,7 +3,7 @@ import Logging
 import PRRadarModelsService
 import SwiftUI
 
-private let logger = Logger(label: "PRRadar.RichDiffViews")
+private let logger = Logger(label: "RichDiffViews")
 
 enum DiffLayout {
     static let gutterWidth: CGFloat = 96

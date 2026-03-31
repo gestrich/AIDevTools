@@ -6,7 +6,7 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-private let logger = Logger(label: "PRRadar.FetchPRListUseCase")
+private let logger = Logger(label: "FetchPRListUseCase")
 
 public struct FetchPRListUseCase: StreamingUseCase {
 

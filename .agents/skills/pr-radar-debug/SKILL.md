@@ -67,32 +67,7 @@ Use `--config <config-name>` to select the repository. Run `config list` to see 
 
 ## Logs
 
-PRRadar writes structured JSON-line logs to `~/Library/Logs/PRRadar/prradar.log`. Both the Mac app and CLI write to this file. Use the `logs` command to read them:
-
-```bash
-# All log entries
-swift run PRRadarMacCLI logs
-
-# Most recent analysis run only
-swift run PRRadarMacCLI logs --last-run
-
-# Filter by date range
-swift run PRRadarMacCLI logs --from 2026-03-14 --to 2026-03-14
-
-# Filter by level (debug, info, warning, error)
-swift run PRRadarMacCLI logs --level error
-
-# JSON output for programmatic parsing
-swift run PRRadarMacCLI logs --json
-```
-
-### Adding Logs for Debugging
-
-When investigating issues, add temporary `Logger` calls at relevant code points to capture runtime state. Use `import Logging` and create a logger with `Logger(label: "PRRadar.<ComponentName>")`.
-
-**For CLI debugging:** Add log statements, run the CLI command, then check output with `swift run PRRadarMacCLI logs --last-run`.
-
-**For Mac app debugging:** Since the Mac app runs separately, tell Bill you are adding log statements to help troubleshoot, explain what information the logs will capture, then ask Bill to run the app and trigger the relevant action. After the run completes, read the logs with `swift run PRRadarMacCLI logs --last-run` to see what happened.
+For reading logs or adding log statements for debugging, use the `logging` skill.
 
 ## Debugging Tips
 
