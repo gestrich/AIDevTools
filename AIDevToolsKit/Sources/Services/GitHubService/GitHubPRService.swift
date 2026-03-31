@@ -91,7 +91,7 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         }
         let pr = try await pullRequest(number: number, useCache: true)
         guard let headSHA = pr.headRefOid else {
-            return []
+            throw GitHubPRServiceError.missingHeadRefOid(prNumber: number)
         }
         let fetched = try await apiClient.checkRuns(prNumber: number, headSHA: headSHA)
         try await cache.writeCheckRuns(fetched, number: number)
