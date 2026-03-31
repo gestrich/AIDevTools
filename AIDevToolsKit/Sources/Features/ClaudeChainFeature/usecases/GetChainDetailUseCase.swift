@@ -6,7 +6,7 @@ import UseCaseSDK
 
 private let claudeChainBranchPrefix = "claude-chain-"
 
-public struct GetChainDetailUseCase: UseCase {
+public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
 
     public struct Options: Sendable {
         public let projectName: String
@@ -24,10 +24,29 @@ public struct GetChainDetailUseCase: UseCase {
         self.gitHubPRService = gitHubPRService
     }
 
+    // MARK: - Cache-first then network stream
+
+    /// Yields cached data immediately (if available), then yields fresh data from the network.
+    public func stream(options: Options) -> AsyncThrowingStream<ChainProjectDetail, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                if let cached = try? await loadCached(options: options) {
+                    continuation.yield(cached)
+                }
+                do {
+                    let detail = try await run(options: options)
+                    continuation.yield(detail)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
     // MARK: - Cache-first load (no network)
 
-    /// Returns a `ChainProjectDetail` built entirely from disk cache, or `nil` if no index exists yet.
-    public func loadCached(options: Options) async throws -> ChainProjectDetail? {
+    private func loadCached(options: Options) async throws -> ChainProjectDetail? {
         let projects = try ListChainsUseCase().run(options: .init(repoPath: options.repoPath))
         guard let project = projects.first(where: { $0.name == options.projectName }) else {
             return nil

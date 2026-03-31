@@ -126,24 +126,9 @@ final class ClaudeChainModel {
             do {
                 let service = try await makeOrGetGitHubPRService(repoPath: repoPath)
                 let useCase = GetChainDetailUseCase(gitHubPRService: service)
-
-                // Phase 1: show cached data immediately if available
-                if chainDetails[projectName] == nil {
-                    if let cached = try? await useCase.loadCached(options: .init(repoPath: repoPath, projectName: projectName)) {
-                        let prCount = cached.enrichedTasks.filter { $0.enrichedPR != nil }.count
-                        logger.info("loadChainDetail: cache hit for '\(projectName)' — \(prCount) PRs")
-                        chainDetails[projectName] = cached
-                    } else {
-                        logger.info("loadChainDetail: no cache for '\(projectName)'")
-                    }
+                for try await detail in useCase.stream(options: .init(repoPath: repoPath, projectName: projectName)) {
+                    chainDetails[projectName] = detail
                 }
-
-                // Phase 2: refresh from network
-                logger.info("loadChainDetail: network fetch starting for '\(projectName)'")
-                let detail = try await useCase.run(options: .init(repoPath: repoPath, projectName: projectName))
-                let prCount = detail.enrichedTasks.filter { $0.enrichedPR != nil }.count
-                logger.info("loadChainDetail: network fetch complete for '\(projectName)' — \(prCount) PRs, \(detail.actionItems.count) action items")
-                chainDetails[projectName] = detail
                 chainDetailNetworkFetched.insert(projectName)
             } catch {
                 logger.error("loadChainDetail: failed for '\(projectName)': \(error)")
