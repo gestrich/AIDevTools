@@ -1669,3 +1669,91 @@ final class TestCostBreakdownUtilities: XCTestCase {
         XCTAssertEqual(modelJson["input_tokens"] as? Int, 1_000_000)
     }
 }
+
+final class TestCostBreakdownReviewCost: XCTestCase {
+    /// Test suite for reviewCost support in CostBreakdown
+
+    func testTotalCostIncludesReviewCost() {
+        // Arrange
+        let breakdown = CostBreakdown(mainCost: 1.0, reviewCost: 0.3, summaryCost: 0.2)
+
+        // Act
+        let total = breakdown.totalCost
+
+        // Assert
+        XCTAssertEqual(total, 1.5, accuracy: 0.0001)
+    }
+
+    func testReviewCostDefaultsToZero() {
+        // Arrange
+        let breakdown = CostBreakdown(mainCost: 1.0, summaryCost: 0.2)
+
+        // Act
+        let total = breakdown.totalCost
+
+        // Assert
+        XCTAssertEqual(breakdown.reviewCost, 0.0)
+        XCTAssertEqual(total, 1.2, accuracy: 0.0001)
+    }
+
+    func testAllModelsIncludesReviewModels() {
+        // Arrange
+        let mainModel = ModelUsage(model: "claude-sonnet-4", cost: 1.0)
+        let reviewModel = ModelUsage(model: "claude-haiku-4", cost: 0.1)
+        let summaryModel = ModelUsage(model: "claude-sonnet-4", cost: 0.2)
+        let breakdown = CostBreakdown(
+            mainCost: 1.0,
+            reviewCost: 0.1,
+            summaryCost: 0.2,
+            mainModels: [mainModel],
+            reviewModels: [reviewModel],
+            summaryModels: [summaryModel]
+        )
+
+        // Act
+        let all = breakdown.allModels
+
+        // Assert
+        XCTAssertEqual(all.count, 3)
+        XCTAssertTrue(all.contains(where: { $0.model == "claude-haiku-4" }))
+    }
+
+    func testToJSONIncludesReviewCost() throws {
+        // Arrange
+        let breakdown = CostBreakdown(mainCost: 1.0, reviewCost: 0.3, summaryCost: 0.2)
+
+        // Act
+        let json = try breakdown.toJSON()
+
+        // Assert
+        XCTAssertTrue(json.contains("\"review_cost\""))
+        XCTAssertTrue(json.contains("0.3"))
+    }
+
+    func testFromJSONRoundTripsReviewCost() throws {
+        // Arrange
+        let original = CostBreakdown(mainCost: 1.0, reviewCost: 0.3, summaryCost: 0.2)
+        let json = try original.toJSON()
+
+        // Act
+        let restored = try CostBreakdown.fromJSON(json)
+
+        // Assert
+        XCTAssertEqual(restored.reviewCost, 0.3, accuracy: 0.0001)
+        XCTAssertEqual(restored.totalCost, 1.5, accuracy: 0.0001)
+    }
+
+    func testFromJSONDefaultsReviewCostToZeroWhenAbsent() throws {
+        // Arrange
+        let json = """
+        {"main_cost": 1.0, "summary_cost": 0.2, "input_tokens": 0, \
+        "output_tokens": 0, "cache_read_tokens": 0, "cache_write_tokens": 0, "models": []}
+        """
+
+        // Act
+        let breakdown = try CostBreakdown.fromJSON(json)
+
+        // Assert
+        XCTAssertEqual(breakdown.reviewCost, 0.0)
+    }
+}

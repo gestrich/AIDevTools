@@ -377,4 +377,53 @@ class PRCreatedReportTests: XCTestCase {
         // open_pr_count=0 but this PR was just created, so should show 1
         XCTAssertTrue(result.contains("1 of 3 async slots in use"))
     }
+
+    // MARK: - Review Row Tests
+
+    func testCostSummaryTableIncludesReviewRowWhenReviewCostIsNonZero() throws {
+        // Arrange
+        let costBreakdown = CostBreakdown(mainCost: 0.15, reviewCost: 0.04, summaryCost: 0.05)
+        let report = PullRequestCreatedReport(
+            prNumber: "1",
+            prURL: "https://github.com/owner/repo/pull/1",
+            projectName: "p",
+            task: "t",
+            costBreakdown: costBreakdown,
+            repo: "owner/repo",
+            runID: "1"
+        )
+
+        // Act
+        let elements = report.buildCommentElements()
+        let formatter = MarkdownReportFormatter()
+        let result = formatter.format(elements)
+
+        // Assert
+        XCTAssertTrue(result.contains("Review"))
+        XCTAssertTrue(result.contains("$0.04"))
+    }
+
+    func testCostSummaryTableOmitsReviewRowWhenReviewCostIsZero() throws {
+        // Arrange
+        let costBreakdown = CostBreakdown(mainCost: 0.15, reviewCost: 0.0, summaryCost: 0.05)
+        let report = PullRequestCreatedReport(
+            prNumber: "1",
+            prURL: "https://github.com/owner/repo/pull/1",
+            projectName: "p",
+            task: "t",
+            costBreakdown: costBreakdown,
+            repo: "owner/repo",
+            runID: "1"
+        )
+
+        // Act
+        let elements = report.buildCommentElements()
+        let formatter = MarkdownReportFormatter()
+        let result = formatter.format(elements)
+
+        // Assert — "Review" only appears in the model section header, not as a cost row
+        let lines = result.components(separatedBy: .newlines)
+        let reviewCostLine = lines.first(where: { $0.contains("Review") && $0.contains("$") })
+        XCTAssertNil(reviewCostLine)
+    }
 }

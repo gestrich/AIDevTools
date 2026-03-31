@@ -65,12 +65,23 @@ final class TestProjectPathProperties: XCTestCase {
     func testPathsWithCustomBasePath() {
         /// Should construct correct paths with custom base path
         let project = Project(name: "my-project", basePath: "custom/path/my-project")
-        
+
         XCTAssertEqual(project.configPath, "custom/path/my-project/configuration.yml")
         XCTAssertEqual(project.specPath, "custom/path/my-project/spec.md")
         XCTAssertEqual(project.prTemplatePath, "custom/path/my-project/pr-template.md")
         // metadata_file_path should still be just the project name
         XCTAssertEqual(project.metadataFilePath, "my-project.json")
+    }
+
+    func testReviewPathProperty() {
+        // Arrange
+        let project = Project(name: "my-project")
+
+        // Act
+        let reviewPath = project.reviewPath
+
+        // Assert
+        XCTAssertEqual(reviewPath, "claude-chain/my-project/review.md")
     }
 }
 

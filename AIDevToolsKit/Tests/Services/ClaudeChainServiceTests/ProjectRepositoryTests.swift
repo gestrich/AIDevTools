@@ -582,6 +582,63 @@ allowedTools: Read,Write,Edit
         XCTAssertNil(spec)
     }
 
+    // MARK: - loadLocalReview Tests
+
+    func testLoadLocalReviewReturnsContentWhenFileExists() throws {
+        // Arrange
+        let tempDir = createTempDirectory()
+        let projectDir = tempDir.appendingPathComponent("claude-chain/my-project")
+        try FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let reviewContent = "All Swift files must have a file-level comment."
+        let reviewFile = projectDir.appendingPathComponent("review.md")
+        try reviewContent.write(to: reviewFile, atomically: true, encoding: .utf8)
+
+        let project = Project(name: "my-project", basePath: projectDir.path)
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
+        // Act
+        let result = try repo.loadLocalReview(project: project)
+
+        // Assert
+        XCTAssertEqual(result, reviewContent)
+    }
+
+    func testLoadLocalReviewReturnsNilWhenFileIsMissing() throws {
+        // Arrange
+        let tempDir = createTempDirectory()
+        let projectDir = tempDir.appendingPathComponent("claude-chain/my-project")
+        try FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let project = Project(name: "my-project", basePath: projectDir.path)
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
+        // Act
+        let result = try repo.loadLocalReview(project: project)
+
+        // Assert
+        XCTAssertNil(result)
+    }
+
+    func testLoadLocalReviewReturnsNilWhenFileIsEmpty() throws {
+        // Arrange
+        let tempDir = createTempDirectory()
+        let projectDir = tempDir.appendingPathComponent("claude-chain/my-project")
+        try FileManager.default.createDirectory(at: projectDir, withIntermediateDirectories: true)
+
+        let reviewFile = projectDir.appendingPathComponent("review.md")
+        try "".write(to: reviewFile, atomically: true, encoding: .utf8)
+
+        let project = Project(name: "my-project", basePath: projectDir.path)
+        let repo = ProjectRepository(repo: "owner/repo", gitHubOperations: MockGitHubOperations())
+
+        // Act
+        let result = try repo.loadLocalReview(project: project)
+
+        // Assert
+        XCTAssertNil(result)
+    }
+
     // MARK: - Integration Tests
 
     func testFullWorkflowWithRealisticData() throws {

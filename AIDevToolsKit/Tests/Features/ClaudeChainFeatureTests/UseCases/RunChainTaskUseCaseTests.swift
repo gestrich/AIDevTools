@@ -236,11 +236,141 @@ private func progressLabel(_ progress: RunChainTaskUseCase.Progress) -> String {
     case .preparingProject: "preparingProject"
     case .preparedTask: "preparedTask"
     case .preScriptCompleted: "preScriptCompleted"
+    case .reviewCompleted(let summary): "reviewCompleted:\(summary)"
     case .runningAI: "runningAI"
     case .runningPostScript: "runningPostScript"
     case .runningPreScript: "runningPreScript"
+    case .runningReview: "runningReview"
     case .summaryCompleted: "summaryCompleted"
     case .summaryStreamEvent: "summaryStreamEvent"
+    }
+}
+
+// MARK: - extractReviewSummary Tests
+
+@Suite("RunChainTaskUseCase.extractReviewSummary")
+struct ExtractReviewSummaryTests {
+
+    private let useCase = RunChainTaskUseCase(client: StubAIClient())
+
+    @Test("finds REVIEW_SUMMARY line")
+    func findsLine() {
+        // Arrange
+        let output = "Some output\nREVIEW_SUMMARY: Fixed naming conventions\n"
+
+        // Act
+        let result = useCase.extractReviewSummary(from: output)
+
+        // Assert
+        #expect(result == "Fixed naming conventions")
+    }
+
+    @Test("falls back to 'Review completed' when line is absent")
+    func fallsBack() {
+        // Arrange
+        let output = "No summary line here at all."
+
+        // Act
+        let result = useCase.extractReviewSummary(from: output)
+
+        // Assert
+        #expect(result == "Review completed")
+    }
+
+    @Test("uses last REVIEW_SUMMARY when multiple are present")
+    func usesLastMatch() {
+        // Arrange
+        let output = "REVIEW_SUMMARY: First match\nMore output\nREVIEW_SUMMARY: Last match"
+
+        // Act
+        let result = useCase.extractReviewSummary(from: output)
+
+        // Assert
+        #expect(result == "Last match")
+    }
+
+    @Test("trims surrounding whitespace from summary")
+    func trimsWhitespace() {
+        // Arrange
+        let output = "REVIEW_SUMMARY:   Trimmed value   "
+
+        // Act
+        let result = useCase.extractReviewSummary(from: output)
+
+        // Assert
+        #expect(result == "Trimmed value")
+    }
+}
+
+// MARK: - appendReviewNote Tests
+
+@Suite("RunChainTaskUseCase.appendReviewNote")
+struct AppendReviewNoteTests {
+
+    private let useCase = RunChainTaskUseCase(client: StubAIClient())
+
+    private func writeTempSpec(_ content: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("spec_\(UUID().uuidString).md")
+        try content.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    @Test("inserts HTML comment after the matching [x] task line")
+    func insertsNoteAfterTask() throws {
+        // Arrange
+        let specURL = try writeTempSpec("""
+            - [x] Add authentication
+            - [ ] Next task
+            """)
+        defer { try? FileManager.default.removeItem(at: specURL) }
+
+        // Act
+        useCase.appendReviewNote(specPath: specURL.path, taskDescription: "Add authentication", summary: "No changes needed")
+
+        // Assert
+        let result = try String(contentsOf: specURL, encoding: .utf8)
+        #expect(result.contains("<!-- review: No changes needed -->"))
+        let lines = result.components(separatedBy: .newlines)
+        let taskIdx = lines.firstIndex(where: { $0.contains("[x] Add authentication") })!
+        #expect(lines[taskIdx + 1].contains("<!-- review:"))
+    }
+
+    @Test("does not modify spec when task is not found")
+    func gracefulWhenTaskNotFound() throws {
+        // Arrange
+        let original = "- [x] Some other task\n"
+        let specURL = try writeTempSpec(original)
+        defer { try? FileManager.default.removeItem(at: specURL) }
+
+        // Act
+        useCase.appendReviewNote(specPath: specURL.path, taskDescription: "Nonexistent task", summary: "No changes needed")
+
+        // Assert
+        let result = try String(contentsOf: specURL, encoding: .utf8)
+        #expect(result == original)
+    }
+
+    @Test("inserts note under the correct task in a multi-task spec")
+    func targetsCorrectTask() throws {
+        // Arrange
+        let specURL = try writeTempSpec("""
+            - [x] Task one
+            - [x] Task two
+            - [ ] Task three
+            """)
+        defer { try? FileManager.default.removeItem(at: specURL) }
+
+        // Act
+        useCase.appendReviewNote(specPath: specURL.path, taskDescription: "Task two", summary: "Fixed indentation")
+
+        // Assert
+        let result = try String(contentsOf: specURL, encoding: .utf8)
+        let lines = result.components(separatedBy: .newlines)
+        let taskIdx = lines.firstIndex(where: { $0.contains("[x] Task two") })!
+        #expect(lines[taskIdx + 1].contains("Fixed indentation"))
+        let taskOneIdx = lines.firstIndex(where: { $0.contains("[x] Task one") })!
+        #expect(!lines[taskOneIdx + 1].contains("review:"))
     }
 }
 

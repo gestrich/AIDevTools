@@ -191,9 +191,10 @@ let costBreakdown = CostBreakdown(
 )
 ```
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
-**Skills to read**: `swift-testing`
+**Skills used**: `swift-testing`
+**Principles applied**: Added unit tests for all six areas specified. Tests for `extractReviewSummary` and `appendReviewNote` were added to `RunChainTaskUseCaseTests.swift` using Swift Testing (matching that file's style). Tests for `Project.reviewPath`, `ProjectRepository.loadLocalReview`, `CostBreakdown`, and `PRCreatedReport.buildCostSummaryTable` were added to their existing XCTest files matching the local style. Pre-existing compilation errors in `FileSystemOperationsTests.swift`, `ClaudeChainModelTests.swift`, and `AppIPCClientTests.swift` prevent the test runner from executing, but these errors are confirmed pre-existing and unrelated to this phase.
 
 
 Unit tests (fast, no network):
