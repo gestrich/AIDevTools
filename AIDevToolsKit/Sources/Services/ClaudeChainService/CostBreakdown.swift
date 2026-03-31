@@ -353,66 +353,77 @@ public struct ExecutionUsage {
 /// Domain model for Claude Code execution cost breakdown.
 public struct CostBreakdown {
     public let mainCost: Double
+    public let reviewCost: Double
     public let summaryCost: Double
-    
+
     // Token counts (summed across all models in modelUsage)
     public let inputTokens: Int
     public let outputTokens: Int
     public let cacheReadTokens: Int
     public let cacheWriteTokens: Int
-    
+
     // Per-model breakdowns for detailed display
     public let mainModels: [ModelUsage]
+    public let reviewModels: [ModelUsage]
     public let summaryModels: [ModelUsage]
-    
+
     public init(
         mainCost: Double,
+        reviewCost: Double = 0.0,
         summaryCost: Double,
         inputTokens: Int = 0,
         outputTokens: Int = 0,
         cacheReadTokens: Int = 0,
         cacheWriteTokens: Int = 0,
         mainModels: [ModelUsage] = [],
+        reviewModels: [ModelUsage] = [],
         summaryModels: [ModelUsage] = []
     ) {
         self.mainCost = mainCost
+        self.reviewCost = reviewCost
         self.summaryCost = summaryCost
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.cacheReadTokens = cacheReadTokens
         self.cacheWriteTokens = cacheWriteTokens
         self.mainModels = mainModels
+        self.reviewModels = reviewModels
         self.summaryModels = summaryModels
     }
     
     /// Calculate total cost.
     public var totalCost: Double {
-        return mainCost + summaryCost
+        return mainCost + reviewCost + summaryCost
     }
     
     /// Parse cost and token information from execution files.
     ///
     /// - Parameters:
     ///   - mainExecutionFile: Path to main execution file
+    ///   - reviewExecutionFile: Optional path to review execution file
     ///   - summaryExecutionFile: Path to summary execution file
     /// - Returns: CostBreakdown with costs and tokens extracted from files
     /// - Throws: Various errors for file/parsing issues
     public static func fromExecutionFiles(
         mainExecutionFile: String,
+        reviewExecutionFile: String? = nil,
         summaryExecutionFile: String
     ) throws -> CostBreakdown {
         let mainUsage = try ExecutionUsage.fromExecutionFile(mainExecutionFile)
+        let reviewUsage = try reviewExecutionFile.map { try ExecutionUsage.fromExecutionFile($0) }
         let summaryUsage = try ExecutionUsage.fromExecutionFile(summaryExecutionFile)
-        let totalUsage = mainUsage + summaryUsage
-        
+        let totalUsage = mainUsage + (reviewUsage ?? ExecutionUsage()) + summaryUsage
+
         return CostBreakdown(
             mainCost: mainUsage.calculatedCost,
+            reviewCost: reviewUsage?.calculatedCost ?? 0.0,
             summaryCost: summaryUsage.calculatedCost,
             inputTokens: totalUsage.inputTokens,
             outputTokens: totalUsage.outputTokens,
             cacheReadTokens: totalUsage.cacheReadTokens,
             cacheWriteTokens: totalUsage.cacheWriteTokens,
             mainModels: mainUsage.models,
+            reviewModels: reviewUsage?.models ?? [],
             summaryModels: summaryUsage.models
         )
     }
@@ -422,9 +433,9 @@ public struct CostBreakdown {
         return inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens
     }
     
-    /// Get all models from both main and summary executions.
+    /// Get all models from main, review, and summary executions.
     public var allModels: [ModelUsage] {
-        return mainModels + summaryModels
+        return mainModels + reviewModels + summaryModels
     }
     
     /// Aggregate model usage across main and summary executions.
@@ -478,6 +489,7 @@ public struct CostBreakdown {
     public func toJSON() throws -> String {
         let dict: [String: Any] = [
             "main_cost": mainCost,
+            "review_cost": reviewCost,
             "summary_cost": summaryCost,
             "input_tokens": inputTokens,
             "output_tokens": outputTokens,
@@ -526,6 +538,7 @@ public struct CostBreakdown {
         
         return CostBreakdown(
             mainCost: dict["main_cost"] as? Double ?? 0.0,
+            reviewCost: dict["review_cost"] as? Double ?? 0.0,
             summaryCost: dict["summary_cost"] as? Double ?? 0.0,
             inputTokens: dict["input_tokens"] as? Int ?? 0,
             outputTokens: dict["output_tokens"] as? Int ?? 0,

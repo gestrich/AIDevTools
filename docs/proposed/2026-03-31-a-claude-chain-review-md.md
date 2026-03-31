@@ -154,9 +154,10 @@ The `appendReviewNote` helper reads spec.md, finds the `- [x] {taskDescription}`
 
 HTML comment format keeps the note invisible in rendered markdown but visible in the raw file.
 
-## - [ ] Phase 4: Add `reviewCost` to CostBreakdown and PRCreatedReport
+## - [x] Phase 4: Add `reviewCost` to CostBreakdown and PRCreatedReport
 
-**Skills to read**: none
+**Skills used**: none
+**Principles applied**: Added `reviewCost`/`reviewModels` with default values so all existing callers compile unchanged. `totalCost` and `allModels` include the review fields. `toJSON`/`fromJSON` include `review_cost` with a `0.0` default for backwards compatibility. `fromExecutionFiles` has a new optional `reviewExecutionFile` parameter. `buildCostSummaryTable` adds the "Review" row only when `reviewCost > 0`.
 
 `CostBreakdown` currently has `mainCost` and `summaryCost`. Add `reviewCost` and `reviewModels` following the exact same pattern as the existing fields.
 

@@ -330,6 +330,7 @@ public struct RunChainTaskUseCase: UseCase {
             do {
                 let costBreakdown = CostBreakdown(
                     mainCost: mainCost,
+                    reviewCost: reviewCost,
                     summaryCost: summaryCost
                 )
                 let report = PullRequestCreatedReport(

@@ -197,16 +197,22 @@ public struct PullRequestCreatedReport {
     ///
     /// - Returns: Table with component costs.
     private func buildCostSummaryTable() -> Table {
+        var rows: [TableRow] = [
+            TableRow(cells: ["Task Completion", Formatting.formatUSD(costBreakdown.mainCost)]),
+        ]
+        if costBreakdown.reviewCost > 0 {
+            rows.append(TableRow(cells: ["Review", Formatting.formatUSD(costBreakdown.reviewCost)]))
+        }
+        rows.append(contentsOf: [
+            TableRow(cells: ["Summary Generation", Formatting.formatUSD(costBreakdown.summaryCost)]),
+            TableRow(cells: ["**Total**", "**\(Formatting.formatUSD(costBreakdown.totalCost))**"]),
+        ])
         return Table(
             columns: [
                 TableColumn(header: "Component", align: .left),
                 TableColumn(header: "Cost (USD)", align: .right),
             ],
-            rows: [
-                TableRow(cells: ["Task Completion", Formatting.formatUSD(costBreakdown.mainCost)]),
-                TableRow(cells: ["Summary Generation", Formatting.formatUSD(costBreakdown.summaryCost)]),
-                TableRow(cells: ["**Total**", "**\(Formatting.formatUSD(costBreakdown.totalCost))**"]),
-            ]
+            rows: rows
         )
     }
     
