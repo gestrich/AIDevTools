@@ -204,6 +204,45 @@ public struct RunChainTaskUseCase: UseCase {
             try await git.commit(message: "Mark task \(stepIndex) as complete in spec.md", workingDirectory: repoDir)
         }
 
+        // Phase 5b: Review pass (runs only if review.md exists)
+        var reviewCost = 0.0
+        if let reviewContent = try? repository.loadLocalReview(project: project) {
+            onProgress?(.runningReview)
+
+            let reviewPrompt = buildReviewPrompt(
+                taskDescription: nextStep.description,
+                specPath: project.specPath,
+                reviewContent: reviewContent
+            )
+            let reviewOptions = AIClientOptions(
+                dangerouslySkipPermissions: true,
+                workingDirectory: options.repoPath.path
+            )
+            let reviewResult = try await client.run(
+                prompt: reviewPrompt,
+                options: reviewOptions,
+                onOutput: { text in onProgress?(.aiOutput(text)) },
+                onStreamEvent: { event in onProgress?(.aiStreamEvent(event)) }
+            )
+            reviewCost = extractCost(from: reviewResult)
+
+            let reviewStatus = try await git.status(workingDirectory: repoDir)
+            if !reviewStatus.isEmpty {
+                try await git.addAll(workingDirectory: repoDir)
+                let staged = try await git.diffCachedNames(workingDirectory: repoDir)
+                if !staged.isEmpty {
+                    try await git.commit(message: "Review: \(nextStep.description)", workingDirectory: repoDir)
+                }
+            }
+
+            let reviewSummary = extractReviewSummary(from: reviewResult.stdout)
+            appendReviewNote(specPath: project.specPath, taskDescription: nextStep.description, summary: reviewSummary)
+            try await git.add(files: [specURL.path], workingDirectory: repoDir)
+            try await git.commit(message: "Add review note for task \(stepIndex)", workingDirectory: repoDir)
+
+            onProgress?(.reviewCompleted(summary: reviewSummary))
+        }
+
         // Push branch
         try await git.push(remote: "origin", branch: branchName, setUpstream: true, force: true, workingDirectory: repoDir)
 
@@ -411,6 +450,16 @@ public struct RunChainTaskUseCase: UseCase {
     }
 
     // MARK: - Helpers
+
+    func appendReviewNote(specPath: String, taskDescription: String, summary: String) {
+        guard var content = try? String(contentsOfFile: specPath, encoding: .utf8) else { return }
+        let taskLine = "- [x] \(taskDescription)"
+        guard let range = content.range(of: taskLine) else { return }
+        let insertionIndex = content.index(after: content[range.upperBound...].firstIndex(of: "\n") ?? content.endIndex)
+        let note = "  <!-- review: \(summary) -->\n"
+        content.insert(contentsOf: note, at: insertionIndex)
+        try? content.write(toFile: specPath, atomically: true, encoding: .utf8)
+    }
 
     func extractReviewSummary(from output: String) -> String {
         let lines = output.components(separatedBy: .newlines)

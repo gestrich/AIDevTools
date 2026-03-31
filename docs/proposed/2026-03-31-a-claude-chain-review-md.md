@@ -83,9 +83,10 @@ REVIEW_SUMMARY: <one-line description of what changed, or "No changes needed">
 
 3. Add `extractReviewSummary(from output: String) -> String` helper that scans for the last line starting with `REVIEW_SUMMARY:` and returns the rest (trimmed), falling back to `"Review completed"` if not found.
 
-## - [ ] Phase 3: Insert review phase into RunChainTaskUseCase execution flow
+## - [x] Phase 3: Insert review phase into RunChainTaskUseCase execution flow
 
-**Skills to read**: `claude-chain`
+**Skills used**: `claude-chain`
+**Principles applied**: Inserted Phase 5b block between the spec.md commit and the push. `reviewCost` defaults to `0.0` and is only set when review.md is present. Added `appendReviewNote` helper (internal access for testability) that finds the `- [x]` task line and inserts an HTML comment on the next line. Both new helpers use `internal` access (no `private`) to allow unit testing.
 
 Currently Phase 5 does: commit AI changes → mark spec task `[x]` → commit spec.md → push → create PR.
 
