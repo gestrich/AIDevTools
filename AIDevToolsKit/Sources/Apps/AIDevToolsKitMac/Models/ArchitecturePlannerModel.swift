@@ -16,6 +16,7 @@ final class ArchitecturePlannerModel {
     }
 
     var state: State = .idle
+    var guidelines: [Guideline] = []
     var jobs: [PlanningJob] = []
     var selectedJob: PlanningJob?
     var selectedStepIndex: Int?
@@ -50,6 +51,7 @@ final class ArchitecturePlannerModel {
     private let manageGuidelinesUseCase: ManageGuidelinesUseCase
     private let providerRegistry: ProviderRegistry
     private var runStepUseCase: RunPlanningStepUseCase
+    private let seedGuidelinesUseCase: SeedGuidelinesUseCase
 
     init(
         dataPathsService: DataPathsService,
@@ -67,6 +69,7 @@ final class ArchitecturePlannerModel {
         self.generateReportUseCase = GenerateReportUseCase()
         self.manageGuidelinesUseCase = ManageGuidelinesUseCase()
         self.runStepUseCase = RunPlanningStepUseCase(client: client)
+        self.seedGuidelinesUseCase = SeedGuidelinesUseCase()
     }
 
     private func rebuildRunStepUseCase() {
@@ -83,6 +86,40 @@ final class ArchitecturePlannerModel {
             self.outputStore = workspace.outputStore
             self.store = workspace.plannerStore
             self.jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: workspace.plannerStore)
+            self.guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: workspace.plannerStore)
+        } catch {
+            state = .error(error)
+        }
+    }
+
+    func createGuideline(_ options: ManageGuidelinesUseCase.CreateGuidelineOptions) {
+        guard let store, let repoName = currentRepoName else { return }
+        do {
+            _ = try manageGuidelinesUseCase.createGuideline(options, store: store)
+            guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: store)
+        } catch {
+            state = .error(error)
+        }
+    }
+
+    func deleteGuideline(_ guideline: Guideline) {
+        guard let store, let repoName = currentRepoName else { return }
+        do {
+            try manageGuidelinesUseCase.deleteGuideline(guidelineId: guideline.guidelineId, store: store)
+            guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: store)
+        } catch {
+            state = .error(error)
+        }
+    }
+
+    func seedGuidelines() {
+        guard let repoName = currentRepoName, let repoPath = currentRepoPath, let store else { return }
+        do {
+            _ = try seedGuidelinesUseCase.run(
+                SeedGuidelinesUseCase.Options(repoName: repoName, repoPath: repoPath),
+                store: store
+            )
+            guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: store)
         } catch {
             state = .error(error)
         }

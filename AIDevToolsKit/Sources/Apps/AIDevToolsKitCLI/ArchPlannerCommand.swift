@@ -11,6 +11,7 @@ struct ArchPlannerCommand: AsyncParsableCommand {
             ArchPlannerExecuteCommand.self,
             ArchPlannerGuidelinesCommand.self,
             ArchPlannerInspectCommand.self,
+            ArchPlannerLoadOutputCommand.self,
             ArchPlannerReportCommand.self,
             ArchPlannerScoreCommand.self,
             ArchPlannerUpdateCommand.self,
