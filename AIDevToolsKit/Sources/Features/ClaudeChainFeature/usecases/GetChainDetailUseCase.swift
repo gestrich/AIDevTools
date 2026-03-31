@@ -29,8 +29,9 @@ public struct GetChainDetailUseCase: UseCase {
         }
 
         let repo = try await RepositoryService().getCurrentRepository(workingDirectory: options.repoPath.path)
-        let openPRs = PRService(repo: repo).getOpenPrsForProject(project: options.projectName)
-        let prNumbers = openPRs.map { $0.number }
+        let prService = PRService(repo: repo)
+        let openPRs = prService.getOpenPrsForProject(project: options.projectName)
+        let mergedPRs = prService.getMergedPrsForProject(project: options.projectName)
 
         typealias FetchedPRData = (
             pr: PRRadarModelsService.GitHubPullRequest,
@@ -39,9 +40,12 @@ public struct GetChainDetailUseCase: UseCase {
             isMergeable: Bool?
         )
 
+        var enrichedPRsByHash: [String: EnrichedPR] = [:]
+
+        // Fetch full data for open PRs
         var prDataByNumber: [Int: FetchedPRData] = [:]
         try await withThrowingTaskGroup(of: FetchedPRData.self) { group in
-            for number in prNumbers {
+            for number in openPRs.map({ $0.number }) {
                 group.addTask {
                     async let pr = gitHubPRService.pullRequest(number: number, useCache: true)
                     async let reviews = gitHubPRService.reviews(number: number, useCache: false)
@@ -55,12 +59,42 @@ public struct GetChainDetailUseCase: UseCase {
             }
         }
 
-        var enrichedPRsByHash: [String: EnrichedPR] = [:]
         for (_, data) in prDataByNumber {
             let reviewStatus = buildReviewStatus(reviews: data.reviews)
             let buildStatus = buildBuildStatus(checkRuns: data.checkRuns, isMergeable: data.isMergeable)
             let enrichedPR = EnrichedPR(pr: data.pr, reviewStatus: reviewStatus, buildStatus: buildStatus)
             if let headRefName = data.pr.headRefName,
+               let branchInfo = BranchInfo.fromBranchName(headRefName) {
+                enrichedPRsByHash[branchInfo.taskHash] = enrichedPR
+            }
+        }
+
+        // Fetch merged PR metadata for tasks not already matched to an open PR
+        let matchedHashes = Set(enrichedPRsByHash.keys)
+        let mergedPRsToFetch = mergedPRs.filter { pr in
+            guard let headRefName = pr.headRefName,
+                  let branchInfo = BranchInfo.fromBranchName(headRefName) else { return false }
+            return !matchedHashes.contains(branchInfo.taskHash)
+        }
+        var mergedPRDataByNumber: [Int: PRRadarModelsService.GitHubPullRequest] = [:]
+        try await withThrowingTaskGroup(of: PRRadarModelsService.GitHubPullRequest.self) { group in
+            for number in mergedPRsToFetch.map({ $0.number }) {
+                group.addTask {
+                    try await gitHubPRService.pullRequest(number: number, useCache: true)
+                }
+            }
+            for try await pr in group {
+                mergedPRDataByNumber[pr.number] = pr
+            }
+        }
+
+        for (_, pr) in mergedPRDataByNumber {
+            let enrichedPR = EnrichedPR(
+                pr: pr,
+                reviewStatus: PRReviewStatus(approvedBy: [], pendingReviewers: []),
+                buildStatus: .unknown
+            )
+            if let headRefName = pr.headRefName,
                let branchInfo = BranchInfo.fromBranchName(headRefName) {
                 enrichedPRsByHash[branchInfo.taskHash] = enrichedPR
             }

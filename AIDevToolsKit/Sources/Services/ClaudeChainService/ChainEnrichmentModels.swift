@@ -36,6 +36,8 @@ public struct EnrichedPR: Sendable {
         self.buildStatus = buildStatus
     }
 
+    public var isMerged: Bool { pr.mergedAt != nil }
+
     public var ageDays: Int {
         guard let createdAtString = pr.createdAt else { return 0 }
         let formatter = ISO8601DateFormatter()

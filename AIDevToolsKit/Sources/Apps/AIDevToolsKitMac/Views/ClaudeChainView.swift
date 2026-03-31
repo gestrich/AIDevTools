@@ -387,39 +387,48 @@ private struct ChainProjectDetailView: View {
     @ViewBuilder
     private func prIndicators(_ pr: EnrichedPR) -> some View {
         HStack(spacing: 6) {
-            if pr.isDraft {
-                Text("DRAFT")
+            if pr.isMerged {
+                prNumberLink(pr)
+                Text("MERGED")
                     .font(.caption2.bold())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 2)
-                    .background(.gray)
+                    .background(.purple)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
-            }
-
-            // PR number link with age badge
-            Button {
-                if let urlString = pr.pr.url, let url = URL(string: urlString) {
-                    NSWorkspace.shared.open(url)
+            } else {
+                if pr.isDraft {
+                    Text("DRAFT")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(.gray)
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
-            } label: {
-                HStack(spacing: 3) {
-                    Text("PR #\(pr.pr.number)")
-                        .font(.caption)
-                    Text("\(pr.ageDays)d")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                prNumberLink(pr)
+                reviewIndicator(pr.reviewStatus)
+                buildIndicator(pr.buildStatus)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.blue)
-
-            // Review indicator
-            reviewIndicator(pr.reviewStatus)
-
-            // Build indicator
-            buildIndicator(pr.buildStatus)
         }
+    }
+
+    private func prNumberLink(_ pr: EnrichedPR) -> some View {
+        Button {
+            if let urlString = pr.pr.url, let url = URL(string: urlString) {
+                NSWorkspace.shared.open(url)
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text("PR #\(pr.pr.number)")
+                    .font(.caption)
+                Text("\(pr.ageDays)d")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.blue)
     }
 
     @ViewBuilder
