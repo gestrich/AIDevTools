@@ -155,7 +155,10 @@ func isMergeable(number: Int) async throws -> Bool?
 
 `GitHubPRService` already holds `owner` and `repo` (or derives them from its injected configuration), so the use case does not need to pass them explicitly.
 
-## - [ ] Phase 4: Create `GetChainDetailUseCase` in `ClaudeChainFeature`
+## - [x] Phase 4: Create `GetChainDetailUseCase` in `ClaudeChainFeature`
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Implemented `GetChainDetailUseCase` as a `struct` conforming to `UseCase` with a single injected dependency (`gitHubPRService: any GitHubPRServiceProtocol`). Used `RepositoryService` to derive the repo string from `repoPath`, `ListChainsUseCase` for local project data, and `PRService` for open PR discovery. Fetched PR details, reviews, check runs, and mergeability concurrently via `withThrowingTaskGroup`. Matched PRs to tasks by parsing `headRefName` with `BranchInfo.fromBranchName` and comparing to `generateTaskHash(task.description)`. Action items generated from enriched PR state per the spec rules.
 
 **Skills to read**: `swift-architecture`
 
