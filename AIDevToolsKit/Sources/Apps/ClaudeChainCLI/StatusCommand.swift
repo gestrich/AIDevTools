@@ -1,9 +1,13 @@
 import ArgumentParser
 import ClaudeChainFeature
 import ClaudeChainService
+import CredentialService
+import DataPathsService
 import Foundation
+import GitHubService
+import PRRadarCLIService
 
-public struct StatusCommand: ParsableCommand {
+public struct StatusCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "status",
         abstract: "Show chain project status and task progress"
@@ -12,12 +16,15 @@ public struct StatusCommand: ParsableCommand {
     @Option(name: .long, help: "Path to the repository containing claude-chain/")
     public var repoPath: String?
 
+    @Flag(name: [.short, .long], help: "Fetch GitHub enrichment data (PR status, reviews, CI)")
+    public var github: Bool = false
+
     @Argument(help: "Project name to show details for (optional, shows all if omitted)")
     public var project: String?
 
     public init() {}
 
-    public func run() throws {
+    public func run() async throws {
         let path: String
         if let repoPath {
             path = repoPath
@@ -28,25 +35,135 @@ public struct StatusCommand: ParsableCommand {
         }
 
         let repoURL = URL(fileURLWithPath: path)
-        let useCase = ListChainsUseCase()
-        let projects = try useCase.run(options: .init(repoPath: repoURL))
+        let projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
 
         if projects.isEmpty {
             print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
             return
         }
 
-        if let projectName = project {
-            guard let matched = projects.first(where: { $0.name == projectName }) else {
-                print("Project '\(projectName)' not found. Available projects:")
-                for p in projects.sorted(by: { $0.name < $1.name }) {
-                    print("  \(p.name)")
+        if github {
+            let prService = try await makeGitHubPRService(repoPath: repoURL)
+            let detailUseCase = GetChainDetailUseCase(gitHubPRService: prService)
+
+            if let projectName = project {
+                guard let matched = projects.first(where: { $0.name == projectName }) else {
+                    print("Project '\(projectName)' not found. Available projects:")
+                    for p in projects.sorted(by: { $0.name < $1.name }) {
+                        print("  \(p.name)")
+                    }
+                    throw ExitCode.failure
                 }
-                throw ExitCode.failure
+                let detail = try await detailUseCase.run(options: .init(repoPath: repoURL, projectName: matched.name))
+                printEnrichedProjectDetail(detail)
+            } else {
+                var details: [ChainProjectDetail] = []
+                for p in projects {
+                    if let detail = try? await detailUseCase.run(options: .init(repoPath: repoURL, projectName: p.name)) {
+                        details.append(detail)
+                    }
+                }
+                printEnrichedProjectList(details, allProjects: projects)
             }
-            printProjectDetail(matched)
         } else {
-            printProjectList(projects)
+            if let projectName = project {
+                guard let matched = projects.first(where: { $0.name == projectName }) else {
+                    print("Project '\(projectName)' not found. Available projects:")
+                    for p in projects.sorted(by: { $0.name < $1.name }) {
+                        print("  \(p.name)")
+                    }
+                    throw ExitCode.failure
+                }
+                printProjectDetail(matched)
+            } else {
+                printProjectList(projects)
+            }
+        }
+    }
+
+    private func makeGitHubPRService(repoPath: URL) async throws -> any GitHubPRServiceProtocol {
+        let credentialService = CredentialSettingsService()
+        let account = (try? credentialService.listCredentialAccounts())?.first ?? "default"
+        let (gitHub, _) = try await GitHubServiceFactory.create(
+            repoPath: repoPath.path,
+            githubAccount: account
+        )
+        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
+        let cacheURL = try DataPathsService(rootPath: DataPathsService.appSupportDirectory)
+            .path(for: .github(repoSlug: normalizedSlug))
+        return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+    }
+
+    private func printEnrichedProjectDetail(_ detail: ChainProjectDetail) {
+        print(detail.project.name)
+        print("Progress  \(detail.project.completedTasks)/\(detail.project.totalTasks) tasks completed")
+        print()
+        print("Tasks")
+
+        for enrichedTask in detail.enrichedTasks {
+            let task = enrichedTask.task
+            let icon = task.isCompleted ? "✓" : "○"
+
+            if let enrichedPR = enrichedTask.enrichedPR {
+                let draftPrefix = enrichedPR.isDraft ? "[DRAFT] " : ""
+                let buildIndicator = buildStatusIndicator(enrichedPR.buildStatus)
+                let reviewIndicator = reviewStatusIndicator(enrichedPR.reviewStatus)
+                print("  \(icon) \(draftPrefix)\(task.description)  PR #\(enrichedPR.pr.number) (\(enrichedPR.ageDays)d) \(buildIndicator) \(reviewIndicator)")
+            } else {
+                print("  \(icon) \(task.description)")
+            }
+        }
+
+        if !detail.actionItems.isEmpty {
+            print()
+            print("Action Items")
+            for item in detail.actionItems {
+                print("  ⚠️  \(item.message)")
+            }
+        }
+    }
+
+    private func printEnrichedProjectList(_ details: [ChainProjectDetail], allProjects: [ChainProject]) {
+        let detailsByName = Dictionary(uniqueKeysWithValues: details.map { ($0.project.name, $0) })
+        let sorted = allProjects.sorted { $0.name < $1.name }
+        let maxNameLen = sorted.map(\.name.count).max() ?? 0
+
+        for project in sorted {
+            let padded = project.name.padding(toLength: maxNameLen, withPad: " ", startingAt: 0)
+            let bar = progressBar(completed: project.completedTasks, total: project.totalTasks)
+            let counts = "\(project.completedTasks)/\(project.totalTasks)"
+            let actionBadge: String
+            if let detail = detailsByName[project.name], !detail.actionItems.isEmpty {
+                let count = detail.actionItems.count
+                actionBadge = "  ⚠ \(count) action\(count == 1 ? "" : "s") needed"
+            } else {
+                actionBadge = ""
+            }
+            print("  \(padded)  \(bar)  \(counts)\(actionBadge)")
+        }
+
+        let totalCompleted = allProjects.reduce(0) { $0 + $1.completedTasks }
+        let totalAll = allProjects.reduce(0) { $0 + $1.totalTasks }
+        print("\n\(allProjects.count) project(s), \(totalCompleted)/\(totalAll) total tasks completed")
+    }
+
+    private func buildStatusIndicator(_ status: PRBuildStatus) -> String {
+        switch status {
+        case .passing: return "✅ Build"
+        case .failing: return "❌ Build"
+        case .pending: return "⏳ Build"
+        case .conflicting: return "⚠️ Conflict"
+        case .unknown: return "❓ Build"
+        }
+    }
+
+    private func reviewStatusIndicator(_ status: PRReviewStatus) -> String {
+        if !status.approvedBy.isEmpty {
+            return "👤 \(status.approvedBy.joined(separator: ", ")) approved"
+        } else if !status.pendingReviewers.isEmpty {
+            return "⏳ Pending review: \(status.pendingReviewers.joined(separator: ", "))"
+        } else {
+            return "👤 No reviewers"
         }
     }
 

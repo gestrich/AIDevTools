@@ -237,7 +237,10 @@ In `ChainProjectDetailView`:
 In `ChainProjectRow` (sidebar):
 - Read `model.chainDetails[project.name]?.actionItems` — show a small orange badge with count if non-empty, only visible once loaded
 
-## - [ ] Phase 6: Update CLI `status` command
+## - [x] Phase 6: Update CLI `status` command
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Changed `StatusCommand` from `ParsableCommand` to `AsyncParsableCommand` to support async GitHub calls. Added `--github`/`-g` flag; without it, behavior is unchanged (local-only, fast). With `--github`, `makeGitHubPRService` follows the same factory pattern as `ClaudeChainModel` — uses `GitHubServiceFactory.create()` to parse the remote URL, derives the normalized slug from `gitHub.repoSlug`, and creates `GitHubPRService` with the Desktop cache directory. `GetChainDetailUseCase` is then instantiated per invocation. Single-project view shows per-task PR indicators inline; list view shows action-count badges. Added `DataPathsService`, `GitHubService`, and `PRRadarCLIService` to `ClaudeChainCLI` Package.swift dependencies.
 
 **Skills to read**: `swift-architecture`
 
