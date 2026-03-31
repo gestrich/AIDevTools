@@ -19,6 +19,9 @@ struct ChatCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Working directory (defaults to current directory)")
     var workingDir: String?
 
+    @Option(name: .long, help: "Path to MCP config JSON (default: AIDevTools app config)")
+    var mcpConfig: String?
+
     @Flag(name: .long, help: "Resume the last session")
     var resume: Bool = false
 
@@ -69,6 +72,7 @@ struct ChatCommand: AsyncParsableCommand {
             message: text,
             workingDirectory: workingDirectory,
             sessionId: sessionId,
+            mcpConfigPath: mcpConfig,
             systemPrompt: systemPrompt
         )
 
@@ -124,6 +128,7 @@ struct ChatCommand: AsyncParsableCommand {
                 message: input,
                 workingDirectory: workingDirectory,
                 sessionId: sessionId,
+                mcpConfigPath: mcpConfig,
                 systemPrompt: systemPrompt
             )
 

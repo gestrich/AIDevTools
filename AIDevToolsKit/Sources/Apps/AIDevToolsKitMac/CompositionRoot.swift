@@ -57,13 +57,20 @@ struct CompositionRoot {
     }
 
     private static func writeMCPConfig() {
-        // Prefer the CLI binary next to the app bundle (Xcode builds); fall back to PATH lookup.
+        // Prefer the CLI binary next to the app bundle (Xcode builds), then ~/.local/bin, then PATH.
         let siblingURL = Bundle.main.bundleURL
             .deletingLastPathComponent()
             .appendingPathComponent("ai-dev-tools-kit")
-        let command = FileManager.default.fileExists(atPath: siblingURL.path)
-            ? siblingURL.path
-            : "ai-dev-tools-kit"
+        let localBinURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".local/bin/ai-dev-tools-kit")
+        let command: String
+        if FileManager.default.fileExists(atPath: siblingURL.path) {
+            command = siblingURL.path
+        } else if FileManager.default.fileExists(atPath: localBinURL.path) {
+            command = localBinURL.path
+        } else {
+            command = "ai-dev-tools-kit"
+        }
 
         let config = """
         {

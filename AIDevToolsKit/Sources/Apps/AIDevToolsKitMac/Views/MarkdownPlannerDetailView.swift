@@ -28,7 +28,7 @@ struct MarkdownPlannerDetailView: View {
     private var chatModel: ChatModel {
         markdownPlannerModel.persistentChatModel(
             for: plan.name,
-            workingDirectory: repository.path.path(),
+            workingDirectory: plan.planURL.deletingLastPathComponent().path,
             systemPrompt: makeIterationSystemPrompt()
         )
     }
