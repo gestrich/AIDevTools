@@ -114,21 +114,6 @@ public struct GitHubReview: Codable, Sendable {
     }
 }
 
-public struct GitHubCheckRun: Codable, Sendable {
-    public let name: String
-    public let status: String
-    public let conclusion: String?
-
-    public init(name: String, status: String, conclusion: String? = nil) {
-        self.name = name
-        self.status = status
-        self.conclusion = conclusion
-    }
-
-    public var isPassing: Bool { conclusion == "success" }
-    public var isFailing: Bool { conclusion == "failure" }
-}
-
 public struct GitHubOwner: Codable, Sendable {
     public let login: String
     public let id: String?
