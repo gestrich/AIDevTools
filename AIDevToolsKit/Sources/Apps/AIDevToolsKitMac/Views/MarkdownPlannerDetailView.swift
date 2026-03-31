@@ -19,12 +19,19 @@ struct MarkdownPlannerDetailView: View {
     @State private var executeNextOnly = false
     @AppStorage("planStopAfterArchitectureDiagram") private var stopAfterArchitectureDiagram = false
 
-    @State private var chatModel: ChatModel?
     @State private var executionChatModel: ChatModel?
     @State private var activePlanModel = ActivePlanModel()
     @State private var isAddTaskPopoverPresented = false
     @State private var isAppendReviewPopoverPresented = false
     @State private var newTaskDescription = ""
+
+    private var chatModel: ChatModel {
+        markdownPlannerModel.persistentChatModel(
+            for: plan.name,
+            workingDirectory: repository.path.path(),
+            systemPrompt: makeIterationSystemPrompt()
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,28 +41,19 @@ struct MarkdownPlannerDetailView: View {
                 errorBanner(error)
             }
 
-            if chatModel != nil {
-                VSplitView {
-                    planContentView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    chatBottomPanel
-                        .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
-                }
-            } else {
+            VSplitView {
                 planContentView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                chatBottomPanel
+                    .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(plan.name)
         .task(id: plan.id) {
             executionChatModel = nil
-            chatModel = nil
             activePlanModel.stopWatching()
             await loadPlan()
-            chatModel = markdownPlannerModel.makeChatModel(
-                workingDirectory: repository.path.path(),
-                systemPrompt: makeIterationSystemPrompt()
-            )
         }
         .onChange(of: markdownPlannerModel.phaseCompleteCount) {
             loadArchitectureDiagram()
@@ -114,20 +112,18 @@ struct MarkdownPlannerDetailView: View {
 
     @ViewBuilder
     private var chatBottomPanel: some View {
-        if let chatModel {
-            if let executionModel = executionChatModel, !executionModel.messages.isEmpty {
-                VSplitView {
-                    ChatMessagesView()
-                        .environment(executionModel)
-                        .frame(minHeight: 80, maxHeight: .infinity)
-                    ChatPanelView()
-                        .environment(chatModel)
-                        .frame(minHeight: 80, maxHeight: .infinity)
-                }
-            } else {
+        if let executionModel = executionChatModel, !executionModel.messages.isEmpty {
+            VSplitView {
+                ChatMessagesView()
+                    .environment(executionModel)
+                    .frame(minHeight: 80, maxHeight: .infinity)
                 ChatPanelView()
                     .environment(chatModel)
+                    .frame(minHeight: 80, maxHeight: .infinity)
             }
+        } else {
+            ChatPanelView()
+                .environment(chatModel)
         }
     }
 

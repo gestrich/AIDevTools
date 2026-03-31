@@ -3,6 +3,8 @@ import PRRadarModelsService
 public protocol GitHubPRServiceProtocol: Sendable {
     func checkRuns(number: Int, useCache: Bool) async throws -> [GitHubCheckRun]
     func changes() -> AsyncStream<Int>
+    func fileContent(path: String, ref: String) async throws -> String
+    func listDirectoryNames(path: String, ref: String) async throws -> [String]
     func comments(number: Int, useCache: Bool) async throws -> GitHubPullRequestComments
     func isMergeable(number: Int) async throws -> Bool?
     func listPullRequests(limit: Int, filter: PRFilter) async throws -> [GitHubPullRequest]

@@ -438,6 +438,42 @@ public struct OctokitClient: Sendable {
         }
     }
 
+    public func listDirectoryNames(
+        owner: String,
+        repository: String,
+        path: String,
+        ref: String
+    ) async throws -> [String] {
+        let request = makeRequest(
+            path: GitHubPath.contents(owner, repository, path: path),
+            accept: "application/vnd.github.v3+json",
+            queryItems: [URLQueryItem(name: "ref", value: ref)]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            struct Entry: Decodable {
+                let name: String
+                let type: String
+            }
+            let entries = try JSONDecoder().decode([Entry].self, from: data)
+            return entries.filter { $0.type == "dir" }.map(\.name)
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 404:
+            throw OctokitClientError.notFound("Directory \(path) at ref \(ref) not found")
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        default:
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+        }
+    }
+
     public func compareCommits(
         owner: String,
         repository: String,

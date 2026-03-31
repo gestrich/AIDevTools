@@ -147,23 +147,28 @@ private struct ChainProjectDetailView: View {
         model.chainDetailErrors[project.name]
     }
 
+    private var chatModel: ChatModel {
+        model.persistentChatModel(
+            for: project.name,
+            workingDirectory: repository.path.path(),
+            systemPrompt: makeChainChatSystemPrompt()
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             headerBar
 
-            if executionChatModel != nil {
-                VSplitView {
-                    projectContentView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    chatBottomPanel
-                        .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
-                }
-            } else {
+            VSplitView {
                 projectContentView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                chatBottomPanel
+                    .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: project.name) {
+            executionChatModel = nil
             model.loadChainDetail(projectName: project.name, repoPath: repository.path)
         }
     }
@@ -575,8 +580,17 @@ private struct ChainProjectDetailView: View {
 
     @ViewBuilder
     private var chatBottomPanel: some View {
-        if let chatModel = executionChatModel {
-            ChatMessagesView()
+        if let executionModel = executionChatModel, !executionModel.messages.isEmpty {
+            VSplitView {
+                ChatMessagesView()
+                    .environment(executionModel)
+                    .frame(minHeight: 80, maxHeight: .infinity)
+                ChatPanelView()
+                    .environment(chatModel)
+                    .frame(minHeight: 80, maxHeight: .infinity)
+            }
+        } else {
+            ChatPanelView()
                 .environment(chatModel)
         }
     }
@@ -584,12 +598,12 @@ private struct ChainProjectDetailView: View {
     // MARK: - Execution
 
     private func startExecution() {
-        let chatModel = model.makeChatModel(workingDirectory: repository.path.path())
-        executionChatModel = chatModel
+        let execModel = model.makeChatModel(workingDirectory: repository.path.path())
+        executionChatModel = execModel
 
         let accumulator = StreamAccumulator()
-        model.executionProgressObserver = { @MainActor [weak chatModel] progress in
-            guard let chatModel else { return }
+        model.executionProgressObserver = { @MainActor [weak execModel] progress in
+            guard let chatModel = execModel else { return }
             switch progress {
             case .preparingProject:
                 chatModel.appendStatusMessage("Preparing project...")
@@ -655,6 +669,15 @@ private struct ChainProjectDetailView: View {
         }
 
         model.executeChain(projectName: project.name, repoPath: repository.path)
+    }
+
+    private func makeChainChatSystemPrompt() -> String {
+        """
+        You are an AI assistant embedded in the AIDevTools Mac app, helping the user with a Claude Chain project.
+        The chain spec is located at: \(project.specPath)
+
+        You have access to MCP tools: use get_ui_state to check which chain is open and get_chain_status(name:) to see task completion status. Use these tools when the user asks about chain status or progress.
+        """
     }
 }
 

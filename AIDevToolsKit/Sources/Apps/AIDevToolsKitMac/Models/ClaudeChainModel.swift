@@ -64,20 +64,18 @@ final class ClaudeChainModel {
     }
 
     private var activeClient: any AIClient
+    @ObservationIgnored private var chatModels: [String: ChatModel] = [:]
     private var currentCredentialAccount: String?
     private var currentRepoPath: URL?
     private var gitHubPRService: (any GitHubPRServiceProtocol)?
     private let dataPathsService: DataPathsService
-    private let listChainsUseCase: ListChainsUseCase
     private let providerRegistry: ProviderRegistry
 
     init(
-        listChainsUseCase: ListChainsUseCase = ListChainsUseCase(),
         providerRegistry: ProviderRegistry,
         selectedProviderName: String? = nil,
         dataPathsService: DataPathsService
     ) {
-        self.listChainsUseCase = listChainsUseCase
         self.providerRegistry = providerRegistry
         self.dataPathsService = dataPathsService
 
@@ -93,6 +91,7 @@ final class ClaudeChainModel {
         if currentRepoPath?.path != repoPath.path {
             chainDetailErrors = [:]
             chainDetailNetworkFetched = []
+            chatModels = [:]
             chainDetails = [:]
             chainDetailLoading = []
             gitHubPRService = nil
@@ -102,7 +101,8 @@ final class ClaudeChainModel {
         state = .loadingChains
         Task {
             do {
-                let projects = try listChainsUseCase.run(options: .init(repoPath: repoPath))
+                let service = try await makeOrGetGitHubPRService(repoPath: repoPath)
+                let projects = try await ListChainsFromGitHubUseCase(gitHubPRService: service).run()
                 lastLoadedProjects = projects
                 state = .loaded(projects)
             } catch {
@@ -176,12 +176,21 @@ final class ClaudeChainModel {
         }
     }
 
-    func makeChatModel(workingDirectory: String) -> ChatModel {
+    func persistentChatModel(for projectName: String, workingDirectory: String, systemPrompt: String) -> ChatModel {
+        if let existing = chatModels[projectName] { return existing }
+        let model = makeChatModel(workingDirectory: workingDirectory, systemPrompt: systemPrompt, includeMCP: true)
+        chatModels[projectName] = model
+        return model
+    }
+
+    func makeChatModel(workingDirectory: String, systemPrompt: String? = nil, includeMCP: Bool = false) -> ChatModel {
         let settings = ChatSettings()
         settings.resumeLastSession = false
         return ChatModel(configuration: ChatModelConfiguration(
             client: activeClient,
+            mcpConfigPath: includeMCP ? DataPathsService.mcpConfigFileURL.path : nil,
             settings: settings,
+            systemPrompt: systemPrompt,
             workingDirectory: workingDirectory
         ))
     }

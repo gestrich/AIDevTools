@@ -244,8 +244,16 @@ public struct GitHubAPIService: Sendable {
 
     // MARK: - Git History Operations
 
-    public func getFileContent(path: String, ref: String) async throws -> String {
+    public func fileContent(path: String, ref: String) async throws -> String {
         try await octokitClient.getFileContent(owner: owner, repository: repo, path: path, ref: ref)
+    }
+
+    public func listDirectoryNames(path: String, ref: String) async throws -> [String] {
+        try await octokitClient.listDirectoryNames(owner: owner, repository: repo, path: path, ref: ref)
+    }
+
+    public func getFileContent(path: String, ref: String) async throws -> String {
+        try await fileContent(path: path, ref: ref)
     }
 
     public func compareCommits(base: String, head: String) async throws -> CompareResult {

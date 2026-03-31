@@ -67,6 +67,7 @@ final class MarkdownPlannerModel {
     }
 
     private var activeClient: any AIClient
+    @ObservationIgnored private var chatModels: [String: ChatModel] = [:]
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
     private let mcpConfigPath: String?
@@ -104,6 +105,9 @@ final class MarkdownPlannerModel {
     }
 
     func loadPlans(for repo: RepositoryInfo) async {
+        if currentRepository?.id != repo.id {
+            chatModels = [:]
+        }
         currentRepository = repo
         plans = []
         isLoadingPlans = true
@@ -248,6 +252,13 @@ final class MarkdownPlannerModel {
             state = .error(error)
             return nil
         }
+    }
+
+    func persistentChatModel(for planName: String, workingDirectory: String, systemPrompt: String) -> ChatModel {
+        if let existing = chatModels[planName] { return existing }
+        let model = makeChatModel(workingDirectory: workingDirectory, systemPrompt: systemPrompt)
+        chatModels[planName] = model
+        return model
     }
 
     func makeChatModel(workingDirectory: String, systemPrompt: String? = nil) -> ChatModel {

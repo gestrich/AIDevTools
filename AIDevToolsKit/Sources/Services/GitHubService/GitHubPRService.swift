@@ -113,4 +113,12 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
     public func changes() -> AsyncStream<Int> {
         changeStream
     }
+
+    public func fileContent(path: String, ref: String) async throws -> String {
+        try await apiClient.fileContent(path: path, ref: ref)
+    }
+
+    public func listDirectoryNames(path: String, ref: String) async throws -> [String] {
+        try await apiClient.listDirectoryNames(path: path, ref: ref)
+    }
 }

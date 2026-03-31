@@ -35,14 +35,13 @@ public struct StatusCommand: AsyncParsableCommand {
         }
 
         let repoURL = URL(fileURLWithPath: path)
-        var projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
 
         if github {
             let prService = try await makeGitHubPRService(repoPath: repoURL)
-            projects = try await mergedWithGitHubDiscovery(localProjects: projects, repoURL: repoURL)
+            let projects = try await ListChainsFromGitHubUseCase(gitHubPRService: prService).run()
 
             if projects.isEmpty {
-                print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
+                print("No chain projects found via GitHub for \(repoURL.lastPathComponent)")
                 return
             }
 
@@ -65,6 +64,8 @@ public struct StatusCommand: AsyncParsableCommand {
                 printEnrichedProjectList(details, allProjects: projects)
             }
         } else {
+            let projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
+
             if projects.isEmpty {
                 print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
                 return
@@ -77,21 +78,6 @@ public struct StatusCommand: AsyncParsableCommand {
                 printProjectList(projects)
             }
         }
-    }
-
-    private func mergedWithGitHubDiscovery(localProjects: [ChainProject], repoURL: URL) async throws -> [ChainProject] {
-        let gitOps = GitHubServiceFactory.createGitOps()
-        let remoteURL = try await gitOps.getRemoteURL(path: repoURL.path)
-        guard let ownerRepo = GitHubAPIService.parseOwnerRepo(from: remoteURL) else {
-            return localProjects
-        }
-        let repo = "\(ownerRepo.owner)/\(ownerRepo.repo)"
-        let discovered = try DiscoverChainsFromGitHubUseCase().run(options: .init(repo: repo))
-        let localNames = Set(localProjects.map(\.name))
-        let githubOnlyProjects = discovered
-            .filter { !localNames.contains($0.projectName) }
-            .map { ChainProject.fromDiscoveredChain($0) }
-        return localProjects + githubOnlyProjects
     }
 
     private func findProject(named name: String, in projects: [ChainProject]) throws -> ChainProject {

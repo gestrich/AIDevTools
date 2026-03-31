@@ -1,5 +1,6 @@
 import AppIPCSDK
 import ArgumentParser
+import ClaudeChainFeature
 import DataPathsService
 import Foundation
 import MCP
@@ -35,6 +36,20 @@ struct MCPCommand: AsyncParsableCommand {
     // MARK: - Tool definitions
 
     private static let allTools: [Tool] = [
+        Tool(
+            name: "get_chain_status",
+            description: "Returns task completion status for a named chain project in the current repository",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "name": .object([
+                        "type": .string("string"),
+                        "description": .string("Chain project name to retrieve status for")
+                    ])
+                ]),
+                "required": .array([.string("name")])
+            ])
+        ),
         Tool(
             name: "get_plan_details",
             description: "Returns phases and content for a named plan",
@@ -98,6 +113,8 @@ struct MCPCommand: AsyncParsableCommand {
 
     static func handleCallTool(_ params: CallTool.Parameters) async throws -> CallTool.Result {
         switch params.name {
+        case "get_chain_status":
+            return try await handleGetChainStatus(params.arguments ?? [:])
         case "get_plan_details":
             return try await handleGetPlanDetails(params.arguments ?? [:])
         case "get_ui_state":
@@ -130,6 +147,33 @@ struct MCPCommand: AsyncParsableCommand {
             .map { "\($0.name): \($0.completedPhases)/\($0.totalPhases) phases complete" }
             .joined(separator: "\n")
         return .init(content: [.text(text: text, annotations: nil, _meta: nil)], isError: false)
+    }
+
+    private static func handleGetChainStatus(_ arguments: [String: Value]) async throws -> CallTool.Result {
+        guard let nameValue = arguments["name"], let name = nameValue.stringValue else {
+            return .init(content: [.text(text: "Missing required argument: name", annotations: nil, _meta: nil)], isError: true)
+        }
+
+        let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        do {
+            let chains = try ListChainsUseCase().run(options: .init(repoPath: cwd))
+            guard let chain = chains.first(where: { $0.name == name }) else {
+                return .init(content: [.text(text: "Chain '\(name)' not found", annotations: nil, _meta: nil)], isError: false)
+            }
+            var lines = [
+                "Chain: \(chain.name)",
+                "Progress: \(chain.completedTasks)/\(chain.totalTasks) tasks completed (\(chain.pendingTasks) pending)",
+                "",
+                "Tasks:"
+            ]
+            for task in chain.tasks {
+                let marker = task.isCompleted ? "✓" : "○"
+                lines.append("  \(marker) \(task.description)")
+            }
+            return .init(content: [.text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)], isError: false)
+        } catch {
+            return .init(content: [.text(text: error.localizedDescription, annotations: nil, _meta: nil)], isError: true)
+        }
     }
 
     private static func handleGetPlanDetails(_ arguments: [String: Value]) async throws -> CallTool.Result {
@@ -176,8 +220,9 @@ struct MCPCommand: AsyncParsableCommand {
         do {
             let state = try await AppIPCClient().getUIState()
             let text = """
-                Selected plan: \(state.selectedPlanName ?? "none")
                 Current tab: \(state.currentTab ?? "unknown")
+                Selected chain: \(state.selectedChainName ?? "none")
+                Selected plan: \(state.selectedPlanName ?? "none")
                 """
             return .init(content: [.text(text: text, annotations: nil, _meta: nil)], isError: false)
         } catch {

@@ -68,8 +68,9 @@ final class AppIPCServer {
 
         let uiState: IPCUIState = await MainActor.run {
             IPCUIState(
-                selectedPlanName: UserDefaults.standard.string(forKey: "selectedPlanName"),
-                currentTab: UserDefaults.standard.string(forKey: "selectedWorkspaceTab")
+                currentTab: UserDefaults.standard.string(forKey: "selectedWorkspaceTab"),
+                selectedChainName: UserDefaults.standard.string(forKey: "selectedChainProject"),
+                selectedPlanName: UserDefaults.standard.string(forKey: "selectedPlanName")
             )
         }
 
