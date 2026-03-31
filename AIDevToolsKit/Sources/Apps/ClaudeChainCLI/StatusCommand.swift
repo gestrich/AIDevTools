@@ -88,7 +88,7 @@ public struct StatusCommand: AsyncParsableCommand {
         let accounts = (try? CredentialSettingsService().listCredentialAccounts()) ?? []
         let gitOps = GitHubServiceFactory.createGitOps()
         let remoteURL = try await gitOps.getRemoteURL(path: repoPath.path)
-        let owner = GitHubService.parseOwnerRepo(from: remoteURL)?.owner ?? ""
+        let owner = GitHubAPIService.parseOwnerRepo(from: remoteURL)?.owner ?? ""
         let account = accounts.first(where: { $0 == owner }) ?? accounts.first ?? "default"
         let dataPathsService = try DataPathsService(rootPath: DataPathsService.appSupportDirectory)
         return try await GitHubServiceFactory.createPRService(

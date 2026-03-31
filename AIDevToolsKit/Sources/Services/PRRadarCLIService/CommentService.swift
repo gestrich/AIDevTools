@@ -2,9 +2,9 @@ import Foundation
 import PRRadarModelsService
 
 public struct CommentService: Sendable {
-    private let githubService: GitHubService
+    private let githubService: GitHubAPIService
 
-    public init(githubService: GitHubService) {
+    public init(githubService: GitHubAPIService) {
         self.githubService = githubService
     }
 

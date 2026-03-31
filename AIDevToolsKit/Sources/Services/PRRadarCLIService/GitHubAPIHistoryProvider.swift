@@ -1,9 +1,9 @@
 
 public struct GitHubAPIHistoryProvider: GitHistoryProvider {
-    private let gitHub: GitHubService
+    private let gitHub: GitHubAPIService
     private let prNumber: Int
 
-    public init(gitHub: GitHubService, prNumber: Int) {
+    public init(gitHub: GitHubAPIService, prNumber: Int) {
         self.gitHub = gitHub
         self.prNumber = prNumber
     }

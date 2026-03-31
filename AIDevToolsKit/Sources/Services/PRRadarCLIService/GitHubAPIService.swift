@@ -5,7 +5,7 @@ import OctokitSDK
 import PRRadarConfigService
 import PRRadarModelsService
 
-public struct GitHubService: Sendable {
+public struct GitHubAPIService: Sendable {
     private let octokitClient: OctokitClient
     private let owner: String
     private let repo: String
@@ -350,4 +350,4 @@ public struct GitHubService: Sendable {
     }
 }
 
-extension GitHubService: GitHubAPIServiceProtocol {}
+extension GitHubAPIService: GitHubAPIServiceProtocol {}

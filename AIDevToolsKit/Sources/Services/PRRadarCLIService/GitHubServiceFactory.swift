@@ -7,25 +7,25 @@ import OctokitSDK
 import PRRadarConfigService
 
 public struct GitHubServiceFactory: Sendable {
-    public static func create(repoPath: String, githubAccount: String) async throws -> (gitHub: GitHubService, gitOps: GitOperationsService) {
+    public static func create(repoPath: String, githubAccount: String) async throws -> (gitHub: GitHubAPIService, gitOps: GitOperationsService) {
         let token = try await resolveToken(githubAccount: githubAccount)
 
         let gitOps = createGitOps(gitHubToken: token)
         let remoteURL = try await gitOps.getRemoteURL(path: repoPath)
 
-        guard let (owner, repo) = GitHubService.parseOwnerRepo(from: remoteURL) else {
+        guard let (owner, repo) = GitHubAPIService.parseOwnerRepo(from: remoteURL) else {
             throw GitHubServiceError.cannotParseRemoteURL(remoteURL)
         }
 
         let octokitClient = OctokitClient(token: token)
-        let gitHub = GitHubService(octokitClient: octokitClient, owner: owner, repo: repo)
+        let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
 
         return (gitHub, gitOps)
     }
 
     public static func createHistoryProvider(
         diffSource: DiffSource,
-        gitHub: GitHubService,
+        gitHub: GitHubAPIService,
         gitOps: GitOperationsService,
         repoPath: String,
         prNumber: Int,

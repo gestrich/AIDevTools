@@ -7,14 +7,14 @@ import PRRadarModelsService
 
 public struct PRAcquisitionService: Sendable {
 
-    private let gitHub: GitHubService
+    private let gitHub: GitHubAPIService
     private let gitOps: GitOperationsService
     private let historyProvider: GitHistoryProvider
     private let gitHubPRService: any GitHubPRServiceProtocol
     private let imageDownload: ImageDownloadService
 
     public init(
-        gitHub: GitHubService,
+        gitHub: GitHubAPIService,
         gitOps: GitOperationsService,
         historyProvider: GitHistoryProvider,
         gitHubPRService: any GitHubPRServiceProtocol,

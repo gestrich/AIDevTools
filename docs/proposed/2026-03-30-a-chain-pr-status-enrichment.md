@@ -406,7 +406,10 @@ Ask Bill to open the Mac app, select the `claude-chain-demo` repo, switch to the
 
 **Skills used**: none
 **Principles applied**: Searched all Sources/ for `class` or `actor` declarations conforming to `UseCase`/`StreamingUseCase` — none found. All 70+ use case types across Features and Services layers are `struct` conforming to `UseCase` or `StreamingUseCase`. `GetChainDetailUseCase` (the primary new use case from these phases) is a `public struct` conforming to both. No code changes required.
-## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify type names follow the `<Name><Layer>` convention and rename any that don't, and make the necessary code changes
+## - [x] Code Review: Review the code changes that have been made in these tasks for the following: Verify type names follow the `<Name><Layer>` convention and rename any that don't, and make the necessary code changes
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Searched all files changed in phases 1–19 for `<Name><Layer>` violations. Found one: the concrete GitHub API service type `GitHubService` in `PRRadarCLIService/GitHubService.swift` had the same name as the `GitHubService` module, creating a shadowing ambiguity (local type hides the module name). Since this struct implements `GitHubAPIServiceProtocol`, the correct name is `GitHubAPIService` (matching the protocol name minus the `Protocol` suffix). Renamed the struct, renamed the file to `GitHubAPIService.swift`, and updated all references in `GitHubServiceFactory`, `GitHubAPIHistoryProvider`, `CommentService`, `PRAcquisitionService`, and `StatusCommand`.
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Verify both a Mac app model and a CLI command consume each new use case, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Split files that define multiple unrelated types into one file per type, and make the necessary code changes
 ## - [ ] Code Review: Review the code changes that have been made in these tasks for the following: Move supporting enums and nested types below their primary type, not above it, and make the necessary code changes
