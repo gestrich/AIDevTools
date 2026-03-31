@@ -72,7 +72,8 @@ public enum ChainActionKind: Sendable {
     case stalePR
 }
 
-public struct ChainActionItem: Sendable {
+public struct ChainActionItem: Identifiable, Sendable {
+    public var id: String { "\(prNumber)-\(kind)" }
     public let kind: ChainActionKind
     public let message: String
     public let prNumber: Int

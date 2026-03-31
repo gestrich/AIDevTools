@@ -289,7 +289,7 @@ private struct ChainProjectDetailView: View {
                 Text("\(items.count) action\(items.count == 1 ? "" : "s") needed")
                     .font(.subheadline.bold())
             }
-            ForEach(items, id: \.prNumber) { item in
+            ForEach(items) { item in
                 HStack(spacing: 6) {
                     Image(systemName: actionItemIcon(item.kind))
                         .foregroundStyle(actionItemColor(item.kind))
