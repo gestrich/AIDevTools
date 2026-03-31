@@ -210,7 +210,28 @@ A `PipelineListModel` (or extend `MarkdownPlannerModel`) discovers `.pipeline` f
 **Files to modify:**
 - `AIDevToolsKitMac/Views/PlansContainer.swift` — add "New Pipeline" button and listing for `.pipeline` files
 
-## - [ ] Phase 7: Validation
+## - [ ] Phase 7: CLI integration
+
+**Skills to read**: `swift-app-architecture:swift-architecture`
+
+Add pipeline commands to the main CLI target so `.pipeline` JSON files are runnable without the Mac app.
+
+```
+ai-dev-tools pipeline run <path>      # execute a .pipeline file via ExecutePipelineUseCase
+ai-dev-tools pipeline list [dir]      # list .pipeline files in a directory (default: cwd)
+ai-dev-tools pipeline inspect <path>  # print steps with completion status
+```
+
+- `run` loads the file via `JSONPipelineSource`, instantiates `ExecutePipelineUseCase` with the appropriate step handlers, and streams progress to stdout
+- Incomplete steps only — already-completed steps (checked off in the JSON) are skipped, enabling resume after partial execution
+- `inspect` and `list` require no AI execution — useful for scripting and debugging
+
+This mirrors the existing `claude-chain` and `arch-planner` patterns already in the main CLI target.
+
+**Files to modify:**
+- Main CLI target — add `PipelineCommand` subcommand group with `run`, `list`, `inspect`
+
+## - [ ] Phase 8: Validation
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

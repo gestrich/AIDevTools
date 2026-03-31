@@ -103,7 +103,7 @@ public struct BranchInfo {
     public static func fromBranchName(_ branch: String) -> BranchInfo? {
         // Pattern: claude-chain-{project}-{hash}
         // Project name can contain hyphens, so we match greedily up to the last hyphen
-        let pattern = #"^claude-chain-(.+)-([a-z0-9]+)$"#
+        let pattern = #"^claude-chain-(.+)-([a-f0-9]{8})$"#
         let regex = try? NSRegularExpression(pattern: pattern, options: [])
         let range = NSRange(branch.startIndex..<branch.endIndex, in: branch)
         
@@ -115,13 +115,7 @@ public struct BranchInfo {
         
         let projectName = String(branch[projectRange])
         let identifier = String(branch[identifierRange])
-        
-        // Hash format: 8 hexadecimal characters (lowercase)
-        if identifier.count == 8 && identifier.allSatisfy({ "0123456789abcdef".contains($0) }) {
-            return BranchInfo(projectName: projectName, taskHash: identifier)
-        }
-        
-        return nil
+        return BranchInfo(projectName: projectName, taskHash: identifier)
     }
 }
 
