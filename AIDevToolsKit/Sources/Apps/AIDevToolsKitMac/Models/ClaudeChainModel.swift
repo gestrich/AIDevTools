@@ -115,26 +115,41 @@ final class ClaudeChainModel {
     }
 
     func loadChainDetail(projectName: String, repoPath: URL) {
-        guard !chainDetailLoading.contains(projectName) else { return }
-        guard !chainDetailNetworkFetched.contains(projectName) else { return }
+        guard !chainDetailLoading.contains(projectName) else {
+            logger.debug("loadChainDetail: already loading '\(projectName)', skipping")
+            return
+        }
+        guard !chainDetailNetworkFetched.contains(projectName) else {
+            logger.debug("loadChainDetail: already network-fetched '\(projectName)', skipping")
+            return
+        }
         chainDetailLoading.insert(projectName)
+        logger.info("loadChainDetail: starting '\(projectName)'")
         Task {
             do {
                 let service = try await makeOrGetGitHubPRService(repoPath: repoPath)
                 let useCase = GetChainDetailUseCase(gitHubPRService: service)
 
                 // Phase 1: show cached data immediately if available
-                if chainDetails[projectName] == nil,
-                   let cached = try? await useCase.loadCached(options: .init(repoPath: repoPath, projectName: projectName)) {
-                    chainDetails[projectName] = cached
+                if chainDetails[projectName] == nil {
+                    if let cached = try? await useCase.loadCached(options: .init(repoPath: repoPath, projectName: projectName)) {
+                        let prCount = cached.enrichedTasks.filter { $0.enrichedPR != nil }.count
+                        logger.info("loadChainDetail: cache hit for '\(projectName)' — \(prCount) PRs")
+                        chainDetails[projectName] = cached
+                    } else {
+                        logger.info("loadChainDetail: no cache for '\(projectName)'")
+                    }
                 }
 
                 // Phase 2: refresh from network
+                logger.info("loadChainDetail: network fetch starting for '\(projectName)'")
                 let detail = try await useCase.run(options: .init(repoPath: repoPath, projectName: projectName))
+                let prCount = detail.enrichedTasks.filter { $0.enrichedPR != nil }.count
+                logger.info("loadChainDetail: network fetch complete for '\(projectName)' — \(prCount) PRs, \(detail.actionItems.count) action items")
                 chainDetails[projectName] = detail
                 chainDetailNetworkFetched.insert(projectName)
             } catch {
-                logger.error("Chain detail enrichment failed for '\(projectName)': \(error)")
+                logger.error("loadChainDetail: failed for '\(projectName)': \(error)")
                 chainDetailErrors[projectName] = error
             }
             chainDetailLoading.remove(projectName)
@@ -217,7 +232,9 @@ final class ClaudeChainModel {
                     detail.enrichedTasks.contains { $0.enrichedPR?.pr.number == prNumber }
                 }.keys
                 for projectName in affectedProjects {
+                    logger.info("startObservingChanges: PR #\(prNumber) changed, reloading '\(projectName)'")
                     chainDetails.removeValue(forKey: projectName)
+                    chainDetailNetworkFetched.remove(projectName)
                     loadChainDetail(projectName: projectName, repoPath: repoPath)
                 }
             }
