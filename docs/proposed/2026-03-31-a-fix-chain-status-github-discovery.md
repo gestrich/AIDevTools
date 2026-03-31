@@ -87,7 +87,10 @@ Technical note: `BranchInfo.fromBranchName` already parses `claude-chain-{name}-
 
 ---
 
-## - [ ] Phase 3: Create Lightweight ChainProject from Discovered Chains
+## - [x] Phase 3: Create Lightweight ChainProject from Discovered Chains
+
+**Skills used**: none
+**Principles applied**: Added `isGitHubOnly: Bool = false` to `ChainProject` keeping existing callers unaffected. Placed the `fromDiscoveredChain` factory extension in the feature layer (only place that knows about both `ChainProject` and `DiscoveredChain`).
 
 Chains found only via GitHub (no local `spec.md`) need a `ChainProject` representation so `StatusCommand` can display them. Add a static factory on `ChainProject` (or a free function in the feature layer):
 

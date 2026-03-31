@@ -2,6 +2,7 @@ import Foundation
 
 public struct ChainProject: Hashable, Sendable {
     public let completedTasks: Int
+    public let isGitHubOnly: Bool
     public let name: String
     public let pendingTasks: Int
     public let specPath: String
@@ -14,9 +15,11 @@ public struct ChainProject: Hashable, Sendable {
         tasks: [ChainTask] = [],
         completedTasks: Int,
         pendingTasks: Int,
-        totalTasks: Int
+        totalTasks: Int,
+        isGitHubOnly: Bool = false
     ) {
         self.completedTasks = completedTasks
+        self.isGitHubOnly = isGitHubOnly
         self.name = name
         self.pendingTasks = pendingTasks
         self.specPath = specPath
