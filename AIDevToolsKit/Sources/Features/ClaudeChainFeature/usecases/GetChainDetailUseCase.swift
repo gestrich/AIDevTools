@@ -4,6 +4,8 @@ import GitHubService
 import PRRadarModelsService
 import UseCaseSDK
 
+private let claudeChainBranchPrefix = "claude-chain-"
+
 public struct GetChainDetailUseCase: UseCase {
 
     public struct Options: Sendable {
@@ -28,10 +30,11 @@ public struct GetChainDetailUseCase: UseCase {
             throw GetChainDetailError.projectNotFound(options.projectName)
         }
 
-        let repo = try await RepositoryService().getCurrentRepository(workingDirectory: options.repoPath.path)
-        let prService = PRService(repo: repo)
-        let openPRs = prService.getOpenPrsForProject(project: options.projectName)
-        let mergedPRs = prService.getProjectPrs(projectName: options.projectName, state: "merged")
+        let branchPrefix = "\(claudeChainBranchPrefix)\(options.projectName)-"
+        let allOpen = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .open))
+        let openPRs = allOpen.filter { ($0.headRefName ?? "").hasPrefix(branchPrefix) }
+        let allClosed = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .merged))
+        let mergedPRs = allClosed.filter { ($0.headRefName ?? "").hasPrefix(branchPrefix) }
 
         typealias FetchedPRData = (
             pr: PRRadarModelsService.GitHubPullRequest,

@@ -5,6 +5,7 @@ public protocol GitHubPRServiceProtocol: Sendable {
     func changes() -> AsyncStream<Int>
     func comments(number: Int, useCache: Bool) async throws -> GitHubPullRequestComments
     func isMergeable(number: Int) async throws -> Bool?
+    func listPullRequests(limit: Int, filter: PRFilter) async throws -> [GitHubPullRequest]
     func pullRequest(number: Int, useCache: Bool) async throws -> GitHubPullRequest
     func repository(useCache: Bool) async throws -> GitHubRepository
     func reviews(number: Int, useCache: Bool) async throws -> [GitHubReview]
