@@ -26,6 +26,7 @@ For each task below:
 ## Tasks
 
 - [x] Check `AIDevToolsKitMac/Models/ArchitecturePlannerModel.swift` and corresponding `ArchPlanner*Command.swift` files for parity
+  <!-- review: Added `runStep(_ step: ArchitecturePlannerStep)` to the model — the CLI's `update --step <name>` can run any specific step out of order, but the model only had `runNextStep()` and `runAllSteps()`; all other operations were already in parity. -->
 - [ ] Check `AIDevToolsKitMac/Models/ClaudeChainModel.swift` and corresponding `ClaudeChainCLI/` commands for parity
 - [ ] Check `AIDevToolsKitMac/Models/ChatModel.swift` and corresponding `ChatCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/CredentialModel.swift` and corresponding `CredentialsCommand.swift` for parity
