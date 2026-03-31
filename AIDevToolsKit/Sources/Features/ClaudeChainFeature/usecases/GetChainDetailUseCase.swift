@@ -24,6 +24,48 @@ public struct GetChainDetailUseCase: UseCase {
         self.gitHubPRService = gitHubPRService
     }
 
+    // MARK: - Cache-first load (no network)
+
+    /// Returns a `ChainProjectDetail` built entirely from disk cache, or `nil` if no index exists yet.
+    public func loadCached(options: Options) async throws -> ChainProjectDetail? {
+        let projects = try ListChainsUseCase().run(options: .init(repoPath: options.repoPath))
+        guard let project = projects.first(where: { $0.name == options.projectName }) else {
+            return nil
+        }
+
+        let indexKey = cacheIndexKey(projectName: options.projectName)
+        guard let prNumbers = try await gitHubPRService.readCachedIndex(key: indexKey) else {
+            return nil
+        }
+
+        var enrichedPRsByHash: [String: EnrichedPR] = [:]
+        for number in prNumbers {
+            guard let pr = try? await gitHubPRService.pullRequest(number: number, useCache: true) else { continue }
+            let reviews = (try? await gitHubPRService.reviews(number: number, useCache: true)) ?? []
+            let checkRuns = (try? await gitHubPRService.checkRuns(number: number, useCache: true)) ?? []
+            let reviewStatus = buildReviewStatus(reviews: reviews)
+            let buildStatus = buildBuildStatus(checkRuns: checkRuns, isMergeable: nil)
+            let enrichedPR = EnrichedPR(pr: pr, reviewStatus: reviewStatus, buildStatus: buildStatus)
+            if let headRefName = pr.headRefName,
+               let branchInfo = BranchInfo.fromBranchName(headRefName) {
+                enrichedPRsByHash[branchInfo.taskHash] = enrichedPR
+            }
+        }
+
+        let enrichedTasks = project.tasks.map { task in
+            let hash = generateTaskHash(task.description)
+            return EnrichedChainTask(task: task, enrichedPR: enrichedPRsByHash[hash])
+        }
+
+        return ChainProjectDetail(
+            project: project,
+            enrichedTasks: enrichedTasks,
+            actionItems: buildActionItems(enrichedTasks: enrichedTasks)
+        )
+    }
+
+    // MARK: - Full network fetch
+
     public func run(options: Options) async throws -> ChainProjectDetail {
         let projects = try ListChainsUseCase().run(options: .init(repoPath: options.repoPath))
         guard let project = projects.first(where: { $0.name == options.projectName }) else {
@@ -108,11 +150,21 @@ public struct GetChainDetailUseCase: UseCase {
             return EnrichedChainTask(task: task, enrichedPR: enrichedPRsByHash[hash])
         }
 
+        // Save PR number index so the next launch can load from cache instantly
+        let allPRNumbers = (openPRs + mergedPRs).map { $0.number }
+        try? await gitHubPRService.writeCachedIndex(allPRNumbers, key: cacheIndexKey(projectName: options.projectName))
+
         return ChainProjectDetail(
             project: project,
             enrichedTasks: enrichedTasks,
             actionItems: buildActionItems(enrichedTasks: enrichedTasks)
         )
+    }
+
+    // MARK: - Helpers
+
+    private func cacheIndexKey(projectName: String) -> String {
+        "chain-\(projectName)"
     }
 
     private func buildReviewStatus(reviews: [GitHubReview]) -> PRReviewStatus {

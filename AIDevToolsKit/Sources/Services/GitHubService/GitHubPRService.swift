@@ -102,6 +102,14 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         try await apiClient.isMergeable(prNumber: number)
     }
 
+    public func readCachedIndex(key: String) async throws -> [Int]? {
+        try await cache.readIndex(key: key)
+    }
+
+    public func writeCachedIndex(_ numbers: [Int], key: String) async throws {
+        try await cache.writeIndex(numbers, key: key)
+    }
+
     public func changes() -> AsyncStream<Int> {
         changeStream
     }

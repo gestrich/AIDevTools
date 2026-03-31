@@ -46,6 +46,7 @@ final class ClaudeChainModel {
     private(set) var chainDetailErrors: [String: Error] = [:]
     private(set) var chainDetailLoading: Set<String> = []
     private(set) var chainDetails: [String: ChainProjectDetail] = [:]
+    private var chainDetailNetworkFetched: Set<String> = []
     private(set) var lastLoadedProjects: [ChainProject] = []
     private(set) var state: State = .idle
     var executionProgressObserver: (@MainActor (RunChainTaskUseCase.Progress) -> Void)?
@@ -92,6 +93,7 @@ final class ClaudeChainModel {
     func loadChains(for repoPath: URL, credentialAccount: String?) {
         if currentRepoPath?.path != repoPath.path {
             chainDetailErrors = [:]
+            chainDetailNetworkFetched = []
             chainDetails = [:]
             chainDetailLoading = []
             changesTask?.cancel()
@@ -114,14 +116,23 @@ final class ClaudeChainModel {
 
     func loadChainDetail(projectName: String, repoPath: URL) {
         guard !chainDetailLoading.contains(projectName) else { return }
-        guard chainDetails[projectName] == nil else { return }
+        guard !chainDetailNetworkFetched.contains(projectName) else { return }
         chainDetailLoading.insert(projectName)
         Task {
             do {
                 let service = try await makeOrGetGitHubPRService(repoPath: repoPath)
                 let useCase = GetChainDetailUseCase(gitHubPRService: service)
+
+                // Phase 1: show cached data immediately if available
+                if chainDetails[projectName] == nil,
+                   let cached = try? await useCase.loadCached(options: .init(repoPath: repoPath, projectName: projectName)) {
+                    chainDetails[projectName] = cached
+                }
+
+                // Phase 2: refresh from network
                 let detail = try await useCase.run(options: .init(repoPath: repoPath, projectName: projectName))
                 chainDetails[projectName] = detail
+                chainDetailNetworkFetched.insert(projectName)
             } catch {
                 logger.error("Chain detail enrichment failed for '\(projectName)': \(error)")
                 chainDetailErrors[projectName] = error
@@ -133,6 +144,7 @@ final class ClaudeChainModel {
     func refreshChainDetail(projectName: String, repoPath: URL) {
         chainDetails.removeValue(forKey: projectName)
         chainDetailErrors.removeValue(forKey: projectName)
+        chainDetailNetworkFetched.remove(projectName)
         loadChainDetail(projectName: projectName, repoPath: repoPath)
     }
 

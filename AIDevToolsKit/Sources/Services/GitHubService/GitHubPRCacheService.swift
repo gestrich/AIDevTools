@@ -80,6 +80,23 @@ actor GitHubPRCacheService {
         continuation.yield(number)
     }
 
+    // MARK: - Index
+
+    func readIndex(key: String) throws -> [Int]? {
+        let url = indexURL(key: key)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let data = try Data(contentsOf: url)
+        return try JSONDecoder().decode([Int].self, from: data)
+    }
+
+    func writeIndex(_ numbers: [Int], key: String) throws {
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(numbers)
+        try data.write(to: indexURL(key: key))
+    }
+
+    // MARK: - URLs
+
     private func prDirectory(number: Int) -> URL {
         rootURL.appendingPathComponent(String(number))
     }
@@ -94,6 +111,10 @@ actor GitHubPRCacheService {
 
     private func commentsURL(number: Int) -> URL {
         prDirectory(number: number).appendingPathComponent("gh-comments.json")
+    }
+
+    private func indexURL(key: String) -> URL {
+        rootURL.appendingPathComponent("index-\(key).json")
     }
 
     private func repositoryURL() -> URL {
