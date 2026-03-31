@@ -105,6 +105,9 @@ final class ClaudeChainModel {
                 let projects = try await ListChainsFromGitHubUseCase(gitHubPRService: service).run()
                 lastLoadedProjects = projects
                 state = .loaded(projects)
+                for project in projects {
+                    loadChainDetail(projectName: project.name, repoPath: repoPath)
+                }
             } catch {
                 state = .error(error)
             }
@@ -151,7 +154,7 @@ final class ClaudeChainModel {
             do {
                 let useCase = ExecuteChainUseCase(client: activeClient)
                 let result = try await useCase.run(
-                    options: .init(repoPath: repoPath, projectName: projectName)
+                    options: .init(repoPath: repoPath, projectName: projectName, githubAccount: currentCredentialAccount)
                 ) { [weak self] progress in
                     guard let self else { return }
                     Task { @MainActor in
@@ -160,7 +163,6 @@ final class ClaudeChainModel {
                 }
                 if result.success {
                     state = .completed(result: result)
-                    loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
                 } else {
                     state = .error(
                         NSError(
@@ -170,8 +172,10 @@ final class ClaudeChainModel {
                         )
                     )
                 }
+                loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
             } catch {
                 state = .error(error)
+                loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
             }
         }
     }

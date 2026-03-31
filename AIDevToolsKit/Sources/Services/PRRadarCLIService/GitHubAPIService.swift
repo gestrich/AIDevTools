@@ -162,7 +162,9 @@ public struct GitHubAPIService: Sendable {
         var result = Array(allPRs.prefix(limit))
 
         if let state = filter.state {
-            result = result.filter { $0.enhancedState == state }
+            result = result.filter {
+                $0.enhancedState == state || (state == .open && $0.enhancedState == .draft)
+            }
         }
         if let authorLogin = filter.authorLogin, !authorLogin.isEmpty {
             result = result.filter { $0.author?.login == authorLogin }

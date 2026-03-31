@@ -29,9 +29,10 @@ public struct CreatePRStepHandler: StepHandler {
 
         // Push the branch
         try await git.push(
-            remote: "origin", 
-            branch: branch, 
-            setUpstream: true, 
+            remote: "origin",
+            branch: branch,
+            setUpstream: true,
+            force: true,
             workingDirectory: context.workingDirectory
         )
 

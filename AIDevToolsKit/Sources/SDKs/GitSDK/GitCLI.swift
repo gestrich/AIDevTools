@@ -17,6 +17,7 @@ public struct GitCLI {
     @CLICommand
     public struct Checkout {
         @Flag("-b") public var createBranch: Bool = false
+        @Flag("-B") public var forceCreateBranch: Bool = false
         @Positional public var ref: String
     }
 

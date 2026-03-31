@@ -22,7 +22,8 @@ struct ClaudeChainView: View {
                 List(model.lastLoadedProjects, id: \.name, selection: $selectedProject) { project in
                     ChainProjectRow(
                         project: project,
-                        actionItemCount: model.chainDetails[project.name]?.actionItems.count ?? 0
+                        actionItemCount: model.chainDetails[project.name]?.actionItems.count ?? 0,
+                        isLoading: model.chainDetailLoading.contains(project.name)
                     )
                     .tag(project)
                 }
@@ -73,6 +74,7 @@ struct ClaudeChainView: View {
 private struct ChainProjectRow: View {
     let project: ChainProject
     let actionItemCount: Int
+    let isLoading: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -80,7 +82,10 @@ private struct ChainProjectRow: View {
                 Text(project.name)
                     .font(.body)
                 Spacer()
-                if actionItemCount > 0 {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else if actionItemCount > 0 {
                     Text("\(actionItemCount)")
                         .font(.caption2.bold())
                         .foregroundStyle(.white)
@@ -345,76 +350,122 @@ private struct ChainProjectDetailView: View {
 
     // MARK: - Task List
 
+    private static let statusColumnWidth: CGFloat = 24
+    private static let prColumnWidth: CGFloat = 90
+    private static let indicatorColumnWidth: CGFloat = 24
+    private static let badgeColumnWidth: CGFloat = 58
+
     private var taskListSection: some View {
         let enrichedTasks = chainDetail?.enrichedTasks
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: .leading, spacing: 0) {
             Text("Tasks")
                 .font(.headline)
                 .foregroundStyle(.secondary)
+                .padding(.bottom, 6)
+
+            taskListHeader
+            Divider()
 
             ForEach(project.tasks) { task in
                 let enrichedPR = enrichedTasks?.first(where: { $0.task.id == task.id })?.enrichedPR
                 taskRow(task: task, enrichedPR: enrichedPR)
+                Divider()
             }
         }
+    }
+
+    private var taskListHeader: some View {
+        HStack(spacing: 8) {
+            Color.clear.frame(width: Self.statusColumnWidth)
+            Text("Task")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("PR")
+                .frame(width: Self.prColumnWidth, alignment: .trailing)
+            Text("Rev")
+                .frame(width: Self.indicatorColumnWidth, alignment: .center)
+            Text("CI")
+                .frame(width: Self.indicatorColumnWidth, alignment: .center)
+            Color.clear.frame(width: Self.badgeColumnWidth)
+        }
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 5)
     }
 
     @ViewBuilder
     private func taskRow(task: ChainTask, enrichedPR: EnrichedPR?) -> some View {
         HStack(spacing: 8) {
-            if task.isCompleted {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            } else if isExecuting,
-                      let progress = executionProgress,
-                      task.index == progress.taskIndex {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 16, height: 16)
-            } else {
-                Image(systemName: "circle")
-                    .foregroundStyle(.secondary)
-            }
+            taskStatusIcon(task: task)
+                .frame(width: Self.statusColumnWidth, alignment: .center)
 
             Text(task.description)
-                .font(.body)
+                .font(.callout)
                 .strikethrough(task.isCompleted, color: .secondary)
                 .foregroundStyle(task.isCompleted ? .secondary : .primary)
-
-            Spacer()
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(task.description)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if let pr = enrichedPR {
-                prIndicators(pr)
+                prNumberLink(pr, ageLabel: pr.isMerged ? "\(pr.ageDays)d ago" : "\(pr.ageDays)d")
+                    .frame(width: Self.prColumnWidth, alignment: .trailing)
+
+                reviewIndicator(pr.reviewStatus)
+                    .frame(width: Self.indicatorColumnWidth, alignment: .center)
+                    .opacity(pr.isMerged ? 0 : 1)
+
+                buildIndicator(pr.buildStatus)
+                    .frame(width: Self.indicatorColumnWidth, alignment: .center)
+                    .opacity(pr.isMerged ? 0 : 1)
+
+                prStateBadge(pr)
+                    .frame(width: Self.badgeColumnWidth, alignment: .trailing)
+            } else {
+                Color.clear
+                    .frame(width: Self.prColumnWidth + Self.indicatorColumnWidth * 2 + Self.badgeColumnWidth + 24)
             }
         }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
-    private func prIndicators(_ pr: EnrichedPR) -> some View {
-        HStack(spacing: 6) {
-            if pr.isMerged {
-                prNumberLink(pr, ageLabel: "\(pr.ageDays)d ago")
-                Text("MERGED")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
-                    .background(.purple)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-            } else {
-                if pr.isDraft {
-                    Text("DRAFT")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(.gray)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
-                }
-                prNumberLink(pr, ageLabel: "\(pr.ageDays)d")
-                reviewIndicator(pr.reviewStatus)
-                buildIndicator(pr.buildStatus)
-            }
+    private func taskStatusIcon(task: ChainTask) -> some View {
+        if task.isCompleted {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        } else if isExecuting,
+                  let progress = executionProgress,
+                  task.index == progress.taskIndex {
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 16, height: 16)
+        } else {
+            Image(systemName: "circle")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func stateBadge(_ label: String, color: Color) -> some View {
+        Text(label)
+            .font(.caption2.bold())
+            .foregroundStyle(.white)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(color)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+    }
+
+    @ViewBuilder
+    private func prStateBadge(_ pr: EnrichedPR) -> some View {
+        if pr.isMerged {
+            stateBadge("MERGED", color: .purple)
+        } else if pr.isDraft {
+            stateBadge("DRAFT", color: .gray)
+        } else {
+            Color.clear
         }
     }
 

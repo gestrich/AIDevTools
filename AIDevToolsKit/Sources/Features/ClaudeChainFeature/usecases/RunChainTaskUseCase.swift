@@ -94,6 +94,13 @@ public struct RunChainTaskUseCase: UseCase {
         let config = (try? repository.loadLocalConfiguration(project: project))
             ?? ProjectConfiguration.default(project: project)
 
+        let baseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
+        let repoDir = options.repoPath.path
+
+        // Fetch and checkout base branch so spec.md reflects the latest remote state
+        try await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)
+        try await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
+
         // Load spec content for prompt building
         guard let spec = try repository.loadLocalSpec(project: project) else {
             onProgress?(.failed(phase: "prepare", error: "No spec.md found for project \(options.projectName)"))
@@ -124,13 +131,10 @@ public struct RunChainTaskUseCase: UseCase {
         onProgress?(.preparedTask(description: nextStep.description, index: stepIndex, total: totalSteps))
         phasesCompleted += 1
 
-        // Create branch
-        let repoDir = options.repoPath.path
+        // Create feature branch (already on baseBranch from earlier checkout)
         let taskHash = TaskService.generateTaskHash(description: nextStep.description)
         let branchName = PRService.formatBranchName(projectName: options.projectName, taskHash: taskHash)
-        try await git.checkout(ref: branchName, createBranch: true, workingDirectory: repoDir)
-
-        let baseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
+        try await git.checkout(ref: branchName, forceCreate: true, workingDirectory: repoDir)
 
         // Phase 2: Pre-action script
         onProgress?(.runningPreScript)
@@ -199,7 +203,7 @@ public struct RunChainTaskUseCase: UseCase {
         }
 
         // Push branch
-        try await git.push(remote: "origin", branch: branchName, setUpstream: true, workingDirectory: repoDir)
+        try await git.push(remote: "origin", branch: branchName, setUpstream: true, force: true, workingDirectory: repoDir)
 
         let repoSlug = await detectRepo(workingDirectory: repoDir)
 
@@ -218,8 +222,17 @@ public struct RunChainTaskUseCase: UseCase {
         if !repoSlug.isEmpty {
             prCreateArgs += ["--repo", repoSlug]
         }
-        let prURL = try GitHubOperations.runGhCommand(args: prCreateArgs)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let prURL: String
+        do {
+            prURL = try GitHubOperations.runGhCommand(args: prCreateArgs)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            guard error.localizedDescription.contains("already exists") else { throw error }
+            var prViewURLArgs = ["pr", "view", branchName, "--json", "url", "--jq", ".url"]
+            if !repoSlug.isEmpty { prViewURLArgs += ["--repo", repoSlug] }
+            prURL = try GitHubOperations.runGhCommand(args: prViewURLArgs)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
 
         // Get PR number
         var prViewArgs = [

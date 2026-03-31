@@ -24,8 +24,8 @@ public struct GitClient: Sendable {
     }
 
     @discardableResult
-    public func checkout(ref: String, createBranch: Bool = false, workingDirectory: String) async throws -> ExecutionResult {
-        let command = GitCLI.Checkout(createBranch: createBranch, ref: ref)
+    public func checkout(ref: String, createBranch: Bool = false, forceCreate: Bool = false, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Checkout(createBranch: createBranch, forceCreateBranch: forceCreate, ref: ref)
         return try await execute(command, workingDirectory: workingDirectory)
     }
 

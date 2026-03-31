@@ -46,6 +46,17 @@ public struct GitOperationsService: Sendable {
         }
     }
 
+    public func checkoutBranch(_ name: String, repoPath: String) async throws {
+        guard try await gitClient.isGitRepository(at: repoPath) else {
+            throw GitOperationsError.notARepository("Not a git repository: \(repoPath)")
+        }
+        do {
+            try await gitClient.checkout(ref: name, workingDirectory: repoPath)
+        } catch {
+            throw GitOperationsError.checkoutFailed("Failed to checkout branch \(name): \(error)")
+        }
+    }
+
     public func checkoutCommit(sha: String, repoPath: String) async throws {
         guard try await gitClient.isGitRepository(at: repoPath) else {
             throw GitOperationsError.notARepository("Not a git repository: \(repoPath)")

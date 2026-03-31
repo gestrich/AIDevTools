@@ -211,7 +211,7 @@ public struct FinalizeCommand: AsyncParsableCommand {
             print("Found \(commitsCount) commit(s) to push")
             
             // Push the branch
-            _ = try await gitClient.push(remote: "origin", branch: branchName, setUpstream: true, workingDirectory: workingDirectory)
+            _ = try await gitClient.push(remote: "origin", branch: branchName, setUpstream: true, force: true, workingDirectory: workingDirectory)
             
             // Load PR template and substitute
             var prBody: String

@@ -226,8 +226,9 @@ public struct AnalyzeUseCase: StreamingUseCase {
 
         if !tasksToEvaluate.isEmpty {
             let needsCheckout = tasksToEvaluate.contains { $0.rule.analysisType != .regex }
+            var branchToRestore: String? = nil
             if needsCheckout {
-                try await checkoutPRCommit(prNumber: prNumber, continuation: continuation)
+                branchToRestore = try await checkoutPRCommit(prNumber: prNumber, continuation: continuation)
             }
 
             let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config)
@@ -235,37 +236,51 @@ public struct AnalyzeUseCase: StreamingUseCase {
 
             let prDiff = PhaseOutputParser.loadPRDiff(config: config, prNumber: prNumber, commitHash: commitHash)
 
-            for (index, task) in tasksToEvaluate.enumerated() {
-                let globalIndex = cachedCount + index + 1
-                let fileName = (task.focusArea.filePath as NSString).lastPathComponent
-                continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(fileName) — \(task.rule.name)...\n"))
+            do {
+                for (index, task) in tasksToEvaluate.enumerated() {
+                    let globalIndex = cachedCount + index + 1
+                    let fileName = (task.focusArea.filePath as NSString).lastPathComponent
+                    continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(fileName) — \(task.rule.name)...\n"))
 
-                for try await event in singleTaskUseCase.execute(
-                    task: task, prNumber: prNumber, commitHash: commitHash,
-                    prDiff: prDiff
-                ) {
-                    continuation.yield(.taskEvent(task: task, event: event))
-                    if case .completed(let result) = event {
-                        freshResults.append(result)
-                        let status: String
-                        switch result {
-                        case .success(let s):
-                            if s.violatesRule {
-                                let maxScore = s.violations.map(\.score).max() ?? 0
-                                status = "VIOLATION (\(s.violations.count) finding\(s.violations.count == 1 ? "" : "s"), max \(maxScore)/10)"
-                            } else {
-                                status = "OK"
+                    for try await event in singleTaskUseCase.execute(
+                        task: task, prNumber: prNumber, commitHash: commitHash,
+                        prDiff: prDiff
+                    ) {
+                        continuation.yield(.taskEvent(task: task, event: event))
+                        if case .completed(let result) = event {
+                            freshResults.append(result)
+                            let status: String
+                            switch result {
+                            case .success(let s):
+                                if s.violatesRule {
+                                    let maxScore = s.violations.map(\.score).max() ?? 0
+                                    status = "VIOLATION (\(s.violations.count) finding\(s.violations.count == 1 ? "" : "s"), max \(maxScore)/10)"
+                                } else {
+                                    status = "OK"
+                                }
+                            case .error(let e):
+                                status = "ERROR: \(e.errorMessage)"
                             }
-                        case .error(let e):
-                            status = "ERROR: \(e.errorMessage)"
+                            continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(status)\n"))
                         }
-                        continuation.yield(.log(text: "[\(globalIndex)/\(totalCount)] \(status)\n"))
                     }
                 }
+
+                durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+                totalCost = freshResults.compactMap(\.costUsd).reduce(0, +)
+            } catch {
+                if let branch = branchToRestore {
+                    let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: config.githubAccount)
+                    try? await gitOps?.checkoutBranch(branch, repoPath: config.repoPath)
+                }
+                throw error
             }
 
-            durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
-            totalCost = freshResults.compactMap(\.costUsd).reduce(0, +)
+            if let branch = branchToRestore {
+                let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: config.githubAccount)
+                continuation.yield(.log(text: "Restoring branch \(branch)...\n"))
+                try? await gitOps?.checkoutBranch(branch, repoPath: config.repoPath)
+            }
         }
 
         return (cached: cachedResults, fresh: freshResults, durationMs: durationMs, totalCost: totalCost)
@@ -273,20 +288,23 @@ public struct AnalyzeUseCase: StreamingUseCase {
 
     // MARK: - Checkout
 
+    @discardableResult
     private func checkoutPRCommit(
         prNumber: Int,
         continuation: AsyncThrowingStream<PhaseProgress<PRReviewResult>, Error>.Continuation
-    ) async throws {
+    ) async throws -> String? {
         guard let pr = await PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber),
               let fullHash = pr.headRefOid else {
             continuation.yield(.log(text: "Warning: Could not read head commit from metadata — skipping checkout\n"))
-            return
+            return nil
         }
 
         let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: config.githubAccount)
+        let originalBranch = try? await gitOps.getCurrentBranch(path: config.repoPath)
         continuation.yield(.log(text: "Checking out PR #\(prNumber) commit \(String(fullHash.prefix(7)))...\n"))
         try await gitOps.fetchBranch(remote: "origin", branch: "pull/\(prNumber)/head", repoPath: config.repoPath)
         try await gitOps.checkoutCommit(sha: fullHash, repoPath: config.repoPath)
+        return originalBranch
     }
 
     // MARK: - Helpers
