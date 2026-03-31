@@ -31,7 +31,7 @@ public struct GetChainDetailUseCase: UseCase {
         let repo = try await RepositoryService().getCurrentRepository(workingDirectory: options.repoPath.path)
         let prService = PRService(repo: repo)
         let openPRs = prService.getOpenPrsForProject(project: options.projectName)
-        let mergedPRs = prService.getMergedPrsForProject(project: options.projectName)
+        let mergedPRs = prService.getProjectPrs(projectName: options.projectName, state: "merged")
 
         typealias FetchedPRData = (
             pr: PRRadarModelsService.GitHubPullRequest,
