@@ -232,6 +232,10 @@ final class ClaudeChainModel {
                     detail.enrichedTasks.contains { $0.enrichedPR?.pr.number == prNumber }
                 }.keys
                 for projectName in affectedProjects {
+                    guard !chainDetailLoading.contains(projectName) else {
+                        logger.debug("startObservingChanges: PR #\(prNumber) changed, '\(projectName)' already loading — skipping")
+                        continue
+                    }
                     logger.info("startObservingChanges: PR #\(prNumber) changed, reloading '\(projectName)'")
                     chainDetails.removeValue(forKey: projectName)
                     chainDetailNetworkFetched.remove(projectName)
