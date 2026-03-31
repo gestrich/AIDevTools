@@ -147,6 +147,7 @@ public struct ClaudeProvider: Sendable {
             currentCommand.verbose = true
         }
         var retryCount = 0
+        var structuredOutputRetried = false
 
         while true {
             do {
@@ -170,6 +171,14 @@ public struct ClaudeProvider: Sendable {
                 }
                 retryCount += 1
                 currentCommand = Self.resumeCommand(from: command, sessionId: sessionId)
+            } catch let error as ClaudeStructuredOutputError {
+                guard case .missingStructuredOutput(let resultEvent) = error,
+                      !structuredOutputRetried,
+                      let sessionId = resultEvent.sessionId else {
+                    throw error
+                }
+                structuredOutputRetried = true
+                currentCommand = Self.structuredOutputFollowUpCommand(from: command, sessionId: sessionId)
             }
         }
     }
@@ -290,6 +299,18 @@ public struct ClaudeProvider: Sendable {
 
     private static func resumeCommand(from original: Claude, sessionId: String) -> Claude {
         var command = Claude(prompt: "Continue where you left off.")
+        command.resume = sessionId
+        command.dangerouslySkipPermissions = original.dangerouslySkipPermissions
+        command.jsonSchema = original.jsonSchema
+        command.model = original.model
+        command.outputFormat = original.outputFormat
+        command.printMode = original.printMode
+        command.verbose = original.verbose
+        return command
+    }
+
+    private static func structuredOutputFollowUpCommand(from original: Claude, sessionId: String) -> Claude {
+        var command = Claude(prompt: "Please provide your response in the requested JSON format.")
         command.resume = sessionId
         command.dangerouslySkipPermissions = original.dangerouslySkipPermissions
         command.jsonSchema = original.jsonSchema
