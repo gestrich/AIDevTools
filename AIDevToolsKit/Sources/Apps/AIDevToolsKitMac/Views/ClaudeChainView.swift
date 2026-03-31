@@ -388,7 +388,7 @@ private struct ChainProjectDetailView: View {
     private func prIndicators(_ pr: EnrichedPR) -> some View {
         HStack(spacing: 6) {
             if pr.isMerged {
-                prNumberLink(pr)
+                prNumberLink(pr, ageLabel: "\(pr.ageDays)d ago")
                 Text("MERGED")
                     .font(.caption2.bold())
                     .foregroundStyle(.white)
@@ -406,14 +406,14 @@ private struct ChainProjectDetailView: View {
                         .background(.gray)
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
-                prNumberLink(pr)
+                prNumberLink(pr, ageLabel: "\(pr.ageDays)d")
                 reviewIndicator(pr.reviewStatus)
                 buildIndicator(pr.buildStatus)
             }
         }
     }
 
-    private func prNumberLink(_ pr: EnrichedPR) -> some View {
+    private func prNumberLink(_ pr: EnrichedPR, ageLabel: String) -> some View {
         Button {
             if let urlString = pr.pr.url, let url = URL(string: urlString) {
                 NSWorkspace.shared.open(url)
@@ -422,7 +422,7 @@ private struct ChainProjectDetailView: View {
             HStack(spacing: 3) {
                 Text("PR #\(pr.pr.number)")
                     .font(.caption)
-                Text("\(pr.ageDays)d")
+                Text(ageLabel)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

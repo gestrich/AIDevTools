@@ -143,7 +143,7 @@ public struct GetChainDetailUseCase: UseCase {
     private func buildActionItems(enrichedTasks: [EnrichedChainTask]) -> [ChainActionItem] {
         var items: [ChainActionItem] = []
         for enrichedTask in enrichedTasks {
-            guard let enrichedPR = enrichedTask.enrichedPR else { continue }
+            guard let enrichedPR = enrichedTask.enrichedPR, !enrichedPR.isMerged else { continue }
             let prNumber = enrichedPR.pr.number
             if enrichedPR.isDraft {
                 items.append(ChainActionItem(

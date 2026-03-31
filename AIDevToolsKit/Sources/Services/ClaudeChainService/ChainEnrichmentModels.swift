@@ -39,14 +39,15 @@ public struct EnrichedPR: Sendable {
     public var isMerged: Bool { pr.mergedAt != nil }
 
     public var ageDays: Int {
-        guard let createdAtString = pr.createdAt else { return 0 }
+        let dateString = pr.mergedAt ?? pr.createdAt
+        guard let dateString else { return 0 }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: createdAtString) {
+        if let date = formatter.date(from: dateString) {
             return Int(Date().timeIntervalSince(date) / 86400)
         }
         formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: createdAtString) {
+        if let date = formatter.date(from: dateString) {
             return Int(Date().timeIntervalSince(date) / 86400)
         }
         return 0
