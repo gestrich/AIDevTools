@@ -8,9 +8,9 @@ struct PersistedMessage: Codable, Sendable {
 
 struct PersistedSession: Codable, Sendable {
     let id: String
-    var lastModified: Date
-    var summary: String
-    var messages: [PersistedMessage]
+    let lastModified: Date
+    let summary: String
+    let messages: [PersistedMessage]
 }
 
 actor AnthropicSessionStorage {

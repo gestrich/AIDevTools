@@ -134,22 +134,13 @@ public struct GitHubClient: Sendable {
         prNumber: Int,
         mergeMethod: String = "merge"
     ) async throws -> ExecutionResult {
-        var command = GitHubCLI.PR.Merge(
+        let command = GitHubCLI.PR.Merge(
             prNumber: String(prNumber),
-            repo: repo
+            repo: repo,
+            merge: mergeMethod == "merge" || (mergeMethod != "squash" && mergeMethod != "rebase"),
+            squash: mergeMethod == "squash",
+            rebase: mergeMethod == "rebase"
         )
-        
-        switch mergeMethod {
-        case "merge":
-            command.merge = true
-        case "squash":
-            command.squash = true
-        case "rebase":
-            command.rebase = true
-        default:
-            command.merge = true
-        }
-        
         return try await execute(command)
     }
 
@@ -241,17 +232,12 @@ public struct GitHubClient: Sendable {
         ref: String,
         inputs: [String: String] = [:]
     ) async throws -> ExecutionResult {
-        var command = GitHubCLI.Workflow.Run(
+        let command = GitHubCLI.Workflow.Run(
             workflow: workflow,
             repo: repo,
-            ref: ref
+            ref: ref,
+            fields: inputs.map { "\($0.key)=\($0.value)" }
         )
-        
-        // Convert inputs to --field arguments
-        command.fields = inputs.map { key, value in
-            "\(key)=\(value)"
-        }
-        
         return try await execute(command)
     }
 

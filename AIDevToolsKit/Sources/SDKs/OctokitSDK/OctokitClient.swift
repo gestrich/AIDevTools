@@ -56,16 +56,16 @@ public enum OctokitClientError: Error, Sendable, LocalizedError {
 // and use their `listPullRequestsFiles()` method directly.
 //
 private struct PullRequestFile: Codable {
-    var sha: String
-    var filename: String
-    var status: PullRequest.File.Status
-    var additions: Int
-    var deletions: Int
-    var changes: Int
-    var blobUrl: String
-    var rawUrl: String
-    var contentsUrl: String
-    var patch: String?  // Optional to handle GitHub's actual API behavior
+    let sha: String
+    let filename: String
+    let status: PullRequest.File.Status
+    let additions: Int
+    let deletions: Int
+    let changes: Int
+    let blobUrl: String
+    let rawUrl: String
+    let contentsUrl: String
+    let patch: String?  // Optional to handle GitHub's actual API behavior
     
     enum CodingKeys: String, CodingKey {
         case sha, filename, status, additions, deletions, changes, patch
