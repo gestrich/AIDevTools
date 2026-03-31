@@ -144,9 +144,6 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
         case .allCompleted(let phasesExecuted, let totalSeconds):
             printColored("\u{2713} All \(phasesExecuted) steps completed in \(TimerDisplay.formatTime(totalSeconds))", color: .green)
 
-        case .timeLimitReached(let remaining, let totalSeconds):
-            printColored("Time limit reached — \(remaining) steps may remain (total: \(TimerDisplay.formatTime(totalSeconds)))", color: .yellow)
-
         case .uncommittedChanges(let files):
             printColored("Warning: Uncommitted changes detected:", color: .yellow)
             for file in files {

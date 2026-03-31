@@ -74,13 +74,14 @@ public struct ExecutePlanUseCase: UseCase {
         case phaseCompleted(index: Int, elapsedSeconds: Int, totalElapsedSeconds: Int)
         case phaseFailed(index: Int, description: String, error: String)
         case allCompleted(phasesExecuted: Int, totalSeconds: Int)
-        case timeLimitReached(remaining: Int, totalSeconds: Int)
+
         case uncommittedChanges(files: [String])
     }
 
     public enum ExecuteError: Error, LocalizedError {
         case phaseFailed(index: Int, description: String, underlyingError: String)
         case planNotFound(String)
+        case timeLimitReached(phasesExecuted: Int, totalPhases: Int, maxMinutes: Int)
 
         public var errorDescription: String? {
             switch self {
@@ -88,6 +89,8 @@ public struct ExecutePlanUseCase: UseCase {
                 return "Phase \(index + 1) failed: \(description) — \(underlyingError)"
             case .planNotFound(let path):
                 return "Planning document not found: \(path)"
+            case .timeLimitReached(let phasesExecuted, let totalPhases, let maxMinutes):
+                return "Time limit of \(maxMinutes)m reached after \(phasesExecuted)/\(totalPhases) phases"
             }
         }
     }
@@ -157,8 +160,7 @@ public struct ExecutePlanUseCase: UseCase {
             if Int(elapsed) >= maxRuntimeSeconds {
                 let remaining = phases.filter { !$0.isCompleted }.count
                 let totalSeconds = Int(elapsed)
-                onProgress?(.timeLimitReached(remaining: remaining, totalSeconds: totalSeconds))
-                return Result(phasesExecuted: phasesExecuted, totalPhases: phases.count, allCompleted: false, totalSeconds: totalSeconds)
+                throw ExecuteError.timeLimitReached(phasesExecuted: phasesExecuted, totalPhases: phases.count, maxMinutes: options.maxMinutes)
             }
 
             let phase = phases[nextIndex]

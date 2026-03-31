@@ -330,8 +330,7 @@ final class MarkdownPlannerModel {
             current.currentPhaseDescription = "\(description) — Failed: \(error)"
         case .allCompleted(let phasesExecuted, _):
             current.phasesCompleted = phasesExecuted
-        case .timeLimitReached:
-            break
+
         case .uncommittedChanges:
             break
         }
