@@ -2,7 +2,7 @@ import ClaudeChainService
 import Foundation
 
 extension ChainProject {
-    static func fromDiscoveredChain(_ discovered: DiscoveredChain) -> ChainProject {
+    public static func fromDiscoveredChain(_ discovered: DiscoveredChain) -> ChainProject {
         ChainProject(
             name: discovered.projectName,
             specPath: "",

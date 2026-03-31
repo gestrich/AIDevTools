@@ -35,15 +35,17 @@ public struct StatusCommand: AsyncParsableCommand {
         }
 
         let repoURL = URL(fileURLWithPath: path)
-        let projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
-
-        if projects.isEmpty {
-            print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
-            return
-        }
+        var projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
 
         if github {
             let prService = try await makeGitHubPRService(repoPath: repoURL)
+            projects = try await mergedWithGitHubDiscovery(localProjects: projects, repoURL: repoURL)
+
+            if projects.isEmpty {
+                print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
+                return
+            }
+
             let detailUseCase = GetChainDetailUseCase(gitHubPRService: prService)
 
             if let projectName = project {
@@ -63,6 +65,11 @@ public struct StatusCommand: AsyncParsableCommand {
                 printEnrichedProjectList(details, allProjects: projects)
             }
         } else {
+            if projects.isEmpty {
+                print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")
+                return
+            }
+
             if let projectName = project {
                 let matched = try findProject(named: projectName, in: projects)
                 printProjectDetail(matched)
@@ -70,6 +77,21 @@ public struct StatusCommand: AsyncParsableCommand {
                 printProjectList(projects)
             }
         }
+    }
+
+    private func mergedWithGitHubDiscovery(localProjects: [ChainProject], repoURL: URL) async throws -> [ChainProject] {
+        let gitOps = GitHubServiceFactory.createGitOps()
+        let remoteURL = try await gitOps.getRemoteURL(path: repoURL.path)
+        guard let ownerRepo = GitHubAPIService.parseOwnerRepo(from: remoteURL) else {
+            return localProjects
+        }
+        let repo = "\(ownerRepo.owner)/\(ownerRepo.repo)"
+        let discovered = try DiscoverChainsFromGitHubUseCase().run(options: .init(repo: repo))
+        let localNames = Set(localProjects.map(\.name))
+        let githubOnlyProjects = discovered
+            .filter { !localNames.contains($0.projectName) }
+            .map { ChainProject.fromDiscoveredChain($0) }
+        return localProjects + githubOnlyProjects
     }
 
     private func findProject(named name: String, in projects: [ChainProject]) throws -> ChainProject {
@@ -142,7 +164,8 @@ public struct StatusCommand: AsyncParsableCommand {
             } else {
                 actionBadge = ""
             }
-            print("  \(padded)  \(bar)  \(counts)\(actionBadge)")
+            let githubOnlyNote = project.isGitHubOnly ? "  (spec on non-default branch)" : ""
+            print("  \(padded)  \(bar)  \(counts)\(actionBadge)\(githubOnlyNote)")
         }
 
         printProjectSummaryFooter(allProjects)

@@ -110,7 +110,10 @@ Also update the `ChainProject` model in `AIDevToolsKit/Sources/Services/ClaudeCh
 
 ---
 
-## - [ ] Phase 4: Update StatusCommand to Merge Local and GitHub-Discovered Chains
+## - [x] Phase 4: Update StatusCommand to Merge Local and GitHub-Discovered Chains
+
+**Skills used**: none
+**Principles applied**: Made `projects` mutable (`var`) so the merged list can replace the local-only scan. Added `mergedWithGitHubDiscovery` helper that calls `DiscoverChainsFromGitHubUseCase` and appends GitHub-only projects not already in the local list. Moved `isEmpty` check inside each branch so it runs after the potential merge. Made `ChainProject.fromDiscoveredChain` `public` to fix cross-module visibility. Added `(spec on non-default branch)` annotation in `printEnrichedProjectList` for `isGitHubOnly` projects.
 
 Modify `AIDevToolsKit/Sources/Apps/ClaudeChainCLI/StatusCommand.swift`:
 
