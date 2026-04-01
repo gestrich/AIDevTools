@@ -6,6 +6,7 @@ import EvalService
 import Foundation
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 
 struct RunEvalsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -62,8 +63,8 @@ struct RunEvalsCommand: AsyncParsableCommand {
             }
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let repoStore = try ReposCommand.makeStore(service)
-            let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
+            let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+            let repoConfig = try settings.repositoryStore.repoConfig(forRepoAt: repoURL)
             guard let evalSettings = repoConfig.eval else {
                 throw ValidationError("No cases directory configured for repository: \(repoConfig.name)")
             }

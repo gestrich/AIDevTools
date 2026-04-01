@@ -6,6 +6,7 @@ import EvalService
 import Foundation
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 
 struct ShowOutputCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -45,8 +46,8 @@ struct ShowOutputCommand: ParsableCommand {
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
             let service = try DataPathsService.fromCLI(dataPath: dataPath)
-            let store = try ReposCommand.makeStore(service)
-            let repoConfig = try store.repoConfig(forRepoAt: repoURL)
+            let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+            let repoConfig = try settings.repositoryStore.repoConfig(forRepoAt: repoURL)
             resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
         } else {
             throw ValidationError("Must specify either --output-dir or --repo")

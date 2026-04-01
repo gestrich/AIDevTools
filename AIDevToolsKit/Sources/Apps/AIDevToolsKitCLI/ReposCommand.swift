@@ -2,6 +2,7 @@ import ArgumentParser
 import DataPathsService
 import Foundation
 import RepositorySDK
+import SettingsService
 import SkillBrowserFeature
 
 struct ReposCommand: ParsableCommand {
@@ -18,8 +19,9 @@ struct ReposCommand: ParsableCommand {
         try .fromCLI(dataPath: dataPath)
     }
 
-    static func makeStore(_ service: DataPathsService) throws -> RepositoryStore {
-        RepositoryStore(repositoriesFile: try service.path(for: .repositories).appending(path: "repositories.json"))
+    static func makeSettingsService(dataPath: String?) throws -> SettingsService {
+        let service = try makeDataPathsService(dataPath: dataPath)
+        return try SettingsService(dataPathsService: service)
     }
 }
 
@@ -32,9 +34,8 @@ struct ListRepos: ParsableCommand {
     @OptionGroup var dataPathOptions: ReposCommand
 
     func run() throws {
-        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
-        let store = try ReposCommand.makeStore(service)
-        let repos = try LoadRepositoriesUseCase(store: store).run()
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPathOptions.dataPath)
+        let repos = try settings.loadRepositories()
         if repos.isEmpty {
             print("No repositories configured.")
             return
@@ -73,8 +74,8 @@ struct AddRepo: ParsableCommand {
 
     func run() throws {
         let url = URL(filePath: path, relativeTo: URL(filePath: FileManager.default.currentDirectoryPath))
-        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
-        let store = try ReposCommand.makeStore(service)
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPathOptions.dataPath)
+        let store = settings.repositoryStore
         let useCase = ConfigureNewRepositoryUseCase(
             addRepository: AddRepositoryUseCase(store: store),
             repositoryStore: store,
@@ -105,10 +106,9 @@ struct RemoveRepo: ParsableCommand {
         guard let uuid = UUID(uuidString: id) else {
             throw ValidationError("Invalid UUID: \(id)")
         }
-        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
-        let store = try ReposCommand.makeStore(service)
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPathOptions.dataPath)
         let useCase = RemoveRepositoryWithSettingsUseCase(
-            removeRepository: RemoveRepositoryUseCase(store: store)
+            removeRepository: RemoveRepositoryUseCase(store: settings.repositoryStore)
         )
         try useCase.run(id: uuid)
         print("Removed repository: \(uuid)")
@@ -178,8 +178,8 @@ struct UpdateRepo: ParsableCommand {
         guard let uuid = UUID(uuidString: id) else {
             throw ValidationError("Invalid UUID: \(id)")
         }
-        let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
-        let store = try ReposCommand.makeStore(service)
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPathOptions.dataPath)
+        let store = settings.repositoryStore
         let repos = try LoadRepositoriesUseCase(store: store).run()
         guard var repo = repos.first(where: { $0.id == uuid }) else {
             throw ValidationError("Repository not found: \(id)")

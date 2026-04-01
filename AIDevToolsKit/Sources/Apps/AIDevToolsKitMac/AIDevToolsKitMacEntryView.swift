@@ -6,6 +6,7 @@ import MarkdownPlannerFeature
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 import SkillBrowserFeature
 import SkillScannerSDK
 import SwiftUI
@@ -27,20 +28,21 @@ public struct AIDevToolsKitMacEntryView: View {
         }
         _settingsModel = State(initialValue: root.settingsModel)
         _providerModel = State(initialValue: root.providerModel)
+        let store = root.settingsService.repositoryStore
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
-            repositoryStore: root.repositoryStore,
-            loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
+            repositoryStore: store,
+            loadRepositories: LoadRepositoriesUseCase(store: store),
             loadSkills: LoadSkillsUseCase(),
             configureNewRepository: ConfigureNewRepositoryUseCase(
-                addRepository: AddRepositoryUseCase(store: root.repositoryStore),
-                repositoryStore: root.repositoryStore,
-                updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
+                addRepository: AddRepositoryUseCase(store: store),
+                repositoryStore: store,
+                updateRepository: UpdateRepositoryUseCase(store: store)
             ),
             removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase(
-                removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore)
+                removeRepository: RemoveRepositoryUseCase(store: store)
             ),
-            updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
+            updateRepository: UpdateRepositoryUseCase(store: store)
         ))
         let storedPlannerProviderName = UserDefaults.standard.string(forKey: "mdPlannerProviderName")
         _markdownPlannerModel = State(initialValue: MarkdownPlannerModel(
@@ -88,20 +90,21 @@ public struct AIDevToolsSettingsView: View {
         }
         _providerModel = State(initialValue: root.providerModel)
         _settingsModel = State(initialValue: root.settingsModel)
+        let store = root.settingsService.repositoryStore
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
-            repositoryStore: root.repositoryStore,
-            loadRepositories: LoadRepositoriesUseCase(store: root.repositoryStore),
+            repositoryStore: store,
+            loadRepositories: LoadRepositoriesUseCase(store: store),
             loadSkills: LoadSkillsUseCase(),
             configureNewRepository: ConfigureNewRepositoryUseCase(
-                addRepository: AddRepositoryUseCase(store: root.repositoryStore),
-                repositoryStore: root.repositoryStore,
-                updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
+                addRepository: AddRepositoryUseCase(store: store),
+                repositoryStore: store,
+                updateRepository: UpdateRepositoryUseCase(store: store)
             ),
             removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase(
-                removeRepository: RemoveRepositoryUseCase(store: root.repositoryStore)
+                removeRepository: RemoveRepositoryUseCase(store: store)
             ),
-            updateRepository: UpdateRepositoryUseCase(store: root.repositoryStore)
+            updateRepository: UpdateRepositoryUseCase(store: store)
         ))
     }
 

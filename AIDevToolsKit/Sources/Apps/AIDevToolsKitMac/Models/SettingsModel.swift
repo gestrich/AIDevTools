@@ -5,17 +5,16 @@ import Foundation
 final class SettingsModel {
 
     private(set) var dataPath: URL
-    private let resolveDataPath: ResolveDataPathUseCase
 
-    init(resolveDataPath: ResolveDataPathUseCase = ResolveDataPathUseCase()) {
-        self.resolveDataPath = resolveDataPath
-        let resolved = resolveDataPath.resolve()
-        self.dataPath = resolved.path
-        resolveDataPath.save(resolved.path)
+    init() {
+        let prefs = AppPreferences()
+        let path = prefs.dataPath() ?? AppPreferences.defaultDataPath
+        self.dataPath = path
+        prefs.setDataPath(path)
     }
 
     func updateDataPath(_ newPath: URL) {
         dataPath = newPath
-        resolveDataPath.save(newPath)
+        AppPreferences().setDataPath(newPath)
     }
 }

@@ -2,6 +2,7 @@ import ArgumentParser
 import DataPathsService
 import Foundation
 import RepositorySDK
+import SettingsService
 import SkillBrowserFeature
 import SkillScannerSDK
 
@@ -18,9 +19,8 @@ struct SkillsCommand: AsyncParsableCommand {
     var repo: String
 
     func run() async throws {
-        let service = try DataPathsService.fromCLI(dataPath: dataPath)
-        let store = try ReposCommand.makeStore(service)
-        let repoInfo = try resolveRepo(store: store)
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+        let repoInfo = try resolveRepo(store: settings.repositoryStore)
         let skills = try await LoadSkillsUseCase().run(options: repoInfo)
         if skills.isEmpty {
             print("No skills found at \(repoInfo.path.path())")

@@ -45,6 +45,7 @@ let package = Package(
         .library(name: "PRReviewFeature", targets: ["PRReviewFeature"]),
         .library(name: "ProviderRegistryService", targets: ["ProviderRegistryService"]),
         .library(name: "RepositorySDK", targets: ["RepositorySDK"]),
+        .library(name: "SettingsService", targets: ["SettingsService"]),
         .library(name: "SkillBrowserFeature", targets: ["SkillBrowserFeature"]),
         .library(name: "SkillScannerSDK", targets: ["SkillScannerSDK"]),
         .library(name: "SkillService", targets: ["SkillService"]),
@@ -95,6 +96,7 @@ let package = Package(
                 "PRReviewFeature",
                 "ProviderRegistryService",
                 "RepositorySDK",
+                "SettingsService",
                 "SkillBrowserFeature",
             ],
             path: "Sources/Apps/AIDevToolsKitCLI"
@@ -131,6 +133,7 @@ let package = Package(
                 "PRReviewFeature",
                 "ProviderRegistryService",
                 "RepositorySDK",
+                "SettingsService",
                 "SkillBrowserFeature",
                 "SkillScannerSDK",
                 "SkillService",
@@ -321,6 +324,14 @@ let package = Package(
             name: "ProviderRegistryService",
             dependencies: ["AIOutputSDK"],
             path: "Sources/Services/ProviderRegistryService"
+        ),
+        .target(
+            name: "SettingsService",
+            dependencies: [
+                "DataPathsService",
+                "RepositorySDK",
+            ],
+            path: "Sources/Services/SettingsService"
         ),
         .target(
             name: "SkillService",

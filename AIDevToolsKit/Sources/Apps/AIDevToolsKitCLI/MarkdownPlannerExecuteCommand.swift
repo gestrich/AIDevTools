@@ -5,6 +5,7 @@ import MarkdownPlannerFeature
 import MarkdownPlannerService
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 
 struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -41,10 +42,8 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
 
         let repoPath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
-        let service = try DataPathsService.fromCLI(dataPath: dataPath)
-        let store = try ReposCommand.makeStore(service)
-
-        let repos = try store.loadAll()
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+        let repos = try settings.repositoryStore.loadAll()
 
         let timer = TimerDisplay(maxRuntimeSeconds: maxMinutes * 60, scriptStartTime: Date())
 

@@ -14,23 +14,19 @@ public struct ResolveDataPathUseCase: UseCase {
         public let source: Source
     }
 
-    public static let suiteName = "org.gestrich.AIDevTools.shared"
-    public static let dataPathKey = "AIDevTools.dataPath"
-    public static let defaultRootPath = URL.homeDirectory.appending(path: "Desktop/ai-dev-tools")
-
     public init() {}
 
     public func resolve(explicit: String? = nil) -> Result {
         if let explicit {
             return Result(path: URL(filePath: explicit), source: .explicit)
         }
-        if let stored = UserDefaults(suiteName: Self.suiteName)?.string(forKey: Self.dataPathKey) {
-            return Result(path: URL(filePath: stored), source: .userDefaults)
+        if let stored = AppPreferences().dataPath() {
+            return Result(path: stored, source: .userDefaults)
         }
-        return Result(path: Self.defaultRootPath, source: .defaultPath)
+        return Result(path: AppPreferences.defaultDataPath, source: .defaultPath)
     }
 
     public func save(_ path: URL) {
-        UserDefaults(suiteName: Self.suiteName)?.set(path.path(), forKey: Self.dataPathKey)
+        AppPreferences().setDataPath(path)
     }
 }

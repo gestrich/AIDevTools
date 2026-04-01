@@ -4,6 +4,7 @@ import EvalFeature
 import EvalService
 import Foundation
 import RepositorySDK
+import SettingsService
 
 struct ListCasesCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -41,9 +42,8 @@ struct ListCasesCommand: ParsableCommand {
             resolvedCasesDir = URL(fileURLWithPath: casesDir)
         } else if let repo {
             let repoURL = URL(fileURLWithPath: repo, relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
-            let service = try DataPathsService.fromCLI(dataPath: dataPath)
-            let repoStore = try ReposCommand.makeStore(service)
-            let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
+            let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+            let repoConfig = try settings.repositoryStore.repoConfig(forRepoAt: repoURL)
             guard let evalSettings = repoConfig.eval else {
                 throw ValidationError("No cases directory configured for repository: \(repoConfig.name)")
             }

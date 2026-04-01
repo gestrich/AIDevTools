@@ -78,7 +78,7 @@ Migrate data from the three separate JSON files into `repositories.json`:
 - All settings reads/writes now go through `RepositoryStore` (which stores `[RepositoryConfiguration]`)
 - Remove the now-unused `ServicePath` cases for the separate settings directories (`.prradarSettings`, `.evalSettings`, `.planSettings`)
 
-## - [ ] Phase 4: Create `SettingsService`
+## - [x] Phase 4: Create `SettingsService`
 
 **Skills to read**: `configuration-architecture`, `swift-app-architecture:swift-architecture`
 

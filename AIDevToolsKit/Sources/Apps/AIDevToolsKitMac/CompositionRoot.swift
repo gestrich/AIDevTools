@@ -4,23 +4,22 @@ import DataPathsService
 import Foundation
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 
 @MainActor
 struct CompositionRoot {
     let dataPathsService: DataPathsService
     let evalProviderRegistry: EvalProviderRegistry
     let providerModel: ProviderModel
-    let repositoryStore: RepositoryStore
     let settingsModel: SettingsModel
+    let settingsService: SettingsService
 
     static func create() throws -> CompositionRoot {
         let settingsModel = SettingsModel()
         let dataPathsService = try DataPathsService(rootPath: settingsModel.dataPath)
         try MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
 
-        let repositoryStore = RepositoryStore(
-            repositoriesFile: try dataPathsService.path(for: .repositories).appending(path: "repositories.json")
-        )
+        let settingsService = try SettingsService(dataPathsService: dataPathsService)
 
         let evalProviderRegistry = EvalProviderRegistry(entries: [
             EvalProviderEntry(client: ClaudeProvider()),
@@ -33,8 +32,8 @@ struct CompositionRoot {
             dataPathsService: dataPathsService,
             evalProviderRegistry: evalProviderRegistry,
             providerModel: ProviderModel(),
-            repositoryStore: repositoryStore,
-            settingsModel: settingsModel
+            settingsModel: settingsModel,
+            settingsService: settingsService
         )
     }
 

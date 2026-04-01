@@ -6,6 +6,7 @@ import PRRadarConfigService
 import PRRadarModelsService
 import PRReviewFeature
 import RepositorySDK
+import SettingsService
 
 struct PRRadarCLIOptions: ParsableArguments {
     @Argument(help: "Pull request number")
@@ -43,10 +44,8 @@ enum PRRadarCLIError: Error, CustomStringConvertible {
 
 func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) throws -> PRRadarRepoConfig {
     let dataPathsService = try DataPathsService.fromCLI(dataPath: nil)
-
-    let repositoriesFile = try dataPathsService.path(for: .repositories).appending(path: "repositories.json")
-    let store = RepositoryStore(repositoriesFile: repositoriesFile)
-    let repos = try store.loadAll()
+    let settingsService = try SettingsService(dataPathsService: dataPathsService)
+    let repos = try settingsService.loadRepositories()
 
     let repo: RepositoryConfiguration
     if let repoName {

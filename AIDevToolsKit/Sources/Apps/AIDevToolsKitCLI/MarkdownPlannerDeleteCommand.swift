@@ -3,6 +3,7 @@ import DataPathsService
 import Foundation
 import MarkdownPlannerFeature
 import RepositorySDK
+import SettingsService
 
 struct MarkdownPlannerDeleteCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -34,9 +35,8 @@ struct MarkdownPlannerDeleteCommand: ParsableCommand {
     }
 
     private func selectPlan() throws -> URL? {
-        let service = try DataPathsService.fromCLI(dataPath: dataPath)
-        let store = try ReposCommand.makeStore(service)
-        let repos = (try? store.loadAll()) ?? []
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+        let repos = (try? settings.repositoryStore.loadAll()) ?? []
 
         var allPlans: [(url: URL, repoName: String)] = []
         for repo in repos {

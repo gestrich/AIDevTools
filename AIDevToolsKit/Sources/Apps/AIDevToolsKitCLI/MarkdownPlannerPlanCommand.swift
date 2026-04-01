@@ -4,6 +4,7 @@ import Foundation
 import MarkdownPlannerFeature
 import ProviderRegistryService
 import RepositorySDK
+import SettingsService
 
 struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -24,9 +25,8 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
     var dataPath: String?
 
     func run() async throws {
-        let service = try DataPathsService.fromCLI(dataPath: dataPath)
-        let store = try ReposCommand.makeStore(service)
-        let repos = try store.loadAll()
+        let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
+        let repos = try settings.repositoryStore.loadAll()
 
         let registry = makeProviderRegistry()
         let client = provider.flatMap { registry.client(named: $0) } ?? registry.defaultClient!
