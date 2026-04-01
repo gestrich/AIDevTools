@@ -71,7 +71,6 @@ final class MarkdownPlannerModel {
     private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
     private let mcpConfigPath: String?
-    private let planSettingsStore: MarkdownPlannerRepoSettingsStore
     private let providerRegistry: ProviderRegistry
     private let togglePhaseUseCase: TogglePhaseUseCase
 
@@ -79,7 +78,6 @@ final class MarkdownPlannerModel {
         dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
         mcpConfigPath: String? = nil,
-        planSettingsStore: MarkdownPlannerRepoSettingsStore,
         providerRegistry: ProviderRegistry,
         selectedProviderName: String? = nil,
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
@@ -87,7 +85,6 @@ final class MarkdownPlannerModel {
         self.dataPath = dataPath
         self.deletePlanUseCase = deletePlanUseCase
         self.mcpConfigPath = mcpConfigPath
-        self.planSettingsStore = planSettingsStore
         self.providerRegistry = providerRegistry
         self.togglePhaseUseCase = togglePhaseUseCase
 
@@ -112,7 +109,7 @@ final class MarkdownPlannerModel {
         plans = []
         isLoadingPlans = true
         do {
-            let proposedDir = try resolvedProposedDirectory(for: repo)
+            let proposedDir = resolvedProposedDirectory(for: repo)
             let loaded = await LoadPlansUseCase(proposedDirectory: proposedDir).run()
             guard self.currentRepository?.id == repo.id else { return }
             self.plans = loaded
@@ -145,7 +142,7 @@ final class MarkdownPlannerModel {
     }
 
     func completePlan(_ plan: MarkdownPlanEntry, repository: RepositoryConfiguration) throws {
-        let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
+        let settings = repository.planner ?? MarkdownPlannerRepoSettings()
         let completedDir = settings.resolvedCompletedDirectory(repoPath: repository.path)
         try CompletePlanUseCase(completedDirectory: completedDir).run(planURL: plan.planURL)
         Task { await reloadPlans() }
@@ -161,7 +158,7 @@ final class MarkdownPlannerModel {
         phaseCompleteCount = 0
 
         do {
-            let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
+            let settings = repository.planner ?? MarkdownPlannerRepoSettings()
             let useCase = ExecutePlanUseCase(
                 client: activeClient,
                 completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
@@ -210,11 +207,10 @@ final class MarkdownPlannerModel {
     func generate(prompt: String, repositories: [RepositoryConfiguration], selectedRepository: RepositoryConfiguration? = nil) async -> String? {
         state = .generating(step: selectedRepository != nil ? "Generating plan..." : "Matching repository...")
 
-        let settingsStore = planSettingsStore
         let useCase = GeneratePlanUseCase(
             client: activeClient,
             resolveProposedDirectory: { repo in
-                let settings = try settingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
+                let settings = repo.planner ?? MarkdownPlannerRepoSettings()
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
             }
         )
@@ -350,8 +346,8 @@ final class MarkdownPlannerModel {
         executionProgressObserver?(progress)
     }
 
-    private func resolvedProposedDirectory(for repo: RepositoryConfiguration) throws -> URL {
-        let settings = try planSettingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
+    private func resolvedProposedDirectory(for repo: RepositoryConfiguration) -> URL {
+        let settings = repo.planner ?? MarkdownPlannerRepoSettings()
         return settings.resolvedProposedDirectory(repoPath: repo.path)
     }
 }

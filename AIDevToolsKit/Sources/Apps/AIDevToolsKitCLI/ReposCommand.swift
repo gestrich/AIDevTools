@@ -24,12 +24,12 @@ struct ReposCommand: ParsableCommand {
         RepositoryStore(repositoriesFile: try service.path(for: .repositories).appending(path: "repositories.json"))
     }
 
-    static func makeEvalSettingsStore(_ service: DataPathsService) throws -> EvalRepoSettingsStore {
-        EvalRepoSettingsStore(filePath: try service.path(for: .evalSettings).appending(path: "eval-settings.json"))
+    static func makeEvalSettingsStore(repositoryStore: RepositoryStore) -> EvalRepoSettingsStore {
+        EvalRepoSettingsStore(repositoryStore: repositoryStore)
     }
 
-    static func makePlanSettingsStore(_ service: DataPathsService) throws -> MarkdownPlannerRepoSettingsStore {
-        MarkdownPlannerRepoSettingsStore(filePath: try service.path(for: .planSettings).appending(path: "plan-settings.json"))
+    static func makePlanSettingsStore(repositoryStore: RepositoryStore) -> MarkdownPlannerRepoSettingsStore {
+        MarkdownPlannerRepoSettingsStore(repositoryStore: repositoryStore)
     }
 }
 
@@ -44,19 +44,15 @@ struct ListRepos: ParsableCommand {
     func run() throws {
         let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
         let store = try ReposCommand.makeStore(service)
-        let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
-        let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
         let repos = try LoadRepositoriesUseCase(store: store).run()
         if repos.isEmpty {
             print("No repositories configured.")
             return
         }
         for repo in repos {
-            let evalSettings = try evalSettingsStore.settings(forRepoId: repo.id)
-            let planSettings = try planSettingsStore.settings(forRepoId: repo.id)
-            let casesInfo = evalSettings.map { "  cases-dir=\($0.casesDirectory)" } ?? ""
-            let proposedInfo = planSettings?.proposedDirectory.map { "  proposed-dir=\($0)" } ?? ""
-            let completedInfo = planSettings?.completedDirectory.map { "  completed-dir=\($0)" } ?? ""
+            let casesInfo = repo.eval.map { "  cases-dir=\($0.casesDirectory)" } ?? ""
+            let proposedInfo = repo.planner?.proposedDirectory.map { "  proposed-dir=\($0)" } ?? ""
+            let completedInfo = repo.planner?.completedDirectory.map { "  completed-dir=\($0)" } ?? ""
             print("\(repo.id)  \(repo.name)  \(repo.path.path())\(casesInfo)\(proposedInfo)\(completedInfo)")
         }
     }
@@ -91,8 +87,8 @@ struct AddRepo: ParsableCommand {
         let store = try ReposCommand.makeStore(service)
         let useCase = ConfigureNewRepositoryUseCase(
             addRepository: AddRepositoryUseCase(store: store),
-            evalSettingsStore: try ReposCommand.makeEvalSettingsStore(service),
-            planSettingsStore: try ReposCommand.makePlanSettingsStore(service),
+            evalSettingsStore: ReposCommand.makeEvalSettingsStore(repositoryStore: store),
+            planSettingsStore: ReposCommand.makePlanSettingsStore(repositoryStore: store),
             updateRepository: UpdateRepositoryUseCase(store: store)
         )
         let repo = try useCase.run(
@@ -123,8 +119,8 @@ struct RemoveRepo: ParsableCommand {
         let service = try ReposCommand.makeDataPathsService(dataPath: dataPathOptions.dataPath)
         let store = try ReposCommand.makeStore(service)
         let useCase = RemoveRepositoryWithSettingsUseCase(
-            evalSettingsStore: try ReposCommand.makeEvalSettingsStore(service),
-            planSettingsStore: try ReposCommand.makePlanSettingsStore(service),
+            evalSettingsStore: ReposCommand.makeEvalSettingsStore(repositoryStore: store),
+            planSettingsStore: ReposCommand.makePlanSettingsStore(repositoryStore: store),
             removeRepository: RemoveRepositoryUseCase(store: store)
         )
         try useCase.run(id: uuid)
@@ -241,12 +237,12 @@ struct UpdateRepo: ParsableCommand {
         try UpdateRepositoryUseCase(store: store).run(repo)
 
         if let casesDir {
-            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
+            let evalSettingsStore = ReposCommand.makeEvalSettingsStore(repositoryStore: store)
             try evalSettingsStore.update(repoId: uuid, casesDirectory: casesDir)
         }
 
         if completedDir != nil || proposedDir != nil {
-            let planSettingsStore = try ReposCommand.makePlanSettingsStore(service)
+            let planSettingsStore = ReposCommand.makePlanSettingsStore(repositoryStore: store)
             try planSettingsStore.update(repoId: uuid, proposedDirectory: proposedDir, completedDirectory: completedDir)
         }
 

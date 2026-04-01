@@ -6,6 +6,7 @@ import Foundation
 import MCP
 import MarkdownPlannerFeature
 import MarkdownPlannerService
+import RepositorySDK
 
 struct MCPCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

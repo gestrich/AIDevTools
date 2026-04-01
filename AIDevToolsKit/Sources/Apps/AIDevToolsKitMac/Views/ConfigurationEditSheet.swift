@@ -227,7 +227,6 @@ struct ConfigurationEditSheet: View {
         if let onSavePRRadarSettings {
             let rulePaths = parsePRRadarRulePaths(prradarRulePathsText)
             let settings = PRRadarRepoSettings(
-                repoId: updated.id,
                 rulePaths: rulePaths,
                 diffSource: prradarDiffSource,
                 agentScriptPath: prradarAgentScriptPathText

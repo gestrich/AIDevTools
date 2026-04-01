@@ -51,7 +51,6 @@ public struct AIDevToolsKitMacEntryView: View {
         _markdownPlannerModel = State(initialValue: MarkdownPlannerModel(
             dataPath: root.settingsModel.dataPath,
             mcpConfigPath: DataPathsService.mcpConfigFileURL.path,
-            planSettingsStore: root.planSettingsStore,
             providerRegistry: root.providerModel.providerRegistry,
             selectedProviderName: storedPlannerProviderName
         ))

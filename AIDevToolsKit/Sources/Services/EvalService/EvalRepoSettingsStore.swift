@@ -1,50 +1,26 @@
 import Foundation
+import RepositorySDK
 
 public struct EvalRepoSettingsStore: Sendable {
-    private let filePath: URL
+    private let repositoryStore: RepositoryStore
 
-    public init(filePath: URL) {
-        self.filePath = filePath
-    }
-
-    public func loadAll() throws -> [EvalRepoSettings] {
-        guard FileManager.default.fileExists(atPath: filePath.path()) else {
-            return []
-        }
-        let data = try Data(contentsOf: filePath)
-        return try JSONDecoder().decode([EvalRepoSettings].self, from: data)
-    }
-
-    public func save(_ settings: [EvalRepoSettings]) throws {
-        try ensureDirectoryExists()
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(settings)
-        try data.write(to: filePath, options: .atomic)
+    public init(repositoryStore: RepositoryStore) {
+        self.repositoryStore = repositoryStore
     }
 
     public func settings(forRepoId repoId: UUID) throws -> EvalRepoSettings? {
-        try loadAll().first { $0.repoId == repoId }
+        try repositoryStore.find(byID: repoId)?.eval
     }
 
     public func update(repoId: UUID, casesDirectory: String) throws {
-        var all = try loadAll()
-        if let index = all.firstIndex(where: { $0.repoId == repoId }) {
-            all[index].casesDirectory = casesDirectory
-        } else {
-            all.append(EvalRepoSettings(repoId: repoId, casesDirectory: casesDirectory))
-        }
-        try save(all)
+        guard var repo = try repositoryStore.find(byID: repoId) else { return }
+        repo.eval = EvalRepoSettings(casesDirectory: casesDirectory)
+        try repositoryStore.update(repo)
     }
 
     public func remove(repoId: UUID) throws {
-        var all = try loadAll()
-        all.removeAll { $0.repoId == repoId }
-        try save(all)
-    }
-
-    private func ensureDirectoryExists() throws {
-        let directory = filePath.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard var repo = try repositoryStore.find(byID: repoId) else { return }
+        repo.eval = nil
+        try repositoryStore.update(repo)
     }
 }

@@ -3,6 +3,7 @@ import Foundation
 import PRRadarConfigService
 import PRRadarModelsService
 import PRReviewFeature
+import RepositorySDK
 
 struct PRRadarRunAllCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

@@ -61,9 +61,7 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
         repo = first
     }
 
-    let settingsFile = try dataPathsService.path(for: .prradarSettings).appending(path: "prradar-settings.json")
-    let settingsStore = PRRadarRepoSettingsStore(filePath: settingsFile)
-    let settings = (try settingsStore.settings(forRepoId: repo.id)) ?? PRRadarRepoSettings(repoId: repo.id)
+    let settings = repo.prradar ?? PRRadarRepoSettings()
 
     let outputDir = try dataPathsService.path(for: .prradarOutput(repo.name))
     let outputDirString = outputDir.path(percentEncoded: false)

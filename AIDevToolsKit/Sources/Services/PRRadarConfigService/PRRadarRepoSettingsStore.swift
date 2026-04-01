@@ -1,52 +1,26 @@
 import Foundation
+import RepositorySDK
 
 public struct PRRadarRepoSettingsStore: Sendable {
-    private let filePath: URL
+    private let repositoryStore: RepositoryStore
 
-    public init(filePath: URL) {
-        self.filePath = filePath
-    }
-
-    public func loadAll() throws -> [PRRadarRepoSettings] {
-        guard FileManager.default.fileExists(atPath: filePath.path()) else {
-            return []
-        }
-        let data = try Data(contentsOf: filePath)
-        return try JSONDecoder().decode([PRRadarRepoSettings].self, from: data)
-    }
-
-    public func save(_ settings: [PRRadarRepoSettings]) throws {
-        try ensureDirectoryExists()
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(settings)
-        try data.write(to: filePath, options: .atomic)
+    public init(repositoryStore: RepositoryStore) {
+        self.repositoryStore = repositoryStore
     }
 
     public func settings(forRepoId repoId: UUID) throws -> PRRadarRepoSettings? {
-        try loadAll().first { $0.repoId == repoId }
+        try repositoryStore.find(byID: repoId)?.prradar
     }
 
     public func update(repoId: UUID, rulePaths: [RulePath], diffSource: DiffSource, agentScriptPath: String = "") throws {
-        var all = try loadAll()
-        if let index = all.firstIndex(where: { $0.repoId == repoId }) {
-            all[index].rulePaths = rulePaths
-            all[index].diffSource = diffSource
-            all[index].agentScriptPath = agentScriptPath
-        } else {
-            all.append(PRRadarRepoSettings(repoId: repoId, rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath))
-        }
-        try save(all)
+        guard var repo = try repositoryStore.find(byID: repoId) else { return }
+        repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath)
+        try repositoryStore.update(repo)
     }
 
     public func remove(repoId: UUID) throws {
-        var all = try loadAll()
-        all.removeAll { $0.repoId == repoId }
-        try save(all)
-    }
-
-    private func ensureDirectoryExists() throws {
-        let directory = filePath.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard var repo = try repositoryStore.find(byID: repoId) else { return }
+        repo.prradar = nil
+        try repositoryStore.update(repo)
     }
 }

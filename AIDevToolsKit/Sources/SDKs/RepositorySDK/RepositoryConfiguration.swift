@@ -6,6 +6,9 @@ public struct RepositoryConfiguration: Codable, Identifiable, Sendable {
     public let name: String
     public var credentialAccount: String?
     public var description: String?
+    public var eval: EvalRepoSettings?
+    public var planner: MarkdownPlannerRepoSettings?
+    public var prradar: PRRadarRepoSettings?
     public var recentFocus: String?
     public var skills: [String]?
     public var architectureDocs: [String]?
@@ -18,6 +21,9 @@ public struct RepositoryConfiguration: Codable, Identifiable, Sendable {
         name: String? = nil,
         credentialAccount: String? = nil,
         description: String? = nil,
+        eval: EvalRepoSettings? = nil,
+        planner: MarkdownPlannerRepoSettings? = nil,
+        prradar: PRRadarRepoSettings? = nil,
         recentFocus: String? = nil,
         skills: [String]? = nil,
         architectureDocs: [String]? = nil,
@@ -29,6 +35,9 @@ public struct RepositoryConfiguration: Codable, Identifiable, Sendable {
         self.name = name ?? path.lastPathComponent
         self.credentialAccount = credentialAccount
         self.description = description
+        self.eval = eval
+        self.planner = planner
+        self.prradar = prradar
         self.recentFocus = recentFocus
         self.skills = skills
         self.architectureDocs = architectureDocs
@@ -43,6 +52,9 @@ public struct RepositoryConfiguration: Codable, Identifiable, Sendable {
             name: name,
             credentialAccount: credentialAccount,
             description: description,
+            eval: eval,
+            planner: planner,
+            prradar: prradar,
             recentFocus: recentFocus,
             skills: skills,
             architectureDocs: architectureDocs,

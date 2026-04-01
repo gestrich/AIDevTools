@@ -34,7 +34,10 @@ Rename the `RepositoryInfo` struct and all references throughout the codebase:
 - Keep the JSON encoding key as `RepositoryInfo` initially (or update with migration — coordinate with Phase 3)
 - This is a mechanical rename; no behavior changes
 
-## - [ ] Phase 2: Add per-feature settings to `RepositoryConfiguration`
+## - [x] Phase 2: Add per-feature settings to `RepositoryConfiguration`
+
+**Skills used**: `configuration-architecture`
+**Principles applied**: `RulePath`, `DiffSource`, and the three settings structs were moved from their service modules into `RepositorySDK` to avoid a circular dependency (`RepositorySDK` cannot depend on `PRRadarConfigService` which itself depends on `RepositorySDK`). The three per-feature stores now delegate all persistence to `RepositoryStore` — no `repoId` field on the settings structs needed since identity is provided by the parent `RepositoryConfiguration`. Old JSON files remain on disk untouched for the Phase 3 migration.
 
 **Skills to read**: `configuration-architecture`
 

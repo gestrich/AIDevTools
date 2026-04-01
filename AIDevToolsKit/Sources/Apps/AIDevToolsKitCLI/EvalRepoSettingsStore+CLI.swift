@@ -4,7 +4,7 @@ import RepositorySDK
 
 extension EvalRepoSettingsStore {
     func casesDirectory(forRepo repo: RepositoryConfiguration) throws -> URL {
-        guard let settings = try settings(forRepoId: repo.id) else {
+        guard let settings = repo.eval else {
             throw EvalRepoSettingsError.casesDirectoryNotConfigured(repo.name)
         }
         return settings.resolvedCasesDirectory(repoPath: repo.path)

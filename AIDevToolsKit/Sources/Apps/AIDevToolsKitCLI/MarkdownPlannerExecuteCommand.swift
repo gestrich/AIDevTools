@@ -43,7 +43,6 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
 
         let service = try DataPathsService.fromCLI(dataPath: dataPath)
         let store = try ReposCommand.makeStore(service)
-        let planSettings = try ReposCommand.makePlanSettingsStore(service)
 
         let repos = try store.loadAll()
 
@@ -59,7 +58,9 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
 
         let planPath = planURL.path(percentEncoded: false)
         let repository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
-        let completedDirectory = try repository.map { try planSettings.resolvedCompletedDirectory(forRepo: $0) }
+        let completedDirectory = repository.map {
+            ($0.planner ?? MarkdownPlannerRepoSettings()).resolvedCompletedDirectory(repoPath: $0.path)
+        }
 
         let registry = makeProviderRegistry()
         let client = provider.flatMap { registry.client(named: $0) } ?? registry.defaultClient!

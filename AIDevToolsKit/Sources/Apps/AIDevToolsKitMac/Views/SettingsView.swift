@@ -66,7 +66,7 @@ struct SettingsView: View {
                 isAddingNew = false
             } onSavePRRadarSettings: { settings in
                 workspaceModel.updatePRRadarSettings(
-                    for: settings.repoId,
+                    for: config.id,
                     rulePaths: settings.rulePaths,
                     diffSource: settings.diffSource,
                     agentScriptPath: settings.agentScriptPath

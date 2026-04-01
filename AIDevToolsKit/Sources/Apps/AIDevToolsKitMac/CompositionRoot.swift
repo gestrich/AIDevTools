@@ -27,15 +27,9 @@ struct CompositionRoot {
         let repositoryStore = RepositoryStore(
             repositoriesFile: try dataPathsService.path(for: .repositories).appending(path: "repositories.json")
         )
-        let evalSettingsStore = EvalRepoSettingsStore(
-            filePath: try dataPathsService.path(for: .evalSettings).appending(path: "eval-settings.json")
-        )
-        let planSettingsStore = MarkdownPlannerRepoSettingsStore(
-            filePath: try dataPathsService.path(for: .planSettings).appending(path: "plan-settings.json")
-        )
-        let prradarSettingsStore = PRRadarRepoSettingsStore(
-            filePath: try dataPathsService.path(for: .prradarSettings).appending(path: "prradar-settings.json")
-        )
+        let evalSettingsStore = EvalRepoSettingsStore(repositoryStore: repositoryStore)
+        let planSettingsStore = MarkdownPlannerRepoSettingsStore(repositoryStore: repositoryStore)
+        let prradarSettingsStore = PRRadarRepoSettingsStore(repositoryStore: repositoryStore)
 
         let evalProviderRegistry = EvalProviderRegistry(entries: [
             EvalProviderEntry(client: ClaudeProvider()),

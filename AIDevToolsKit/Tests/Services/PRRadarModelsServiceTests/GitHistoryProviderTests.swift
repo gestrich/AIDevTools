@@ -1,7 +1,8 @@
 import CLISDK
 import Foundation
-import OctokitSDK
 import GitSDK
+import OctokitSDK
+import RepositorySDK
 import Testing
 @testable import PRRadarCLIService
 @testable import PRRadarConfigService

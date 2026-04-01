@@ -5,6 +5,7 @@ import GitHubService
 import GitSDK
 import OctokitSDK
 import PRRadarConfigService
+import RepositorySDK
 
 public struct GitHubServiceFactory: Sendable {
     public static func create(repoPath: String, githubAccount: String) async throws -> (gitHub: GitHubAPIService, gitOps: GitOperationsService) {

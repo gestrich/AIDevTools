@@ -55,7 +55,7 @@ final class WorkspaceModel {
     }
 
     func evalConfig(for repo: RepositoryConfiguration) -> RepositoryEvalConfig? {
-        guard let settings = try? evalSettingsStore.settings(forRepoId: repo.id) else { return nil }
+        guard let settings = repo.eval else { return nil }
         return RepositoryEvalConfig(
             casesDirectory: settings.resolvedCasesDirectory(repoPath: repo.path),
             outputDirectory: dataPath.appendingPathComponent(repo.name),
@@ -64,7 +64,7 @@ final class WorkspaceModel {
     }
 
     func casesDirectory(for repo: RepositoryConfiguration) -> String? {
-        try? evalSettingsStore.settings(forRepoId: repo.id)?.casesDirectory
+        repo.eval?.casesDirectory
     }
 
     func load() {
@@ -151,19 +151,19 @@ final class WorkspaceModel {
     }
 
     func planSettings(for repo: RepositoryConfiguration) -> MarkdownPlannerRepoSettings? {
-        try? planSettingsStore.settings(forRepoId: repo.id)
+        repo.planner
     }
 
     func proposedDirectory(for repo: RepositoryConfiguration) -> String? {
-        try? planSettingsStore.settings(forRepoId: repo.id)?.proposedDirectory
+        repo.planner?.proposedDirectory
     }
 
     func completedDirectory(for repo: RepositoryConfiguration) -> String? {
-        try? planSettingsStore.settings(forRepoId: repo.id)?.completedDirectory
+        repo.planner?.completedDirectory
     }
 
     func prradarSettings(for repo: RepositoryConfiguration) -> PRRadarRepoSettings {
-        (try? prradarSettingsStore.settings(forRepoId: repo.id)) ?? PRRadarRepoSettings(repoId: repo.id)
+        repo.prradar ?? PRRadarRepoSettings()
     }
 
     func prradarConfig(for repo: RepositoryConfiguration) -> PRRadarRepoConfig? {

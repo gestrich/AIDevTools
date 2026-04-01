@@ -44,7 +44,7 @@ struct ListCasesCommand: ParsableCommand {
             let service = try DataPathsService.fromCLI(dataPath: dataPath)
             let repoStore = try ReposCommand.makeStore(service)
             let repoConfig = try repoStore.repoConfig(forRepoAt: repoURL)
-            let evalSettingsStore = try ReposCommand.makeEvalSettingsStore(service)
+            let evalSettingsStore = ReposCommand.makeEvalSettingsStore(repositoryStore: repoStore)
             resolvedCasesDir = try evalSettingsStore.casesDirectory(forRepo: repoConfig)
         } else {
             throw ValidationError("Must specify either --cases-dir or --repo")

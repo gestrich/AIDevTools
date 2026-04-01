@@ -4,12 +4,10 @@ public struct MarkdownPlannerRepoSettings: Codable, Sendable {
     public static let defaultProposedDirectory = "docs/proposed"
     public static let defaultCompletedDirectory = "docs/completed"
 
-    public let repoId: UUID
     public var completedDirectory: String?
     public var proposedDirectory: String?
 
-    public init(repoId: UUID, proposedDirectory: String? = nil, completedDirectory: String? = nil) {
-        self.repoId = repoId
+    public init(proposedDirectory: String? = nil, completedDirectory: String? = nil) {
         self.completedDirectory = completedDirectory
         self.proposedDirectory = proposedDirectory
     }

@@ -28,7 +28,7 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
         let service = try DataPathsService.fromCLI(dataPath: dataPath)
         let store = try ReposCommand.makeStore(service)
         let repos = try store.loadAll()
-        let planSettings = try ReposCommand.makePlanSettingsStore(service)
+        let planSettings = ReposCommand.makePlanSettingsStore(repositoryStore: store)
 
         let registry = makeProviderRegistry()
         let client = provider.flatMap { registry.client(named: $0) } ?? registry.defaultClient!

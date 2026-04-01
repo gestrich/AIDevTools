@@ -1,11 +1,9 @@
 import Foundation
 
 public struct EvalRepoSettings: Codable, Sendable {
-    public let repoId: UUID
     public var casesDirectory: String
 
-    public init(repoId: UUID, casesDirectory: String) {
-        self.repoId = repoId
+    public init(casesDirectory: String) {
         self.casesDirectory = casesDirectory
     }
 

@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import RepositorySDK
+import Testing
 @testable import PRRadarConfigService
 
 struct RulePathTests {

@@ -2,6 +2,7 @@ import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
+import RepositorySDK
 import UseCaseSDK
 
 public struct LoadRulesUseCase: UseCase {

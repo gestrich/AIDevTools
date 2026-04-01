@@ -21,7 +21,5 @@ public struct RemoveRepositoryWithSettingsUseCase: UseCase {
 
     public func run(id: UUID) throws {
         try removeRepository.run(id: id)
-        try evalSettingsStore.remove(repoId: id)
-        try planSettingsStore.remove(repoId: id)
     }
 }

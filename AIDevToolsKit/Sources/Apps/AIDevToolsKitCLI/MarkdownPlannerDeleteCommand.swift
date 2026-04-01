@@ -37,7 +37,7 @@ struct MarkdownPlannerDeleteCommand: ParsableCommand {
     private func selectPlan() throws -> URL? {
         let service = try DataPathsService.fromCLI(dataPath: dataPath)
         let store = try ReposCommand.makeStore(service)
-        let planSettings = try ReposCommand.makePlanSettingsStore(service)
+        let planSettings = ReposCommand.makePlanSettingsStore(repositoryStore: store)
         let repos = (try? store.loadAll()) ?? []
 
         var allPlans: [(url: URL, repoName: String)] = []

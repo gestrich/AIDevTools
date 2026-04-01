@@ -213,6 +213,7 @@ let package = Package(
                 "PRRadarCLIService",
                 "PRRadarConfigService",
                 "PRRadarModelsService",
+                "RepositorySDK",
                 "UseCaseSDK",
             ],
             path: "Sources/Features/PRReviewFeature"
@@ -259,7 +260,7 @@ let package = Package(
         ),
         .target(
             name: "EvalService",
-            dependencies: ["AIOutputSDK", "SkillScannerSDK"],
+            dependencies: ["AIOutputSDK", "RepositorySDK", "SkillScannerSDK"],
             path: "Sources/Services/EvalService"
         ),
         .target(
@@ -271,7 +272,7 @@ let package = Package(
         ),
         .target(
             name: "MarkdownPlannerService",
-            dependencies: [],
+            dependencies: ["RepositorySDK"],
             path: "Sources/Services/MarkdownPlannerService"
         ),
         .target(
@@ -296,6 +297,7 @@ let package = Package(
                 "OctokitSDK",
                 "PRRadarConfigService",
                 "PRRadarModelsService",
+                "RepositorySDK",
             ],
             path: "Sources/Services/PRRadarCLIService"
         ),
@@ -601,7 +603,7 @@ let package = Package(
         ),
         .testTarget(
             name: "EvalServiceTests",
-            dependencies: ["AIOutputSDK", "EvalService", "SkillScannerSDK"],
+            dependencies: ["AIOutputSDK", "EvalService", "RepositorySDK", "SkillScannerSDK"],
             path: "Tests/Services/EvalServiceTests"
         ),
         .testTarget(
@@ -629,7 +631,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MarkdownPlannerServiceTests",
-            dependencies: ["MarkdownPlannerService"],
+            dependencies: ["MarkdownPlannerService", "RepositorySDK"],
             path: "Tests/Services/MarkdownPlannerServiceTests"
         ),
         .testTarget(
@@ -652,6 +654,7 @@ let package = Package(
                 "PRRadarConfigService",
                 "PRRadarModelsService",
                 "PRReviewFeature",
+                "RepositorySDK",
             ],
             path: "Tests/Services/PRRadarModelsServiceTests",
             resources: [
