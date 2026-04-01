@@ -104,7 +104,10 @@ Clarify the naming of the credential service:
 - Verify the three-backend priority chain (env vars → `.env` → Keychain) is clearly expressed in the type's interface, not just its implementation
 - No behavior changes
 
-## - [ ] Phase 6: Runtime credential changes in `AppModel`
+## - [x] Phase 6: Runtime credential changes in `AppModel`
+
+**Skills used**: `configuration-architecture`, `swift-app-architecture:swift-swiftui`
+**Principles applied**: Created `AppModel` as a new `@Observable` class that wraps `ProviderModel` and exposes `applyCredentialChange(_ type: CredentialType)`. Audit found that `ProviderModel` is the only credential-gated model — it already handles absent Anthropic key gracefully (excludes `AnthropicProvider` from the registry) so it stays non-optional. `CredentialType` enum added to `CredentialService`. `CredentialManagementView` now calls `appModel.applyCredentialChange` after save/delete in addition to posting the cross-window notification (which is still needed since the settings window and main window are separate SwiftUI trees). `WorkspaceView` now calls `appModel.applyCredentialChange` in the notification handler instead of directly calling `providerModel.refreshProviders()`.
 
 **Skills to read**: `configuration-architecture`, `swift-app-architecture:swift-swiftui`
 

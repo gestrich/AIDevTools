@@ -12,12 +12,12 @@ import SkillScannerSDK
 import SwiftUI
 
 public struct AIDevToolsKitMacEntryView: View {
+    @State private var appModel: AppModel
     @State private var architecturePlannerModel: ArchitecturePlannerModel
     @State private var claudeChainModel: ClaudeChainModel
     @State private var credentialModel = CredentialModel()
     @State private var ipcServer = AppIPCServer()
     @State private var markdownPlannerModel: MarkdownPlannerModel
-    @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
     private let evalProviderRegistry: EvalProviderRegistry
@@ -27,7 +27,8 @@ public struct AIDevToolsKitMacEntryView: View {
             fatalError("Failed to initialize app services. Check data directory permissions.")
         }
         _settingsModel = State(initialValue: root.settingsModel)
-        _providerModel = State(initialValue: root.providerModel)
+        let appModel = AppModel(providerModel: root.providerModel)
+        _appModel = State(initialValue: appModel)
         let store = root.settingsService.repositoryStore
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
@@ -48,17 +49,17 @@ public struct AIDevToolsKitMacEntryView: View {
         _markdownPlannerModel = State(initialValue: MarkdownPlannerModel(
             dataPath: root.settingsModel.dataPath,
             mcpConfigPath: DataPathsService.mcpConfigFileURL.path,
-            providerRegistry: root.providerModel.providerRegistry,
+            providerRegistry: appModel.providerModel.providerRegistry,
             selectedProviderName: storedPlannerProviderName
         ))
         let storedPlannerProvider = UserDefaults.standard.string(forKey: "archPlannerProviderName")
         _claudeChainModel = State(initialValue: ClaudeChainModel(
-            providerRegistry: root.providerModel.providerRegistry,
+            providerRegistry: appModel.providerModel.providerRegistry,
             dataPathsService: root.dataPathsService
         ))
         _architecturePlannerModel = State(initialValue: ArchitecturePlannerModel(
             dataPathsService: root.dataPathsService,
-            providerRegistry: root.providerModel.providerRegistry,
+            providerRegistry: appModel.providerModel.providerRegistry,
             selectedProviderName: storedPlannerProvider
         ))
         evalProviderRegistry = root.evalProviderRegistry
@@ -66,11 +67,12 @@ public struct AIDevToolsKitMacEntryView: View {
 
     public var body: some View {
         WorkspaceView(evalProviderRegistry: evalProviderRegistry)
+            .environment(appModel)
+            .environment(appModel.providerModel)
             .environment(architecturePlannerModel)
             .environment(claudeChainModel)
             .environment(credentialModel)
             .environment(markdownPlannerModel)
-            .environment(providerModel)
             .environment(workspaceModel)
             .frame(minWidth: 800, minHeight: 600)
             .task { await ipcServer.start() }
@@ -78,9 +80,9 @@ public struct AIDevToolsKitMacEntryView: View {
 }
 
 public struct AIDevToolsSettingsView: View {
+    @State private var appModel: AppModel
     @State private var credentialModel = CredentialModel()
     @State private var logsModel = LogsModel()
-    @State private var providerModel: ProviderModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
 
@@ -88,7 +90,7 @@ public struct AIDevToolsSettingsView: View {
         guard let root = try? CompositionRoot.create() else {
             fatalError("Failed to initialize app services. Check data directory permissions.")
         }
-        _providerModel = State(initialValue: root.providerModel)
+        _appModel = State(initialValue: AppModel(providerModel: root.providerModel))
         _settingsModel = State(initialValue: root.settingsModel)
         let store = root.settingsService.repositoryStore
         _workspaceModel = State(initialValue: WorkspaceModel(
@@ -110,9 +112,10 @@ public struct AIDevToolsSettingsView: View {
 
     public var body: some View {
         SettingsView()
+            .environment(appModel)
+            .environment(appModel.providerModel)
             .environment(credentialModel)
             .environment(logsModel)
-            .environment(providerModel)
             .environment(settingsModel)
             .environment(workspaceModel)
             .task { workspaceModel.load() }

@@ -3,6 +3,7 @@ import CredentialService
 import SwiftUI
 
 struct CredentialManagementView: View {
+    @Environment(AppModel.self) private var appModel
     @Environment(CredentialModel.self) private var credentialModel
     @State private var selectedAccount: String?
     @State private var editingAccount: EditableCredential?
@@ -111,6 +112,8 @@ struct CredentialManagementView: View {
                         gitHubAuth: updated.buildGitHubAuth(),
                         anthropicKey: updated.anthropicKey.isEmpty ? nil : updated.anthropicKey
                     )
+                    appModel.applyCredentialChange(.anthropicAPIKey)
+                    appModel.applyCredentialChange(.githubToken)
                     NotificationCenter.default.post(name: .credentialsDidChange, object: nil)
                 } catch {
                     currentError = error
@@ -132,6 +135,8 @@ struct CredentialManagementView: View {
                 do {
                     try credentialModel.removeCredentials(account: account)
                     selectedAccount = nil
+                    appModel.applyCredentialChange(.anthropicAPIKey)
+                    appModel.applyCredentialChange(.githubToken)
                     NotificationCenter.default.post(name: .credentialsDidChange, object: nil)
                 } catch {
                     currentError = error

@@ -4,8 +4,8 @@ import RepositorySDK
 import SwiftUI
 
 struct WorkspaceView: View {
+    @Environment(AppModel.self) private var appModel
     @Environment(WorkspaceModel.self) var model
-    @Environment(ProviderModel.self) var providerModel
 
     let evalProviderRegistry: EvalProviderRegistry
 
@@ -47,7 +47,8 @@ struct WorkspaceView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .credentialsDidChange)) { _ in
-            providerModel.refreshProviders()
+            appModel.applyCredentialChange(.anthropicAPIKey)
+            appModel.applyCredentialChange(.githubToken)
         }
     }
 
