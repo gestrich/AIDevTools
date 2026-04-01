@@ -119,7 +119,10 @@ Wire up no-restart credential updates:
 - Update `CredentialModel` (the credential-editing UI) to call `appModel.applyCredentialChange(_:)` after a successful save or delete
 - Update views that depend on credential-gated models to use optional binding — don't show those views when the model is nil
 
-## - [ ] Phase 7: Update documentation
+## - [x] Phase 7: Update documentation
+
+**Skills used**: `configuration-architecture`
+**Principles applied**: Rewrote `docs/guides/configuration-architecture.md` from scratch to reflect the three-service design (`SecureSettingsService`, `SettingsService`, `DataPathsService`). Added the resolved-values pattern with an explicit anti-pattern callout (passing the service itself into a use case). Documented `RepositoryConfiguration` as the per-repo settings container, the runtime credential change pattern via `AppModel.applyCredentialChange`, and the full implementation checklist from the skill.
 
 Update `docs/guides/configuration-architecture.md` to reflect the final design:
 
