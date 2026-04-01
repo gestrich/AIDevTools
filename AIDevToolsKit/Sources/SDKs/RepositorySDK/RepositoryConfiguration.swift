@@ -1,6 +1,6 @@
 import Foundation
 
-public struct RepositoryInfo: Codable, Identifiable, Sendable {
+public struct RepositoryConfiguration: Codable, Identifiable, Sendable {
     public let id: UUID
     public let path: URL
     public let name: String
@@ -36,8 +36,8 @@ public struct RepositoryInfo: Codable, Identifiable, Sendable {
         self.pullRequest = pullRequest
     }
 
-    public func with(id: UUID) -> RepositoryInfo {
-        RepositoryInfo(
+    public func with(id: UUID) -> RepositoryConfiguration {
+        RepositoryConfiguration(
             id: id,
             path: path,
             name: name,

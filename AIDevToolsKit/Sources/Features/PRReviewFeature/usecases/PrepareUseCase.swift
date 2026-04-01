@@ -21,9 +21,9 @@ public struct PrepareOutput: Sendable {
 
 public struct PrepareUseCase: StreamingUseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 
@@ -243,7 +243,7 @@ public struct PrepareUseCase: StreamingUseCase {
             .count
     }
 
-    public static func parseOutput(config: RepositoryConfiguration, prNumber: Int, commitHash: String? = nil) async throws -> PrepareOutput {
+    public static func parseOutput(config: PRRadarRepoConfig, prNumber: Int, commitHash: String? = nil) async throws -> PrepareOutput {
         let resolvedCommit: String?
         if let hash = commitHash {
             resolvedCommit = hash

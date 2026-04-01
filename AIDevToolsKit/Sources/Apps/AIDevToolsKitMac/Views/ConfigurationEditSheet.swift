@@ -3,7 +3,7 @@ import RepositorySDK
 import SwiftUI
 
 struct ConfigurationEditSheet: View {
-    @State var config: RepositoryInfo
+    @State var config: RepositoryConfiguration
     @State private var nameText: String
     @State private var repoPathText: String
     @State private var casesDirectoryText: String
@@ -24,20 +24,20 @@ struct ConfigurationEditSheet: View {
     @State private var prradarDiffSource: DiffSource
     @State private var prradarAgentScriptPathText: String
     let isNew: Bool
-    let onSave: (RepositoryInfo, String?, String?, String?) -> Void
+    let onSave: (RepositoryConfiguration, String?, String?, String?) -> Void
     let onSavePRRadarSettings: ((PRRadarRepoSettings) -> Void)?
     let onCancel: () -> Void
     @Environment(CredentialModel.self) private var credentialModel
     @Environment(\.dismiss) private var dismiss
 
     init(
-        config: RepositoryInfo,
+        config: RepositoryConfiguration,
         casesDirectory: String?,
         completedDirectory: String?,
         proposedDirectory: String?,
         prradarSettings: PRRadarRepoSettings? = nil,
         isNew: Bool,
-        onSave: @escaping (RepositoryInfo, String?, String?, String?) -> Void,
+        onSave: @escaping (RepositoryConfiguration, String?, String?, String?) -> Void,
         onSavePRRadarSettings: ((PRRadarRepoSettings) -> Void)? = nil,
         onCancel: @escaping () -> Void
     ) {
@@ -210,7 +210,7 @@ struct ConfigurationEditSheet: View {
             notes: prNotesText
         )
 
-        let updated = RepositoryInfo(
+        let updated = RepositoryConfiguration(
             id: config.id,
             path: repoURL,
             name: finalName,

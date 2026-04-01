@@ -27,7 +27,7 @@ struct LoadSkillsUseCaseTests {
         let repoDir = try makeTempRepo(skillFiles: ["deploy.md", "test.md"])
         defer { cleanup(repoDir) }
         let useCase = LoadSkillsUseCase()
-        let config = RepositoryInfo(path: repoDir)
+        let config = RepositoryConfiguration(path: repoDir)
 
         // Act
         let skills = try await useCase.run(options: config)
@@ -46,7 +46,7 @@ struct LoadSkillsUseCaseTests {
         try FileManager.default.createDirectory(at: repoDir, withIntermediateDirectories: true)
         defer { cleanup(repoDir) }
         let useCase = LoadSkillsUseCase()
-        let config = RepositoryInfo(path: repoDir)
+        let config = RepositoryConfiguration(path: repoDir)
 
         // Act
         let skills = try await useCase.run(options: config)

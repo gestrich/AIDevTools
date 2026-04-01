@@ -11,9 +11,9 @@ public struct RunAllOutput: Sendable {
 
 public struct RunAllUseCase: StreamingUseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 

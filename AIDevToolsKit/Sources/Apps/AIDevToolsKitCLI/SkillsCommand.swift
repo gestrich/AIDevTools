@@ -31,7 +31,7 @@ struct SkillsCommand: AsyncParsableCommand {
         }
     }
 
-    private func resolveRepo(store: RepositoryStore) throws -> RepositoryInfo {
+    private func resolveRepo(store: RepositoryStore) throws -> RepositoryConfiguration {
         if let uuid = UUID(uuidString: repo) {
             let repos = try LoadRepositoriesUseCase(store: store).run()
             if let match = repos.first(where: { $0.id == uuid }) {
@@ -39,6 +39,6 @@ struct SkillsCommand: AsyncParsableCommand {
             }
         }
         let url = URL(filePath: repo, relativeTo: URL(filePath: FileManager.default.currentDirectoryPath))
-        return RepositoryInfo(path: url)
+        return RepositoryConfiguration(path: url)
     }
 }

@@ -6,9 +6,9 @@ import UseCaseSDK
 
 public struct AnalyzeUseCase: StreamingUseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 
@@ -329,7 +329,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
     }
 
     private static func buildMergedOutput(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         allTasks: [RuleRequest],
         cachedCount: Int,
@@ -365,7 +365,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
         )
     }
 
-    public static func parseOutput(config: RepositoryConfiguration, prNumber: Int, commitHash: String? = nil) async throws -> PRReviewResult {
+    public static func parseOutput(config: PRRadarRepoConfig, prNumber: Int, commitHash: String? = nil) async throws -> PRReviewResult {
         let resolvedCommit: String?
         if let hash = commitHash {
             resolvedCommit = hash

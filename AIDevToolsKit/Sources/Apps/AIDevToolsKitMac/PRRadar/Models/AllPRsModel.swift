@@ -17,11 +17,11 @@ final class AllPRsModel {
     private(set) var analyzeAllState: AnalyzeAllState = .idle
     var showOnlyWithPendingComments: Bool = false
 
-    let config: RepositoryConfiguration
+    let config: PRRadarRepoConfig
     private var gitHubPRService: (any GitHubPRServiceProtocol)?
     private var changesTask: Task<Void, Never>?
 
-    init(config: RepositoryConfiguration) {
+    init(config: PRRadarRepoConfig) {
         self.config = config
         Task {
             await load()

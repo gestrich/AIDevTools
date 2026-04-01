@@ -9,11 +9,11 @@ public struct AddRepositoryUseCase: UseCase {
         self.store = store
     }
 
-    public func run(path: URL, name: String? = nil) throws -> RepositoryInfo {
+    public func run(path: URL, name: String? = nil) throws -> RepositoryConfiguration {
         guard FileManager.default.fileExists(atPath: path.path()) else {
             throw AddRepositoryError.directoryNotFound(path)
         }
-        let repo = RepositoryInfo(path: path, name: name)
+        let repo = RepositoryConfiguration(path: path, name: name)
         try store.add(repo)
         return repo
     }

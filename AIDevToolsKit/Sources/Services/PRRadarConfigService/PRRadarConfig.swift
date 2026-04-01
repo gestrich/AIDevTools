@@ -3,7 +3,7 @@ import Foundation
 import PRRadarModelsService
 import RepositorySDK
 
-public struct RepositoryConfiguration: Sendable {
+public struct PRRadarRepoConfig: Sendable {
     public let id: UUID
     public let name: String
     public let repoPath: String
@@ -40,13 +40,13 @@ public struct RepositoryConfiguration: Sendable {
     }
 
     public static func make(
-        from info: RepositoryInfo,
+        from info: RepositoryConfiguration,
         settings: PRRadarRepoSettings,
         outputDir: String,
         agentScriptPath: String,
         dataRootURL: URL? = nil
-    ) -> RepositoryConfiguration {
-        RepositoryConfiguration(
+    ) -> PRRadarRepoConfig {
+        PRRadarRepoConfig(
             id: info.id,
             name: info.name,
             repoPath: info.path.path(percentEncoded: false),
@@ -109,7 +109,7 @@ public struct RepositoryConfiguration: Sendable {
     /// Returns the shared GitHub PR cache URL, or throws if `dataRootURL` is not configured.
     public func requireGitHubCacheURL() throws -> URL {
         guard let url = gitHubCacheURL else {
-            throw RepositoryConfigurationError.noDataRoot
+            throw PRRadarRepoConfigError.noDataRoot
         }
         return url
     }

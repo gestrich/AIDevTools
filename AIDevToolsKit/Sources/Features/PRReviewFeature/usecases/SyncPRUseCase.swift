@@ -7,13 +7,13 @@ import UseCaseSDK
 
 public struct SyncPRUseCase: StreamingUseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 
-    public static func parseOutput(config: RepositoryConfiguration, prNumber: Int, commitHash: String? = nil) async -> SyncSnapshot {
+    public static func parseOutput(config: PRRadarRepoConfig, prNumber: Int, commitHash: String? = nil) async -> SyncSnapshot {
         let resolvedCommit: String?
         if let hash = commitHash {
             resolvedCommit = hash
@@ -43,7 +43,7 @@ public struct SyncPRUseCase: StreamingUseCase {
     }
 
     /// Resolve the commit hash from cached PR metadata, or scan analysis/ for the latest commit directory.
-    public static func resolveCommitHash(config: RepositoryConfiguration, prNumber: Int) async -> String? {
+    public static func resolveCommitHash(config: PRRadarRepoConfig, prNumber: Int) async -> String? {
         if let pr = await PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber),
            let fullHash = pr.headRefOid {
             return String(fullHash.prefix(7))

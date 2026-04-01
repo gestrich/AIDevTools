@@ -20,7 +20,7 @@ public struct ExecutePlanUseCase: UseCase {
         public let planPath: URL
         public let repoPath: URL?
         public let maxMinutes: Int
-        public let repository: RepositoryInfo?
+        public let repository: RepositoryConfiguration?
         public let stopAfterArchitectureDiagram: Bool
         public let useWorktree: Bool
 
@@ -29,7 +29,7 @@ public struct ExecutePlanUseCase: UseCase {
             planPath: URL,
             repoPath: URL? = nil,
             maxMinutes: Int = 90,
-            repository: RepositoryInfo? = nil,
+            repository: RepositoryConfiguration? = nil,
             stopAfterArchitectureDiagram: Bool = false,
             useWorktree: Bool = false
         ) {
@@ -307,7 +307,7 @@ public struct ExecutePlanUseCase: UseCase {
         phaseIndex: Int,
         description: String,
         repoPath: URL?,
-        repository: RepositoryInfo?,
+        repository: RepositoryConfiguration?,
         onOutput: (@Sendable (String) -> Void)?,
         onStreamEvent: (@Sendable (AIStreamEvent) -> Void)?
     ) async throws -> PhaseResult {

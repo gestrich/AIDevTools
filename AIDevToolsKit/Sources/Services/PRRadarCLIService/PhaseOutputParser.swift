@@ -6,7 +6,7 @@ public enum PhaseOutputParser {
 
     /// Decode a single JSON file from a phase output directory.
     public static func parsePhaseOutput<T: Decodable>(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         filename: String,
@@ -19,7 +19,7 @@ public enum PhaseOutputParser {
 
     /// List all files in a phase output directory.
     public static func listPhaseFiles(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         commitHash: String? = nil
@@ -29,7 +29,7 @@ public enum PhaseOutputParser {
 
     /// Read raw file data from a phase output directory.
     public static func readPhaseFile(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         filename: String,
@@ -48,7 +48,7 @@ public enum PhaseOutputParser {
 
     /// Read a text file from a phase output directory.
     public static func readPhaseTextFile(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         filename: String,
@@ -65,7 +65,7 @@ public enum PhaseOutputParser {
 
     /// Decode all data artifact JSON files (those with the `data-` prefix) in a phase directory.
     public static func parseAllPhaseFiles<T: Decodable>(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         commitHash: String? = nil
@@ -82,7 +82,7 @@ public enum PhaseOutputParser {
 
     /// Load a `PRDiff` from the diff phase output files on disk.
     public static func loadPRDiff(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         commitHash: String?
     ) -> PRDiff? {
@@ -94,7 +94,7 @@ public enum PhaseOutputParser {
 
     /// Load the fine-grained effective diff (moved lines stripped, hunks split) from disk.
     public static func loadEffectiveDiff(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         commitHash: String?
     ) -> GitDiff? {
@@ -108,7 +108,7 @@ public enum PhaseOutputParser {
 
     /// Decode a single JSON file from a phase subdirectory.
     public static func parsePhaseOutput<T: Decodable>(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         subdirectory: String,
@@ -121,7 +121,7 @@ public enum PhaseOutputParser {
 
     /// List all files in a phase subdirectory.
     public static func listPhaseFiles(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         subdirectory: String,
@@ -132,7 +132,7 @@ public enum PhaseOutputParser {
 
     /// List per-rules-dir JSON files in the prepare/rules subdirectory.
     public static func listRulesFiles(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         commitHash: String? = nil
     ) -> [String] {
@@ -142,7 +142,7 @@ public enum PhaseOutputParser {
 
     /// Read raw file data from a phase subdirectory.
     public static func readPhaseFile(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         subdirectory: String,
@@ -162,7 +162,7 @@ public enum PhaseOutputParser {
 
     /// Decode all data artifact JSON files in a phase subdirectory.
     public static func parseAllPhaseFiles<T: Decodable>(
-        config: RepositoryConfiguration,
+        config: PRRadarRepoConfig,
         prNumber: Int,
         phase: PRRadarPhase,
         subdirectory: String,

@@ -3,7 +3,7 @@ import Foundation
 import RepositorySDK
 
 extension EvalRepoSettingsStore {
-    func casesDirectory(forRepo repo: RepositoryInfo) throws -> URL {
+    func casesDirectory(forRepo repo: RepositoryConfiguration) throws -> URL {
         guard let settings = try settings(forRepoId: repo.id) else {
             throw EvalRepoSettingsError.casesDirectoryNotConfigured(repo.name)
         }

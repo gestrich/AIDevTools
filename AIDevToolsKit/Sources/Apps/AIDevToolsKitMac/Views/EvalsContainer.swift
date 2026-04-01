@@ -7,7 +7,7 @@ import SwiftUI
 struct EvalsContainer: View {
     @Environment(WorkspaceModel.self) var model
 
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
     let evalProviderRegistry: EvalProviderRegistry
 
     @AppStorage("selectedEvalSuite") private var storedSuiteName: String = ""

@@ -30,13 +30,13 @@ public enum PRDiscoveryService {
     }
 
     /// Discover PRs using the shared GitHub cache path from the repository configuration.
-    public static func discoverPRs(config: RepositoryConfiguration) async -> [PRMetadata] {
+    public static func discoverPRs(config: PRRadarRepoConfig) async -> [PRMetadata] {
         guard let cacheURL = config.gitHubCacheURL else { return [] }
         return await discoverPRs(gitHubCacheURL: cacheURL)
     }
 
     /// Load a single PR's metadata directly from the cache without scanning all directories.
-    public static func discoverPR(number: Int, config: RepositoryConfiguration) async -> PRMetadata? {
+    public static func discoverPR(number: Int, config: PRRadarRepoConfig) async -> PRMetadata? {
         guard let cacheURL = config.gitHubCacheURL else { return nil }
         return await Task.detached(priority: .userInitiated) {
             guard let ghPR = loadGitHubPRSync(gitHubCacheURL: cacheURL, prNumber: number),
@@ -55,7 +55,7 @@ public enum PRDiscoveryService {
     }
 
     /// Load a PR using the shared GitHub cache path from the repository configuration.
-    public static func loadGitHubPR(config: RepositoryConfiguration, prNumber: Int) async -> GitHubPullRequest? {
+    public static func loadGitHubPR(config: PRRadarRepoConfig, prNumber: Int) async -> GitHubPullRequest? {
         guard let cacheURL = config.gitHubCacheURL else { return nil }
         return await loadGitHubPR(gitHubCacheURL: cacheURL, prNumber: prNumber)
     }
@@ -68,7 +68,7 @@ public enum PRDiscoveryService {
     }
 
     /// Load PR comments using the shared GitHub cache path from the repository configuration.
-    public static func loadComments(config: RepositoryConfiguration, prNumber: Int) async -> GitHubPullRequestComments? {
+    public static func loadComments(config: PRRadarRepoConfig, prNumber: Int) async -> GitHubPullRequestComments? {
         guard let cacheURL = config.gitHubCacheURL else { return nil }
         return await loadComments(gitHubCacheURL: cacheURL, prNumber: prNumber)
     }

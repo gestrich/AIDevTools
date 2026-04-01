@@ -7,7 +7,7 @@ import SwiftUI
 struct ClaudeChainView: View {
     @Environment(ClaudeChainModel.self) var model
 
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @AppStorage("selectedChainProject") private var storedChainProject: String = ""
     @State private var selectedProject: ChainProject?
@@ -116,7 +116,7 @@ private struct ChainProjectDetailView: View {
     @Environment(ClaudeChainModel.self) var model
 
     let project: ChainProject
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @State private var executionChatModel: ChatModel?
 

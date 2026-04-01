@@ -23,11 +23,11 @@ public struct ConfigureNewRepositoryUseCase: UseCase {
     }
 
     public func run(
-        repository: RepositoryInfo,
+        repository: RepositoryConfiguration,
         casesDirectory: String? = nil,
         completedDirectory: String? = nil,
         proposedDirectory: String? = nil
-    ) throws -> RepositoryInfo {
+    ) throws -> RepositoryConfiguration {
         let added = try addRepository.run(path: repository.path, name: repository.name)
         try updateRepository.run(repository.with(id: added.id))
         if let casesDirectory {

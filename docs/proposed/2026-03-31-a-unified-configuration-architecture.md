@@ -19,7 +19,10 @@ Per-repo feature settings are consolidated into a single **`RepositoryConfigurat
 
 Runtime credential changes are handled without restart: `AppModel` holds optional child models (nil when credentials are absent), and an explicit `applyCredentialChange(_:)` method rebuilds only the affected model when the user updates a credential.
 
-## - [ ] Phase 1: Rename `RepositoryInfo` → `RepositoryConfiguration`
+## - [x] Phase 1: Rename `RepositoryInfo` → `RepositoryConfiguration`
+
+**Skills used**: `configuration-architecture`
+**Principles applied**: `PRRadarConfigService` already had a `RepositoryConfiguration` type, so it was renamed to `PRRadarRepoConfig` (and `RepositoryConfigurationError` → `PRRadarRepoConfigError`) to clear the namespace before renaming `RepositoryInfo`. JSON encoding is unaffected since Swift's `Codable` uses property names, not the struct name.
 
 **Skills to read**: `configuration-architecture`
 

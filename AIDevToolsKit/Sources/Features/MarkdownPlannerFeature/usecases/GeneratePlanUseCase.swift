@@ -7,13 +7,13 @@ public struct GeneratePlanUseCase: UseCase {
 
     public struct Options: Sendable {
         public let prompt: String
-        public let repositories: [RepositoryInfo]
-        public let selectedRepository: RepositoryInfo?
+        public let repositories: [RepositoryConfiguration]
+        public let selectedRepository: RepositoryConfiguration?
 
         public init(
             prompt: String,
-            repositories: [RepositoryInfo],
-            selectedRepository: RepositoryInfo? = nil
+            repositories: [RepositoryConfiguration],
+            selectedRepository: RepositoryConfiguration? = nil
         ) {
             self.prompt = prompt
             self.repositories = repositories
@@ -23,11 +23,11 @@ public struct GeneratePlanUseCase: UseCase {
 
     public struct Result: Sendable {
         public let planURL: URL
-        public let repository: RepositoryInfo
+        public let repository: RepositoryConfiguration
         public let repoMatch: RepoMatch
         public let plan: GeneratedPlan
 
-        public init(planURL: URL, repository: RepositoryInfo, repoMatch: RepoMatch, plan: GeneratedPlan) {
+        public init(planURL: URL, repository: RepositoryConfiguration, repoMatch: RepoMatch, plan: GeneratedPlan) {
             self.planURL = planURL
             self.repository = repository
             self.repoMatch = repoMatch
@@ -41,7 +41,7 @@ public struct GeneratePlanUseCase: UseCase {
         case generatingPlan
         case generatedPlan(filename: String)
         case writingPlan
-        case completed(planURL: URL, repository: RepositoryInfo)
+        case completed(planURL: URL, repository: RepositoryConfiguration)
     }
 
     public enum GenerateError: Error, LocalizedError {
@@ -59,11 +59,11 @@ public struct GeneratePlanUseCase: UseCase {
     }
 
     private let client: any AIClient
-    private let resolveProposedDirectory: @Sendable (RepositoryInfo) throws -> URL
+    private let resolveProposedDirectory: @Sendable (RepositoryConfiguration) throws -> URL
 
     public init(
         client: any AIClient,
-        resolveProposedDirectory: @escaping @Sendable (RepositoryInfo) throws -> URL
+        resolveProposedDirectory: @escaping @Sendable (RepositoryConfiguration) throws -> URL
     ) {
         self.client = client
         self.resolveProposedDirectory = resolveProposedDirectory
@@ -73,7 +73,7 @@ public struct GeneratePlanUseCase: UseCase {
         _ options: Options,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> Result {
-        let repo: RepositoryInfo
+        let repo: RepositoryConfiguration
         let repoMatch: RepoMatch
 
         if let selected = options.selectedRepository {
@@ -117,7 +117,7 @@ public struct GeneratePlanUseCase: UseCase {
 
     // MARK: - Private
 
-    private func matchRepo(prompt: String, repositories: [RepositoryInfo]) async throws -> RepoMatch {
+    private func matchRepo(prompt: String, repositories: [RepositoryConfiguration]) async throws -> RepoMatch {
         let repoList = repositories.map { repo in
             var entry = "- id: \(repo.id.uuidString) | description: \(repo.description ?? repo.name)"
             if let focus = repo.recentFocus {
@@ -155,7 +155,7 @@ public struct GeneratePlanUseCase: UseCase {
         return output.value
     }
 
-    private func generatePlan(interpretedRequest: String, repo: RepositoryInfo) async throws -> GeneratedPlan {
+    private func generatePlan(interpretedRequest: String, repo: RepositoryConfiguration) async throws -> GeneratedPlan {
         let skills = repo.skills ?? []
         let verificationCommands = repo.verification?.commands ?? []
 

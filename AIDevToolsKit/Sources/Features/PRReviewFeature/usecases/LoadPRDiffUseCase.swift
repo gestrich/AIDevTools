@@ -5,9 +5,9 @@ import UseCaseSDK
 
 public struct LoadPRDiffUseCase: UseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 

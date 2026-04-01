@@ -119,7 +119,7 @@ struct PhaseInputView: View {
     }
 
     @ViewBuilder
-    private func configInfo(_ config: RepositoryConfiguration) -> some View {
+    private func configInfo(_ config: PRRadarRepoConfig) -> some View {
         HStack(spacing: 16) {
             HStack(spacing: 4) {
                 Text("Repo:")

@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import RepositorySDK
 
-struct RepositoryInfoTests {
+struct RepositoryConfigurationTests {
     @Test func initDefaultsNameToLastPathComponent() {
         // Arrange & Act
-        let repo = RepositoryInfo(path: URL(filePath: "/Users/test/my-project"))
+        let repo = RepositoryConfiguration(path: URL(filePath: "/Users/test/my-project"))
 
         // Assert
         #expect(repo.name == "my-project")
@@ -13,7 +13,7 @@ struct RepositoryInfoTests {
 
     @Test func initUsesExplicitName() {
         // Arrange & Act
-        let repo = RepositoryInfo(path: URL(filePath: "/tmp/repo"), name: "Custom Name")
+        let repo = RepositoryConfiguration(path: URL(filePath: "/tmp/repo"), name: "Custom Name")
 
         // Assert
         #expect(repo.name == "Custom Name")
@@ -21,7 +21,7 @@ struct RepositoryInfoTests {
 
     @Test func codableRoundTrip() throws {
         // Arrange
-        let repo = RepositoryInfo(
+        let repo = RepositoryConfiguration(
             path: URL(filePath: "/Users/test/my-repo"),
             name: "my-repo",
             credentialAccount: "gestrich",
@@ -40,7 +40,7 @@ struct RepositoryInfoTests {
 
         // Act
         let data = try JSONEncoder().encode(repo)
-        let decoded = try JSONDecoder().decode(RepositoryInfo.self, from: data)
+        let decoded = try JSONDecoder().decode(RepositoryConfiguration.self, from: data)
 
         // Assert
         #expect(decoded.id == repo.id)
@@ -62,11 +62,11 @@ struct RepositoryInfoTests {
 
     @Test func codableWithMinimalFields() throws {
         // Arrange
-        let repo = RepositoryInfo(path: URL(filePath: "/tmp/repo"))
+        let repo = RepositoryConfiguration(path: URL(filePath: "/tmp/repo"))
 
         // Act
         let data = try JSONEncoder().encode(repo)
-        let decoded = try JSONDecoder().decode(RepositoryInfo.self, from: data)
+        let decoded = try JSONDecoder().decode(RepositoryConfiguration.self, from: data)
 
         // Assert
         #expect(decoded.id == repo.id)

@@ -10,9 +10,9 @@ private let logger = Logger(label: "FetchPRListUseCase")
 
 public struct FetchPRListUseCase: StreamingUseCase {
 
-    private let config: RepositoryConfiguration
+    private let config: PRRadarRepoConfig
 
-    public init(config: RepositoryConfiguration) {
+    public init(config: PRRadarRepoConfig) {
         self.config = config
     }
 

@@ -30,8 +30,8 @@ struct RepositoryStoreTests {
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
         let repos = [
-            RepositoryInfo(path: URL(filePath: "/tmp/repo1")),
-            RepositoryInfo(
+            RepositoryConfiguration(path: URL(filePath: "/tmp/repo1")),
+            RepositoryConfiguration(
                 path: URL(filePath: "/tmp/repo2"),
                 name: "Custom Name",
                 description: "A test repo",
@@ -57,8 +57,8 @@ struct RepositoryStoreTests {
         // Arrange
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
-        let first = RepositoryInfo(path: URL(filePath: "/tmp/repo1"))
-        let second = RepositoryInfo(path: URL(filePath: "/tmp/repo2"))
+        let first = RepositoryConfiguration(path: URL(filePath: "/tmp/repo1"))
+        let second = RepositoryConfiguration(path: URL(filePath: "/tmp/repo2"))
 
         // Act
         try store.add(first)
@@ -75,7 +75,7 @@ struct RepositoryStoreTests {
         // Arrange
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
-        let original = RepositoryInfo(path: URL(filePath: "/tmp/repo1"), name: "Original")
+        let original = RepositoryConfiguration(path: URL(filePath: "/tmp/repo1"), name: "Original")
         try store.add(original)
 
         var updated = original
@@ -95,8 +95,8 @@ struct RepositoryStoreTests {
         // Arrange
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
-        let first = RepositoryInfo(path: URL(filePath: "/tmp/repo1"))
-        let second = RepositoryInfo(path: URL(filePath: "/tmp/repo2"))
+        let first = RepositoryConfiguration(path: URL(filePath: "/tmp/repo1"))
+        let second = RepositoryConfiguration(path: URL(filePath: "/tmp/repo2"))
         try store.save([first, second])
 
         // Act
@@ -112,8 +112,8 @@ struct RepositoryStoreTests {
         // Arrange
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
-        let repo = RepositoryInfo(path: URL(filePath: "/tmp/repo1"), name: "Target")
-        let other = RepositoryInfo(path: URL(filePath: "/tmp/repo2"))
+        let repo = RepositoryConfiguration(path: URL(filePath: "/tmp/repo1"), name: "Target")
+        let other = RepositoryConfiguration(path: URL(filePath: "/tmp/repo2"))
         try store.save([repo, other])
 
         // Act
@@ -130,7 +130,7 @@ struct RepositoryStoreTests {
         let (store, tempDir) = try makeTempStore()
         defer { cleanup(tempDir) }
         let targetPath = URL(filePath: "/tmp/repo1")
-        let repo = RepositoryInfo(path: targetPath, name: "Target")
+        let repo = RepositoryConfiguration(path: targetPath, name: "Target")
         try store.save([repo])
 
         // Act

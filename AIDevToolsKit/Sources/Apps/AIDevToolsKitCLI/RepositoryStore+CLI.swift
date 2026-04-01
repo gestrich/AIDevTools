@@ -2,7 +2,7 @@ import Foundation
 import RepositorySDK
 
 extension RepositoryStore {
-    func repoConfig(forRepoAt repoPath: URL) throws -> RepositoryInfo {
+    func repoConfig(forRepoAt repoPath: URL) throws -> RepositoryConfiguration {
         let repos = try loadAll()
         guard let repoConfig = repos.first(where: { $0.path.standardized.path == repoPath.standardized.path }) else {
             throw RepositoryStoreError.repositoryNotFound(repoPath)

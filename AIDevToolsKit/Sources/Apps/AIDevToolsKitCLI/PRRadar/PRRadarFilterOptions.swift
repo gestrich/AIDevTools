@@ -25,7 +25,7 @@ struct PRRadarFilterOptions: ParsableArguments {
     @Option(name: .long, help: "Filter by PR author (GitHub login handle)")
     var author: String?
 
-    func buildFilter(config: RepositoryConfiguration) throws -> PRFilter {
+    func buildFilter(config: PRRadarRepoConfig) throws -> PRFilter {
         try validateMutualExclusivity()
 
         let dateFilter: PRDateFilter?

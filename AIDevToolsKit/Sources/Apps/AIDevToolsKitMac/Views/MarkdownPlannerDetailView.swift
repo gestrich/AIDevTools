@@ -8,7 +8,7 @@ import SwiftUI
 struct MarkdownPlannerDetailView: View {
     @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
     let plan: MarkdownPlanEntry
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @State private var planContent: String?
     @State private var localPhases: [PlanPhase] = []

@@ -122,7 +122,7 @@ struct MarkdownPlannerFeatureModelTests {
 
     @Test("GeneratePlanUseCase.Options stores all fields")
     func generatePlanOptions() {
-        let repos: [RepositoryInfo] = []
+        let repos: [RepositoryConfiguration] = []
         let options = GeneratePlanUseCase.Options(
             prompt: "add a button",
             repositories: repos
@@ -133,7 +133,7 @@ struct MarkdownPlannerFeatureModelTests {
 
     @Test("GeneratePlanUseCase.Options stores selectedRepository")
     func generatePlanOptionsSelectedRepository() {
-        let repo = RepositoryInfo(path: URL(fileURLWithPath: "/tmp/my-repo"))
+        let repo = RepositoryConfiguration(path: URL(fileURLWithPath: "/tmp/my-repo"))
         let options = GeneratePlanUseCase.Options(
             prompt: "fix the bug",
             repositories: [repo],

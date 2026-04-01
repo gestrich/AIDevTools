@@ -96,7 +96,7 @@ struct AddRepo: ParsableCommand {
             updateRepository: UpdateRepositoryUseCase(store: store)
         )
         let repo = try useCase.run(
-            repository: RepositoryInfo(path: url, name: name),
+            repository: RepositoryConfiguration(path: url, name: name),
             casesDirectory: casesDir,
             completedDirectory: completedDir,
             proposedDirectory: proposedDir
@@ -204,7 +204,7 @@ struct UpdateRepo: ParsableCommand {
 
         let cwd = URL(filePath: FileManager.default.currentDirectoryPath)
         if let path {
-            repo = RepositoryInfo(
+            repo = RepositoryConfiguration(
                 id: repo.id,
                 path: URL(filePath: path, relativeTo: cwd),
                 name: name ?? repo.name,
@@ -217,7 +217,7 @@ struct UpdateRepo: ParsableCommand {
                 pullRequest: repo.pullRequest
             )
         }
-        if let name { repo = RepositoryInfo(id: repo.id, path: repo.path, name: name, credentialAccount: repo.credentialAccount, description: repo.description, recentFocus: repo.recentFocus, skills: repo.skills, architectureDocs: repo.architectureDocs, verification: repo.verification, pullRequest: repo.pullRequest) }
+        if let name { repo = RepositoryConfiguration(id: repo.id, path: repo.path, name: name, credentialAccount: repo.credentialAccount, description: repo.description, recentFocus: repo.recentFocus, skills: repo.skills, architectureDocs: repo.architectureDocs, verification: repo.verification, pullRequest: repo.pullRequest) }
         if let credentialAccount { repo.credentialAccount = credentialAccount }
         if let description { repo.description = description }
         if let recentFocus { repo.recentFocus = recentFocus }

@@ -3,10 +3,10 @@ import Testing
 @testable import PRRadarConfigService
 @testable import PRRadarModelsService
 
-@Suite("RepositoryConfiguration.makeFilter")
+@Suite("PRRadarRepoConfig.makeFilter")
 struct MakeFilterTests {
 
-    let config = RepositoryConfiguration(
+    let config = PRRadarRepoConfig(
         name: "test",
         repoPath: "/tmp/repo",
         outputDir: "/tmp/output",

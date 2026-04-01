@@ -16,8 +16,8 @@ final class WorkspaceModel {
         case error(Error)
     }
 
-    private(set) var repositories: [RepositoryInfo] = []
-    private(set) var selectedRepository: RepositoryInfo?
+    private(set) var repositories: [RepositoryConfiguration] = []
+    private(set) var selectedRepository: RepositoryConfiguration?
     private(set) var skills: [SkillInfo] = []
     private(set) var isLoadingSkills: Bool = false
     var state: State = .idle
@@ -54,7 +54,7 @@ final class WorkspaceModel {
         self.updateRepository = updateRepository
     }
 
-    func evalConfig(for repo: RepositoryInfo) -> RepositoryEvalConfig? {
+    func evalConfig(for repo: RepositoryConfiguration) -> RepositoryEvalConfig? {
         guard let settings = try? evalSettingsStore.settings(forRepoId: repo.id) else { return nil }
         return RepositoryEvalConfig(
             casesDirectory: settings.resolvedCasesDirectory(repoPath: repo.path),
@@ -63,7 +63,7 @@ final class WorkspaceModel {
         )
     }
 
-    func casesDirectory(for repo: RepositoryInfo) -> String? {
+    func casesDirectory(for repo: RepositoryConfiguration) -> String? {
         try? evalSettingsStore.settings(forRepoId: repo.id)?.casesDirectory
     }
 
@@ -77,7 +77,7 @@ final class WorkspaceModel {
         }
     }
 
-    func selectRepository(_ repo: RepositoryInfo) async {
+    func selectRepository(_ repo: RepositoryConfiguration) async {
         selectedRepository = repo
         skills = []
         isLoadingSkills = true
@@ -94,7 +94,7 @@ final class WorkspaceModel {
     }
 
     func addRepository(
-        _ repo: RepositoryInfo,
+        _ repo: RepositoryConfiguration,
         casesDirectory: String? = nil,
         completedDirectory: String? = nil,
         proposedDirectory: String? = nil
@@ -112,7 +112,7 @@ final class WorkspaceModel {
         }
     }
 
-    func updateRepository(_ repo: RepositoryInfo) {
+    func updateRepository(_ repo: RepositoryConfiguration) {
         do {
             try updateRepository.run(repo)
             if selectedRepository?.id == repo.id {
@@ -150,29 +150,29 @@ final class WorkspaceModel {
         }
     }
 
-    func planSettings(for repo: RepositoryInfo) -> MarkdownPlannerRepoSettings? {
+    func planSettings(for repo: RepositoryConfiguration) -> MarkdownPlannerRepoSettings? {
         try? planSettingsStore.settings(forRepoId: repo.id)
     }
 
-    func proposedDirectory(for repo: RepositoryInfo) -> String? {
+    func proposedDirectory(for repo: RepositoryConfiguration) -> String? {
         try? planSettingsStore.settings(forRepoId: repo.id)?.proposedDirectory
     }
 
-    func completedDirectory(for repo: RepositoryInfo) -> String? {
+    func completedDirectory(for repo: RepositoryConfiguration) -> String? {
         try? planSettingsStore.settings(forRepoId: repo.id)?.completedDirectory
     }
 
-    func prradarSettings(for repo: RepositoryInfo) -> PRRadarRepoSettings {
+    func prradarSettings(for repo: RepositoryConfiguration) -> PRRadarRepoSettings {
         (try? prradarSettingsStore.settings(forRepoId: repo.id)) ?? PRRadarRepoSettings(repoId: repo.id)
     }
 
-    func prradarConfig(for repo: RepositoryInfo) -> RepositoryConfiguration? {
+    func prradarConfig(for repo: RepositoryConfiguration) -> PRRadarRepoConfig? {
         guard !repo.path.path(percentEncoded: false).isEmpty else { return nil }
         let settings = prradarSettings(for: repo)
         let outputDir = dataPath
             .appendingPathComponent("prradar/repos/\(repo.name)")
             .path(percentEncoded: false)
-        return RepositoryConfiguration.make(
+        return PRRadarRepoConfig.make(
             from: repo,
             settings: settings,
             outputDir: outputDir,

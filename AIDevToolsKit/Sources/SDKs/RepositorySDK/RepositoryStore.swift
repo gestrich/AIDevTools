@@ -7,15 +7,15 @@ public struct RepositoryStore: Sendable {
         self.filePath = repositoriesFile
     }
 
-    public func loadAll() throws -> [RepositoryInfo] {
+    public func loadAll() throws -> [RepositoryConfiguration] {
         guard FileManager.default.fileExists(atPath: filePath.path()) else {
             return []
         }
         let data = try Data(contentsOf: filePath)
-        return try JSONDecoder().decode([RepositoryInfo].self, from: data)
+        return try JSONDecoder().decode([RepositoryConfiguration].self, from: data)
     }
 
-    public func save(_ repositories: [RepositoryInfo]) throws {
+    public func save(_ repositories: [RepositoryConfiguration]) throws {
         try ensureDirectoryExists()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -23,13 +23,13 @@ public struct RepositoryStore: Sendable {
         try data.write(to: filePath, options: .atomic)
     }
 
-    public func add(_ repository: RepositoryInfo) throws {
+    public func add(_ repository: RepositoryConfiguration) throws {
         var all = try loadAll()
         all.append(repository)
         try save(all)
     }
 
-    public func update(_ repository: RepositoryInfo) throws {
+    public func update(_ repository: RepositoryConfiguration) throws {
         var all = try loadAll()
         guard let index = all.firstIndex(where: { $0.id == repository.id }) else {
             return
@@ -44,11 +44,11 @@ public struct RepositoryStore: Sendable {
         try save(all)
     }
 
-    public func find(byID id: UUID) throws -> RepositoryInfo? {
+    public func find(byID id: UUID) throws -> RepositoryConfiguration? {
         try loadAll().first { $0.id == id }
     }
 
-    public func find(byPath path: URL) throws -> RepositoryInfo? {
+    public func find(byPath path: URL) throws -> RepositoryConfiguration? {
         try loadAll().first { $0.path == path }
     }
 

@@ -9,7 +9,7 @@ public struct UpdateRepositoryUseCase: UseCase {
         self.store = store
     }
 
-    public func run(_ repository: RepositoryInfo) throws {
+    public func run(_ repository: RepositoryConfiguration) throws {
         try store.update(repository)
     }
 }

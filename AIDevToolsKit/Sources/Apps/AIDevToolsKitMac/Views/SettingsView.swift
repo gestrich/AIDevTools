@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(SettingsModel.self) private var settingsModel
     @Environment(WorkspaceModel.self) private var workspaceModel
-    @State private var editingConfig: RepositoryInfo?
+    @State private var editingConfig: RepositoryConfiguration?
     @State private var isAddingNew = false
     @State private var currentError: Error?
 

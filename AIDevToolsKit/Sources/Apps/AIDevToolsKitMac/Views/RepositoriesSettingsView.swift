@@ -4,7 +4,7 @@ import SwiftUI
 
 struct RepositoriesSettingsView: View {
     let workspaceModel: WorkspaceModel
-    @Binding var editingConfig: RepositoryInfo?
+    @Binding var editingConfig: RepositoryConfiguration?
     @Binding var isAddingNew: Bool
     @Binding var currentError: Error?
     @State private var selectedConfigId: UUID?
@@ -38,7 +38,7 @@ struct RepositoriesSettingsView: View {
                 HStack(spacing: 6) {
                     Button {
                         isAddingNew = true
-                        editingConfig = RepositoryInfo(
+                        editingConfig = RepositoryConfiguration(
                             path: URL(filePath: "/"),
                             name: ""
                         )
@@ -120,7 +120,7 @@ struct RepositoriesSettingsView: View {
 // MARK: - Configuration Detail View
 
 private struct ConfigurationDetailView: View {
-    let config: RepositoryInfo
+    let config: RepositoryConfiguration
     let casesDirectory: String?
     let completedDirectory: String?
     let proposedDirectory: String?

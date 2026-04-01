@@ -41,14 +41,14 @@ enum PRRadarCLIError: Error, CustomStringConvertible {
     }
 }
 
-func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) throws -> RepositoryConfiguration {
+func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) throws -> PRRadarRepoConfig {
     let dataPathsService = try DataPathsService.fromCLI(dataPath: nil)
 
     let repositoriesFile = try dataPathsService.path(for: .repositories).appending(path: "repositories.json")
     let store = RepositoryStore(repositoriesFile: repositoriesFile)
     let repos = try store.loadAll()
 
-    let repo: RepositoryInfo
+    let repo: RepositoryConfiguration
     if let repoName {
         guard let found = repos.first(where: { $0.name == repoName }) else {
             throw PRRadarCLIError.repoNotFound(repoName)
@@ -68,7 +68,7 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
     let outputDir = try dataPathsService.path(for: .prradarOutput(repo.name))
     let outputDirString = outputDir.path(percentEncoded: false)
 
-    var config = RepositoryConfiguration.make(
+    var config = PRRadarRepoConfig.make(
         from: repo,
         settings: settings,
         outputDir: outputDirString,
@@ -77,7 +77,7 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
     )
 
     if let diffSource {
-        config = RepositoryConfiguration(
+        config = PRRadarRepoConfig(
             id: config.id,
             name: config.name,
             repoPath: config.repoPath,
@@ -94,11 +94,11 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
     return config
 }
 
-func resolvePRRadarConfigFromOptions(_ options: PRRadarCLIOptions) throws -> RepositoryConfiguration {
+func resolvePRRadarConfigFromOptions(_ options: PRRadarCLIOptions) throws -> PRRadarRepoConfig {
     try resolvePRRadarConfig(repoName: options.config, diffSource: options.diffSource)
 }
 
-func resolveRulesDir(rulesPathName: String?, config: RepositoryConfiguration) throws -> String {
+func resolveRulesDir(rulesPathName: String?, config: PRRadarRepoConfig) throws -> String {
     guard let rulesPathName else {
         return config.resolvedDefaultRulesDir
     }

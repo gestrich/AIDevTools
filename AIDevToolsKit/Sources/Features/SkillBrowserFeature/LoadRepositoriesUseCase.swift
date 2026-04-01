@@ -9,7 +9,7 @@ public struct LoadRepositoriesUseCase: UseCase {
         self.store = store
     }
 
-    public func run() throws -> [RepositoryInfo] {
+    public func run() throws -> [RepositoryConfiguration] {
         try store.loadAll()
     }
 }

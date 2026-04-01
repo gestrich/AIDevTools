@@ -52,7 +52,7 @@ struct WorkspaceView: View {
     }
 
     @ViewBuilder
-    private func tabContent(for repo: RepositoryInfo) -> some View {
+    private func tabContent(for repo: RepositoryConfiguration) -> some View {
         TabView(selection: $selectedTab) {
             ArchitecturePlannerView(repository: repo)
                 .tabItem { Label("Architecture", systemImage: "building.columns") }

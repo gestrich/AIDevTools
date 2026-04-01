@@ -49,7 +49,7 @@ final class MarkdownPlannerModel {
     private(set) var isLoadingPlans: Bool = false
     private(set) var executionCompleteCount: Int = 0
     private(set) var phaseCompleteCount: Int = 0
-    private(set) var currentRepository: RepositoryInfo?
+    private(set) var currentRepository: RepositoryConfiguration?
     private(set) var queuedTasks: [QueuedTask] = []
     /// Bridge for views to relay execution progress to a ChatModel for streaming display.
     var executionProgressObserver: (@MainActor (ExecutePlanUseCase.Progress) -> Void)?
@@ -104,7 +104,7 @@ final class MarkdownPlannerModel {
         activeClient = client
     }
 
-    func loadPlans(for repo: RepositoryInfo) async {
+    func loadPlans(for repo: RepositoryConfiguration) async {
         if currentRepository?.id != repo.id {
             chatModels = [:]
         }
@@ -132,7 +132,7 @@ final class MarkdownPlannerModel {
         await loadPlans(for: repo)
     }
 
-    func getPlanDetails(planName: String, repository: RepositoryInfo) async throws -> String {
+    func getPlanDetails(planName: String, repository: RepositoryConfiguration) async throws -> String {
         let proposedDir = try resolvedProposedDirectory(for: repository)
         return try await GetPlanDetailsUseCase(proposedDirectory: proposedDir).run(planName: planName)
     }
@@ -144,7 +144,7 @@ final class MarkdownPlannerModel {
         return updatedContent
     }
 
-    func completePlan(_ plan: MarkdownPlanEntry, repository: RepositoryInfo) throws {
+    func completePlan(_ plan: MarkdownPlanEntry, repository: RepositoryConfiguration) throws {
         let settings = try planSettingsStore.settings(forRepoId: repository.id) ?? MarkdownPlannerRepoSettings(repoId: repository.id)
         let completedDir = settings.resolvedCompletedDirectory(repoPath: repository.path)
         try CompletePlanUseCase(completedDirectory: completedDir).run(planURL: plan.planURL)
@@ -153,7 +153,7 @@ final class MarkdownPlannerModel {
 
     func execute(
         plan: MarkdownPlanEntry,
-        repository: RepositoryInfo,
+        repository: RepositoryConfiguration,
         executeMode: ExecutePlanUseCase.ExecuteMode = .all,
         stopAfterArchitectureDiagram: Bool = false
     ) async {
@@ -207,7 +207,7 @@ final class MarkdownPlannerModel {
 
     /// Generates a plan and returns the plan name (filename without extension) on success.
     @discardableResult
-    func generate(prompt: String, repositories: [RepositoryInfo], selectedRepository: RepositoryInfo? = nil) async -> String? {
+    func generate(prompt: String, repositories: [RepositoryConfiguration], selectedRepository: RepositoryConfiguration? = nil) async -> String? {
         state = .generating(step: selectedRepository != nil ? "Generating plan..." : "Matching repository...")
 
         let settingsStore = planSettingsStore
@@ -350,7 +350,7 @@ final class MarkdownPlannerModel {
         executionProgressObserver?(progress)
     }
 
-    private func resolvedProposedDirectory(for repo: RepositoryInfo) throws -> URL {
+    private func resolvedProposedDirectory(for repo: RepositoryConfiguration) throws -> URL {
         let settings = try planSettingsStore.settings(forRepoId: repo.id) ?? MarkdownPlannerRepoSettings(repoId: repo.id)
         return settings.resolvedProposedDirectory(repoPath: repo.path)
     }

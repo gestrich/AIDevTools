@@ -9,7 +9,7 @@ struct PRRadarContentView: View {
 
     private let logger = Logger(label: "PRRadarContentView")
 
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @Environment(WorkspaceModel.self) private var workspaceModel
     @State private var allPRsModel: AllPRsModel?

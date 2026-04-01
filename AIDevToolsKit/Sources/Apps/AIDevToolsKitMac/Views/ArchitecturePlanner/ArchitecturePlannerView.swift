@@ -5,7 +5,7 @@ import SwiftUI
 struct ArchitecturePlannerView: View {
     @Environment(ArchitecturePlannerModel.self) var model
 
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @State private var showCreateSheet = false
 

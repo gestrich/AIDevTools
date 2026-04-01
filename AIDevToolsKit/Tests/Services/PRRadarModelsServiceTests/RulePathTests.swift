@@ -30,13 +30,13 @@ struct RulePathTests {
     }
 }
 
-struct RepositoryConfigurationRulePathTests {
+struct PRRadarRepoConfigRulePathTests {
 
     // MARK: - defaultRulePath
 
     @Test func defaultRulePathReturnsMarkedDefault() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -58,7 +58,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func defaultRulePathFallsBackToFirst() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -80,7 +80,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func defaultRulePathReturnsNilWhenEmpty() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -101,7 +101,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedDefaultRulesDirWithAbsolutePath() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -120,7 +120,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedDefaultRulesDirWithRelativePath() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -139,7 +139,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedDefaultRulesDirWithTildePath() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -159,7 +159,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedDefaultRulesDirReturnsEmptyWhenNoRulePaths() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -180,7 +180,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedRulesDirNamedFindsMatchingPath() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",
@@ -202,7 +202,7 @@ struct RepositoryConfigurationRulePathTests {
 
     @Test func resolvedRulesDirNamedReturnsNilForUnknownName() {
         // Arrange
-        let config = RepositoryConfiguration(
+        let config = PRRadarRepoConfig(
             name: "test",
             repoPath: "/tmp/repo",
             outputDir: "/tmp/output",

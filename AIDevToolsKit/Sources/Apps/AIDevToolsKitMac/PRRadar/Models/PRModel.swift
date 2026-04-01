@@ -12,7 +12,7 @@ private let logger = Logger(label: "PRModel")
 final class PRModel: Identifiable, Hashable {
 
     private(set) var metadata: PRMetadata
-    let config: RepositoryConfiguration
+    let config: PRRadarRepoConfig
 
     nonisolated let id: Int
 
@@ -75,7 +75,7 @@ final class PRModel: Identifiable, Hashable {
     var currentCommitHash: String? { detail?.commitHash }
     var availableCommits: [String] { detail?.availableCommits ?? [] }
 
-    init(metadata: PRMetadata, config: RepositoryConfiguration) {
+    init(metadata: PRMetadata, config: PRRadarRepoConfig) {
         self.id = metadata.id
         self.metadata = metadata
         self.config = config

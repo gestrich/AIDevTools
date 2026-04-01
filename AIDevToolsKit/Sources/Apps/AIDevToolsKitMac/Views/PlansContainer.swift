@@ -6,7 +6,7 @@ struct PlansContainer: View {
     @Environment(MarkdownPlannerModel.self) var markdownPlannerModel
     @Environment(WorkspaceModel.self) var model
 
-    let repository: RepositoryInfo
+    let repository: RepositoryConfiguration
 
     @AppStorage("selectedPlanName") private var storedPlanName: String = ""
     @State private var selectedPlanName: String?
