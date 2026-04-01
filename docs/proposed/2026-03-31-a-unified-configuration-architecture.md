@@ -132,7 +132,10 @@ Update `docs/guides/configuration-architecture.md` to reflect the final design:
 - Describe the runtime credential change pattern
 - Add the checklist from the `configuration-architecture` skill
 
-## - [ ] Phase 8: Validation
+## - [x] Phase 8: Validation
+
+**Skills used**: none
+**Principles applied**: Verified all prior phases delivered their stated outcomes: build is clean, `RepositoryConfiguration` carries `prradar`/`eval`/`planner` optional properties, `MigrateDataPathsUseCase.migrateFeatureSettingsIntoRepositories()` merges the three legacy JSON files into `repositories.json` then deletes them, PRRadar CLI reads `repo.prradar`, and `CredentialManagementView`/`WorkspaceView` both call `appModel.applyCredentialChange(_:)` after credential saves/deletes.
 
 - Build succeeds with no warnings
 - Existing repositories.json data survives the migration (test with a real data directory)
