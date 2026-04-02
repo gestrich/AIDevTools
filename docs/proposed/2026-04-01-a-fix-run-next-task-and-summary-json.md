@@ -159,9 +159,10 @@ Implementation:
 4. Add a logger debug line noting how many existing branches were found and which task was
    selected.
 
-## - [ ] Phase 4: Fix Bug 2 — Extract plain text from summary AI result
+## - [x] Phase 4: Fix Bug 2 — Extract plain text from summary AI result
 
-**Skills to read**: `logging`
+**Skills used**: `logging`
+**Principles applied**: Added a file-private `TextAccumulator` class (`@unchecked Sendable`) to each file and wired it into the `onOutput` callback so plain text is collected incrementally instead of reading `summaryResult.stdout` (the raw JSON stream). Added a `logger.debug` line reporting the char count of collected text, following the debug-level convention for non-noisy diagnostics. Applied identical change to both `RunChainTaskUseCase.swift` and `FinalizeStagedTaskUseCase.swift`.
 
 Fix both `RunChainTaskUseCase.swift` and `FinalizeStagedTaskUseCase.swift` to collect the
 AI text response from stream events instead of from `stdout`.

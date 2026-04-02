@@ -8,6 +8,10 @@ import Logging
 import PipelineSDK
 import UseCaseSDK
 
+private final class TextAccumulator: @unchecked Sendable {
+    var text = ""
+}
+
 public struct FinalizeStagedTaskUseCase: UseCase {
 
     public struct Options: Sendable {
@@ -175,15 +179,18 @@ public struct FinalizeStagedTaskUseCase: UseCase {
                 dangerouslySkipPermissions: true,
                 workingDirectory: options.repoPath.path
             )
-            let summaryResult = try await client.run(
+            let summaryText = TextAccumulator()
+            _ = try await client.run(
                 prompt: summaryPrompt,
                 options: summaryOptions,
-                onOutput: nil,
+                onOutput: { chunk in summaryText.text += chunk },
                 onStreamEvent: { event in
                     onProgress?(.summaryStreamEvent(event))
                 }
             )
-            summaryContent = summaryResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            summaryContent = summaryText.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if summaryContent?.isEmpty == true { summaryContent = nil }
+            logger.debug("summary: collected \(summaryText.text.count) chars of plain text")
             summaryCost = ChainPRHelpers.extractCost()
             if let summary = summaryContent, !summary.isEmpty {
                 onProgress?(.summaryCompleted(summary: summary))
