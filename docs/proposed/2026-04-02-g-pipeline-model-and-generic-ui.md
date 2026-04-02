@@ -67,7 +67,10 @@ Add two new types to `PipelineSDK` and update existing ones.
 - Pass `configuration.workingDirectory` and `configuration.environment` when constructing `AITask`
 - Call `configuration.betweenTasks?()` after `markComplete` and before the next `nextTask()` (skip on last task)
 
-## - [ ] Phase 2: Add `PipelineModel` to the Apps layer
+## - [x] Phase 2: Add `PipelineModel` to the Apps layer
+
+**Skills used**: `swift-architecture`, `swift-swiftui`
+**Principles applied**: `PipelineModel` placed in the Apps layer as `@MainActor @Observable`. Stores a `Task` reference to enable `stop()` cancellation. `NodeState` is a nested `Identifiable` struct with alphabetically ordered properties. Events dispatched back to `@MainActor` via `Task { @MainActor in ... }` matching the pattern in `MarkdownPlannerModel`. Dynamically appended nodes (not in initial manifest) handled in `.nodeStarted`.
 
 **Skills to read**: `swift-architecture`, `swift-swiftui`
 
