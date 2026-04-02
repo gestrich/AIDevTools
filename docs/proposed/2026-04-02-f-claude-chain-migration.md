@@ -35,18 +35,31 @@
 
 ---
 
-## - [ ] Phase 1: Map Use Cases to PipelineSDK Types
+## - [x] Phase 1: Map Use Cases to PipelineSDK Types
+
+**Skills used**: none
+**Principles applied**: Audited `RunChainTaskUseCase` and `FinalizeStagedTaskUseCase` against the full PipelineSDK surface. Key decisions: project prep and branch creation stay as service setup (same pattern as Plans tab); commit after AI maps to a new `CommitNode` inserted before `PRStep` in the blueprint; summary generation and PR comment are post-pipeline service steps (not nodes); `stagingOnly` omits `PRStep` from the blueprint rather than using a config flag; `FinalizeStagedTaskUseCase` becomes a blueprint with only `PRStep`; `MarkdownTaskSource(taskIndex:)` already handles indexed filtering but uses 0-based IDs while `RunChainTaskUseCase` uses 1-based indices — service must convert.
 
 Audit `RunChainTaskUseCase` and `FinalizeStagedTaskUseCase` and document their pipeline equivalents. Deliverable: a table with columns: **Behavior**, **Current location**, **Pipeline node / type**, **Notes**.
 
-Items to determine:
-- Project preparation (fetch, checkout, pull, branch creation) — service setup before pipeline starts, or a dedicated `SetupNode`?
-- AI execution + commit — is this one `TaskNode` or two nodes? Confirm how `MarkdownTaskSource` feeds the task description for a single filtered task and how `taskIndex` filtering is applied.
-- `PRStep` inputs: what does it need from the preceding AI node? (branch name, commit message, cost metrics) — confirm these flow via pipeline context.
-- Summary generation + PR comment — are these part of `PRStep`, a separate `ReviewStep`, or a post-`PRStep` node?
-- `stagingOnly` — does this become a pipeline configuration flag that skips `PRStep`, or does the service simply not include `PRStep` in the assembled pipeline?
-- `FinalizeStagedTaskUseCase` — does this become a separate single-node pipeline (`PRStep` only) or reuse `PRStep` directly?
-- Capacity check (`maxOpenPRs`) — already in `PRStep` per the framework plan; confirm the check uses the same `GitHubClient` path as today.
+| Behavior | Current location | Pipeline node / type | Notes |
+|---|---|---|---|
+| `git fetch origin/<baseBranch>`, checkout `FETCH_HEAD` so spec.md reflects latest remote | `RunChainTaskUseCase.run()` lines 126–130 | Service setup in `ClaudeChainService.buildPipeline()` — not a node | Must happen before task selection; same pattern as Plans tab pre-pipeline guard |
+| Load spec content and detect next pending task (with remote-branch dedup when no `taskIndex`) | `RunChainTaskUseCase.run()` lines 145–181 | Service setup — determines resolved `taskIndex`, then passed to `MarkdownTaskSource(taskIndex:)` | Branch-dedup logic (`listRemoteBranches`) is Chain-specific and belongs in the service. `MarkdownTaskSource.nextTask()` handles the filtered lookup once `taskIndex` is known. `RunChainTaskUseCase` uses 1-based `taskIndex` (user-facing) while `MarkdownTaskSource` compares against 0-based step IDs — service must pass the 0-based index. |
+| Create feature branch (`git checkout -B <branchName>`) | `RunChainTaskUseCase.run()` lines 192–194 | Service setup in `ClaudeChainService.buildPipeline()` — not a node | Branch name is derived before building the blueprint (`PRService.formatBranchName`); same pattern as service setup |
+| Pre-action script (`ScriptRunner.runActionScript(type: "pre")`) | `RunChainTaskUseCase.run()` lines 197–204 | Service setup — runs before `PipelineRunner.run()` | Optional (no-op when script absent); per-task scope fits service setup rather than a node |
+| AI execution (run Claude on task description + spec context) | `RunChainTaskUseCase.run()` lines 207–226 | `TaskSourceNode` → `PipelineRunner.drainTaskSource()` → `AITask<String>` | `MarkdownTaskSource(format: .task, taskIndex: resolvedIndex, instructionBuilder:)` supplies the enriched prompt. `PipelineRunner.drainTaskSource` drives the AI call and calls `source.markComplete()` after. One logical unit in the pipeline. |
+| Commit AI changes (`git add -A && git commit "Complete task: …"`) | `RunChainTaskUseCase.run()` lines 245–252 | New `CommitNode` in blueprint, positioned after `TaskSourceNode` and before `PRStep` | `PipelineRunner` runs nodes in array order; after `TaskSourceNode` finishes `drainTaskSource`, `CommitNode` runs next. `CommitNode` receives the commit message as an init parameter (service knows the task description before building the blueprint). |
+| Mark spec.md checkbox complete (`markStepCompleted`) | `RunChainTaskUseCase.run()` lines 267–273 | `MarkdownTaskSource.markComplete()` called by `PipelineRunner.drainTaskSource()` — no extra node | `drainTaskSource` calls `source.markComplete(task)` after AI finishes. The file-system update is done; a subsequent git commit for spec.md must follow. This commit is merged into `CommitNode` (which runs `git add -A` before committing, picking up the spec.md change). |
+| Optional review pass (structured AI → commit review changes → append review note to spec.md) | `RunChainTaskUseCase.run()` lines 276–316 | Post-`TaskSourceNode` custom node (e.g., `ReviewPassNode`) or service-layer step after AI completes; deferred to Phase 2 design | Complex: runs AI, commits, mutates spec.md. Cleanest mapping is a dedicated custom node inserted after `CommitNode` and before `PRStep` when `review.md` exists. `CommitNode` can do a second add-commit pass to capture spec.md review annotation. |
+| Push branch (`git push --force --set-upstream origin <branch>`) | `RunChainTaskUseCase.run()` line 319 | `PRStep.run()` — first operation inside PRStep | Already handled by `PRStep` |
+| Capacity check (`maxOpenPRs`) | `RunChainTaskUseCase.run()` lines 324–339 — via `AssigneeService.checkCapacity` | `PRStep.run()` — `PRConfiguration.maxOpenPRs`; throws `PipelineError.capacityExceeded` | `PRStep` already implements this check using `countOpenPRs` (gh CLI). Same code path; service passes `maxOpenPRs` from `projectConfig` into `PRConfiguration`. |
+| Create draft PR (gh pr create, assignees, reviewers, labels) | `RunChainTaskUseCase.run()` lines 342–387 | `PRStep.run()` | `PRStep` writes `prURL` and `prNumber` to `PipelineContext` via `PRStep.prURLKey` / `PRStep.prNumberKey` |
+| Post-action script (`ScriptRunner.runActionScript(type: "post")`) | `RunChainTaskUseCase.run()` lines 232–239 | Service teardown — runs after `PipelineRunner.run()` completes | Symmetric with pre-script; service-layer concern |
+| Summary generation (AI call → markdown summary of `git diff baseBranch…HEAD`) | `RunChainTaskUseCase.run()` lines 391–427 | Post-pipeline service step in `ClaudeChainService` — reads `prNumber`/`prURL` from final context | Non-fatal; runs after `PipelineRunner.run()` returns the final `PipelineContext`. PR number is read from `context[PRStep.prNumberKey]`. |
+| Post PR comment (formatted `PullRequestCreatedReport` with cost, summary, task progress) | `RunChainTaskUseCase.run()` lines 430–474 | Post-pipeline service step in `ClaudeChainService` | Non-fatal; uses `prNumber` from final context. Cost metric is read from `context[AITask<String>.metricsKey]`. |
+| `stagingOnly` — stop after commit, skip push/PR | `RunChainTaskUseCase.run()` lines 254–265 | Service omits `PRStep` from the assembled blueprint when `options.stagingOnly == true` | Not a `PipelineConfiguration.stagingOnly` flag; the service simply does not include `PRStep` (or summary/comment steps) in the blueprint. Cleaner than a runtime skip flag. |
+| `FinalizeStagedTaskUseCase` — push + PR for a previously staged commit | `FinalizeStagedTaskUseCase.run()` | Blueprint with a single `PRStep` node; service setup handles checkout + `markComplete` + commit before running the blueprint | No AI needed; the task is already committed. Service calls `MarkdownTaskSource.markComplete()` directly before building the finalize blueprint. Summary generation and PR comment remain post-pipeline service steps, same as normal run. |
 
 ## - [ ] Phase 2: Implement ClaudeChainService with buildPipeline(for task:)
 
