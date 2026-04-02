@@ -9,16 +9,9 @@ struct PipelineView: View {
 
     let phases: [Phase]
     let currentPhaseIndex: Int?
-    let currentOutput: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            phaseList
-
-            if !currentOutput.isEmpty {
-                OutputPanel(title: "Output", text: currentOutput, autoScroll: true)
-            }
-        }
+        phaseList
     }
 
     private var phaseList: some View {
