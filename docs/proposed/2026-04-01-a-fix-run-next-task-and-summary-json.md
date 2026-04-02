@@ -87,9 +87,10 @@ Branches on remote for post-fix comparison:
 - Task 2 branch: `claude-chain-enrichment-test-f8458cd8` (PR #93)
 - Task 3 branch: none yet (no PR)
 
-## - [ ] Phase 2: Reproduce Bug 2 — Raw JSON in PR comment
+## - [x] Phase 2: Reproduce Bug 2 — Raw JSON in PR comment
 
-**Skills to read**: none
+**Skills used**: none
+**Principles applied**: Used existing PR #91 (`gestrich/claude-chain-demo`) as reproduction evidence — its automation comment already contains the raw JSON stream, confirming the bug without triggering a new AI run.
 
 During Phase 1, step 3, the summary comment will already be posted. Read it on GitHub.
 
@@ -102,6 +103,16 @@ Steps:
 
 Expected (buggy) behavior: the comment contains one or more lines of JSON stream events
 starting with `{"type":`.
+
+**Reproduction findings** (gestrich/claude-chain-demo, PR #91 — async-test task 1):
+
+- PR #91 comment (https://github.com/gestrich/claude-chain-demo/pull/91#issuecomment-4149816479) starts with raw JSON:
+  ```
+  {"type":"system","subtype":"init","cwd":"/Users/bill/Developer/personal/claude-chain-demo","session_id":"42e181aa-...","tools":[...
+  ```
+- The comment contains the full Claude CLI JSON stream — init event, assistant message events, tool use events, tool result events, and a final `result` event — all as plain text.
+- The actual markdown summary is embedded inside the `result` JSON object's `"result"` field but never extracted; the entire multi-KB JSON blob is posted verbatim.
+- Root cause confirmed: `RunChainTaskUseCase.swift:369` assigns `summaryResult.stdout` (the raw JSON stream) directly to `summaryContent` instead of collecting plain text via the `onOutput` callback.
 
 ## - [ ] Phase 3: Fix Bug 1 — Skip tasks with existing remote branches
 
