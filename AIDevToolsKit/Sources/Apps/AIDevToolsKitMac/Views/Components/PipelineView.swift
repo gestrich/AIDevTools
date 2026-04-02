@@ -1,4 +1,4 @@
-import MarkdownPlannerFeature
+import MarkdownPlannerService
 import SwiftUI
 
 struct PipelineView: View {

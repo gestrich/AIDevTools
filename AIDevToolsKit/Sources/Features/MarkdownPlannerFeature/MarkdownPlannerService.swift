@@ -3,10 +3,12 @@ import CredentialService
 import Foundation
 import GitSDK
 import Logging
+import MarkdownPlannerService
 import PipelineSDK
 import RepositorySDK
+import UseCaseSDK
 
-public struct MarkdownPlannerService: Sendable {
+public struct MarkdownPlannerService: UseCase {
 
     // MARK: - Generate types
 
