@@ -87,7 +87,10 @@ Create `AIDevToolsUITests/AIDevToolsUITests.swift` following the GetRicher patte
 
 **Note:** The app needs at least one repository configured to show tab content. Tests should handle the empty state gracefully (screenshot whatever is visible).
 
-## - [ ] Phase 3: Claw writes the interactive control test (CLAW)
+## - [x] Phase 3: Claw writes the interactive control test (CLAW)
+
+**Skills used**: `swift-snapshot-testing`
+**Principles applied**: The `InteractiveControlTests` class with `testInteractiveControl()` was already present in `AIDevToolsInteractiveTests/AIDevToolsInteractiveTests.swift` from Phase 1. It correctly imports `XCUITestControl`, launches the app, and runs `InteractiveControlLoop().run(app:)` per Method 4 of the snapshot skill. Verified both the app and test targets build successfully (`** TEST BUILD SUCCEEDED **`).
 
 **Skills to read**: `swift-snapshot-testing`
 
