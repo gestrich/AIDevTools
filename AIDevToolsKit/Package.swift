@@ -512,7 +512,7 @@ let package = Package(
         // Test Targets (alphabetical)
         .testTarget(
             name: "AIDevToolsKitMacTests",
-            dependencies: ["AIDevToolsKitMac", "ClaudeChainFeature"],
+            dependencies: ["AIDevToolsKitMac", "ClaudeChainFeature", "ClaudeChainService", "DataPathsService"],
             path: "Tests/Apps/AIDevToolsKitMacTests"
         ),
         .testTarget(
