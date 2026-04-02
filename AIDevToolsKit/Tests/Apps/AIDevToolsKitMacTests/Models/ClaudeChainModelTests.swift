@@ -1,5 +1,7 @@
 import AIOutputSDK
 import ClaudeChainFeature
+import ClaudeChainService
+import DataPathsService
 import Foundation
 import ProviderRegistryService
 import Testing
@@ -33,17 +35,19 @@ struct ClaudeChainModelTests {
         try? FileManager.default.removeItem(at: url)
     }
 
-    @MainActor private func makeModel() -> ClaudeChainModel {
+    @MainActor private func makeModel() throws -> ClaudeChainModel {
         let registry = ProviderRegistry(providers: [StubAIClient()])
-        return ClaudeChainModel(providerRegistry: registry)
+        let tempRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let dataPathsService = try DataPathsService(rootPath: tempRoot)
+        return ClaudeChainModel(providerRegistry: registry, dataPathsService: dataPathsService)
     }
 
     // MARK: - loadChains state transitions
 
     @Test("initial state is idle")
-    @MainActor func initialState() {
+    @MainActor func initialState() throws {
         // Arrange
-        let model = makeModel()
+        let model = try makeModel()
 
         // Assert
         guard case .idle = model.state else {
@@ -64,10 +68,10 @@ struct ClaudeChainModelTests {
             - [ ] Task 2 - Pending
             """)
         defer { cleanup(repoPath) }
-        let model = makeModel()
+        let model = try makeModel()
 
         // Act
-        model.loadChains(for: repoPath)
+        model.loadChains(for: repoPath, credentialAccount: nil)
 
         // Assert
         guard case .loadingChains = model.state else {
@@ -92,10 +96,10 @@ struct ClaudeChainModelTests {
                 """
         )
         defer { cleanup(repoPath) }
-        let model = makeModel()
+        let model = try makeModel()
 
         // Act
-        model.loadChains(for: repoPath)
+        model.loadChains(for: repoPath, credentialAccount: nil)
         try await Task.sleep(for: .milliseconds(100))
 
         // Assert
@@ -120,10 +124,10 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = makeModel()
+        let model = try makeModel()
 
         // Act
-        model.loadChains(for: tempDir)
+        model.loadChains(for: tempDir, credentialAccount: nil)
         try await Task.sleep(for: .milliseconds(100))
 
         // Assert
@@ -162,10 +166,10 @@ struct ClaudeChainModelTests {
             )
         }
         defer { cleanup(tempDir) }
-        let model = makeModel()
+        let model = try makeModel()
 
         // Act
-        model.loadChains(for: tempDir)
+        model.loadChains(for: tempDir, credentialAccount: nil)
         try await Task.sleep(for: .milliseconds(100))
 
         // Assert
@@ -190,21 +194,23 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = makeModel()
+        let model = try makeModel()
+        let task = ChainTask(index: 1, description: "Test task", isCompleted: false)
+        let project = ChainProject(name: "test", specPath: "", tasks: [task], completedTasks: 0, pendingTasks: 1, totalTasks: 1)
 
         // Act
-        model.executeChain(projectName: "test", repoPath: tempDir)
+        model.executeChain(project: project, repoPath: tempDir)
 
         // Assert
         guard case .executing(let progress) = model.state else {
             Issue.record("Expected .executing, got \(model.state)")
             return
         }
-        #expect(progress.phases.count == 7)
+        #expect(progress.phases.count == 8)
         #expect(progress.phases.allSatisfy { $0.status == .pending })
     }
 
-    @Test("executeChain transitions to error for nonexistent project")
+    @Test("executeChain transitions to error when no pending task")
     @MainActor func executeChainErrorForMissingProject() async throws {
         // Arrange
         let tempDir = FileManager.default.temporaryDirectory
@@ -214,18 +220,18 @@ struct ClaudeChainModelTests {
             withIntermediateDirectories: true
         )
         defer { cleanup(tempDir) }
-        let model = makeModel()
+        let model = try makeModel()
+        let project = ChainProject(name: "empty", specPath: "", tasks: [], completedTasks: 0, pendingTasks: 0, totalTasks: 0)
 
         // Act
-        model.executeChain(projectName: "nonexistent", repoPath: tempDir)
-        try await Task.sleep(for: .milliseconds(200))
+        model.executeChain(project: project, repoPath: tempDir)
 
         // Assert
         guard case .error(let error) = model.state else {
             Issue.record("Expected .error, got \(model.state)")
             return
         }
-        #expect(error.localizedDescription.contains("No spec.md found"))
+        #expect(error.localizedDescription.contains("No pending task found"))
     }
 }
 

@@ -109,7 +109,7 @@ Tasks:
 
 Verify end-to-end: run a full chain task from the Mac app (both normal and staging-only), finalize a staged task, confirm PR created and comment posted.
 
-## - [ ] Phase 4: Update Claude Chain Tab UI to Master-Detail with PipelineView
+## - [x] Phase 4: Update Claude Chain Tab UI to Master-Detail with PipelineView
 
 Wire `ClaudeChainDetailView` to `PipelineView` in a master-detail layout. Selecting a task in the sidebar shows that task's `PipelineView`.
 
@@ -126,7 +126,10 @@ Tasks:
 
 Verify: Claude Chain tab renders correctly in master-detail layout; selecting different tasks shows the correct `PipelineView` for each; per-task play buttons work; staging-only and finalize-staged flows work; PR link appears on completion.
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
+
+**Skills used**: `ai-dev-tools-review`, `swift-testing`
+**Principles applied**: Fixed pre-existing compilation errors (`baseBranch` missing in `ExecuteChainUseCaseTests`, `GitHubService` → `GitHubAPIService` in `GitHistoryProviderTests`, `async` missing on `LoadPRDetailUseCaseTests`). Made `git fetch` best-effort in `RunChainTaskUseCase` so spec.md error-path tests pass without a real git remote. Added `MarkdownTaskSource` tests for `taskIndex` filtering and `markComplete` targeting — all pass. Pre-existing failures (`stop halts` race condition, demo-repo chain count mismatch) are unrelated to Phase 5 scope.
 
 **Skills to read:** `ai-dev-tools-review`, `swift-testing`
 

@@ -57,7 +57,7 @@ struct RunChainTaskUseCaseTests {
 
         // Act
         let result = try await useCase.run(
-            options: .init(repoPath: tmpDir, projectName: "test-project"),
+            options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
             onProgress: { progress in
                 progressEvents.append(progressLabel(progress))
             }
@@ -85,7 +85,7 @@ struct RunChainTaskUseCaseTests {
 
         // Act
         let result = try await useCase.run(
-            options: .init(repoPath: tmpDir, projectName: "test-project"),
+            options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
             onProgress: { progress in
                 progressEvents.append(progressLabel(progress))
             }
@@ -118,7 +118,7 @@ struct RunChainTaskUseCaseTests {
         do {
             _ = try await withCWD(tmpDir.path) {
                 try await useCase.run(
-                    options: .init(repoPath: tmpDir, projectName: "test-project"),
+                    options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
                     onProgress: { progress in
                         progressEvents.append(progressLabel(progress))
                         if case .preparedTask(let desc, let idx, let total) = progress {
@@ -160,7 +160,7 @@ struct RunChainTaskUseCaseTests {
         do {
             _ = try await withCWD(tmpDir.path) {
                 try await useCase.run(
-                    options: .init(repoPath: tmpDir, projectName: "test-project"),
+                    options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
                     onProgress: { progress in
                         progressEvents.append(progressLabel(progress))
                     }
@@ -243,62 +243,6 @@ private func progressLabel(_ progress: RunChainTaskUseCase.Progress) -> String {
     case .runningReview: "runningReview"
     case .summaryCompleted: "summaryCompleted"
     case .summaryStreamEvent: "summaryStreamEvent"
-    }
-}
-
-// MARK: - extractReviewSummary Tests
-
-@Suite("RunChainTaskUseCase.extractReviewSummary")
-struct ExtractReviewSummaryTests {
-
-    private let useCase = RunChainTaskUseCase(client: StubAIClient())
-
-    @Test("finds REVIEW_SUMMARY line")
-    func findsLine() {
-        // Arrange
-        let output = "Some output\nREVIEW_SUMMARY: Fixed naming conventions\n"
-
-        // Act
-        let result = useCase.extractReviewSummary(from: output)
-
-        // Assert
-        #expect(result == "Fixed naming conventions")
-    }
-
-    @Test("falls back to 'Review completed' when line is absent")
-    func fallsBack() {
-        // Arrange
-        let output = "No summary line here at all."
-
-        // Act
-        let result = useCase.extractReviewSummary(from: output)
-
-        // Assert
-        #expect(result == "Review completed")
-    }
-
-    @Test("uses last REVIEW_SUMMARY when multiple are present")
-    func usesLastMatch() {
-        // Arrange
-        let output = "REVIEW_SUMMARY: First match\nMore output\nREVIEW_SUMMARY: Last match"
-
-        // Act
-        let result = useCase.extractReviewSummary(from: output)
-
-        // Assert
-        #expect(result == "Last match")
-    }
-
-    @Test("trims surrounding whitespace from summary")
-    func trimsWhitespace() {
-        // Arrange
-        let output = "REVIEW_SUMMARY:   Trimmed value   "
-
-        // Act
-        let result = useCase.extractReviewSummary(from: output)
-
-        // Assert
-        #expect(result == "Trimmed value")
     }
 }
 

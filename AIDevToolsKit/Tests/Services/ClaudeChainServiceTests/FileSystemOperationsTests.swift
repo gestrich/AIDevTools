@@ -99,7 +99,7 @@ final class FileSystemOperationsTests: XCTestCase {
         try FileSystemOperations.writeFile(path: filePath, content: content)
 
         // Assert
-        XCTAssertFileExists(filePath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: filePath.path))
         let writtenContent = try String(contentsOf: filePath, encoding: .utf8)
         XCTAssertEqual(writtenContent, content)
     }
@@ -132,7 +132,7 @@ final class FileSystemOperationsTests: XCTestCase {
         try FileSystemOperations.writeFile(path: filePath, content: "")
 
         // Assert
-        XCTAssertFileExists(filePath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: filePath.path))
         let writtenContent = try String(contentsOf: filePath, encoding: .utf8)
         XCTAssertEqual(writtenContent, "")
     }
@@ -265,7 +265,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let result = try FileSystemOperations.findFile(startDir: tempDir, filename: "target.txt")
 
         // Assert
-        XCTAssertEqualPaths(result!, targetFile)
+        XCTAssertEqual(result!.standardizedFileURL, targetFile.standardizedFileURL)
     }
 
     func testFindFileInSubdirectory() throws {
@@ -282,7 +282,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let result = try FileSystemOperations.findFile(startDir: tempDir, filename: "target.txt")
 
         // Assert
-        XCTAssertEqualPaths(result!, targetFile)
+        XCTAssertEqual(result!.standardizedFileURL, targetFile.standardizedFileURL)
     }
 
     func testFindFileInNestedSubdirectories() throws {
@@ -299,7 +299,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let result = try FileSystemOperations.findFile(startDir: tempDir, filename: "target.txt")
 
         // Assert
-        XCTAssertEqualPaths(result!, targetFile)
+        XCTAssertEqual(result!.standardizedFileURL, targetFile.standardizedFileURL)
     }
 
     func testFindFileReturnsNilWhenNotFound() throws {
@@ -334,7 +334,7 @@ final class FileSystemOperationsTests: XCTestCase {
 
         // Assert
         // Should find the one in the current directory first
-        XCTAssertEqualPaths(result!, file1)
+        XCTAssertEqual(result!.standardizedFileURL, file1.standardizedFileURL)
     }
 
     func testFindFileWithMaxDepthZero() throws {
@@ -355,7 +355,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let resultNested = try FileSystemOperations.findFile(startDir: tempDir, filename: "nested.txt", maxDepth: 0)
 
         // Assert
-        XCTAssertEqualPaths(resultCurrent!, currentFile)
+        XCTAssertEqual(resultCurrent!.standardizedFileURL, currentFile.standardizedFileURL)
         XCTAssertNil(resultNested) // Not found because it's in subdirectory
     }
 
@@ -379,7 +379,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let result2 = try FileSystemOperations.findFile(startDir: tempDir, filename: "file2.txt", maxDepth: 1)
 
         // Assert
-        XCTAssertEqualPaths(result1!, fileDepth1)
+        XCTAssertEqual(result1!.standardizedFileURL, fileDepth1.standardizedFileURL)
         XCTAssertNil(result2) // Too deep
     }
 
@@ -414,7 +414,7 @@ final class FileSystemOperationsTests: XCTestCase {
         let result = try FileSystemOperations.findFile(startDir: tempDir, filename: "target.txt")
 
         // Assert
-        XCTAssertEqualPaths(result!, targetFile)
+        XCTAssertEqual(result!.standardizedFileURL, targetFile.standardizedFileURL)
     }
 
     func testFindFileEmptyDirectory() throws {
@@ -444,6 +444,6 @@ final class FileSystemOperationsTests: XCTestCase {
         let result = try FileSystemOperations.findFile(startDir: tempDir, filename: "target.txt", maxDepth: nil)
 
         // Assert
-        XCTAssertEqualPaths(result!, targetFile)
+        XCTAssertEqual(result!.standardizedFileURL, targetFile.standardizedFileURL)
     }
 }

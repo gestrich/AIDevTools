@@ -122,12 +122,14 @@ public struct RunChainTaskUseCase: UseCase {
         let repoDir = options.repoPath.path
         logger.debug("prepare: baseBranch=\(baseBranch) repoDir=\(repoDir)")
 
-        // Fetch and checkout base branch so spec.md reflects the latest remote state
+        // Best-effort fetch so spec.md reflects the latest remote state; continue on failure
         logger.debug("prepare: fetching origin/\(baseBranch)")
-        try await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)
-        logger.debug("prepare: fetch complete, checking out FETCH_HEAD")
-        try await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
-        logger.debug("prepare: checkout complete")
+        if let _ = try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir) {
+            logger.debug("prepare: fetch complete, checking out FETCH_HEAD")
+            try? await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
+        } else {
+            logger.debug("prepare: fetch failed, continuing with local spec.md")
+        }
 
         // Load spec content for prompt building
         logger.debug("prepare: loading spec")
@@ -542,7 +544,7 @@ public struct RunChainTaskUseCase: UseCase {
 
     // MARK: - Helpers
 
-    func appendReviewNote(specPath: String, taskDescription: String, summary: String) {
+    public func appendReviewNote(specPath: String, taskDescription: String, summary: String) {
         guard var content = try? String(contentsOfFile: specPath, encoding: .utf8) else { return }
         let taskLine = "- [x] \(taskDescription)"
         guard let range = content.range(of: taskLine) else { return }

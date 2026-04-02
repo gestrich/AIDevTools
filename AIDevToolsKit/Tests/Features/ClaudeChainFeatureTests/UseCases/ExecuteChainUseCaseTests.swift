@@ -65,7 +65,8 @@ struct ExecuteChainUseCaseSpecTests {
         let useCase = ExecuteChainUseCase(client: StubAIClient())
         let result = try await useCase.run(options: .init(
             repoPath: demoRepoPath,
-            projectName: "nonexistent"
+            projectName: "nonexistent",
+            baseBranch: "main"
         ))
         #expect(!result.success)
         #expect(result.message.contains("No spec.md found"))

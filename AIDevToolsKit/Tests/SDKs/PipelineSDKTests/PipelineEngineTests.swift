@@ -188,7 +188,7 @@ struct MarkdownTaskSourceTests {
         #expect(!content.contains("- [ ] Build feature"))
     }
 
-    @Test("taskIndex: returns only the specified task")
+    @Test("taskIndex: returns only the specified task, nil after markComplete")
     func taskIndexSingleTask() async throws {
         let url = try makeTempFile(content: "- [ ] Task A\n- [ ] Task B\n- [ ] Task C\n")
         defer { cleanup(url) }
@@ -196,8 +196,44 @@ struct MarkdownTaskSourceTests {
         let source = MarkdownTaskSource(fileURL: url, format: .task, taskIndex: 1)
         let t1 = try await source.nextTask()
         #expect(t1?.instructions == "Task B")
+        try await source.markComplete(t1!)
         let t2 = try await source.nextTask()
         #expect(t2 == nil)
+    }
+
+    @Test("taskIndex: returns nil when indexed task is already completed")
+    func taskIndexReturnsNilForCompletedTask() async throws {
+        // Arrange
+        let url = try makeTempFile(content: "- [ ] Task A\n- [x] Task B\n- [ ] Task C\n")
+        defer { cleanup(url) }
+
+        let source = MarkdownTaskSource(fileURL: url, format: .task, taskIndex: 1)
+
+        // Act
+        let task = try await source.nextTask()
+
+        // Assert
+        #expect(task == nil)
+    }
+
+    @Test("markComplete: updates only the targeted task, leaves others unchanged")
+    func markCompleteUpdatesOnlyTargetedTask() async throws {
+        // Arrange
+        let url = try makeTempFile(content: "- [ ] Task A\n- [ ] Task B\n- [ ] Task C\n")
+        defer { cleanup(url) }
+
+        let source = MarkdownTaskSource(fileURL: url, format: .task, taskIndex: 1)
+        let task = try await source.nextTask()
+        let pendingTask = try #require(task)
+
+        // Act
+        try await source.markComplete(pendingTask)
+
+        // Assert
+        let updatedContent = try String(contentsOf: url, encoding: .utf8)
+        #expect(updatedContent.contains("- [ ] Task A"))
+        #expect(updatedContent.contains("- [x] Task B"))
+        #expect(updatedContent.contains("- [ ] Task C"))
     }
 }
 

@@ -122,7 +122,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Full PR with all fields populated
 
     @Test("Returns correct PRDetail with all fields populated from a fully-analyzed PR")
-    func fullPR() throws {
+    func fullPR() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -131,7 +131,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.commitHash == commitHash)
@@ -163,14 +163,14 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Missing phases return nil/empty gracefully
 
     @Test("Returns nil/empty fields gracefully for missing phases")
-    func emptyOutputDir() throws {
+    func emptyOutputDir() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let config = makeConfig(outputDir: outputDir)
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.commitHash == "abc1234")
@@ -188,7 +188,7 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Returns partial data when only some phases are complete")
-    func partialPhases() throws {
+    func partialPhases() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -204,7 +204,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.syncSnapshot != nil)
@@ -218,7 +218,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Review comments without summary
 
     @Test("Loads review comments even when summary.json is missing")
-    func reviewCommentsWithoutSummary() throws {
+    func reviewCommentsWithoutSummary() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -248,7 +248,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.analysis == nil)
@@ -260,7 +260,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Commit hash resolution
 
     @Test("Resolves commit hash from gh-pr.json when not explicitly provided")
-    func resolveCommitHashFromMetadata() throws {
+    func resolveCommitHashFromMetadata() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let fullHash = "abc1234567890abcdef1234567890abcdef123456"
@@ -283,7 +283,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1)
+        let detail = await useCase.execute(prNumber: 1)
 
         // Assert
         #expect(detail.commitHash == expectedShortHash)
@@ -291,7 +291,7 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Falls back to scanning analysis/ directories when gh-pr.json missing")
-    func resolveCommitHashFallback() throws {
+    func resolveCommitHashFallback() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "def5678"
@@ -308,7 +308,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1)
+        let detail = await useCase.execute(prNumber: 1)
 
         // Assert
         #expect(detail.commitHash == commitHash)
@@ -316,14 +316,14 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Returns nil commitHash when no metadata and no analysis directories exist")
-    func resolveCommitHashNil() throws {
+    func resolveCommitHashNil() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let config = makeConfig(outputDir: outputDir)
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1)
+        let detail = await useCase.execute(prNumber: 1)
 
         // Assert
         #expect(detail.commitHash == nil)
@@ -332,7 +332,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Transcripts
 
     @Test("Loads transcripts from correct phase subdirectories")
-    func loadTranscripts() throws {
+    func loadTranscripts() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -370,7 +370,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.savedOutputs[.prepare]?.count == 1)
@@ -380,7 +380,7 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Ignores non-transcript files in phase directories")
-    func transcriptsIgnoresNonTranscriptFiles() throws {
+    func transcriptsIgnoresNonTranscriptFiles() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -395,7 +395,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.savedOutputs[.analyze] == nil)
@@ -404,7 +404,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Posted comments and image map from metadata/
 
     @Test("Loads posted comments from metadata directory")
-    func loadPostedComments() throws {
+    func loadPostedComments() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let metadataDir = "\(outputDir)/1/metadata"
@@ -417,7 +417,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.postedComments != nil)
@@ -425,7 +425,7 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Loads image URL map and computes imageBaseDir from metadata directory")
-    func loadImageMap() throws {
+    func loadImageMap() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let metadataDir = "\(outputDir)/1/metadata"
@@ -438,7 +438,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.imageURLMap["screenshot.png"] == "https://example.com/screenshot.png")
@@ -446,14 +446,14 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Returns empty image map when image-url-map.json is missing")
-    func missingImageMap() throws {
+    func missingImageMap() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let config = makeConfig(outputDir: outputDir)
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.imageURLMap.isEmpty)
@@ -463,7 +463,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Available commits scanning
 
     @Test("Scans available commits from analysis/ directory")
-    func availableCommits() throws {
+    func availableCommits() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let analysisRoot = "\(outputDir)/1/analysis"
@@ -477,7 +477,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.availableCommits.count == 3)
@@ -487,21 +487,21 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Returns empty available commits when analysis/ directory does not exist")
-    func availableCommitsEmpty() throws {
+    func availableCommitsEmpty() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let config = makeConfig(outputDir: outputDir)
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.availableCommits.isEmpty)
     }
 
     @Test("Available commits excludes hidden directories")
-    func availableCommitsExcludesHidden() throws {
+    func availableCommitsExcludesHidden() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let analysisRoot = "\(outputDir)/1/analysis"
@@ -512,7 +512,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.availableCommits == ["abc1234"])
@@ -521,7 +521,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Analysis summary
 
     @Test("Returns analysis summary from evaluate/summary.json")
-    func analysisSummary() throws {
+    func analysisSummary() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -538,7 +538,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         let loaded = try #require(detail.analysisSummary)
@@ -549,14 +549,14 @@ struct LoadPRDetailUseCaseTests {
     }
 
     @Test("Returns nil analysis summary when summary.json is missing")
-    func analysisSummaryMissing() throws {
+    func analysisSummaryMissing() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let config = makeConfig(outputDir: outputDir)
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "abc1234")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "abc1234")
 
         // Assert
         #expect(detail.analysisSummary == nil)
@@ -565,7 +565,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Phase statuses
 
     @Test("Phase statuses reflect actual phase completion state")
-    func phaseStatuses() throws {
+    func phaseStatuses() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -577,7 +577,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.phaseStatuses[.metadata]?.isComplete == true)
@@ -591,7 +591,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - SyncSnapshot nil when no diffs present
 
     @Test("Returns nil syncSnapshot when no diff files exist")
-    func syncSnapshotNilWhenNoDiffs() throws {
+    func syncSnapshotNilWhenNoDiffs() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let commitHash = "abc1234"
@@ -604,7 +604,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: commitHash)
+        let detail = await useCase.execute(prNumber: 1, commitHash: commitHash)
 
         // Assert
         #expect(detail.syncSnapshot == nil)
@@ -613,7 +613,7 @@ struct LoadPRDetailUseCaseTests {
     // MARK: - Available commits sorted
 
     @Test("Available commits are returned in sorted order")
-    func availableCommitsSorted() throws {
+    func availableCommitsSorted() async throws {
         // Arrange
         let outputDir = try makeTempDir()
         let analysisRoot = "\(outputDir)/1/analysis"
@@ -625,7 +625,7 @@ struct LoadPRDetailUseCaseTests {
         let useCase = LoadPRDetailUseCase(config: config)
 
         // Act
-        let detail = useCase.execute(prNumber: 1, commitHash: "aaa1111")
+        let detail = await useCase.execute(prNumber: 1, commitHash: "aaa1111")
 
         // Assert
         #expect(detail.availableCommits == ["aaa1111", "mmm5555", "zzz9999"])

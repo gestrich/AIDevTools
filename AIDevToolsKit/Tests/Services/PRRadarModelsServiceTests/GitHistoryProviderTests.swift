@@ -371,7 +371,7 @@ struct GitHistoryProviderFactoryTests {
         // Arrange
         let gitOps = GitOperationsService(client: CLIClient())
         let octokitClient = OctokitClient(token: "fake-token")
-        let gitHub = GitHubService(octokitClient: octokitClient, owner: "test", repo: "repo")
+        let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: "test", repo: "repo")
 
         // Act
         let provider = GitHubServiceFactory.createHistoryProvider(
@@ -393,7 +393,7 @@ struct GitHistoryProviderFactoryTests {
         // Arrange
         let gitOps = GitOperationsService(client: CLIClient())
         let octokitClient = OctokitClient(token: "fake-token")
-        let gitHub = GitHubService(octokitClient: octokitClient, owner: "test", repo: "repo")
+        let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: "test", repo: "repo")
 
         // Act
         let provider = GitHubServiceFactory.createHistoryProvider(
