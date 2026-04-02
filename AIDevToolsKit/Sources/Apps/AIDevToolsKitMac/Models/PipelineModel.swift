@@ -18,16 +18,18 @@ final class PipelineModel {
 
     @ObservationIgnored private var runningTask: Task<Void, any Error>?
 
-    func run(blueprint: PipelineBlueprint) async throws {
+    @discardableResult
+    func run(blueprint: PipelineBlueprint) async throws -> PipelineContext {
         isRunning = true
         error = nil
         nodes = blueprint.initialNodeManifest.map {
             NodeState(displayName: $0.displayName, id: $0.id)
         }
 
-        let task = Task {
+        let box = PipelineContextBox()
+        let task = Task { [box] in
             let runner = PipelineRunner()
-            _ = try await runner.run(
+            let finalContext = try await runner.run(
                 nodes: blueprint.nodes,
                 configuration: blueprint.configuration,
                 onProgress: { [weak self] event in
@@ -38,6 +40,7 @@ final class PipelineModel {
                     }
                 }
             )
+            box.context = finalContext
         }
         runningTask = task
 
@@ -47,6 +50,7 @@ final class PipelineModel {
         }
 
         try await task.value
+        return box.context ?? PipelineContext()
     }
 
     func stop() {
@@ -72,4 +76,8 @@ final class PipelineModel {
             break
         }
     }
+}
+
+private final class PipelineContextBox: @unchecked Sendable {
+    var context: PipelineContext?
 }

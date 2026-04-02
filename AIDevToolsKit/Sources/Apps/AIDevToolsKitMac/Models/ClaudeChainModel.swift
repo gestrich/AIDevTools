@@ -5,6 +5,7 @@ import DataPathsService
 import Foundation
 import GitHubService
 import Logging
+import PipelineService
 import PRRadarCLIService
 import ProviderRegistryService
 
@@ -49,7 +50,13 @@ final class ClaudeChainModel {
     private var chainDetailNetworkFetched: Set<String> = []
     private(set) var lastLoadedProjects: [ChainProject] = []
     private(set) var state: State = .idle
+    private(set) var taskPipelines: [Int: PipelineModel] = [:]
+    var selectedTaskIndex: Int?
     var executionProgressObserver: (@MainActor (RunChainTaskUseCase.Progress) -> Void)?
+
+    var selectedPipelineModel: PipelineModel? {
+        taskPipelines[selectedTaskIndex ?? -1]
+    }
 
     var selectedProviderName: String {
         didSet {
@@ -152,34 +159,161 @@ final class ClaudeChainModel {
     }
 
     func executeChain(project: ChainProject, repoPath: URL, taskIndex: Int? = nil, stagingOnly: Bool = false) {
+        let task: ChainTask?
+        if let taskIndex {
+            task = project.tasks.first(where: { $0.index == taskIndex })
+        } else {
+            task = project.tasks.first(where: { !$0.isCompleted })
+        }
+        guard let task else {
+            state = .error(NSError(
+                domain: "ClaudeChainModel",
+                code: 0,
+                userInfo: [NSLocalizedDescriptionKey: "No pending task found"]
+            ))
+            return
+        }
+        executeTask(at: task.index, project: project, repoPath: repoPath, stagingOnly: stagingOnly)
+    }
+
+    func executeTask(at index: Int, project: ChainProject, repoPath: URL, stagingOnly: Bool) {
+        guard let task = project.tasks.first(where: { $0.index == index }) else { return }
+
         state = .executing(progress: Self.initialProgress())
+        selectedTaskIndex = index
+
+        let pipelineModel = PipelineModel()
+        taskPipelines[index] = pipelineModel
+
+        let taskHash = TaskService.generateTaskHash(description: task.description)
+        let branchName = PRService.formatBranchName(projectName: project.name, taskHash: taskHash)
+
+        let service = ClaudeChainService(client: activeClient)
+        let options = ChainRunOptions(
+            baseBranch: project.baseBranch,
+            githubAccount: currentCredentialAccount,
+            projectName: project.name,
+            repoPath: repoPath,
+            stagingOnly: stagingOnly
+        )
+
+        handleExecutionProgress(.preparedTask(description: task.description, index: task.index, total: project.totalTasks))
+
+        pipelineModel.onEvent = { @MainActor [weak self] event in
+            guard let self else { return }
+            switch event {
+            case .nodeStarted(let id, _):
+                switch id {
+                case "task-source":
+                    self.handleExecutionProgress(.preparingProject)
+                case "pr-step":
+                    self.handleExecutionProgress(.finalizing)
+                default:
+                    self.handleExecutionProgress(.runningAI(taskDescription: task.description))
+                }
+            case .nodeProgress(_, let progress):
+                if case .streamEvent(let streamEvent) = progress {
+                    self.handleExecutionProgress(.aiStreamEvent(streamEvent))
+                }
+            case .nodeCompleted(let id, _):
+                if id != "task-source" && id != "pr-step" {
+                    self.handleExecutionProgress(.aiCompleted)
+                }
+            default:
+                break
+            }
+        }
+
         Task {
             do {
-                let useCase = ExecuteChainUseCase(client: activeClient)
-                let result = try await useCase.run(
-                    options: .init(repoPath: repoPath, projectName: project.name, baseBranch: project.baseBranch, githubAccount: currentCredentialAccount, taskIndex: taskIndex, stagingOnly: stagingOnly)
-                ) { [weak self] progress in
-                    guard let self else { return }
-                    Task { @MainActor in
-                        self.handleExecutionProgress(progress)
-                    }
+                let blueprint = try await service.buildPipeline(for: task, options: options)
+                let finalContext = try await pipelineModel.run(blueprint: blueprint)
+
+                let prURL = finalContext[PRStep.prURLKey]
+                let prNumber = finalContext[PRStep.prNumberKey]
+
+                if let prNum = prNumber, let prURLStr = prURL {
+                    handleExecutionProgress(.prCreated(prNumber: prNum, prURL: prURLStr))
                 }
-                if result.success {
-                    state = .completed(result: result)
-                    refreshChainDetail(project: project)
-                } else {
-                    state = .error(
-                        NSError(
-                            domain: "ClaudeChainModel",
-                            code: 0,
-                            userInfo: [NSLocalizedDescriptionKey: result.message]
-                        )
-                    )
-                }
+                handleExecutionProgress(.completed(prURL: prURL))
+
+                let result = ExecuteChainUseCase.Result(
+                    success: true,
+                    message: prURL != nil ? "PR created: \(prURL!)" : (stagingOnly ? "Task completed (staging only)" : "Task completed"),
+                    branchName: stagingOnly ? branchName : nil,
+                    isStagingOnly: stagingOnly,
+                    prURL: prURL,
+                    prNumber: prNumber,
+                    taskDescription: task.description
+                )
+                state = .completed(result: result)
+                refreshChainDetail(project: project)
             } catch {
                 state = .error(error)
             }
         }
+    }
+
+    func finalizeStaged(at index: Int, project: ChainProject, repoPath: URL) {
+        guard let task = project.tasks.first(where: { $0.index == index }) else { return }
+
+        state = .executing(progress: Self.finalizeProgress())
+        selectedTaskIndex = index
+
+        let pipelineModel = PipelineModel()
+        taskPipelines[index] = pipelineModel
+
+        let taskHash = TaskService.generateTaskHash(description: task.description)
+        let branchName = PRService.formatBranchName(projectName: project.name, taskHash: taskHash)
+
+        let service = ClaudeChainService(client: activeClient)
+        let options = ChainRunOptions(
+            baseBranch: project.baseBranch,
+            branchName: branchName,
+            githubAccount: currentCredentialAccount,
+            projectName: project.name,
+            repoPath: repoPath
+        )
+
+        pipelineModel.onEvent = { @MainActor [weak self] event in
+            guard let self else { return }
+            if case .nodeStarted(let id, _) = event, id == "pr-step" {
+                self.handleExecutionProgress(.finalizing)
+            }
+        }
+
+        Task {
+            do {
+                let blueprint = try await service.buildFinalizePipeline(for: task, options: options)
+                let finalContext = try await pipelineModel.run(blueprint: blueprint)
+
+                let prURL = finalContext[PRStep.prURLKey]
+                let prNumber = finalContext[PRStep.prNumberKey]
+
+                if let prNum = prNumber, let prURLStr = prURL {
+                    handleExecutionProgress(.prCreated(prNumber: prNum, prURL: prURLStr))
+                }
+                handleExecutionProgress(.completed(prURL: prURL))
+
+                let result = ExecuteChainUseCase.Result(
+                    success: true,
+                    message: prURL != nil ? "PR created: \(prURL!)" : "Staged task finalized",
+                    prURL: prURL,
+                    prNumber: prNumber,
+                    taskDescription: task.description
+                )
+                state = .completed(result: result)
+                refreshChainDetail(project: project)
+            } catch {
+                state = .error(error)
+            }
+        }
+    }
+
+    func createPRFromStaged(project: ChainProject, repoPath: URL, result: ExecuteChainUseCase.Result) {
+        guard let taskDescription = result.taskDescription,
+              let task = project.tasks.first(where: { $0.description == taskDescription }) else { return }
+        finalizeStaged(at: task.index, project: project, repoPath: repoPath)
     }
 
     func persistentChatModel(for projectName: String, workingDirectory: String, systemPrompt: String) -> ChatModel {
@@ -209,55 +343,10 @@ final class ClaudeChainModel {
         loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
     }
 
-    func createPRFromStaged(project: ChainProject, repoPath: URL, result: ExecuteChainUseCase.Result) {
-        guard let branchName = result.branchName,
-              let taskDescription = result.taskDescription else { return }
-        state = .executing(progress: Self.finalizeProgress())
-        Task {
-            do {
-                let useCase = FinalizeStagedTaskUseCase(client: activeClient)
-                let finalResult = try await useCase.run(
-                    options: .init(
-                        repoPath: repoPath,
-                        projectName: project.name,
-                        baseBranch: project.baseBranch,
-                        branchName: branchName,
-                        taskDescription: taskDescription,
-                        githubAccount: currentCredentialAccount
-                    )
-                ) { [weak self] progress in
-                    guard let self else { return }
-                    Task { @MainActor in
-                        self.handleExecutionProgress(progress)
-                    }
-                }
-                if finalResult.success {
-                    let result = ExecuteChainUseCase.Result(
-                        success: finalResult.success,
-                        message: finalResult.message,
-                        prURL: finalResult.prURL,
-                        prNumber: finalResult.prNumber,
-                        taskDescription: finalResult.taskDescription
-                    )
-                    state = .completed(result: result)
-                    refreshChainDetail(project: project)
-                } else {
-                    state = .error(
-                        NSError(
-                            domain: "ClaudeChainModel",
-                            code: 0,
-                            userInfo: [NSLocalizedDescriptionKey: finalResult.message]
-                        )
-                    )
-                }
-            } catch {
-                state = .error(error)
-            }
-        }
-    }
-
     func reset() {
         state = .idle
+        taskPipelines = [:]
+        selectedTaskIndex = nil
         if let repoPath = currentRepoPath {
             loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
         }
@@ -359,7 +448,6 @@ final class ClaudeChainModel {
             current.currentPhase = "Completed"
         case .failed(let phase, let error):
             current.currentPhase = "\(phase) failed: \(error)"
-            // Mark the currently-running phase as failed
             if let idx = current.phases.firstIndex(where: { $0.status == .running }) {
                 current.phases[idx].status = .failed
             }

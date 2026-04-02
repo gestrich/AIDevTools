@@ -127,6 +127,8 @@ let package = Package(
                 "MarkdownPlannerFeature",
                 "MarkdownPlannerService",
                 "OctokitSDK",
+                "PipelineSDK",
+                "PipelineService",
                 "PRRadarCLIService",
                 "PRRadarConfigService",
                 "PRRadarModelsService",

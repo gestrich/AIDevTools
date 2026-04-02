@@ -84,7 +84,10 @@ Tasks:
 - Delete or deprecate `RunChainTaskUseCase`, `ExecuteChainUseCase`, and `FinalizeStagedTaskUseCase` once service is verified
 - Post-pipeline: marking spec.md checkbox complete is handled by `MarkdownTaskSource.markComplete()` — no extra step needed
 
-## - [ ] Phase 3: Wire ClaudeChainModel to Per-Task PipelineModels
+## - [x] Phase 3: Wire ClaudeChainModel to Per-Task PipelineModels
+
+**Skills used**: none
+**Principles applied**: Added `taskPipelines: [Int: PipelineModel]`, `selectedTaskIndex`, and `selectedPipelineModel` to `ClaudeChainModel`. Added `executeTask(at:project:repoPath:stagingOnly:)` and `finalizeStaged(at:project:repoPath:)` that build pipelines via `ClaudeChainService` and run them through `PipelineModel`. Updated `executeChain` to delegate to `executeTask` (finding next pending task when no index given) and `createPRFromStaged` to delegate to `finalizeStaged`. Modified `PipelineModel.run` to return `PipelineContext` (`@discardableResult`) using a thread-safe `PipelineContextBox`, eliminating the need for `onEvent` to capture PR info. Pipeline events are translated to `RunChainTaskUseCase.Progress` via `pipelineModel.onEvent`, keeping the existing view's streaming chat output working. Added `PipelineSDK` and `PipelineService` to `AIDevToolsKitMac` deps in `Package.swift`.
 
 Replace the existing use-case calls in `ClaudeChainModel` with `ClaudeChainService` + per-task `PipelineModel` instances.
 
