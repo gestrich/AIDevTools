@@ -34,7 +34,10 @@ Plus: **Settings** (separate window/view)
 
 ## Phases
 
-## - [ ] Phase 1: Bill creates the UI test targets in Xcode (MANUAL — Bill)
+## - [x] Phase 1: Bill creates the UI test targets in Xcode (MANUAL — Bill)
+
+**Skills used**: none
+**Principles applied**: Both UI test targets (`AIDevToolsUITests` and `AIDevToolsInteractiveTests`) already existed in the Xcode project, along with the `xcode-sim-automation` SPM package linked via `XCUITestControl`. No changes were needed — verified by inspecting `project.pbxproj` and the target directories.
 
 **Skills to read**: none (Xcode UI work)
 
