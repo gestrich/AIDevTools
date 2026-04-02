@@ -360,6 +360,115 @@ public struct MarkdownPlannerService: UseCase {
         )
     }
 
+    // MARK: - Build execute pipeline
+
+    public func buildExecutePipeline(
+        options: ExecuteOptions,
+        pendingTasksProvider: (@Sendable () async -> [String])? = nil
+    ) async throws -> PipelineBlueprint {
+        // 1. Pre-read phases to build the initial node manifest
+        let pipelineSource = MarkdownPipelineSource(fileURL: options.planPath, format: .phase)
+        let loadedPipeline = try await pipelineSource.load()
+        let steps = loadedPipeline.steps.compactMap { $0 as? CodeChangeStep }
+        let initialNodeManifest = steps.enumerated().map { idx, step in
+            NodeManifest(id: step.id, displayName: "Phase \(idx + 1): \(step.description)")
+        }
+
+        // 2. Resolve credentials
+        var environment: [String: String]?
+        if let credentialAccount = options.repository?.credentialAccount {
+            let resolver = CredentialResolver(
+                settingsService: SecureSettingsService(),
+                githubAccount: credentialAccount
+            )
+            if case .token(let token) = resolver.getGitHubAuth() {
+                var env = ProcessInfo.processInfo.environment
+                env["GH_TOKEN"] = token
+                environment = env
+            }
+        }
+
+        // 3. Build instruction enricher: injects plan path, phase number, skills, commit format
+        let planPath = options.planPath
+        let instructionBuilder: @Sendable (PendingTask) -> String = { task in
+            let phaseIndex = Int(task.id) ?? 0
+            let ghInstructions = "\nWhen creating pull requests, ALWAYS use `gh pr create --draft`."
+            let skillsToRead = MarkdownPlannerService.parseSkillsToRead(planPath: planPath, phaseIndex: phaseIndex)
+            let skillsInstruction = skillsToRead.isEmpty ? "" : """
+
+            Before implementing, read these skills for relevant conventions: \(skillsToRead.joined(separator: ", "))
+            """
+
+            return """
+            Look at \(planPath.path) for background.
+
+            You are working on Phase \(phaseIndex + 1): \(task.instructions)
+            \(skillsInstruction)
+            Complete ONLY this phase by:
+            1. Implementing the required changes
+            2. Ensuring the build succeeds
+            3. Updating the markdown document:
+               - Change `## - [ ]` to `## - [x]` for this phase
+               - Add completion notes below the phase heading:
+                 **Skills used**: `skill-a`, `skill-b` (list skills you actually read/applied, or "none")
+                 **Principles applied**: Brief note about key decisions made
+            4. Committing your changes with message: "Complete Phase \(phaseIndex + 1): \(task.instructions)"
+            \(ghInstructions)
+
+            Return success: true if the phase was completed successfully, false otherwise.
+            """
+        }
+
+        // 4. Build betweenTasks closure when a task queue is provided
+        let betweenTasks: (@Sendable () async throws -> Void)?
+        if let provider = pendingTasksProvider {
+            let planURL = options.planPath
+            let repoPath = options.repoPath
+            let aiClient = client
+            betweenTasks = {
+                let taskDescriptions = await provider()
+                guard !taskDescriptions.isEmpty else { return }
+                let integrateOptions = IntegrateTaskIntoPlanUseCase.Options(
+                    planPath: planURL,
+                    repoPath: repoPath,
+                    taskDescriptions: taskDescriptions
+                )
+                _ = try await IntegrateTaskIntoPlanUseCase(client: aiClient).run(integrateOptions)
+            }
+        } else {
+            betweenTasks = nil
+        }
+
+        // 5–6. Wrap the task source in a pipeline node
+        let taskSource = MarkdownTaskSource(
+            fileURL: options.planPath,
+            format: .phase,
+            instructionBuilder: instructionBuilder
+        )
+        let taskSourceNode = TaskSourceNode(
+            id: "task-source",
+            displayName: "Load Phases",
+            source: taskSource
+        )
+
+        // 7. Assemble and return the blueprint
+        let executionMode: PipelineConfiguration.ExecutionMode = options.executeMode == .all ? .all : .nextOnly
+        let configuration = PipelineConfiguration(
+            executionMode: executionMode,
+            maxMinutes: options.maxMinutes,
+            provider: client,
+            workingDirectory: options.repoPath?.path,
+            environment: environment,
+            betweenTasks: betweenTasks
+        )
+
+        return PipelineBlueprint(
+            nodes: [taskSourceNode],
+            configuration: configuration,
+            initialNodeManifest: initialNodeManifest
+        )
+    }
+
     // MARK: - Log directory
 
     public static func logDirectory(dataPath: URL, repoName: String, planURL: URL) -> URL {

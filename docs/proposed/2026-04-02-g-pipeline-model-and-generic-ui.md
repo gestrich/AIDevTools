@@ -106,7 +106,10 @@ final class PipelineModel
 
 `MarkdownPlannerDetailView` injects `pipelineModel` via `.environment(pipelineModel)` on `PipelineView`.
 
-## - [ ] Phase 4: Add `buildExecutePipeline()` to `MarkdownPlannerService`
+## - [x] Phase 4: Add `buildExecutePipeline()` to `MarkdownPlannerService`
+
+**Skills used**: `swift-architecture`
+**Principles applied**: `buildExecutePipeline()` added to `MarkdownPlannerService` (Features layer) without removing `execute()` yet — callers still depend on it until Phase 5 updates them. `instructionBuilder` is a `@Sendable` closure capturing only `planPath`, keeping the SDK-level `MarkdownTaskSource` free of Plans-specific logic. `betweenTasks` is only constructed when `pendingTasksProvider` is non-nil, moving `IntegrateTaskIntoPlanUseCase` orchestration out of the App layer and into the service. Credential resolution kept in the service (not the SDK). `executionMode` mapped from `ExecuteOptions.ExecuteMode` to `PipelineConfiguration.ExecutionMode` at the boundary.
 
 **Skills to read**: `swift-architecture`
 
