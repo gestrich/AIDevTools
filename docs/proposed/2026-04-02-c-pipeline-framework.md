@@ -94,53 +94,275 @@ Also audited:
 - **Move-to-completed** — could be a `MarkdownTaskSource` callback or a `Pipeline.onAllCompleted` hook.
 - **SwiftData-backed state (ArchPlanner)** — the Architecture tab's inter-step context lives in `PlanningJob` / SwiftData, not in node return values; the unified pipeline cannot own this and must treat `AnalyzerNode` outputs as opaque, with the caller persisting results.
 
-## - [ ] Phase 2: Design the Pipeline Framework
+## - [x] Phase 2: Design the Pipeline Framework
 
-**Skills to read:** `swift-architecture`, `configuration-architecture`
+**Skills used**: `swift-architecture`, `configuration-architecture`
+**Principles applied**: `PipelineSDK` confirmed as the right SDK-layer target; `Pipeline` is not generic over Output (type erasure via `PipelineContext`); pre/post scripts stay in `ClaudeChainService`, not a pipeline node; `ReviewStep` pauses via `CheckedContinuation` held by a `Pipeline` actor; `PipelineConfiguration` receives a resolved `AIClient`, not a credential service.
 
-Design all interfaces. No code written yet — document decisions inline in this plan before Phase 3 begins. Bill reviews and approves before implementation starts.
+---
 
-Decisions to make:
+### Layer Placement
 
-**`PipelineNode` protocol**
-- What does every node expose? (async `run(context:)`, progress events, cancellation)
-- How does a node receive inputs from prior nodes? (typed context object passed through, or explicit typed chaining?)
+`PipelineSDK` is the correct target. It is already an SDK-layer target with no dependencies and lives at `AIDevToolsKit/Sources/SDKs/PipelineSDK`. Phase 3 will add dependencies on `AIOutputSDK` (for `AIClient`) and the git SDK (for `GitClient`) when the execution nodes are implemented.
 
-**`TaskSource` protocol**
-- `func nextTask() -> AITask?`
-- `func markComplete(_ task: AITask)`
-- What does `AITask` carry? (`id`, `instructions: String`, output type token)
+`MarkdownParser` stays embedded in `PipelineSDK` — currently inline in `MarkdownPipelineSource`. No separate target needed. `MarkdownTaskSource` is the only type in the SDK that touches markdown.
 
-**`AITask<Output>` generics**
-- Does the `Pipeline` need to be typed over `Output`, or does each node erase to `Any` internally?
-- How does a consumer (e.g. `ClaudeChainService`) recover the typed result?
+---
 
-**`AnalyzerNode<Input, Output>`**
-- Input: prior context or explicit typed value
-- Output: typed artifact (e.g. `MarkdownPlan`, `ArchitectureDiagram`, `ConformanceReport`)
-- Mid-pipeline task injection: when `AnalyzerNode` produces a `MarkdownPlan`, how does it splice a new `MarkdownTaskSource` into the running pipeline?
+### Naming: Existing vs. New Types
 
-**`PRStep`**
-- Inputs: branch name, base branch, `ProjectConfiguration`
-- How does it receive the result of the preceding `AITask`? (cost metrics, git diff)
+The existing `PipelineSDK` types are **data models** (describe pipeline shape for display/persistence). The new types are **execution nodes** (actually run async work). They coexist in Phase 3 until migration is complete.
 
-**`ReviewStep`**
-- How does the pipeline pause and surface the approval gate to the Mac app?
-- What does resume look like? (continuation, callback, async signal?)
+Rename in Phase 3 to free up names for execution types:
 
-**`Pipeline` configuration struct**
-- `executionMode: .nextOnly | .all`
-- `maxMinutes: Int?`
-- `stagingOnly: Bool`
-- `provider: AIProvider`
+| Existing name | Rename to | Reason |
+|---|---|---|
+| `Pipeline` (data model struct) | `PipelineState` | Free up `Pipeline` for the execution engine |
+| `CreatePRStep` (data model) | `PRStepData` | Free up `PRStep` for the execution node |
+| `ReviewStep` (data model) | `ReviewStepData` | Free up `ReviewStep` for the execution node |
 
-**`MarkdownTaskSource`**
-- Confirm it implements `TaskSource`
-- Confirm `MarkdownParser` is the only markdown-aware type — `MarkdownTaskSource` uses it; no other node knows about markdown
+---
 
-**Layer placement**
-- Confirm `PipelineSDK` is the right target name with `swift-architecture`
-- `MarkdownParser` stays in `PipelineSDK` or moves to its own target?
+### `PipelineNode` Protocol
+
+Every node exposes an async `run` that receives an immutable context and returns an updated context. Cancellation is cooperative via `Task.checkCancellation()` inside node implementations — the `Pipeline` actor holds the parent task and calls `.cancel()`. Progress is reported via a callback rather than a stream so each node controls granularity.
+
+```swift
+public protocol PipelineNode: Sendable {
+    var id: String { get }
+    var displayName: String { get }
+
+    func run(
+        context: PipelineContext,
+        onProgress: @Sendable (PipelineNodeProgress) -> Void
+    ) async throws -> PipelineContext
+}
+```
+
+---
+
+### `PipelineContext`
+
+A typed, immutable-by-default dictionary passed through the pipeline. Nodes read prior results and return an augmented copy with their own results written in. Type safety via `PipelineContextKey<Value>` — similar to SwiftUI `EnvironmentValues`.
+
+```swift
+public struct PipelineContext: Sendable {
+    // nodes write and read via subscript:
+    public subscript<Value: Sendable>(_ key: PipelineContextKey<Value>) -> Value? { get set }
+}
+
+public struct PipelineContextKey<Value: Sendable>: Sendable {
+    public let name: String
+    public init(_ name: String)
+}
+```
+
+Well-known keys are defined as static constants on the node type that writes them:
+
+| Key | Writer | Value type |
+|---|---|---|
+| `AITask.outputKey` | `AITask<Output>` | `Output` |
+| `AITask.metricsKey` | `AITask<Output>` | `AIMetrics` (cost, duration, turns) |
+| `PRStep.prURLKey` | `PRStep` | `String` |
+| `PRStep.prNumberKey` | `PRStep` | `String` |
+| `PipelineContext.injectedTaskSourceKey` | `AnalyzerNode` | `any TaskSource` |
+
+---
+
+### `TaskSource` Protocol and `PendingTask`
+
+`TaskSource` yields `PendingTask` values and accepts completion notifications. No markdown knowledge — that belongs in `MarkdownTaskSource`.
+
+```swift
+public protocol TaskSource: Sendable {
+    func nextTask() async throws -> PendingTask?
+    func markComplete(_ task: PendingTask) async throws
+}
+
+public struct PendingTask: Sendable, Identifiable {
+    public let id: String
+    public let instructions: String
+    public let skills: [String]   // skill names parsed from markdown annotations
+}
+```
+
+`skills: [String]` carries names from `**Skills to read:**` annotations in the markdown source. Loading skill file content is the responsibility of `AITask` or the service layer — `PipelineSDK` does not read files for skills.
+
+---
+
+### `AITask<Output>` Generics
+
+`AITask<Output>` is a generic execution node. `Output` is `String` for free-text AI runs; a `Decodable` type for structured output (uses `AIClient.runStructured`).
+
+**The `Pipeline` is NOT generic over `Output`**. Each `AITask<Output>` writes its result to `PipelineContext` under its static `outputKey`. The service assembler that constructs the pipeline recovers the typed result from the final context.
+
+```swift
+public struct AITask<Output: Decodable & Sendable>: PipelineNode {
+    public static var outputKey: PipelineContextKey<Output> { .init("AITask.output.\(Output.self)") }
+    public static var metricsKey: PipelineContextKey<AIMetrics> { .init("AITask.metrics") }
+
+    public let id: String
+    public let displayName: String
+    public let instructions: String
+    public let client: any AIClient
+    public let jsonSchema: String?   // nil → text output; non-nil → structured output
+
+    // run() calls client.run or client.runStructured, writes to context, returns updated context
+}
+```
+
+---
+
+### `AnalyzerNode<Input, Output>`
+
+Reads its input from a typed context key set by a prior node. Produces a typed structured output. If the output should beget new tasks (e.g. plan generation), writes a `TaskSource` to `PipelineContext.injectedTaskSourceKey`. The `Pipeline` checks for this key after each node and, if found, exhausts the task source before advancing to the next scheduled node.
+
+```swift
+public struct AnalyzerNode<Input: Sendable, Output: Decodable & Sendable>: PipelineNode {
+    public static var outputKey: PipelineContextKey<Output> { .init("AnalyzerNode.output.\(Output.self)") }
+
+    public let id: String
+    public let displayName: String
+    public let inputKey: PipelineContextKey<Input>
+    public let buildPrompt: @Sendable (Input) -> String
+    public let jsonSchema: String
+    public let client: any AIClient
+
+    // run() reads inputKey from context, calls client.runStructured,
+    // writes Output to outputKey, optionally writes TaskSource to injectedTaskSourceKey
+}
+```
+
+Mid-pipeline task injection mechanism: `AnalyzerNode.run()` can write a `TaskSource` to `context[PipelineContext.injectedTaskSourceKey]` if the output warrants it (e.g. a generated markdown plan). After the node returns, `Pipeline` detects the key, drains pending tasks via `AITask` execution, then continues with remaining scheduled nodes (e.g. an optional `PRStep`).
+
+---
+
+### `PRStep`
+
+Handles branch push, PR creation, capacity check, and cost comment. Reads the AI cost metrics from `AITask.metricsKey`. Reads the active branch name from git (does not require it as a constructor parameter). Writes PR URL and number to context for downstream use.
+
+```swift
+public struct PRStep: PipelineNode {
+    public static var prURLKey: PipelineContextKey<String> { .init("PRStep.prURL") }
+    public static var prNumberKey: PipelineContextKey<String> { .init("PRStep.prNumber") }
+
+    public let id: String
+    public let displayName: String
+    public let baseBranch: String
+    public let configuration: ProjectConfiguration   // assignees, reviewers, labels, maxOpenPRs
+    public let gitClient: GitClient
+
+    // run() reads AITask.metricsKey from context for cost comment,
+    // calls gitClient for push + branch name,
+    // checks capacity (throws PipelineError.capacityExceeded if maxOpenPRs reached),
+    // creates draft PR via gh CLI,
+    // writes prURLKey and prNumberKey to context
+}
+```
+
+---
+
+### `ReviewStep`
+
+Pauses the pipeline and waits for explicit user approval. Uses a `CheckedContinuation` held by the `Pipeline` actor. The Mac app model receives a `.pausedForReview` event, shows the approval UI, then calls `pipeline.approve()` or `pipeline.cancel()`.
+
+```swift
+public struct ReviewStep: PipelineNode {
+    public let id: String
+    public let displayName: String
+
+    // run() calls onProgress(.pausedForReview), then suspends via CheckedContinuation.
+    // Pipeline actor resumes the continuation when approve() or cancel() is called.
+    // If cancel(): throws PipelineError.cancelled
+}
+```
+
+The `Pipeline` actor stores the continuation and exposes:
+
+```swift
+public func approve() async  // resumes ReviewStep continuation with true
+public func cancel() async   // resumes ReviewStep continuation with false (throws)
+```
+
+---
+
+### `Pipeline` Execution Engine
+
+```swift
+public actor Pipeline {
+    public init(
+        nodes: [any PipelineNode],
+        configuration: PipelineConfiguration,
+        initialContext: PipelineContext = PipelineContext()
+    )
+
+    public func run(
+        onProgress: @Sendable (PipelineEvent) -> Void
+    ) async throws -> PipelineContext
+
+    public func run(
+        startingAt index: Int,
+        onProgress: @Sendable (PipelineEvent) -> Void
+    ) async throws -> PipelineContext
+
+    public func stop() async
+    public func approve() async   // resumes a paused ReviewStep
+    public func cancel() async    // cancels a paused ReviewStep
+}
+```
+
+Execution loop behavior:
+1. Iterate nodes in order from `startIndex` (default 0).
+2. After each node returns an updated context, check `context[PipelineContext.injectedTaskSourceKey]`. If set, consume all pending tasks from the source (respecting `executionMode`), then clear the key and continue.
+3. If `maxMinutes` is set, check elapsed time before each node. If exceeded, stop gracefully.
+4. If `executionMode == .nextOnly` and a `TaskSource` is active, run exactly one task then stop.
+5. Emit `PipelineEvent` progress for node start, node completion, and pause states.
+
+---
+
+### `PipelineConfiguration`
+
+`provider` is a resolved `any AIClient` — the Apps layer resolves credentials and constructs the client before passing it in. Features and SDKs never instantiate credential services.
+
+```swift
+public struct PipelineConfiguration: Sendable {
+    public let executionMode: ExecutionMode
+    public let maxMinutes: Int?
+    public let stagingOnly: Bool
+    public let provider: any AIClient
+
+    public enum ExecutionMode: Sendable {
+        case nextOnly  // run one task from TaskSource, then stop
+        case all       // run all available tasks
+    }
+}
+```
+
+---
+
+### `MarkdownTaskSource`
+
+Wraps `MarkdownPipelineSource` for file I/O. `MarkdownParser` (currently inline in `MarkdownPipelineSource`) is the only markdown-aware type in `PipelineSDK`. No other node or type in the SDK knows about markdown.
+
+Supports an optional `taskIndex: Int?` for ClaudeChain's start-at-specific-task behavior: when set, `nextTask()` returns only the task at that index and returns `nil` thereafter.
+
+```swift
+public struct MarkdownTaskSource: TaskSource {
+    public let fileURL: URL
+    public let format: MarkdownPipelineFormat
+    public let taskIndex: Int?   // nil = sequential; non-nil = single specific task
+
+    public init(fileURL: URL, format: MarkdownPipelineFormat, taskIndex: Int? = nil)
+    public func nextTask() async throws -> PendingTask?
+    public func markComplete(_ task: PendingTask) async throws
+}
+```
+
+---
+
+### Pre/Post Scripts
+
+**Not a pipeline node.** Pre/post action scripts are ClaudeChain-specific. They stay in `ClaudeChainService` as service-level setup/teardown before and after the pipeline runs. Adding a `ScriptNode` to `PipelineSDK` for a single feature's use case is not warranted.
 
 ## - [ ] Phase 3: Implement PipelineSDK
 
