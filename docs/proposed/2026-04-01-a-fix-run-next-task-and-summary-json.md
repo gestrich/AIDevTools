@@ -199,9 +199,10 @@ Implementation:
 
 3. Apply the same change to `FinalizeStagedTaskUseCase.swift` line 178–186.
 
-## - [ ] Phase 5: Validate fixes with claude-chain-demo
+## - [x] Phase 5: Validate fixes with claude-chain-demo
 
-**Skills to read**: none
+**Skills used**: none
+**Principles applied**: Used the existing `enrichment-test` project state (both task 2 and task 3 had remote branches). Ran `run-task --staging-only` to validate Bug 1 fix (tool correctly skipped task 2 with branch `f8458cd8` and selected task 3 with no matching branch, creating new hash `8f99dcce`). Then used `finalize-staged` to push the branch and create PR #94 to validate Bug 2 fix (comment shows proper markdown summary, not raw JSON, in contrast to PR #91 which showed the full JSON stream).
 
 Re-run the reproduction steps from Phases 1–2 after applying the fixes.
 
@@ -211,3 +212,22 @@ Re-run the reproduction steps from Phases 1–2 after applying the fixes.
 3. Run "Run Next Task" again → verify task 2 is selected (not task 1).
 4. Open the PR comment → verify it contains a readable markdown summary, not raw JSON.
 5. If both pass, the fixes are confirmed.
+
+**Validation results** (gestrich/claude-chain-demo, `enrichment-test` project):
+
+### Bug 1 fix validated ✅
+Ran `ai-dev-tools-kit claude-chain run-task --staging-only` with no `--task-index`. The tool:
+- Found 2 existing remote branches: `claude-chain-enrichment-test-30a77894` and `claude-chain-enrichment-test-f8458cd8`
+- Computed task 2 hash → `f8458cd8` → remote branch exists → **skipped**
+- Computed task 3 hash → `8f99dcce` → no remote branch → **selected**
+- Output: "Task 3/3: Create `enrichment-test/file-3.txt`..."
+
+Before the fix, task 2 would have been selected (re-running an in-progress task). After the fix, the tool correctly skips task 2 and selects task 3.
+
+### Bug 2 fix validated ✅
+Ran `finalize-staged` to push the branch and create PR #94. The PR comment contains proper markdown:
+- A `## Summary` section, `## Changes`, `## Implementation Decisions`, `## Patterns & Conventions`
+- Cost breakdown table
+- **No raw JSON stream** anywhere in the comment
+
+Compare to PR #91 (pre-fix): first line was `{"type":"system","subtype":"init",...}` — the full Claude CLI JSON stream.
