@@ -101,9 +101,10 @@ Remove `await` from all `StreamAccumulator` call sites now that `apply` and `res
 - `Task { await accumulator.reset() }` → `accumulator.reset()`
 - `Task { let updatedBlocks = await accumulator.apply(event); ... }` → call `apply` synchronously and call `chatModel.updateCurrentStreamingBlocks(updatedBlocks)` directly (no wrapping `Task`)
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
 
-**Skills to read**: `ai-dev-tools-review`
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Ran `swift build` — build complete with no errors. Confirmed `MarkdownPlannerDetailView` contains no `StreamContinuationHolder`, `AsyncStream`, or continuation references.
 
 Build:
 ```bash
