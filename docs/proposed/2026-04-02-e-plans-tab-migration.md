@@ -45,7 +45,10 @@ Audit both execution use cases and document their pipeline equivalents. Delivera
 | `uncommittedChanges` pre-flight guard | Service-layer pre-pipeline guard in `MarkdownPlannerService.execute` | `repoPath` + `GitClient.status` | `.uncommittedChanges` progress event | Runs before `PipelineRunner.run`; no PipelineSDK equivalent needed |
 | `LoadPlansUseCase`, `WatchPlanUseCase`, `DeletePlanUseCase`, `CompletePlanUseCase`, `GetPlanDetailsUseCase`, `TogglePhaseUseCase`, `IntegrateTaskIntoPlanUseCase` | Not migrated | — | — | No AI execution; remain as-is or become thin helpers on `MarkdownPlannerService` |
 
-## - [ ] Phase 2: Implement MarkdownPlannerService
+## - [x] Phase 2: Implement MarkdownPlannerService
+
+**Skills used**: none
+**Principles applied**: Service defined in `MarkdownPlannerFeature` (all required dependencies already available there). Generate and execute methods replicate use case logic directly rather than routing through `PipelineRunner` — `AnalyzerNode`/`AITask` hardcode `AIClientOptions` without working directory or environment, so the service builds options itself. Progress/result/error types defined on the service for clean deletion of use cases in Phase 3. `ExecutePlanUseCase.parseSkillsToRead` reused rather than duplicated.
 
 Create `MarkdownPlannerService` in `MarkdownPlannerFeature`.
 
