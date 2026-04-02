@@ -2,6 +2,7 @@ import ArgumentParser
 import DataPathsService
 import Foundation
 import MarkdownPlannerFeature
+import PipelineSDK
 import ProviderRegistryService
 import RepositorySDK
 import SettingsService
@@ -33,7 +34,6 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
 
         let service = MarkdownPlannerService(
             client: client,
-            dataPath: ResolveDataPathUseCase().resolve(explicit: dataPath).path,
             resolveProposedDirectory: { repo in
                 (repo.planner ?? MarkdownPlannerRepoSettings()).resolvedProposedDirectory(repoPath: repo.path)
             }
@@ -51,30 +51,31 @@ struct MarkdownPlannerPlanCommand: AsyncParsableCommand {
             printColored("\nStarting execution...", color: .cyan)
             let planPath = result.planURL.path(percentEncoded: false)
             let executeRepository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
-            let completedDirectory = executeRepository.map {
-                ($0.planner ?? MarkdownPlannerRepoSettings()).resolvedCompletedDirectory(repoPath: $0.path)
-            }
             let executeService = MarkdownPlannerService(
                 client: client,
-                completedDirectory: completedDirectory,
-                dataPath: ResolveDataPathUseCase().resolve(explicit: dataPath).path,
                 resolveProposedDirectory: { repo in
                     (repo.planner ?? MarkdownPlannerRepoSettings()).resolvedProposedDirectory(repoPath: repo.path)
                 }
             )
             let timer = TimerDisplay(maxRuntimeSeconds: 90 * 60, scriptStartTime: Date())
-            let executeResult = try await executeService.execute(
+            let blueprint = try await executeService.buildExecutePipeline(
                 options: MarkdownPlannerService.ExecuteOptions(
                     executeMode: .all,
                     planPath: result.planURL,
                     repoPath: URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
                     repository: executeRepository
                 )
-            ) { progress in
-                MarkdownPlannerExecuteCommand.handleProgress(progress, timer: timer)
-            }
+            )
+            let state = PipelineCLIState(totalPhases: blueprint.initialNodeManifest.count)
+            _ = try await PipelineRunner().run(
+                nodes: blueprint.nodes,
+                configuration: blueprint.configuration,
+                onProgress: { [timer, state] event in
+                    MarkdownPlannerExecuteCommand.handlePipelineEvent(event, timer: timer, state: state)
+                }
+            )
             timer.stop()
-            if executeResult.allCompleted {
+            if state.phasesExecuted > 0 {
                 printColored("\u{2713} All steps completed!", color: .green)
             }
         }

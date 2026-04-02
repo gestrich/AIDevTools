@@ -167,7 +167,10 @@ Replace `ExecutionProgress` + `executionProgressObserver` with an owned `Pipelin
 - `phaseSection`: show `PipelineView` when `pipelineModel.isRunning`, local phase list otherwise
 - Header bar phase count reads from `pipelineModel.nodes`
 
-## - [ ] Phase 7: Validation
+## - [x] Phase 7: Validation
+
+**Skills used**: `ai-dev-tools-review`
+**Principles applied**: Build confirmed clean. Static checks all pass: `PipelineView` imports only `SwiftUI`; `MarkdownPlannerModel` has no `executionProgressObserver`, `ExecutionProgress`, or `betweenPhases`; `MarkdownPlannerService` has no `execute()` or `executePhase()`. CLI commands (`MarkdownPlannerExecuteCommand`, `MarkdownPlannerPlanCommand`) migrated to `buildExecutePipeline()` + `PipelineRunner` with `PipelineCLIState` for progress tracking. Dead stored properties (`completedDirectory`, `dataPath`, `gitClient`) and dead methods (`logDirectory`) removed from service; callers updated.
 
 **Skills to read**: `ai-dev-tools-review`
 

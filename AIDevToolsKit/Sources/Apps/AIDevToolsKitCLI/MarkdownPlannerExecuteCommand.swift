@@ -3,6 +3,7 @@ import DataPathsService
 import Foundation
 import MarkdownPlannerFeature
 import MarkdownPlannerService
+import PipelineSDK
 import ProviderRegistryService
 import RepositorySDK
 import SettingsService
@@ -45,8 +46,6 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
         let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
         let repos = try settings.repositoryStore.loadAll()
 
-        let timer = TimerDisplay(maxRuntimeSeconds: maxMinutes * 60, scriptStartTime: Date())
-
         printColored(String(repeating: "=", count: 50), color: .blue)
         printColored("Phased Implementation Automation", color: .blue)
         printColored(String(repeating: "=", count: 50), color: .blue)
@@ -57,22 +56,19 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
 
         let planPath = planURL.path(percentEncoded: false)
         let repository = repos.first { planPath.hasPrefix($0.path.path(percentEncoded: false)) }
-        let completedDirectory = repository.map {
-            ($0.planner ?? MarkdownPlannerRepoSettings()).resolvedCompletedDirectory(repoPath: $0.path)
-        }
 
         let registry = makeProviderRegistry()
         let client = provider.flatMap { registry.client(named: $0) } ?? registry.defaultClient!
 
         let service = MarkdownPlannerService(
             client: client,
-            completedDirectory: completedDirectory,
-            dataPath: ResolveDataPathUseCase().resolve(explicit: dataPath).path,
             resolveProposedDirectory: { repo in
                 (repo.planner ?? MarkdownPlannerRepoSettings()).resolvedProposedDirectory(repoPath: repo.path)
             }
         )
-        let result = try await service.execute(
+
+        printColored("Fetching phase information...", color: .cyan)
+        let blueprint = try await service.buildExecutePipeline(
             options: MarkdownPlannerService.ExecuteOptions(
                 executeMode: next ? .next : .all,
                 planPath: planURL,
@@ -80,78 +76,73 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
                 maxMinutes: maxMinutes,
                 repository: repository
             )
-        ) { progress in
-            Self.handleProgress(progress, timer: timer)
+        )
+        let totalPhases = blueprint.initialNodeManifest.count
+
+        print()
+        printColored(String(repeating: "=", count: 50), color: .blue)
+        printColored("Implementation Steps", color: .blue)
+        printColored(String(repeating: "=", count: 50), color: .blue)
+        print("Total steps: \(ANSIColor.green.rawValue)\(totalPhases)\(ANSIColor.reset.rawValue)\n")
+        for (i, node) in blueprint.initialNodeManifest.enumerated() {
+            print("  \(ANSIColor.yellow.rawValue)\(i + 1): \(node.displayName)\(ANSIColor.reset.rawValue)")
         }
+        printColored(String(repeating: "=", count: 50), color: .blue)
+        print()
+
+        let timer = TimerDisplay(maxRuntimeSeconds: maxMinutes * 60, scriptStartTime: Date())
+        let state = PipelineCLIState(totalPhases: totalPhases)
+
+        _ = try await PipelineRunner().run(
+            nodes: blueprint.nodes,
+            configuration: blueprint.configuration,
+            onProgress: { [timer, state] event in
+                Self.handlePipelineEvent(event, timer: timer, state: state)
+            }
+        )
 
         timer.stop()
 
         printColored(String(repeating: "=", count: 50), color: .blue)
-        if result.allCompleted {
-            printColored("\u{2713} All steps completed successfully!", color: .green)
-        }
+        printColored("\u{2713} All steps completed successfully!", color: .green)
         printColored(String(repeating: "=", count: 50), color: .blue)
-        printColored("Total steps executed: \(result.phasesExecuted)", color: .green)
-        printColored("Total time: \(TimerDisplay.formatTime(result.totalSeconds))", color: .cyan)
+        printColored("Total steps executed: \(state.phasesExecuted)", color: .green)
+        printColored("Total time: \(TimerDisplay.formatTime(state.totalElapsed))", color: .cyan)
         printColored("Planning document: \(planURL.path)", color: .green)
         print()
 
-        if result.allCompleted {
-            playCompletionSound()
-        }
+        playCompletionSound()
     }
 
-    static func handleProgress(_ progress: MarkdownPlannerService.ExecuteProgress, timer: TimerDisplay) {
-        switch progress {
-        case .fetchingStatus:
-            printColored("Fetching phase information...", color: .cyan)
-
-        case .phaseOverview(let phases):
-            print()
+    static func handlePipelineEvent(_ event: PipelineEvent, timer: TimerDisplay, state: PipelineCLIState) {
+        switch event {
+        case .nodeStarted(let id, let displayName):
+            state.nodeStarted(id: id)
+            let phaseNum = (Int(id) ?? 0) + 1
             printColored(String(repeating: "=", count: 50), color: .blue)
-            printColored("Implementation Steps", color: .blue)
-            printColored(String(repeating: "=", count: 50), color: .blue)
-            print("Total steps: \(ANSIColor.green.rawValue)\(phases.count)\(ANSIColor.reset.rawValue)\n")
-            for (i, phase) in phases.enumerated() {
-                let color: ANSIColor = phase.isCompleted ? .green : .yellow
-                print("  \(color.rawValue)\(i + 1): \(phase.description)\(ANSIColor.reset.rawValue)")
-            }
-            printColored(String(repeating: "=", count: 50), color: .blue)
-            print()
-
-        case .startingPhase(let index, let total, let description):
-            printColored(String(repeating: "=", count: 50), color: .blue)
-            printColored("Step \(index + 1) of \(total) -> \(description)", color: .yellow)
+            printColored("Step \(phaseNum) of \(state.totalPhases) -> \(displayName)", color: .yellow)
             printColored(String(repeating: "-", count: 50), color: .blue)
             printColored("Running AI...\n", color: .blue)
             timer.start()
 
-        case .phaseOutput(let text):
-            timer.setStatusLine(text)
-        case .phaseStreamEvent:
-            break
+        case .nodeProgress(_, let progress):
+            if case .output(let text) = progress {
+                timer.setStatusLine(text)
+            }
 
-        case .phaseCompleted(let index, let elapsed, let totalElapsed):
+        case .nodeCompleted(let id, _):
             timer.stop()
-            printColored("\nStep \(index + 1) completed", color: .green)
+            let phaseNum = (Int(id) ?? 0) + 1
+            let elapsed = state.elapsed(for: id)
+            let totalElapsed = state.totalElapsed
+            state.nodeCompleted()
+            printColored("\nStep \(phaseNum) completed", color: .green)
             printColored("\u{23F1}  Step time: \(TimerDisplay.formatTime(elapsed)) | Total: \(TimerDisplay.formatTime(totalElapsed))", color: .cyan)
             printColored(String(repeating: "-", count: 50), color: .blue)
             print()
 
-        case .phaseFailed(let index, let description, let error):
-            timer.stop()
-            printColored("\nStep \(index + 1) failed: \(description)", color: .red)
-            printColored("Error: \(error)", color: .red)
-
-        case .allCompleted(let phasesExecuted, let totalSeconds):
-            printColored("\u{2713} All \(phasesExecuted) steps completed in \(TimerDisplay.formatTime(totalSeconds))", color: .green)
-
-        case .uncommittedChanges(let files):
-            printColored("Warning: Uncommitted changes detected:", color: .yellow)
-            for file in files {
-                printColored("  \(file)", color: .yellow)
-            }
-            print()
+        case .completed, .pausedForReview:
+            break
         }
     }
 
@@ -214,5 +205,36 @@ struct MarkdownPlannerExecuteCommand: AsyncParsableCommand {
             try? process.run()
             process.waitUntilExit()
         }
+    }
+}
+
+// MARK: - PipelineCLIState
+
+final class PipelineCLIState: @unchecked Sendable {
+    let scriptStart: Date
+    let totalPhases: Int
+    private(set) var phasesExecuted: Int = 0
+    private var startTimes: [String: Date] = [:]
+    private let lock = NSLock()
+
+    init(totalPhases: Int) {
+        self.scriptStart = Date()
+        self.totalPhases = totalPhases
+    }
+
+    func nodeStarted(id: String) {
+        lock.withLock { startTimes[id] = Date() }
+    }
+
+    func nodeCompleted() {
+        lock.withLock { phasesExecuted += 1 }
+    }
+
+    func elapsed(for id: String) -> Int {
+        lock.withLock { startTimes[id].map { Int(Date().timeIntervalSince($0)) } ?? 0 }
+    }
+
+    var totalElapsed: Int {
+        Int(Date().timeIntervalSince(scriptStart))
     }
 }

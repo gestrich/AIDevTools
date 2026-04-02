@@ -57,21 +57,18 @@ final class MarkdownPlannerModel {
 
     private var activeClient: any AIClient
     @ObservationIgnored private var chatModels: [String: ChatModel] = [:]
-    private let dataPath: URL
     private let deletePlanUseCase: DeletePlanUseCase
     private let mcpConfigPath: String?
     private let providerRegistry: ProviderRegistry
     private let togglePhaseUseCase: TogglePhaseUseCase
 
     init(
-        dataPath: URL,
         deletePlanUseCase: DeletePlanUseCase = DeletePlanUseCase(),
         mcpConfigPath: String? = nil,
         providerRegistry: ProviderRegistry,
         selectedProviderName: String? = nil,
         togglePhaseUseCase: TogglePhaseUseCase = TogglePhaseUseCase()
     ) {
-        self.dataPath = dataPath
         self.deletePlanUseCase = deletePlanUseCase
         self.mcpConfigPath = mcpConfigPath
         self.providerRegistry = providerRegistry
@@ -147,11 +144,8 @@ final class MarkdownPlannerModel {
         phaseCompleteCount = 0
 
         do {
-            let settings = repository.planner ?? MarkdownPlannerRepoSettings()
             let service = MarkdownPlannerService(
                 client: activeClient,
-                completedDirectory: settings.resolvedCompletedDirectory(repoPath: repository.path),
-                dataPath: dataPath,
                 resolveProposedDirectory: { repo in
                     let s = repo.planner ?? MarkdownPlannerRepoSettings()
                     return s.resolvedProposedDirectory(repoPath: repo.path)
@@ -195,7 +189,6 @@ final class MarkdownPlannerModel {
 
         let service = MarkdownPlannerService(
             client: activeClient,
-            dataPath: dataPath,
             resolveProposedDirectory: { repo in
                 let settings = repo.planner ?? MarkdownPlannerRepoSettings()
                 return settings.resolvedProposedDirectory(repoPath: repo.path)
