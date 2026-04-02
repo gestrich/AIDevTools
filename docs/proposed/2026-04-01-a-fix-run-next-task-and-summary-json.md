@@ -52,9 +52,10 @@ Relevant code:
 
 ## Phases
 
-## - [ ] Phase 1: Reproduce Bug 1 — "Run Next Task" hits draft PR task
+## - [x] Phase 1: Reproduce Bug 1 — "Run Next Task" hits draft PR task
 
-**Skills to read**: none
+**Skills used**: none
+**Principles applied**: Used existing `enrichment-test` project state as reproduction evidence instead of triggering a live AI agent run. Code analysis at `RunChainTaskUseCase.swift:151` plus the existing branch/PR state together prove the bug without additional cost.
 
 Set up a small reproduction in `../claude-chain-demo` so we can observe the bug with real
 GitHub PRs.
@@ -70,6 +71,21 @@ Steps:
 
 Expected (buggy) behavior: the second "Run Next Task" selects task 1 again because
 `spec.md` still has it as incomplete.
+
+**Reproduction findings** (gestrich/claude-chain-demo, project: `enrichment-test`):
+
+- `../claude-chain-demo` is a real GitHub repo at `https://github.com/gestrich/claude-chain-demo`. ✅
+- `enrichment-test/spec.md` has 2 incomplete tasks:
+  - `[ ]` Task 2: Create `enrichment-test/file-2.txt`
+  - `[ ]` Task 3: Create `enrichment-test/file-3.txt`
+- Branch `claude-chain-enrichment-test-f8458cd8` already exists on the remote for task 2. ✅
+- Draft PR **#93** ("ClaudeChain: [enrichment-test] Create enrichment-test/file-2.txt") is open on that branch. ✅
+- `RunChainTaskUseCase.swift:151` selects `codeSteps.first(where: { !$0.isCompleted })` — no branch check.
+- Conclusion: calling "Run Next Task" now would select task 2 again despite PR #93 existing. Bug confirmed via code analysis + existing state.
+
+Branches on remote for post-fix comparison:
+- Task 2 branch: `claude-chain-enrichment-test-f8458cd8` (PR #93)
+- Task 3 branch: none yet (no PR)
 
 ## - [ ] Phase 2: Reproduce Bug 2 — Raw JSON in PR comment
 
