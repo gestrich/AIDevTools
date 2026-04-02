@@ -17,14 +17,16 @@ public struct FinalizeStagedTaskUseCase: UseCase {
     public struct Options: Sendable {
         public let baseBranch: String
         public let branchName: String
+        public let dryRun: Bool
         public let githubAccount: String?
         public let projectName: String
         public let repoPath: URL
         public let taskDescription: String
 
-        public init(repoPath: URL, projectName: String, baseBranch: String, branchName: String, taskDescription: String, githubAccount: String? = nil) {
+        public init(repoPath: URL, projectName: String, baseBranch: String, branchName: String, taskDescription: String, githubAccount: String? = nil, dryRun: Bool = false) {
             self.baseBranch = baseBranch
             self.branchName = branchName
+            self.dryRun = dryRun
             self.githubAccount = githubAccount
             self.projectName = projectName
             self.repoPath = repoPath
@@ -108,6 +110,17 @@ public struct FinalizeStagedTaskUseCase: UseCase {
         let totalSteps = codeSteps.count
         let completedCount = codeSteps.filter { $0.isCompleted }.count
 
+        if options.dryRun {
+            return try await runDry(
+                options: options,
+                repoDir: repoDir,
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                completedCount: completedCount,
+                onProgress: onProgress
+            )
+        }
+
         try await pipelineSource.markStepCompleted(step)
         try await git.add(files: [specURL.path], workingDirectory: repoDir)
         let specStaged = try await git.diffCachedNames(workingDirectory: repoDir)
@@ -183,14 +196,17 @@ public struct FinalizeStagedTaskUseCase: UseCase {
             _ = try await client.run(
                 prompt: summaryPrompt,
                 options: summaryOptions,
-                onOutput: { chunk in summaryText.text += chunk },
+                onOutput: nil,
                 onStreamEvent: { event in
+                    if case .textDelta(let text) = event {
+                        summaryText.text += text
+                    }
                     onProgress?(.summaryStreamEvent(event))
                 }
             )
             summaryContent = summaryText.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if summaryContent?.isEmpty == true { summaryContent = nil }
-            logger.debug("summary: collected \(summaryText.text.count) chars of plain text")
+            logger.debug("summary: collected \(summaryText.text.count) chars of text")
             summaryCost = ChainPRHelpers.extractCost()
             if let summary = summaryContent, !summary.isEmpty {
                 onProgress?(.summaryCompleted(summary: summary))
@@ -243,6 +259,90 @@ public struct FinalizeStagedTaskUseCase: UseCase {
             message: "PR created: \(options.taskDescription)",
             prURL: prURL.isEmpty ? nil : prURL,
             prNumber: prNumber,
+            taskDescription: options.taskDescription
+        )
+    }
+
+    private func runDry(
+        options: Options,
+        repoDir: String,
+        stepIndex: Int,
+        totalSteps: Int,
+        completedCount: Int,
+        onProgress: (@Sendable (Progress) -> Void)?
+    ) async throws -> Result {
+        logger.debug("dry-run: generating summary for task \(stepIndex)/\(totalSteps)")
+        onProgress?(.generatingSummary)
+
+        let summaryPrompt = """
+        You are reviewing a pull request. Analyze the changes made by running \
+        `git diff \(options.baseBranch)...HEAD` and write a concise markdown summary.
+
+        The task was: \(options.taskDescription)
+
+        Write a PR summary that includes:
+        1. A brief overview of what was changed
+        2. Key implementation decisions
+        3. Any notable patterns or conventions followed
+
+        Output ONLY the markdown summary text, nothing else.
+        """
+        let summaryOptions = AIClientOptions(
+            dangerouslySkipPermissions: true,
+            workingDirectory: options.repoPath.path
+        )
+
+        var summaryContent: String?
+        do {
+            let summaryText = TextAccumulator()
+            _ = try await client.run(
+                prompt: summaryPrompt,
+                options: summaryOptions,
+                onOutput: nil,
+                onStreamEvent: { event in
+                    if case .textDelta(let text) = event {
+                        summaryText.text += text
+                    }
+                    onProgress?(.summaryStreamEvent(event))
+                }
+            )
+            let collected = summaryText.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            logger.debug("dry-run: collected \(summaryText.text.count) chars; preview: \(String(collected.prefix(500)))")
+            summaryContent = collected.isEmpty ? nil : collected
+            if let summary = summaryContent {
+                onProgress?(.summaryCompleted(summary: summary))
+            }
+        } catch {
+            logger.error("dry-run: summary generation failed: \(error)")
+        }
+
+        let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: repoDir, git: git)
+        let costBreakdown = CostBreakdown(mainCost: 0.0, reviewCost: 0.0, summaryCost: 0.0)
+        let report = PullRequestCreatedReport(
+            prNumber: "DRY-RUN",
+            prURL: "https://github.com/\(repoSlug)/pull/DRY-RUN",
+            projectName: options.projectName,
+            task: options.taskDescription,
+            costBreakdown: costBreakdown,
+            repo: repoSlug,
+            runID: "",
+            summaryContent: summaryContent,
+            progressInfo: [
+                "tasks_completed": completedCount + 1,
+                "tasks_total": totalSteps,
+            ]
+        )
+        let formatter = MarkdownReportFormatter()
+        let comment = formatter.format(report.buildCommentElements())
+
+        logger.debug("dry-run: formatted PR comment (\(comment.count) chars):\n\(comment)")
+        onProgress?(.completed(prURL: nil))
+
+        return Result(
+            success: true,
+            message: "[DRY RUN] PR comment preview generated (not posted)",
+            prURL: nil,
+            prNumber: nil,
             taskDescription: options.taskDescription
         )
     }

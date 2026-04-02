@@ -37,6 +37,9 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
     @Option(help: "Credential account name to override auto-detection")
     var githubAccount: String?
 
+    @Flag(help: "Generate and print the PR comment without pushing, creating a PR, or posting")
+    var dryRun: Bool = false
+
     public init() {}
 
     func run() async throws {
@@ -77,7 +80,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }
 
-        print("=== Finalize Staged Task ===")
+        print("=== Finalize Staged Task\(dryRun ? " (DRY RUN)" : "") ===")
         print("Project: \(project)")
         print("Branch: \(branchName)")
         print("Task: \(taskDescription)")
@@ -91,18 +94,22 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
                 projectName: project,
                 baseBranch: resolvedBaseBranch,
                 branchName: branchName,
-                taskDescription: taskDescription
+                taskDescription: taskDescription,
+                dryRun: dryRun
             )
         ) { progress in
-            Self.handleProgress(progress)
+            Self.handleProgress(progress, dryRun: dryRun)
         }
 
         print()
         if result.success {
-            print("=== PR Created ===")
+            print(dryRun ? "=== Dry Run Complete ===" : "=== PR Created ===")
             print(result.message)
             if let prURL = result.prURL {
                 print("PR: \(prURL)")
+            }
+            if dryRun {
+                print("Check logs for full PR comment: swift run ai-dev-tools-kit --log-level debug logs")
             }
         } else {
             print("=== Failed ===")
@@ -111,7 +118,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         }
     }
 
-    private static func handleProgress(_ progress: RunChainTaskUseCase.Progress) {
+    private static func handleProgress(_ progress: RunChainTaskUseCase.Progress, dryRun: Bool = false) {
         switch progress {
         case .finalizing:
             print("=== Phase: Finalizing ===")
@@ -124,7 +131,13 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         case .summaryStreamEvent:
             break
         case .summaryCompleted(let summary):
-            print("Summary generated (\(summary.count) chars)")
+            if dryRun {
+                print("\n=== PR Comment Preview ===")
+                print(summary)
+                print("=== End PR Comment Preview ===")
+            } else {
+                print("Summary generated (\(summary.count) chars)")
+            }
         case .postingPRComment:
             print("\n=== Phase: Post PR Comment ===")
         case .prCommentPosted:

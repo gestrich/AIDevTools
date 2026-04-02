@@ -2,12 +2,18 @@ import AIOutputSDK
 import CLISDK
 import Foundation
 import GitSDK
+import Logging
 import PipelineSDK
+
+private final class TextAccumulator: @unchecked Sendable {
+    var text = ""
+}
 
 public struct CreatePRStepHandler: StepHandler {
     private let client: any AIClient
     private let cliClient: CLIClient
     private let git: GitClient
+    private let logger = Logger(label: "CreatePRStepHandler")
 
     public init(
         client: any AIClient,
@@ -116,18 +122,29 @@ public struct CreatePRStepHandler: StepHandler {
             dangerouslySkipPermissions: true,
             workingDirectory: workingDirectory
         )
-        let summaryResult = try await client.run(prompt: summaryPrompt, options: options, onOutput: nil)
+        let summaryText = TextAccumulator()
+        let summaryResult = try await client.run(
+            prompt: summaryPrompt,
+            options: options,
+            onOutput: nil,
+            onStreamEvent: { event in
+                if case .textDelta(let text) = event {
+                    summaryText.text += text
+                }
+            }
+        )
         guard summaryResult.exitCode == 0 else {
             throw CreatePRError.commandFailed(
                 command: "AI summary generation",
                 output: summaryResult.stderr
             )
         }
-        
-        let summary = summaryResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !summary.isEmpty else { 
+
+        let summary = summaryText.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        logger.debug("postPRSummary: collected \(summaryText.text.count) chars; preview: \(String(summary.prefix(200)))")
+        guard !summary.isEmpty else {
             throw CreatePRError.commandFailed(
-                command: "AI summary generation", 
+                command: "AI summary generation",
                 output: "Empty summary generated"
             )
         }

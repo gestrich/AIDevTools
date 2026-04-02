@@ -381,14 +381,17 @@ public struct RunChainTaskUseCase: UseCase {
             _ = try await client.run(
                 prompt: summaryPrompt,
                 options: summaryOptions,
-                onOutput: { chunk in summaryText.text += chunk },
+                onOutput: nil,
                 onStreamEvent: { event in
+                    if case .textDelta(let text) = event {
+                        summaryText.text += text
+                    }
                     onProgress?(.summaryStreamEvent(event))
                 }
             )
             summaryContent = summaryText.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if summaryContent?.isEmpty == true { summaryContent = nil }
-            logger.debug("summary: collected \(summaryText.text.count) chars of plain text")
+            logger.debug("summary: collected \(summaryText.text.count) chars of text")
             summaryCost = ChainPRHelpers.extractCost()
             if let summary = summaryContent, !summary.isEmpty {
                 onProgress?(.summaryCompleted(summary: summary))
