@@ -96,7 +96,7 @@ private struct ChainProjectRow: View {
                         ZStack(alignment: .trailing) {
                             Color.clear
                             if let openPRCount, project.completedTasks < project.totalTasks {
-                                Text("\(openPRCount)/\(project.maxOpenPRs ?? 1)")
+                                Text("\(openPRCount)/\(min(project.maxOpenPRs ?? 1, project.pendingTasks))")
                                     .font(.caption2.monospacedDigit())
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 5)
@@ -214,7 +214,7 @@ private struct ChainProjectDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: project.name) {
             executionChatModel = nil
-            model.loadChainDetail(projectName: project.name, repoPath: repository.path)
+            model.loadChainDetail(project: project)
         }
     }
 
@@ -261,7 +261,7 @@ private struct ChainProjectDetailView: View {
             .disabled(isExecuting)
 
             Button {
-                model.refreshChainDetail(projectName: project.name, repoPath: repository.path)
+                model.refreshChainDetail(project: project)
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -286,42 +286,68 @@ private struct ChainProjectDetailView: View {
 
     // MARK: - Content
 
+    @ViewBuilder
     private var projectContentView: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 16) {
-                projectInfoSection
+        if isExecuting || executionProgress != nil {
+            HSplitView {
+                // Left: task list + info
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        projectInfoSection
 
-                if let error = chainDetailError {
-                    enrichmentErrorBanner(error)
-                }
-                if let result = completedResult {
-                    completionBanner(result)
-                }
-                if let error = errorState {
-                    errorBanner(error)
-                }
-            }
-            .padding()
+                        if let error = chainDetailError {
+                            enrichmentErrorBanner(error)
+                        }
+                        if let result = completedResult {
+                            completionBanner(result)
+                        }
+                        if let error = errorState {
+                            errorBanner(error)
+                        }
+                    }
+                    .padding()
 
-            taskListSection
+                    taskListSection
 
-            if isExecuting || executionProgress != nil {
-                Divider()
-                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+
                     if let progress = executionProgress {
                         phaseProgressSection(progress)
+                            .padding()
                     }
-                    if let execModel = executionChatModel {
-                        ChatMessagesView()
-                            .environment(execModel)
-                            .frame(maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .frame(minWidth: 300, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                // Right: log output (wider)
+                if let execModel = executionChatModel {
+                    ChatMessagesView()
+                        .environment(execModel)
+                        .clipShape(RoundedRectangle(cornerRadius: 0))
+                        .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 16) {
+                    projectInfoSection
+
+                    if let error = chainDetailError {
+                        enrichmentErrorBanner(error)
+                    }
+                    if let result = completedResult {
+                        completionBanner(result)
+                    }
+                    if let error = errorState {
+                        errorBanner(error)
                     }
                 }
                 .padding()
+
+                taskListSection
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: - Project Info

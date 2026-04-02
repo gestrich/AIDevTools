@@ -27,7 +27,6 @@ public enum ChainActionKind: Sendable {
     case ciFailure
     case draftNeedsReview
     case mergeConflict
-    case needsReviewers
     case stalePR
 }
 

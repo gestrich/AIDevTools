@@ -49,13 +49,13 @@ public struct StatusCommand: AsyncParsableCommand {
 
             if let projectName = project {
                 let matched = try findProject(named: projectName, in: projects)
-                let detail = try await detailUseCase.run(options: .init(repoPath: repoURL, projectName: matched.name))
+                let detail = try await detailUseCase.run(options: .init(project: matched))
                 printEnrichedProjectDetail(detail)
             } else {
                 var details: [ChainProjectDetail] = []
                 for p in projects {
                     do {
-                        let detail = try await detailUseCase.run(options: .init(repoPath: repoURL, projectName: p.name))
+                        let detail = try await detailUseCase.run(options: .init(project: p))
                         details.append(detail)
                     } catch {
                         fputs("Warning: failed to fetch GitHub data for '\(p.name)': \(error)\n", stderr)

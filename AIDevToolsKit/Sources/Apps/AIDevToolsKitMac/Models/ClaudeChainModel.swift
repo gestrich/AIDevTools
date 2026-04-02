@@ -106,7 +106,7 @@ final class ClaudeChainModel {
                 lastLoadedProjects = projects
                 state = .loaded(projects)
                 for project in projects {
-                    loadChainDetail(projectName: project.name, repoPath: repoPath)
+                    loadChainDetail(project: project)
                 }
             } catch {
                 state = .error(error)
@@ -114,7 +114,8 @@ final class ClaudeChainModel {
         }
     }
 
-    func loadChainDetail(projectName: String, repoPath: URL) {
+    func loadChainDetail(project: ChainProject) {
+        let projectName = project.name
         guard !chainDetailLoading.contains(projectName) else {
             logger.debug("loadChainDetail: already loading '\(projectName)', skipping")
             return
@@ -127,9 +128,10 @@ final class ClaudeChainModel {
         logger.info("loadChainDetail: starting '\(projectName)'")
         Task {
             do {
+                guard let repoPath = currentRepoPath else { return }
                 let service = try await makeOrGetGitHubPRService(repoPath: repoPath)
                 let useCase = GetChainDetailUseCase(gitHubPRService: service)
-                for try await detail in useCase.stream(options: .init(repoPath: repoPath, projectName: projectName)) {
+                for try await detail in useCase.stream(options: .init(project: project)) {
                     chainDetails[projectName] = detail
                 }
                 chainDetailNetworkFetched.insert(projectName)
@@ -141,11 +143,12 @@ final class ClaudeChainModel {
         }
     }
 
-    func refreshChainDetail(projectName: String, repoPath: URL) {
+    func refreshChainDetail(project: ChainProject) {
+        let projectName = project.name
         chainDetails.removeValue(forKey: projectName)
         chainDetailErrors.removeValue(forKey: projectName)
         chainDetailNetworkFetched.remove(projectName)
-        loadChainDetail(projectName: projectName, repoPath: repoPath)
+        loadChainDetail(project: project)
     }
 
     func executeChain(project: ChainProject, repoPath: URL, taskIndex: Int? = nil, stagingOnly: Bool = false) {
@@ -163,6 +166,7 @@ final class ClaudeChainModel {
                 }
                 if result.success {
                     state = .completed(result: result)
+                    refreshChainDetail(project: project)
                 } else {
                     state = .error(
                         NSError(
@@ -236,6 +240,7 @@ final class ClaudeChainModel {
                         taskDescription: finalResult.taskDescription
                     )
                     state = .completed(result: result)
+                    refreshChainDetail(project: project)
                 } else {
                     state = .error(
                         NSError(

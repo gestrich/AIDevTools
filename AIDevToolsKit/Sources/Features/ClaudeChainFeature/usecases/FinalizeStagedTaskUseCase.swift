@@ -87,6 +87,9 @@ public struct FinalizeStagedTaskUseCase: UseCase {
             name: options.projectName,
             basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
         )
+        let githubClient = GitHubClient(workingDirectory: chainDir)
+        let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
+        let projectConfig = try? repository.loadLocalConfiguration(project: project)
 
         logger.debug("finalize: checking out \(options.branchName)")
         try await git.checkout(ref: options.branchName, workingDirectory: repoDir)
@@ -147,6 +150,12 @@ public struct FinalizeStagedTaskUseCase: UseCase {
         ]
         if !repoSlug.isEmpty {
             prCreateArgs += ["--repo", repoSlug]
+        }
+        for assignee in projectConfig?.assignees ?? [] {
+            prCreateArgs += ["--assignee", assignee]
+        }
+        for reviewer in projectConfig?.reviewers ?? [] {
+            prCreateArgs += ["--reviewer", reviewer]
         }
         let prURL: String
         do {

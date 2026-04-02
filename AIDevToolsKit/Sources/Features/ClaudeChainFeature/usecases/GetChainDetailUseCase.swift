@@ -9,12 +9,10 @@ private let claudeChainBranchPrefix = "claude-chain-"
 public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
 
     public struct Options: Sendable {
-        public let projectName: String
-        public let repoPath: URL
+        public let project: ChainProject
 
-        public init(repoPath: URL, projectName: String) {
-            self.projectName = projectName
-            self.repoPath = repoPath
+        public init(project: ChainProject) {
+            self.project = project
         }
     }
 
@@ -47,12 +45,8 @@ public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
     // MARK: - Cache-first load (no network)
 
     private func loadCached(options: Options) async throws -> ChainProjectDetail? {
-        let projects = try ListChainsUseCase().run(options: .init(repoPath: options.repoPath))
-        guard let project = projects.first(where: { $0.name == options.projectName }) else {
-            return nil
-        }
-
-        let indexKey = cacheIndexKey(projectName: options.projectName)
+        let project = options.project
+        let indexKey = cacheIndexKey(projectName: project.name)
         guard let prNumbers = try await gitHubPRService.readCachedIndex(key: indexKey) else {
             return nil
         }
@@ -83,12 +77,8 @@ public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
     // MARK: - Full network fetch
 
     public func run(options: Options) async throws -> ChainProjectDetail {
-        let projects = try ListChainsUseCase().run(options: .init(repoPath: options.repoPath))
-        guard let project = projects.first(where: { $0.name == options.projectName }) else {
-            throw GetChainDetailError.projectNotFound(options.projectName)
-        }
-
-        let branchPrefix = "\(claudeChainBranchPrefix)\(options.projectName)-"
+        let project = options.project
+        let branchPrefix = "\(claudeChainBranchPrefix)\(project.name)-"
         let allOpen = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .open))
         let openPRs = allOpen.filter { ($0.headRefName ?? "").hasPrefix(branchPrefix) }
         let allClosed = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .merged))
@@ -162,7 +152,7 @@ public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
 
         // Save PR number index so the next launch can load from cache instantly
         let allPRNumbers = (openPRs + mergedPRs).map { $0.number }
-        try? await gitHubPRService.writeCachedIndex(allPRNumbers, key: cacheIndexKey(projectName: options.projectName))
+        try? await gitHubPRService.writeCachedIndex(allPRNumbers, key: cacheIndexKey(projectName: project.name))
 
         return ChainProjectDetail(
             project: project,
@@ -250,18 +240,8 @@ public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
                     message: "PR #\(prNumber) has been open for \(enrichedPR.ageDays) days with no approvals"
                 ))
             }
-            if enrichedPR.reviewStatus.pendingReviewers.isEmpty && enrichedPR.reviewStatus.approvedBy.isEmpty {
-                items.append(ChainActionItem(
-                    kind: .needsReviewers,
-                    prNumber: prNumber,
-                    message: "PR #\(prNumber) has no reviewers assigned"
-                ))
-            }
+
         }
         return items
     }
-}
-
-public enum GetChainDetailError: Error {
-    case projectNotFound(String)
 }

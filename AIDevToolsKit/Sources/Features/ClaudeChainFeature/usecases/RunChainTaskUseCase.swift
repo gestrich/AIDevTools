@@ -116,6 +116,7 @@ public struct RunChainTaskUseCase: UseCase {
         )
         let githubClient = GitHubClient(workingDirectory: chainDir)
         let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
+        let projectConfig = try? repository.loadLocalConfiguration(project: project)
 
         let baseBranch = options.baseBranch
         let repoDir = options.repoPath.path
@@ -319,6 +320,24 @@ public struct RunChainTaskUseCase: UseCase {
 
         let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: repoDir, git: git)
 
+        // Guard against creating PR when async slots are at capacity
+        if let projectConfig, !repoSlug.isEmpty {
+            let prService = PRService(repo: repoSlug)
+            let assigneeService = AssigneeService(repo: repoSlug, prService: prService)
+            let capacityResult = assigneeService.checkCapacity(
+                config: projectConfig,
+                label: Constants.defaultPRLabel,
+                project: options.projectName
+            )
+            guard capacityResult.hasCapacity else {
+                throw RunChainTaskError.capacityExceeded(
+                    project: options.projectName,
+                    openCount: capacityResult.openPRs.count,
+                    maxOpen: capacityResult.maxOpenPRs
+                )
+            }
+        }
+
         // Create draft PR
         let prTitle = ChainPRHelpers.buildPRTitle(projectName: options.projectName, task: nextStep.description)
         let prBody = "Task \(stepIndex)/\(totalSteps): \(nextStep.description)"
@@ -333,6 +352,12 @@ public struct RunChainTaskUseCase: UseCase {
         ]
         if !repoSlug.isEmpty {
             prCreateArgs += ["--repo", repoSlug]
+        }
+        for assignee in projectConfig?.assignees ?? [] {
+            prCreateArgs += ["--assignee", assignee]
+        }
+        for reviewer in projectConfig?.reviewers ?? [] {
+            prCreateArgs += ["--reviewer", reviewer]
         }
         let prURL: String
         do {
@@ -527,4 +552,15 @@ public struct RunChainTaskUseCase: UseCase {
         try? content.write(toFile: specPath, atomically: true, encoding: .utf8)
     }
 
+}
+
+public enum RunChainTaskError: LocalizedError {
+    case capacityExceeded(project: String, openCount: Int, maxOpen: Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case .capacityExceeded(let project, let openCount, let maxOpen):
+            return "Project '\(project)' is at capacity: \(openCount)/\(maxOpen) async slots in use. Cannot create PR."
+        }
+    }
 }
