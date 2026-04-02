@@ -25,6 +25,7 @@ struct MarkdownPlannerDetailView: View {
     @State private var isAddTaskPopoverPresented = false
     @State private var isAppendReviewPopoverPresented = false
     @State private var newTaskDescription = ""
+    @State private var pipelineModel = PipelineModel()
 
     private var chatModel: ChatModel {
         markdownPlannerModel.persistentChatModel(
@@ -320,11 +321,9 @@ struct MarkdownPlannerDetailView: View {
 
     @ViewBuilder
     private var phaseSection: some View {
-        if case .executing(let progress) = markdownPlannerModel.state, !progress.phases.isEmpty {
-            PipelineView(
-                phases: progress.phases,
-                currentPhaseIndex: progress.currentPhaseIndex
-            )
+        if pipelineModel.isRunning {
+            PipelineView()
+                .environment(pipelineModel)
         } else if !localPhases.isEmpty {
             localPhaseList
         }

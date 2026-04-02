@@ -1,9 +1,7 @@
-import MarkdownPlannerService
 import SwiftUI
 
 struct PipelineView: View {
-    let phases: [PlanPhase]
-    let currentPhaseIndex: Int?
+    @Environment(PipelineModel.self) var pipelineModel
 
     var body: some View {
         phaseList
@@ -15,19 +13,19 @@ struct PipelineView: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            ForEach(phases) { phase in
+            ForEach(pipelineModel.nodes) { node in
                 HStack(spacing: 8) {
-                    if phase.index == currentPhaseIndex {
+                    if node.isCurrent {
                         ProgressView()
                             .controlSize(.small)
                             .frame(width: 16, height: 16)
                     } else {
-                        Image(systemName: phase.isCompleted ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(phase.isCompleted ? .green : .secondary)
+                        Image(systemName: node.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(node.isCompleted ? .green : .secondary)
                     }
-                    Text(phase.description)
+                    Text(node.displayName)
                         .font(.body)
-                        .foregroundStyle(phase.index == currentPhaseIndex ? .primary : (phase.isCompleted ? .secondary : .primary))
+                        .foregroundStyle(node.isCurrent ? .primary : (node.isCompleted ? .secondary : .primary))
                 }
             }
         }

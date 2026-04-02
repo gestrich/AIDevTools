@@ -94,9 +94,10 @@ final class PipelineModel
 - `var onEvent: (@MainActor (PipelineEvent) -> Void)?` — forwarded to `MarkdownPlannerDetailView` so it can feed `ChatMessagesView`
 - `func stop()` — cancels the running task
 
-## - [ ] Phase 3: Make PipelineView generic
+## - [x] Phase 3: Make PipelineView generic
 
-**Skills to read**: `swift-swiftui`
+**Skills used**: `swift-swiftui`
+**Principles applied**: `PipelineView` now reads `pipelineModel.nodes` from `@Environment(PipelineModel.self)` — no feature-specific types or imports. `MarkdownPlannerDetailView` adds a local `@State private var pipelineModel = PipelineModel()` and injects it via `.environment(pipelineModel)`. The `phaseSection` condition switches from `markdownPlannerModel.state == .executing` to `pipelineModel.isRunning`; the model is wired up in Phase 5–6.
 
 `PipelineView` currently takes `[PlanPhase]` (Plans-specific). Replace with `@Environment(PipelineModel.self)`.
 
