@@ -61,7 +61,10 @@ Bill needs to manually create two targets in the AIDevTools Xcode project:
 
 **Deliverable:** Two empty UI test targets in the Xcode project, committed to a branch.
 
-## - [ ] Phase 2: Claw writes the scripted screenshot tests (CLAW)
+## - [x] Phase 2: Claw writes the scripted screenshot tests (CLAW)
+
+**Skills used**: `swift-snapshot-testing`
+**Principles applied**: Used Method 1 (XCUITests for macOS) as the preferred approach. Implemented `launchApp()`, `saveScreenshot()`, `findTab()`, and `tapTab()` helpers. Tests cover all 6 tabs plus settings (via Cmd+,). Added `selectFirstRepository()` to handle empty state gracefully. Tests use numbered names for deterministic ordering. The file was already present from a prior commit — verified build succeeds for both app and test targets.
 
 **Skills to read**: `swift-snapshot-testing`, `swift-architecture`
 
