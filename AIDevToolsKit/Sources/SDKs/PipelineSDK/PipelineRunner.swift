@@ -57,7 +57,8 @@ public struct PipelineRunner: Sendable {
         onProgress: @escaping @Sendable (PipelineEvent) -> Void
     ) async throws -> PipelineContext {
         var context = context
-        while let task = try await source.nextTask() {
+        var nextTask = try await source.nextTask()
+        while let task = nextTask {
             guard !Task.isCancelled else { break }
 
             let taskNode = AITask<String>(
@@ -65,7 +66,8 @@ public struct PipelineRunner: Sendable {
                 displayName: String(task.instructions.prefix(60)),
                 instructions: task.instructions,
                 client: configuration.provider,
-                jsonSchema: nil
+                workingDirectory: configuration.workingDirectory,
+                environment: configuration.environment
             )
 
             onProgress(.nodeStarted(id: taskNode.id, displayName: taskNode.displayName))
@@ -78,6 +80,11 @@ public struct PipelineRunner: Sendable {
             try await source.markComplete(task)
 
             if configuration.executionMode == .nextOnly { break }
+
+            nextTask = try await source.nextTask()
+            if nextTask != nil {
+                try await configuration.betweenTasks?()
+            }
         }
         return context
     }

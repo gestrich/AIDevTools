@@ -7,22 +7,28 @@ public struct AITask<Output: Decodable & Sendable>: PipelineNode {
 
     public let client: any AIClient
     public let displayName: String
+    public let environment: [String: String]?
     public let id: String
     public let instructions: String
     public let jsonSchema: String?
+    public let workingDirectory: String?
 
     public init(
         id: String,
         displayName: String,
         instructions: String,
         client: any AIClient,
-        jsonSchema: String? = nil
+        jsonSchema: String? = nil,
+        workingDirectory: String? = nil,
+        environment: [String: String]? = nil
     ) {
         self.client = client
         self.displayName = displayName
+        self.environment = environment
         self.id = id
         self.instructions = instructions
         self.jsonSchema = jsonSchema
+        self.workingDirectory = workingDirectory
     }
 
     public func run(
@@ -30,7 +36,11 @@ public struct AITask<Output: Decodable & Sendable>: PipelineNode {
         onProgress: @escaping @Sendable (PipelineNodeProgress) -> Void
     ) async throws -> PipelineContext {
         var updated = context
-        let options = AIClientOptions(dangerouslySkipPermissions: true)
+        let options = AIClientOptions(
+            dangerouslySkipPermissions: true,
+            environment: environment,
+            workingDirectory: workingDirectory
+        )
         let metricsBox = MetricsBox()
 
         if let schema = jsonSchema {
