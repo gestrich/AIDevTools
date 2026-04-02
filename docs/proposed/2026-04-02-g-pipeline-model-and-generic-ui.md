@@ -135,7 +135,10 @@ Remove `execute()`, `executePhase()`, and `betweenPhases` parameter — they are
 
 Keep `generate()` unchanged (it already uses `PipelineRunner` correctly).
 
-## - [ ] Phase 5: Update `MarkdownPlannerModel` to use `PipelineModel`
+## - [x] Phase 5: Update `MarkdownPlannerModel` to use `PipelineModel`
+
+**Skills used**: `swift-architecture`, `swift-swiftui`
+**Principles applied**: `ExecutionProgress` struct and `.executing(progress:)` case removed; replaced with bare `.executing` since progress is now owned by `pipelineModel.nodes`. `pipelineModel` stored as `let` on the model (Apps layer `@Observable`). `execute()` delegates to `service.buildExecutePipeline()` + `pipelineModel.run(blueprint:)` — no more inline orchestration. `pendingTasksProvider` uses `guard let self` before `MainActor.run` to satisfy Swift 6 Sendable closure captures. `executionProgressObserver` retained temporarily (Phase 6 removes it). View updated minimally to use `markdownPlannerModel.pipelineModel.nodes` for phase count and current node display.
 
 **Skills to read**: `swift-architecture`, `swift-swiftui`
 

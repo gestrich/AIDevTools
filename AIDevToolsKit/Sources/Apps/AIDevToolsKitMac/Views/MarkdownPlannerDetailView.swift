@@ -234,8 +234,9 @@ struct MarkdownPlannerDetailView: View {
 
             Spacer()
 
-            if case .executing(let progress) = markdownPlannerModel.state, progress.totalPhases > 0 {
-                Text("\(progress.phasesCompleted)/\(progress.totalPhases) phases")
+            let pipelineNodes = markdownPlannerModel.pipelineModel.nodes
+            if isExecuting && !pipelineNodes.isEmpty {
+                Text("\(pipelineNodes.filter(\.isCompleted).count)/\(pipelineNodes.count) phases")
                     .foregroundStyle(.secondary)
                     .font(.subheadline)
             }
@@ -303,17 +304,16 @@ struct MarkdownPlannerDetailView: View {
 
     @ViewBuilder
     private var executionStatusText: some View {
-        if case .executing(let progress) = markdownPlannerModel.state {
-            if let index = progress.currentPhaseIndex {
-                Text("Phase \(index + 1): \(progress.currentPhaseDescription)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            } else {
-                Text("Fetching status...")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        let currentNode = markdownPlannerModel.pipelineModel.nodes.first(where: \.isCurrent)
+        if let node = currentNode {
+            Text(node.displayName)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else {
+            Text("Fetching status...")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
     }
 

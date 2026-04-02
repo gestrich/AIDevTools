@@ -21,7 +21,7 @@ final class MarkdownPlannerModel {
 
     enum State {
         case idle
-        case executing(progress: ExecutionProgress)
+        case executing
         case generating(step: String)
         case completed(MarkdownPlannerService.ExecuteResult, phases: [PlanPhase])
         case error(Error)
@@ -29,23 +29,14 @@ final class MarkdownPlannerModel {
         var lastExecutionPhases: [PlanPhase] {
             switch self {
             case .completed(_, let phases): return phases
-            case .executing(let progress): return progress.phases
             default: return []
             }
         }
     }
 
-    struct ExecutionProgress {
-        var phases: [PlanPhase] = []
-        var currentPhaseIndex: Int?
-        var currentPhaseDescription: String = ""
-        var currentOutput: String = ""
-        var phasesCompleted: Int = 0
-        var totalPhases: Int = 0
-    }
-
     var state: State = .idle
     var plans: [MarkdownPlanEntry] = []
+    let pipelineModel = PipelineModel()
     private(set) var isLoadingPlans: Bool = false
     private(set) var executionCompleteCount: Int = 0
     private(set) var phaseCompleteCount: Int = 0
@@ -154,7 +145,7 @@ final class MarkdownPlannerModel {
         executeMode: MarkdownPlannerService.ExecuteMode = .all,
         stopAfterArchitectureDiagram: Bool = false
     ) async {
-        state = .executing(progress: ExecutionProgress())
+        state = .executing
         phaseCompleteCount = 0
 
         do {
@@ -175,30 +166,23 @@ final class MarkdownPlannerModel {
                 repository: repository,
                 stopAfterArchitectureDiagram: stopAfterArchitectureDiagram
             )
-            let integrateUseCase = IntegrateTaskIntoPlanUseCase(client: activeClient)
-            let result = try await service.execute(options: options, onProgress: { [weak self] progress in
-                guard let self else { return }
-                Task { @MainActor in
-                    self.handleExecutionProgress(progress)
+            let blueprint = try await service.buildExecutePipeline(
+                options: options,
+                pendingTasksProvider: { [weak self] in
+                    guard let self else { return [] }
+                    return await MainActor.run { self.clearQueue().map(\.description) }
                 }
-            }, betweenPhases: { [weak self] in
-                guard let self else { return }
-                let tasks = await MainActor.run { self.clearQueue() }
-                guard !tasks.isEmpty else { return }
-                let integrateOptions = IntegrateTaskIntoPlanUseCase.Options(
-                    planPath: plan.planURL,
-                    repoPath: repository.path,
-                    taskDescriptions: tasks.map(\.description)
-                )
-                _ = try await integrateUseCase.run(integrateOptions)
-            })
-            let phases: [PlanPhase]
-            if case .executing(let progress) = state {
-                phases = progress.phases
-            } else {
-                phases = []
-            }
-            state = .completed(result, phases: phases)
+            )
+            try await pipelineModel.run(blueprint: blueprint)
+            let completedCount = pipelineModel.nodes.filter(\.isCompleted).count
+            let totalCount = pipelineModel.nodes.count
+            let result = MarkdownPlannerService.ExecuteResult(
+                phasesExecuted: completedCount,
+                totalPhases: totalCount,
+                allCompleted: totalCount > 0 && completedCount == totalCount,
+                totalSeconds: 0
+            )
+            state = .completed(result, phases: [])
             executionCompleteCount += 1
             await loadPlans(for: repository)
         } catch {
@@ -297,48 +281,6 @@ final class MarkdownPlannerModel {
     }
 
     // MARK: - Private
-
-    private func handleExecutionProgress(_ progress: MarkdownPlannerService.ExecuteProgress) {
-        guard case .executing(var current) = state else { return }
-
-        switch progress {
-        case .fetchingStatus:
-            break
-        case .phaseOverview(let phases):
-            current.phases = phases
-            current.totalPhases = phases.count
-        case .startingPhase(let index, let total, let description):
-            current.currentPhaseIndex = index
-            current.totalPhases = total
-            current.currentPhaseDescription = description
-            current.currentOutput = ""
-        case .phaseOutput(let text):
-            current.currentOutput += text
-        case .phaseStreamEvent:
-            break
-        case .phaseCompleted(let index, _, _):
-            current.phasesCompleted = index + 1
-            current.currentOutput = ""
-            if index < current.phases.count {
-                current.phases[index] = PlanPhase(
-                    index: index,
-                    description: current.phases[index].description,
-                    isCompleted: true
-                )
-            }
-            phaseCompleteCount += 1
-        case .phaseFailed(_, let description, let error):
-            current.currentPhaseDescription = "\(description) — Failed: \(error)"
-        case .allCompleted(let phasesExecuted, _):
-            current.phasesCompleted = phasesExecuted
-
-        case .uncommittedChanges:
-            break
-        }
-
-        state = .executing(progress: current)
-        executionProgressObserver?(progress)
-    }
 
     private func resolvedProposedDirectory(for repo: RepositoryConfiguration) -> URL {
         let settings = repo.planner ?? MarkdownPlannerRepoSettings()
