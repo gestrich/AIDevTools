@@ -139,7 +139,10 @@ Also remove the `chatBottomPanel` computed property if it is no longer needed, o
 
 Clean up any now-unused imports (e.g., `ChatFeature` if it was only used for `ChatPanelView`).
 
-## - [ ] Phase 4: Remove interactive chat from `ChainProjectDetailView`
+## - [x] Phase 4: Remove interactive chat from `ChainProjectDetailView`
+
+**Skills used**: none
+**Principles applied**: Removed `chatPanelExpanded` AppStorage, `chatModel` computed property, `makeChainChatSystemPrompt()`, and the `if chatPanelExpanded` VSplitView branch. Body now shows `headerBar` + `projectContentView` directly. `executionChatModel` and all execution log logic retained.
 
 **Skills to read**: (none specific)
 
