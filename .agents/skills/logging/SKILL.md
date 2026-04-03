@@ -69,3 +69,22 @@ When investigating issues, add temporary `Logger` calls at relevant code points 
 **For CLI debugging:** Add log statements, run the CLI command with `--log-level trace`, then read the log file.
 
 **For Mac app debugging:** Since the Mac app runs separately, tell Bill you are adding log statements to help troubleshoot, explain what information the logs will capture, then ask Bill to run the app and trigger the relevant action. After the run completes, read the log file.
+
+## Running Long CLI Commands from AI Agents
+
+When running CLI commands (e.g., `markdown-planner execute`) from an AI agent like OpenClaw, the agent's process manager may kill child processes unexpectedly (SIGKILL). To avoid this, use `nohup` to detach the process from the agent's process tree:
+
+```bash
+nohup ai-dev-tools-kit --log-level trace markdown-planner execute \
+  --plan docs/proposed/my-plan.md > /tmp/plan-execute.log 2>&1 &
+```
+
+Then monitor with:
+```bash
+ps -p <PID>                    # Check if still running
+tail -f /tmp/plan-execute.log  # Watch stdout progress
+```
+
+And check `~/Library/Logs/AIDevTools/aidevtools.log` for structured trace/error logs.
+
+**Why `nohup`?** Agent process managers (e.g., OpenClaw's `exec` tool) track child processes and may reap them during session management. `nohup` ensures the CLI runs independently.
