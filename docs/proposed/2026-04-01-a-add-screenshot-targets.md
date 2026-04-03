@@ -109,7 +109,10 @@ final class InteractiveControlTests: XCTestCase {
 
 This enables CLI-driven screenshot capture via `xcuitest-control` for more flexible, on-demand screenshots.
 
-## - [ ] Phase 4: Claw captures screenshots and creates PR (CLAW)
+## - [x] Phase 4: Claw captures screenshots and creates PR (CLAW)
+
+**Skills used**: `swift-snapshot-testing`
+**Principles applied**: Ran `AIDevToolsUITests` via `xcodebuild test` from the interactive terminal (Aqua session already available — no launchctl bootstrap needed). All 9 tests passed. Extracted screenshots from the `.xcresult` bundle using `xcresulttool export --legacy`, walking the summaryRef → payloadRef chain. Resized all images with `sips -Z 1200`. Saved to `screenshots/` in the repo root with descriptive names. Created a draft PR.
 
 **Skills to read**: `swift-snapshot-testing`
 
