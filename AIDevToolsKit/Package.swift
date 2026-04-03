@@ -286,6 +286,7 @@ let package = Package(
                 "AIOutputSDK",
                 .product(name: "CLISDK", package: "SwiftCLI"),
                 "GitSDK",
+                .product(name: "Logging", package: "swift-log"),
                 "PipelineSDK",
             ],
             path: "Sources/Services/PipelineService"
