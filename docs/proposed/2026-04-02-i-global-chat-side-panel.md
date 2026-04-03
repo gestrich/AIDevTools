@@ -113,7 +113,10 @@ The `chatSidePanelVisible` `@AppStorage` key persists state across restarts auto
 
 `GlobalChatSidePanelView` needs `ProviderModel` from the environment (already injected at the `AIDevToolsKitMacEntryView` level).
 
-## - [ ] Phase 3: Remove interactive chat from `MarkdownPlannerDetailView`
+## - [x] Phase 3: Remove interactive chat from `MarkdownPlannerDetailView`
+
+**Skills used**: none
+**Principles applied**: Removed `chatPanelExpanded`, `chatModel`, `chatBottomPanel`, and `makeIterationSystemPrompt()`. Body now shows `VSplitView` with `ChatMessagesView` only when execution output is present, otherwise shows `planContentView` alone.
 
 **Skills to read**: (none specific)
 
