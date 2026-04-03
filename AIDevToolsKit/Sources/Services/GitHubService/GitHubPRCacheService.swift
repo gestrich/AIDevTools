@@ -1,4 +1,5 @@
 import Foundation
+import OctokitSDK
 import PRRadarModelsService
 
 actor GitHubPRCacheService {
@@ -65,10 +66,53 @@ actor GitHubPRCacheService {
         try data.write(to: indexURL(key: key))
     }
 
+    // MARK: - Branch HEAD
+
+    func readBranchHead(branch: String) throws -> BranchHead? {
+        try readFile(at: branchHeadURL(branch: branch))
+    }
+
+    func writeBranchHead(_ head: BranchHead, branch: String) throws {
+        try FileManager.default.createDirectory(at: branchesDirectory(), withIntermediateDirectories: true)
+        let data = try JSONEncoder.prettyPrinted.encode(head)
+        try data.write(to: branchHeadURL(branch: branch))
+    }
+
+    // MARK: - Git Tree
+
+    func readGitTree(treeSHA: String) throws -> [GitTreeEntry]? {
+        try readFile(at: gitTreeURL(treeSHA: treeSHA))
+    }
+
+    func writeGitTree(_ entries: [GitTreeEntry], treeSHA: String) throws {
+        try FileManager.default.createDirectory(at: treesDirectory(), withIntermediateDirectories: true)
+        let data = try JSONEncoder.prettyPrinted.encode(entries)
+        try data.write(to: gitTreeURL(treeSHA: treeSHA))
+    }
+
+    // MARK: - File Blob
+
+    func readBlob(blobSHA: String) throws -> String? {
+        let url = blobURL(blobSHA: blobSHA)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    func writeBlob(_ content: String, blobSHA: String) throws {
+        try FileManager.default.createDirectory(at: blobsDirectory(), withIntermediateDirectories: true)
+        try content.write(to: blobURL(blobSHA: blobSHA), atomically: true, encoding: .utf8)
+    }
+
     // MARK: - Private helpers
 
-    private func readFile<T: Decodable>(at url: URL) throws -> T? {
+    private func readFile<T: Decodable>(at url: URL, ttl: TimeInterval? = nil) throws -> T? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        if let ttl {
+            let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
+            if let modDate = attrs[.modificationDate] as? Date, Date().timeIntervalSince(modDate) > ttl {
+                return nil
+            }
+        }
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(T.self, from: data)
     }
@@ -108,6 +152,33 @@ actor GitHubPRCacheService {
 
     private func reviewsURL(number: Int) -> URL {
         prDirectory(number: number).appendingPathComponent("gh-reviews.json")
+    }
+
+    private func branchesDirectory() -> URL {
+        rootURL.appendingPathComponent("branches")
+    }
+
+    private func branchHeadURL(branch: String) -> URL {
+        let sanitised = branch.replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+            .replacingOccurrences(of: " ", with: "-")
+        return branchesDirectory().appendingPathComponent("\(sanitised).json")
+    }
+
+    private func treesDirectory() -> URL {
+        rootURL.appendingPathComponent("trees")
+    }
+
+    private func gitTreeURL(treeSHA: String) -> URL {
+        treesDirectory().appendingPathComponent("\(treeSHA).json")
+    }
+
+    private func blobsDirectory() -> URL {
+        rootURL.appendingPathComponent("blobs")
+    }
+
+    private func blobURL(blobSHA: String) -> URL {
+        blobsDirectory().appendingPathComponent("\(blobSHA).txt")
     }
 }
 

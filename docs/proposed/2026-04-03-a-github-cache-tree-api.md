@@ -50,7 +50,10 @@ Files:
 - `PRRadarCLIService/GitHubAPIService.swift`
 - `GitHubService/GitHubAPIServiceProtocol.swift`
 
-## - [ ] Phase 2: Add TTL support and new cache entries to `GitHubPRCacheService`
+## - [x] Phase 2: Add TTL support and new cache entries to `GitHubPRCacheService`
+
+**Skills used**: none
+**Principles applied**: Extended `readFile<T>` with optional `ttl: TimeInterval?` that checks `.modificationDate` via `FileManager.attributesOfItem`; all existing call sites pass no TTL and keep current behaviour. Added `readBranchHead/writeBranchHead` (under `branches/`), `readGitTree/writeGitTree` (under `trees/`, JSON), and `readBlob/writeBlob` (under `blobs/`, plain `.txt`) directly to `GitHubPRCacheService`. Branch names are sanitised (replace `/`, `:`, spaces with `-`). Blob files skip JSON encoding entirely since the content is already a UTF-8 string. Added `import OctokitSDK` to bring `BranchHead` and `GitTreeEntry` into scope.
 
 **Skills to read**: none
 
