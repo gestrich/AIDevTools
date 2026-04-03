@@ -506,7 +506,7 @@ let package = Package(
         ),
         .target(
             name: "ClaudeChainFeature",
-            dependencies: ["AIOutputSDK", "ClaudeChainSDK", "ClaudeChainService", "CredentialService", "GitHubService", "GitSDK", "PipelineSDK", "PipelineService", "PRRadarModelsService", "UseCaseSDK"],
+            dependencies: ["AIOutputSDK", "ClaudeChainSDK", "ClaudeChainService", "CredentialService", "GitHubService", "GitSDK", "OctokitSDK", "PipelineSDK", "PipelineService", "PRRadarModelsService", "UseCaseSDK"],
             path: "Sources/Features/ClaudeChainFeature"
         ),
 

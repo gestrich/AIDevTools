@@ -119,7 +119,10 @@ Files:
 - `GitHubService/GitHubPRServiceProtocol.swift`
 - `GitHubService/GitHubPRService.swift`
 
-## - [ ] Phase 4: Rewrite `ListChainsFromGitHubUseCase` to use tree API
+## - [x] Phase 4: Rewrite `ListChainsFromGitHubUseCase` to use tree API
+
+**Skills used**: none
+**Principles applied**: Replaced `listDirectoryNames` + `fileContent` calls with `branchHead`/`gitTree`/`fileBlob`. Project names now derived from tree paths via `Project.parseSpecPathToProject`. Added `OctokitSDK` to `ClaudeChainFeature` dependencies (alphabetically). Helper `fetchBlobContent` handles nil entries to allow concurrent `async let` fetches for spec and config.
 
 **Skills to read**: none
 
