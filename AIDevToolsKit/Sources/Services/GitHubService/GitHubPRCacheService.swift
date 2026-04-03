@@ -68,8 +68,8 @@ actor GitHubPRCacheService {
 
     // MARK: - Branch HEAD
 
-    func readBranchHead(branch: String) throws -> BranchHead? {
-        try readFile(at: branchHeadURL(branch: branch))
+    func readBranchHead(branch: String, ttl: TimeInterval? = nil) throws -> BranchHead? {
+        try readFile(at: branchHeadURL(branch: branch), ttl: ttl)
     }
 
     func writeBranchHead(_ head: BranchHead, branch: String) throws {
@@ -88,6 +88,18 @@ actor GitHubPRCacheService {
         try FileManager.default.createDirectory(at: treesDirectory(), withIntermediateDirectories: true)
         let data = try JSONEncoder.prettyPrinted.encode(entries)
         try data.write(to: gitTreeURL(treeSHA: treeSHA))
+    }
+
+    // MARK: - Directory Listing
+
+    func readDirectoryNames(path: String, ref: String, ttl: TimeInterval) throws -> [String]? {
+        try readFile(at: directoryURL(path: path, ref: ref), ttl: ttl)
+    }
+
+    func writeDirectoryNames(_ names: [String], path: String, ref: String) throws {
+        try FileManager.default.createDirectory(at: dirsDirectory(), withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(names)
+        try data.write(to: directoryURL(path: path, ref: ref))
     }
 
     // MARK: - File Blob
@@ -171,6 +183,19 @@ actor GitHubPRCacheService {
 
     private func gitTreeURL(treeSHA: String) -> URL {
         treesDirectory().appendingPathComponent("\(treeSHA).json")
+    }
+
+    private func dirsDirectory() -> URL {
+        rootURL.appendingPathComponent("dirs")
+    }
+
+    private func directoryURL(path: String, ref: String) -> URL {
+        let sanitise: (String) -> String = {
+            $0.replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+                .replacingOccurrences(of: " ", with: "-")
+        }
+        return dirsDirectory().appendingPathComponent("\(sanitise(ref))-\(sanitise(path)).json")
     }
 
     private func blobsDirectory() -> URL {

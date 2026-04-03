@@ -1,9 +1,14 @@
+import Foundation
+import OctokitSDK
 import PRRadarModelsService
 
 public protocol GitHubPRServiceProtocol: Sendable {
+    func branchHead(branch: String, ttl: TimeInterval) async throws -> BranchHead
     func checkRuns(number: Int, useCache: Bool) async throws -> [GitHubCheckRun]
     func changes() -> AsyncStream<Int>
+    func fileBlob(blobSHA: String, path: String, ref: String) async throws -> String
     func fileContent(path: String, ref: String) async throws -> String
+    func gitTree(treeSHA: String) async throws -> [GitTreeEntry]
     func listDirectoryNames(path: String, ref: String) async throws -> [String]
     func comments(number: Int, useCache: Bool) async throws -> GitHubPullRequestComments
     func isMergeable(number: Int) async throws -> Bool?

@@ -92,7 +92,10 @@ Files:
 - `GitHubService/GitHubPRCacheService.swift`
 - `GitHubService/GitHubPRService.swift` (expose new methods, also add TTL param where needed in `readFile` call sites)
 
-## - [ ] Phase 3: Expose new cache-backed methods on `GitHubPRService` and protocol
+## - [x] Phase 3: Expose new cache-backed methods on `GitHubPRService` and protocol
+
+**Skills used**: none
+**Principles applied**: Added `import Foundation` and `import OctokitSDK` to the protocol. The three new methods (`branchHead`, `gitTree`, `fileBlob`) follow the existing cache-first pattern from PRs/reviews. `listDirectoryNames` now caches with a 300s TTL via new `readDirectoryNames`/`writeDirectoryNames` on `GitHubPRCacheService`; added the matching `dirsDirectory`/`directoryURL` helpers there. Updated `readBranchHead` to accept an optional `ttl` parameter so callers control staleness.
 
 **Skills to read**: none
 

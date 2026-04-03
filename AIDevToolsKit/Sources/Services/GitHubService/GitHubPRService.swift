@@ -1,4 +1,5 @@
 import Foundation
+import OctokitSDK
 import PRRadarModelsService
 
 public struct GitHubPRService: GitHubPRServiceProtocol {
@@ -114,11 +115,44 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         changeStream
     }
 
+    public func branchHead(branch: String, ttl: TimeInterval) async throws -> BranchHead {
+        if let cached = try await cache.readBranchHead(branch: branch, ttl: ttl) {
+            return cached
+        }
+        let head = try await apiClient.getBranchHead(branch: branch)
+        try await cache.writeBranchHead(head, branch: branch)
+        return head
+    }
+
+    public func fileBlob(blobSHA: String, path: String, ref: String) async throws -> String {
+        if let cached = try await cache.readBlob(blobSHA: blobSHA) {
+            return cached
+        }
+        let (_, content) = try await apiClient.getFileContentWithSHA(path: path, ref: ref)
+        try await cache.writeBlob(content, blobSHA: blobSHA)
+        return content
+    }
+
     public func fileContent(path: String, ref: String) async throws -> String {
         try await apiClient.fileContent(path: path, ref: ref)
     }
 
+    public func gitTree(treeSHA: String) async throws -> [GitTreeEntry] {
+        if let cached = try await cache.readGitTree(treeSHA: treeSHA) {
+            return cached
+        }
+        let entries = try await apiClient.getGitTree(treeSHA: treeSHA)
+        try await cache.writeGitTree(entries, treeSHA: treeSHA)
+        return entries
+    }
+
     public func listDirectoryNames(path: String, ref: String) async throws -> [String] {
-        try await apiClient.listDirectoryNames(path: path, ref: ref)
+        let ttl: TimeInterval = 300
+        if let cached = try await cache.readDirectoryNames(path: path, ref: ref, ttl: ttl) {
+            return cached
+        }
+        let names = try await apiClient.listDirectoryNames(path: path, ref: ref)
+        try await cache.writeDirectoryNames(names, path: path, ref: ref)
+        return names
     }
 }
