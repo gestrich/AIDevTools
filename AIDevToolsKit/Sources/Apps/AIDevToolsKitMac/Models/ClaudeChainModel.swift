@@ -251,6 +251,7 @@ final class ClaudeChainModel {
                 state = .completed(result: result)
                 refreshChainDetail(project: project)
             } catch {
+                logger.error("executeTask: failed for task '\(task.description)': \(error)")
                 state = .error(error)
             }
         }
