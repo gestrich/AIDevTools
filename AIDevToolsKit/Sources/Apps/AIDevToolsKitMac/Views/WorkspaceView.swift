@@ -9,6 +9,7 @@ struct WorkspaceView: View {
 
     let evalProviderRegistry: EvalProviderRegistry
 
+    @AppStorage("chatSidePanelVisible") private var chatSidePanelVisible = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedWorkspaceTab") private var selectedTab: String = "claudeChain"
     @State private var deepLinkWatcher = DeepLinkWatcher()
@@ -35,6 +36,19 @@ struct WorkspaceView: View {
                     systemImage: "folder",
                     description: Text("Choose a repository from the sidebar.")
                 )
+            }
+        }
+        .inspector(isPresented: $chatSidePanelVisible) {
+            GlobalChatSidePanelView(
+                workingDirectory: model.selectedRepository?.path.path(percentEncoded: false) ?? ""
+            )
+        }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { chatSidePanelVisible.toggle() }) {
+                    Image(systemName: "sidebar.trailing")
+                }
+                .help("Toggle Chat")
             }
         }
         .task {

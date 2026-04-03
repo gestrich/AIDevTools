@@ -152,4 +152,43 @@ final class AIDevToolsUITests: XCTestCase {
         sleep(2)
         saveScreenshot(app, name: "09-settings")
     }
+
+    @MainActor
+    func testScreenshot10_ChatPanelClosed() throws {
+        let app = launchApp()
+        selectFirstRepository(app)
+        // Ensure the chat panel is closed. If the panel is already open (persisted
+        // state from a prior run), click the toggle button once to close it.
+        let toggleButton = app.buttons["Toggle Chat"]
+        if toggleButton.waitForExistence(timeout: 5) {
+            // Detect panel open state by looking for the panel's "Chat" header
+            let chatHeader = app.staticTexts["Chat"]
+            if chatHeader.exists {
+                toggleButton.tap()
+                sleep(2)
+            }
+        }
+        saveScreenshot(app, name: "chat-panel-closed")
+    }
+
+    @MainActor
+    func testScreenshot11_ChatPanelOpen() throws {
+        let app = launchApp()
+        selectFirstRepository(app)
+        // Open the inspector panel by clicking the "Toggle Chat" toolbar button.
+        // If the panel is already open, close it first then reopen to ensure
+        // we capture a clean open state.
+        let toggleButton = app.buttons["Toggle Chat"]
+        if toggleButton.waitForExistence(timeout: 5) {
+            let chatHeader = app.staticTexts["Chat"]
+            if chatHeader.exists {
+                // Already open — close then reopen for a clean capture
+                toggleButton.tap()
+                sleep(1)
+            }
+            toggleButton.tap()
+            sleep(2)
+        }
+        saveScreenshot(app, name: "chat-panel-open")
+    }
 }

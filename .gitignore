@@ -6,3 +6,4 @@ DerivedData/
 Examples/evals/artifacts/
 .env
 *.profraw
+Local.xcconfig

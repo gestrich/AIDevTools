@@ -147,7 +147,6 @@ private struct ChainProjectDetailView: View {
     let repository: RepositoryConfiguration
 
     @AppStorage("chainCreatePR") private var createPR: Bool = true
-    @AppStorage("chatPanelExpanded") private var chatPanelExpanded = false
     @State private var executionChatModel: ChatModel?
 
     private var isExecuting: Bool {
@@ -182,33 +181,11 @@ private struct ChainProjectDetailView: View {
         model.chainDetailErrors[project.name]
     }
 
-    private var chatModel: ChatModel {
-        model.persistentChatModel(
-            for: project.name,
-            workingDirectory: repository.path.path(),
-            systemPrompt: makeChainChatSystemPrompt()
-        )
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             headerBar
-
-            if chatPanelExpanded {
-                VSplitView {
-                    projectContentView
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    ChatPanelView()
-                        .environment(chatModel)
-                        .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
-                }
-            } else {
-                projectContentView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                ChatPanelView()
-                    .environment(chatModel)
-            }
+            projectContentView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: project.name) {
@@ -701,14 +678,6 @@ private struct ChainProjectDetailView: View {
         model.executeChain(project: project, repoPath: repository.path, taskIndex: taskIndex, stagingOnly: !createPR)
     }
 
-    private func makeChainChatSystemPrompt() -> String {
-        """
-        You are an AI assistant embedded in the AIDevTools Mac app, helping the user with a Claude Chain project.
-        The chain spec is located at: \(project.specPath)
-
-        You have access to MCP tools: use get_ui_state to check which chain is open and get_chain_status(name:) to see task completion status. Use these tools when the user asks about chain status or progress.
-        """
-    }
 }
 
 // MARK: - Hover Popover

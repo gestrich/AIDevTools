@@ -19,20 +19,11 @@ struct MarkdownPlannerDetailView: View {
     @State private var executeNextOnly = false
     @AppStorage("planStopAfterArchitectureDiagram") private var stopAfterArchitectureDiagram = false
 
-    @AppStorage("chatPanelExpanded") private var chatPanelExpanded = false
     @State private var executionChatModel: ChatModel?
     @State private var activePlanModel = ActivePlanModel()
     @State private var isAddTaskPopoverPresented = false
     @State private var isAppendReviewPopoverPresented = false
     @State private var newTaskDescription = ""
-
-    private var chatModel: ChatModel {
-        markdownPlannerModel.persistentChatModel(
-            for: plan.name,
-            workingDirectory: plan.planURL.deletingLastPathComponent().path,
-            systemPrompt: makeIterationSystemPrompt()
-        )
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,19 +34,17 @@ struct MarkdownPlannerDetailView: View {
             }
 
             let hasExecutionOutput = executionChatModel.map { !$0.messages.isEmpty } ?? false
-            if chatPanelExpanded || hasExecutionOutput {
+            if hasExecutionOutput, let executionModel = executionChatModel {
                 VSplitView {
                     planContentView
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    chatBottomPanel
+                    ChatMessagesView()
+                        .environment(executionModel)
                         .frame(minHeight: 150, idealHeight: 300, maxHeight: .infinity)
                 }
             } else {
                 planContentView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                ChatPanelView()
-                    .environment(chatModel)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -117,23 +106,6 @@ struct MarkdownPlannerDetailView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    @ViewBuilder
-    private var chatBottomPanel: some View {
-        if let executionModel = executionChatModel, !executionModel.messages.isEmpty {
-            VSplitView {
-                ChatMessagesView()
-                    .environment(executionModel)
-                    .frame(minHeight: 80, maxHeight: .infinity)
-                ChatPanelView()
-                    .environment(chatModel)
-                    .frame(minHeight: 80, maxHeight: .infinity)
-            }
-        } else {
-            ChatPanelView()
-                .environment(chatModel)
         }
     }
 
@@ -467,16 +439,6 @@ struct MarkdownPlannerDetailView: View {
             }
             return phase
         }
-    }
-
-    private func makeIterationSystemPrompt() -> String {
-        """
-        You are helping the user iterate on an implementation plan.
-        The plan is located at: \(plan.planURL.path)
-
-        The user may ask you to refine this plan. Read the plan file, make requested changes, and save the updated file.
-        Distinguish between brainstorming questions (just discuss) and edit requests (read, modify, and save the file).
-        """
     }
 
     private func togglePhase(at index: Int) {
