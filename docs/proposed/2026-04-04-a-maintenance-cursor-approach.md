@@ -257,7 +257,7 @@ commit state.json with cursor = processedPaths.last, lastRunDate = now(), and pr
 
 ## Implementation Phases
 
-### - [ ] Phase 0: PipelineRunner — Fresh Context Between Tasks
+## - [ ] Phase 0: PipelineRunner — Fresh Context Between Tasks
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
@@ -287,7 +287,7 @@ Files:
 
 ---
 
-### - [ ] Phase 1: Unified `ClaudeChainSource` Protocol + ClaudeChain Refactor
+## - [ ] Phase 1: Unified `ClaudeChainSource` Protocol + ClaudeChain Refactor
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
@@ -351,7 +351,7 @@ Files:
 
 ---
 
-### - [ ] Phase 2: MaintenanceSDK Models
+## - [ ] Phase 2: MaintenanceSDK Models
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
@@ -385,7 +385,7 @@ Files:
 
 ---
 
-### - [ ] Phase 3: `MaintenanceClaudeChainSource`
+## - [ ] Phase 3: `MaintenanceClaudeChainSource`
 
 **Skills to read**: `swift-app-architecture:swift-architecture`, `logging`
 
@@ -426,7 +426,7 @@ Files:
 
 ---
 
-### - [ ] Phase 4: `MaintenanceFeature` Use Case + CLI
+## - [ ] Phase 4: `MaintenanceFeature` Use Case + CLI
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
@@ -457,7 +457,7 @@ Files:
 
 ---
 
-### - [ ] Phase 5: Validation
+## - [ ] Phase 5: Validation
 
 **Skills to read**: `logging`
 
