@@ -64,7 +64,7 @@ public struct StatusCommand: AsyncParsableCommand {
                 printEnrichedProjectList(details, allProjects: projects)
             }
         } else {
-            let projects = try ListChainsUseCase().run(options: .init(repoPath: repoURL))
+            let projects = try await ListChainsUseCase().run(options: .init(repoPath: repoURL))
 
             if projects.isEmpty {
                 print("No chain projects found in \(repoURL.appendingPathComponent("claude-chain").path)")

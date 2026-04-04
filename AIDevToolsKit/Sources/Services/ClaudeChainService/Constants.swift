@@ -5,6 +5,9 @@ public struct ClaudeChainConstants {
     
     /// ClaudeChain projects directory prefix
     public static let projectDirectoryPrefix = "claude-chain"
+
+    /// Maintenance chain directory name
+    public static let maintenanceChainDirectory = "claude-chain-maintenance"
     
     /// Spec file path pattern for detecting project changes
     /// Format: claude-chain/*/spec.md

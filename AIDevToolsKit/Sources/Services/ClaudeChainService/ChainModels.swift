@@ -1,9 +1,16 @@
 import Foundation
 
+public enum ChainKind: String, Codable, Sendable {
+    case maintenance
+    case regular
+}
+
 public struct ChainProject: Hashable, Sendable {
     public let baseBranch: String
+    public let branchPrefix: String
     public let completedTasks: Int
     public let isGitHubOnly: Bool
+    public let kind: ChainKind
     public let maxOpenPRs: Int?
     public let name: String
     public let pendingTasks: Int
@@ -19,12 +26,16 @@ public struct ChainProject: Hashable, Sendable {
         pendingTasks: Int,
         totalTasks: Int,
         baseBranch: String = "main",
+        branchPrefix: String? = nil,
         isGitHubOnly: Bool = false,
+        kind: ChainKind = .regular,
         maxOpenPRs: Int? = nil
     ) {
         self.baseBranch = baseBranch
+        self.branchPrefix = branchPrefix ?? "claude-chain-\(name)-"
         self.completedTasks = completedTasks
         self.isGitHubOnly = isGitHubOnly
+        self.kind = kind
         self.maxOpenPRs = maxOpenPRs
         self.name = name
         self.pendingTasks = pendingTasks

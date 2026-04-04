@@ -257,9 +257,10 @@ commit state.json with cursor = processedPaths.last, lastRunDate = now(), and pr
 
 ## Implementation Phases
 
-## - [ ] Phase 1: Unified `ClaudeChainSource` Protocol + ClaudeChain Refactor
+## - [x] Phase 1: Unified `ClaudeChainSource` Protocol + ClaudeChain Refactor
 
-**Skills to read**: `swift-app-architecture:swift-architecture`
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Added `PipelineSDK` as a dependency of `ClaudeChainService` to allow `ClaudeChainSource: TaskSource`. `MarkdownClaudeChainSource` is an actor (mutable `taskReturned` state for single-task-per-invocation behavior). `ChainProject.branchPrefix` defaults to `"claude-chain-{name}-"` to avoid breaking existing callers. `ListChainsUseCase.run()` became `async throws` since `loadProject()` is async; all callers updated. `loadDetail()` returns unenriched data in Phase 1; `GetChainDetailUseCase` continues to handle enrichment.
 
 Replace the two-protocol split (`ClaudeChainTaskSource` for display, `TaskSource` for execution) with a single unified protocol. Must leave existing ClaudeChain behavior unchanged.
 

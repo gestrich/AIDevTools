@@ -157,7 +157,7 @@ struct MCPCommand: AsyncParsableCommand {
 
         let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         do {
-            let chains = try ListChainsUseCase().run(options: .init(repoPath: cwd))
+            let chains = try await ListChainsUseCase().run(options: .init(repoPath: cwd))
             guard let chain = chains.first(where: { $0.name == name }) else {
                 return .init(content: [.text(text: "Chain '\(name)' not found", annotations: nil, _meta: nil)], isError: false)
             }

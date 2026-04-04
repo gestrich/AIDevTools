@@ -18,18 +18,27 @@ public struct RunChainTaskUseCase: UseCase {
 
     public struct Options: Sendable {
         public let baseBranch: String
+        public let dryRun: Bool
         public let projectName: String
         public let repoPath: URL
+        public let source: (any ClaudeChainSource)?
         public let stagingOnly: Bool
         public let taskIndex: Int?
 
-        public let dryRun: Bool
-
-        public init(repoPath: URL, projectName: String, baseBranch: String, taskIndex: Int? = nil, stagingOnly: Bool = false, dryRun: Bool = false) {
+        public init(
+            repoPath: URL,
+            projectName: String,
+            baseBranch: String,
+            source: (any ClaudeChainSource)? = nil,
+            taskIndex: Int? = nil,
+            stagingOnly: Bool = false,
+            dryRun: Bool = false
+        ) {
             self.baseBranch = baseBranch
             self.dryRun = dryRun
             self.projectName = projectName
             self.repoPath = repoPath
+            self.source = source
             self.stagingOnly = stagingOnly
             self.taskIndex = taskIndex
         }

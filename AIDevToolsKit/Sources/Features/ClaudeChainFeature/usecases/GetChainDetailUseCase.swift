@@ -4,8 +4,6 @@ import GitHubService
 import PRRadarModelsService
 import UseCaseSDK
 
-private let claudeChainBranchPrefix = "claude-chain-"
-
 public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
 
     public struct Options: Sendable {
@@ -78,7 +76,7 @@ public struct GetChainDetailUseCase: UseCase, StreamingUseCase {
 
     public func run(options: Options) async throws -> ChainProjectDetail {
         let project = options.project
-        let branchPrefix = "\(claudeChainBranchPrefix)\(project.name)-"
+        let branchPrefix = project.branchPrefix
         let allOpen = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .open))
         let openPRs = allOpen.filter { ($0.headRefName ?? "").hasPrefix(branchPrefix) }
         let allClosed = try await gitHubPRService.listPullRequests(limit: 500, filter: PRFilter(state: .merged))

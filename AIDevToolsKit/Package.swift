@@ -502,6 +502,7 @@ let package = Package(
                 .product(name: "Yams", package: "Yams"),
                 "ClaudeChainSDK",
                 "GitSDK",
+                "PipelineSDK",
                 "PRRadarModelsService",
             ],
             path: "Sources/Services/ClaudeChainService"

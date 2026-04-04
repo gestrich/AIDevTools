@@ -66,7 +66,9 @@ public struct ListChainsFromGitHubUseCase {
     private func loadChainTreeEntries(branch: String) async throws -> [GitTreeEntry] {
         let head = try await gitHubPRService.branchHead(branch: branch, ttl: 300)
         let allEntries = try await gitHubPRService.gitTree(treeSHA: head.treeSHA)
-        return allEntries.filter { $0.path.hasPrefix("claude-chain/") && $0.type == "blob" }
+        return allEntries.filter {
+            ($0.path.hasPrefix("claude-chain/") || $0.path.hasPrefix("claude-chain-maintenance/")) && $0.type == "blob"
+        }
     }
 
     private func projectNames(from entries: [GitTreeEntry]) -> [String] {

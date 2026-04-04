@@ -10,10 +10,10 @@ struct ListChainsUseCaseTests {
     let demoRepoPath = URL(fileURLWithPath: "/Users/bill/Developer/personal/claude-chain-demo")
 
     @Test("discovers chains from demo repo with absolute paths")
-    func discoversChains() throws {
+    func discoversChains() async throws {
         let useCase = ListChainsUseCase()
         let options = ListChainsUseCase.Options(repoPath: demoRepoPath)
-        let chains = try useCase.run(options: options)
+        let chains = try await useCase.run(options: options)
 
         #expect(chains.count == 2)
         let names = chains.map(\.name).sorted()
@@ -21,10 +21,10 @@ struct ListChainsUseCaseTests {
     }
 
     @Test("hello-world chain has correct task counts")
-    func helloWorldTaskCounts() throws {
+    func helloWorldTaskCounts() async throws {
         let useCase = ListChainsUseCase()
         let options = ListChainsUseCase.Options(repoPath: demoRepoPath)
-        let chains = try useCase.run(options: options)
+        let chains = try await useCase.run(options: options)
 
         let helloWorld = try #require(chains.first(where: { $0.name == "hello-world" }))
         #expect(helloWorld.totalTasks == 5)
@@ -33,10 +33,10 @@ struct ListChainsUseCaseTests {
     }
 
     @Test("async-test chain has correct task counts")
-    func asyncTestTaskCounts() throws {
+    func asyncTestTaskCounts() async throws {
         let useCase = ListChainsUseCase()
         let options = ListChainsUseCase.Options(repoPath: demoRepoPath)
-        let chains = try useCase.run(options: options)
+        let chains = try await useCase.run(options: options)
 
         let asyncTest = try #require(chains.first(where: { $0.name == "async-test" }))
         #expect(asyncTest.totalTasks == 4)
@@ -45,10 +45,10 @@ struct ListChainsUseCaseTests {
     }
 
     @Test("spec paths use absolute paths")
-    func specPathsAreAbsolute() throws {
+    func specPathsAreAbsolute() async throws {
         let useCase = ListChainsUseCase()
         let options = ListChainsUseCase.Options(repoPath: demoRepoPath)
-        let chains = try useCase.run(options: options)
+        let chains = try await useCase.run(options: options)
 
         for chain in chains {
             #expect(chain.specPath.hasPrefix("/"))
@@ -57,10 +57,10 @@ struct ListChainsUseCaseTests {
     }
 
     @Test("returns empty array for repo without claude-chain directory")
-    func emptyForMissingDir() throws {
+    func emptyForMissingDir() async throws {
         let useCase = ListChainsUseCase()
         let options = ListChainsUseCase.Options(repoPath: URL(fileURLWithPath: "/tmp"))
-        let chains = try useCase.run(options: options)
+        let chains = try await useCase.run(options: options)
 
         #expect(chains.isEmpty)
     }
