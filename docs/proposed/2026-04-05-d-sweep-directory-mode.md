@@ -82,9 +82,10 @@ Currently `canSkip(path:)` compares a file's blob hash at the cursor commit vs H
     - Otherwise: run `git diff --quiet <cursorCommit> HEAD -- <path>` (exit code 0 = no changes = skip)
   - In `nextTask()`, call `canSkipDirectory` instead of `canSkip` when `config.isDirectoryMode`
 
-## - [ ] Phase 4: Task Construction for Directory Mode
+## - [x] Phase 4: Task Construction for Directory Mode
 
-**Skills to read**: `ai-dev-tools-architecture`
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Derived `scopeLabel` inline in `nextTask()` from `config.isDirectoryMode` — no new methods or stored properties needed. The `id` was already the directory path; only the instruction label changed from `"File"` to `"Directory"` to give the AI correct context about what it's operating on.
 
 When building an `AITask` for a directory, pass the directory path as the scope context instead of a single file path.
 
