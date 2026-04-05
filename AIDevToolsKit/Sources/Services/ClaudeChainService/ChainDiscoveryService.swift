@@ -24,7 +24,7 @@ public struct LocalChainDiscoveryService: ChainDiscoveryService {
         let chainDir = repoPath.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix).path
         let projects = Project.findAll(baseDir: chainDir)
         return projects.map { project in
-            MarkdownClaudeChainSource(project: project, repoPath: repoPath)
+            MarkdownClaudeChainSource(projectName: project.name, repoPath: repoPath)
         }
     }
 }

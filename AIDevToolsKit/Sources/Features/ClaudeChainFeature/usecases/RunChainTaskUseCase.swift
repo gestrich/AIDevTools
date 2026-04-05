@@ -14,14 +14,13 @@ struct ReviewOutput: Decodable, Sendable {
 }
 
 
-public struct RunChainTaskUseCase: UseCase {
+public struct RunMarkdownChainTaskUseCase: UseCase {
 
     public struct Options: Sendable {
         public let baseBranch: String
         public let dryRun: Bool
         public let projectName: String
         public let repoPath: URL
-        public let source: (any ClaudeChainSource)?
         public let stagingOnly: Bool
         public let taskIndex: Int?
 
@@ -29,7 +28,6 @@ public struct RunChainTaskUseCase: UseCase {
             repoPath: URL,
             projectName: String,
             baseBranch: String,
-            source: (any ClaudeChainSource)? = nil,
             taskIndex: Int? = nil,
             stagingOnly: Bool = false,
             dryRun: Bool = false
@@ -38,7 +36,6 @@ public struct RunChainTaskUseCase: UseCase {
             self.dryRun = dryRun
             self.projectName = projectName
             self.repoPath = repoPath
-            self.source = source
             self.stagingOnly = stagingOnly
             self.taskIndex = taskIndex
         }
@@ -101,7 +98,7 @@ public struct RunChainTaskUseCase: UseCase {
 
     private let client: any AIClient
     private let git: GitClient
-    private let logger = Logger(label: "RunChainTaskUseCase")
+    private let logger = Logger(label: "RunMarkdownChainTaskUseCase")
 
     public init(client: any AIClient, git: GitClient = GitClient()) {
         self.client = client
@@ -114,15 +111,22 @@ public struct RunChainTaskUseCase: UseCase {
     ) async throws -> Result {
         var phasesCompleted = 0
 
-        // Phase 1: Prepare — load project config, then use MarkdownPipelineSource to find next task
+        // Phase 1: Prepare — load project via source, derive local paths
         onProgress?(.preparingProject)
-        logger.debug("prepare: project=\(options.projectName) repoPath=\(options.repoPath.path) taskIndex=\(options.taskIndex.map(String.init) ?? "nil") stagingOnly=\(options.stagingOnly)")
+        logger.debug("prepare: project=\(options.projectName) repoPath=\(options.repoPath.path) stagingOnly=\(options.stagingOnly)")
 
-        let chainDir = options.repoPath.appendingPathComponent("claude-chain").path
-        let project = Project(
-            name: options.projectName,
-            basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
+        let source = MarkdownClaudeChainSource(
+            projectName: options.projectName,
+            repoPath: options.repoPath,
+            git: git,
+            taskIndex: options.taskIndex
         )
+
+        let chainProject = try await source.loadProject()
+        let projectBasePath = URL(fileURLWithPath: chainProject.specPath).deletingLastPathComponent().path
+        let chainDir = URL(fileURLWithPath: projectBasePath).deletingLastPathComponent().path
+        let project = Project(name: options.projectName, basePath: projectBasePath)
+        let specURL = URL(fileURLWithPath: project.specPath)
         let githubClient = GitHubClient(workingDirectory: chainDir)
         let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
         let projectConfig = try? repository.loadLocalConfiguration(project: project)
@@ -140,68 +144,29 @@ public struct RunChainTaskUseCase: UseCase {
             logger.debug("prepare: fetch failed, continuing with local spec.md")
         }
 
-        // Load spec content for prompt building
-        logger.debug("prepare: loading spec")
-        guard let spec = try repository.loadLocalSpec(project: project) else {
-            logger.error("prepare: no spec.md found for \(options.projectName)")
-            onProgress?(.failed(phase: "prepare", error: "No spec.md found for project \(options.projectName)"))
-            return Result(
-                success: false,
-                message: "No spec.md found for project \(options.projectName)"
-            )
-        }
-        logger.debug("prepare: spec loaded, \(spec.totalTasks) tasks")
-
-        // Use MarkdownPipelineSource (.task format) to discover the next pending task
-        let specURL = URL(fileURLWithPath: project.specPath)
-        let pipelineSource = MarkdownPipelineSource(fileURL: specURL, format: .task, appendCreatePRStep: false)
-        logger.debug("prepare: loading pipeline from \(specURL.path)")
-        let pipeline = try await pipelineSource.load()
-        let codeSteps = pipeline.steps.compactMap { $0 as? CodeChangeStep }
-        logger.debug("prepare: pipeline loaded, \(codeSteps.count) code steps")
-
-        let nextStep: CodeChangeStep?
-        if let taskIndex = options.taskIndex {
-            nextStep = codeSteps.first(where: { Int($0.id) == taskIndex - 1 })
-        } else {
-            let projectPattern = "claude-chain-\(options.projectName)-*"
-            let existingBranches = Set(
-                (try? await git.listRemoteBranches(matching: projectPattern, workingDirectory: repoDir)) ?? []
-            )
-            logger.debug("prepare: found \(existingBranches.count) existing remote branch(es) for pattern '\(projectPattern)'")
-            nextStep = codeSteps.first(where: { step in
-                guard !step.isCompleted else { return false }
-                let hash = TaskService.generateTaskHash(description: step.description)
-                let branch = PRService.formatBranchName(projectName: options.projectName, taskHash: hash)
-                let hasExistingBranch = existingBranches.contains(branch)
-                if hasExistingBranch {
-                    logger.debug("prepare: skipping task '\(step.description)' — branch '\(branch)' already exists on remote")
-                }
-                return !hasExistingBranch
-            })
-            logger.debug("prepare: selected task=\(nextStep.map { "'\($0.description)'" } ?? "nil (none available)")")
-        }
-
-        guard let nextStep else {
-            let errorMessage = options.taskIndex != nil
-                ? "Task \(options.taskIndex!) not found in project \(options.projectName)"
+        guard let task = try await source.nextTask() else {
+            let errorMessage = chainProject.totalTasks == 0
+                ? "No spec.md found for project \(options.projectName)"
                 : "All tasks completed for project \(options.projectName)"
             logger.error("prepare: \(errorMessage)")
             onProgress?(.failed(phase: "prepare", error: errorMessage))
             return Result(success: false, message: errorMessage)
         }
-        logger.debug("prepare: selected task id=\(nextStep.id) description=\(nextStep.description)")
 
-        let stepIndex = (Int(nextStep.id) ?? 0) + 1
-        let totalSteps = codeSteps.count
-        let completedCount = codeSteps.filter { $0.isCompleted }.count
+        let matchedChainTask = chainProject.tasks.first(where: {
+            TaskService.generateTaskHash(description: $0.description) == task.id
+        })
+        let taskDescription = matchedChainTask?.description ?? task.id
+        let stepIndex = matchedChainTask?.index ?? 1
+        let totalSteps = chainProject.totalTasks
+        let completedCount = chainProject.completedTasks
+        logger.debug("prepare: selected task id=\(task.id) description=\(taskDescription)")
 
-        onProgress?(.preparedTask(description: nextStep.description, index: stepIndex, total: totalSteps))
+        onProgress?(.preparedTask(description: taskDescription, index: stepIndex, total: totalSteps))
         phasesCompleted += 1
 
         // Create feature branch (already on baseBranch from earlier checkout)
-        let taskHash = TaskService.generateTaskHash(description: nextStep.description)
-        let branchName = PRService.formatBranchName(projectName: options.projectName, taskHash: taskHash)
+        let branchName = chainProject.branchPrefix + task.id
         try await git.checkout(ref: branchName, forceCreate: true, workingDirectory: repoDir)
 
         // Phase 2: Pre-action script
@@ -214,9 +179,8 @@ public struct RunChainTaskUseCase: UseCase {
         onProgress?(.preScriptCompleted(preResult))
         phasesCompleted += 1
 
-        // Phase 3: AI execution — use step.description embedded in the full spec prompt
-        let claudePrompt = buildTaskPrompt(taskDescription: nextStep.description, specContent: spec.content)
-        onProgress?(.runningAI(taskDescription: nextStep.description))
+        // Phase 3: AI execution
+        onProgress?(.runningAI(taskDescription: taskDescription))
 
         let aiOptions = AIClientOptions(
             dangerouslySkipPermissions: true,
@@ -225,7 +189,7 @@ public struct RunChainTaskUseCase: UseCase {
 
         let mainAccumulator = StreamAccumulator()
         let aiResult = try await client.run(
-            prompt: claudePrompt,
+            prompt: task.instructions,
             options: aiOptions,
             onOutput: { text in
                 onProgress?(.aiOutput(text))
@@ -261,7 +225,7 @@ public struct RunChainTaskUseCase: UseCase {
             try await git.addAll(workingDirectory: repoDir)
             let stagedFiles = try await git.diffCachedNames(workingDirectory: repoDir)
             if !stagedFiles.isEmpty {
-                try await git.commit(message: "Complete task: \(nextStep.description)", workingDirectory: repoDir)
+                try await git.commit(message: "Complete task: \(taskDescription)", workingDirectory: repoDir)
             }
         }
 
@@ -270,16 +234,16 @@ public struct RunChainTaskUseCase: UseCase {
             onProgress?(.completed(prURL: nil))
             return Result(
                 success: true,
-                message: "Task staged locally (no PR created): \(nextStep.description)",
+                message: "Task staged locally (no PR created): \(taskDescription)",
                 branchName: branchName,
                 isStagingOnly: true,
-                taskDescription: nextStep.description,
+                taskDescription: taskDescription,
                 phasesCompleted: phasesCompleted
             )
         }
 
-        // Mark task complete via MarkdownPipelineSource (unified pipeline persistence)
-        try await pipelineSource.markStepCompleted(nextStep)
+        // Mark task complete and commit spec.md
+        try await source.markComplete(task)
         try await git.add(files: [specURL.path], workingDirectory: repoDir)
         let specStagedFiles = try await git.diffCachedNames(workingDirectory: repoDir)
         if !specStagedFiles.isEmpty {
@@ -292,7 +256,7 @@ public struct RunChainTaskUseCase: UseCase {
             onProgress?(.runningReview)
 
             let reviewPrompt = buildReviewPrompt(
-                taskDescription: nextStep.description,
+                taskDescription: taskDescription,
                 specPath: project.specPath,
                 reviewContent: reviewContent
             )
@@ -322,7 +286,7 @@ public struct RunChainTaskUseCase: UseCase {
             }
 
             let reviewSummary = reviewResult.value.summary
-            appendReviewNote(specPath: project.specPath, taskDescription: nextStep.description, summary: reviewSummary)
+            appendReviewNote(specPath: project.specPath, taskDescription: taskDescription, summary: reviewSummary)
             try await git.add(files: [specURL.path], workingDirectory: repoDir)
             try await git.commit(message: "Add review note for task \(stepIndex)", workingDirectory: repoDir)
 
@@ -344,7 +308,7 @@ public struct RunChainTaskUseCase: UseCase {
                 project: options.projectName
             )
             guard capacityResult.hasCapacity else {
-                throw RunChainTaskError.capacityExceeded(
+                throw RunMarkdownChainTaskError.capacityExceeded(
                     project: options.projectName,
                     openCount: capacityResult.openPRs.count,
                     maxOpen: capacityResult.maxOpenPRs
@@ -353,8 +317,8 @@ public struct RunChainTaskUseCase: UseCase {
         }
 
         // Create draft PR
-        let prTitle = ChainPRHelpers.buildPRTitle(projectName: options.projectName, task: nextStep.description)
-        let prBody = "Task \(stepIndex)/\(totalSteps): \(nextStep.description)"
+        let prTitle = ChainPRHelpers.buildPRTitle(projectName: options.projectName, task: taskDescription)
+        let prBody = "Task \(stepIndex)/\(totalSteps): \(taskDescription)"
         var prCreateArgs = [
             "pr", "create",
             "--draft",
@@ -408,7 +372,7 @@ public struct RunChainTaskUseCase: UseCase {
 
         do {
             let summaryPrompt = buildSummaryPrompt(
-                taskDescription: nextStep.description,
+                taskDescription: taskDescription,
                 baseBranch: baseBranch
             )
             let summaryOptions = AIClientOptions(
@@ -455,7 +419,7 @@ public struct RunChainTaskUseCase: UseCase {
                     prNumber: prNumber,
                     prURL: prURL,
                     projectName: options.projectName,
-                    task: nextStep.description,
+                    task: taskDescription,
                     costBreakdown: costBreakdown,
                     repo: repoSlug,
                     runID: "",
@@ -499,32 +463,15 @@ public struct RunChainTaskUseCase: UseCase {
 
         return Result(
             success: true,
-            message: "Task completed: \(nextStep.description)",
+            message: "Task completed: \(taskDescription)",
             prURL: prURL.isEmpty ? nil : prURL,
             prNumber: prNumber,
-            taskDescription: nextStep.description,
+            taskDescription: taskDescription,
             phasesCompleted: phasesCompleted
         )
     }
 
     // MARK: - Prompt Building
-
-    private func buildTaskPrompt(taskDescription: String, specContent: String) -> String {
-        """
-        Complete the following task from spec.md:
-
-        Task: \(taskDescription)
-
-        Instructions: Read the entire spec.md file below to understand both WHAT to do and HOW to do it. \
-        Follow all guidelines and patterns specified in the document.
-
-        --- BEGIN spec.md ---
-        \(specContent)
-        --- END spec.md ---
-
-        Now complete the task '\(taskDescription)' following all the details and instructions in the spec.md file above.
-        """
-    }
 
     private func buildReviewPrompt(taskDescription: String, specPath: String, reviewContent: String) -> String {
         """
@@ -576,7 +523,7 @@ public struct RunChainTaskUseCase: UseCase {
 
 }
 
-public enum RunChainTaskError: LocalizedError {
+public enum RunMarkdownChainTaskError: LocalizedError {
     case capacityExceeded(project: String, openCount: Int, maxOpen: Int)
 
     public var errorDescription: String? {

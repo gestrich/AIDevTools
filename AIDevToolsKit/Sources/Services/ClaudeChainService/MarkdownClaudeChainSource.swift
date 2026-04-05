@@ -11,58 +11,53 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
 
     private let project: Project
     private let repoPath: URL
+    private let repository: ProjectRepository
     private let git: GitClient
     private let taskIndex: Int?
     private var taskReturned = false
-    private var returnedTask: PendingTask?
 
     public init(
-        project: Project,
+        projectName: String,
         repoPath: URL,
         git: GitClient = GitClient(),
         taskIndex: Int? = nil
     ) {
-        self.project = project
+        let chainDir = repoPath.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix)
+        let basePath = chainDir.appendingPathComponent(projectName).path
+        self.project = Project(name: projectName, basePath: basePath)
         self.repoPath = repoPath
+        let githubClient = GitHubClient(workingDirectory: chainDir.path)
+        self.repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
         self.git = git
         self.taskIndex = taskIndex
     }
 
     // MARK: - ClaudeChainSource
 
+    public let kindBadge: String? = nil
+
     public func loadProject() async throws -> ChainProject {
-        let chainDir = repoPath.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix).path
-        let absoluteProject = Project(
-            name: project.name,
-            basePath: (chainDir as NSString).appendingPathComponent(project.name)
-        )
-        let githubClient = GitHubClient(workingDirectory: chainDir)
-        let repository = ProjectRepository(
-            repo: "",
-            gitHubOperations: GitHubOperations(githubClient: githubClient)
-        )
-        guard let spec = try? repository.loadLocalSpec(project: absoluteProject) else {
+        guard let spec = try? repository.loadLocalSpec(project: project) else {
             return ChainProject(
                 name: project.name,
-                specPath: absoluteProject.specPath,
+                specPath: project.specPath,
                 completedTasks: 0,
                 pendingTasks: 0,
                 totalTasks: 0
             )
         }
-        let config = (try? repository.loadLocalConfiguration(project: absoluteProject))
-            ?? ProjectConfiguration.default(project: absoluteProject)
+        let config = (try? repository.loadLocalConfiguration(project: project))
+            ?? ProjectConfiguration.default(project: project)
         let baseBranch = config.getBaseBranch(defaultBaseBranch: ClaudeChainConstants.defaultBaseBranch)
         let tasks = spec.tasks.map { ChainTask(index: $0.index, description: $0.description, isCompleted: $0.isCompleted) }
         return ChainProject(
             name: project.name,
-            specPath: absoluteProject.specPath,
+            specPath: project.specPath,
             tasks: tasks,
             completedTasks: spec.completedTasks,
             pendingTasks: spec.pendingTasks,
             totalTasks: spec.totalTasks,
             baseBranch: baseBranch,
-            kind: .regular,
             maxOpenPRs: config.maxOpenPRs
         )
     }
@@ -83,59 +78,49 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
     /// Skips tasks that already have an open remote branch (already in progress).
     public func nextTask() async throws -> PendingTask? {
         guard !taskReturned else { return nil }
+        guard let task = try await findTask() else { return nil }
+        taskReturned = true
+        return task
+    }
 
-        let chainDir = repoPath.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix).path
-        let absoluteProject = Project(
-            name: project.name,
-            basePath: (chainDir as NSString).appendingPathComponent(project.name)
-        )
-        let githubClient = GitHubClient(workingDirectory: chainDir)
-        let repository = ProjectRepository(
-            repo: "",
-            gitHubOperations: GitHubOperations(githubClient: githubClient)
-        )
-        guard let spec = try? repository.loadLocalSpec(project: absoluteProject) else {
+    private func findTask() async throws -> PendingTask? {
+        guard let spec = try? repository.loadLocalSpec(project: project) else {
             return nil
         }
 
-        let specURL = URL(fileURLWithPath: absoluteProject.specPath)
+        let specURL = URL(fileURLWithPath: project.specPath)
         let pipelineSource = MarkdownPipelineSource(fileURL: specURL, format: .task, appendCreatePRStep: false)
         let pipeline = try await pipelineSource.load()
         let codeSteps = pipeline.steps.compactMap { $0 as? CodeChangeStep }
 
-        let nextStep: CodeChangeStep?
+        let step: CodeChangeStep?
         if let index = taskIndex {
-            nextStep = codeSteps.first(where: { Int($0.id) == index - 1 && !$0.isCompleted })
+            step = codeSteps.first(where: { Int($0.id) == index - 1 && !$0.isCompleted })
         } else {
-            let projectPattern = "claude-chain-\(project.name)-*"
-            let existingBranches = Set(
-                (try? await git.listRemoteBranches(matching: projectPattern, workingDirectory: repoPath.path)) ?? []
-            )
-            nextStep = codeSteps.first(where: { step in
-                guard !step.isCompleted else { return false }
-                let hash = generateTaskHash(step.description)
-                let branch = "claude-chain-\(project.name)-\(hash)"
-                return !existingBranches.contains(branch)
-            })
+            step = try await nextPendingStep(from: codeSteps)
         }
 
-        guard let step = nextStep else { return nil }
+        guard let step else { return nil }
 
         let taskHash = generateTaskHash(step.description)
         let fullPrompt = buildTaskPrompt(taskDescription: step.description, specContent: spec.content)
-        let task = PendingTask(id: taskHash, instructions: fullPrompt, skills: step.skills)
-        taskReturned = true
-        returnedTask = task
-        return task
+        return PendingTask(id: taskHash, instructions: fullPrompt, skills: step.skills)
+    }
+
+    private func nextPendingStep(from codeSteps: [CodeChangeStep]) async throws -> CodeChangeStep? {
+        let projectPattern = "claude-chain-\(project.name)-*"
+        let existingBranches = Set(
+            (try? await git.listRemoteBranches(matching: projectPattern, workingDirectory: repoPath.path)) ?? []
+        )
+        return codeSteps.first(where: { step in
+            guard !step.isCompleted else { return false }
+            let branch = "claude-chain-\(project.name)-\(generateTaskHash(step.description))"
+            return !existingBranches.contains(branch)
+        })
     }
 
     public func markComplete(_ task: PendingTask) async throws {
-        let chainDir = repoPath.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix).path
-        let absoluteProject = Project(
-            name: project.name,
-            basePath: (chainDir as NSString).appendingPathComponent(project.name)
-        )
-        let specURL = URL(fileURLWithPath: absoluteProject.specPath)
+        let specURL = URL(fileURLWithPath: project.specPath)
         let pipelineSource = MarkdownPipelineSource(fileURL: specURL, format: .task, appendCreatePRStep: false)
         let pipeline = try await pipelineSource.load()
         let codeSteps = pipeline.steps.compactMap { $0 as? CodeChangeStep }

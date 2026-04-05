@@ -81,7 +81,7 @@ struct RunTaskCommand: AsyncParsableCommand {
         if let baseBranch {
             resolvedBaseBranch = baseBranch
         } else {
-            let chainDir = repoURL.appendingPathComponent("claude-chain").path
+            let chainDir = repoURL.appendingPathComponent(ClaudeChainConstants.projectDirectoryPrefix).path
             let chainProject = Project(
                 name: project,
                 basePath: (chainDir as NSString).appendingPathComponent(project)
@@ -93,8 +93,8 @@ struct RunTaskCommand: AsyncParsableCommand {
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }
 
-        let useCase = RunChainTaskUseCase(client: client, git: git)
-        let options = RunChainTaskUseCase.Options(
+        let useCase = RunMarkdownChainTaskUseCase(client: client, git: git)
+        let options = RunMarkdownChainTaskUseCase.Options(
             repoPath: repoURL,
             projectName: project,
             baseBranch: resolvedBaseBranch,
@@ -122,7 +122,7 @@ struct RunTaskCommand: AsyncParsableCommand {
         }
     }
 
-    private static func handleProgress(_ progress: RunChainTaskUseCase.Progress) {
+    private static func handleProgress(_ progress: RunMarkdownChainTaskUseCase.Progress) {
         switch progress {
         case .preparingProject:
             print("=== Phase: Preparing ===")

@@ -5,8 +5,8 @@ import ClaudeChainService
 import Foundation
 import Testing
 
-@Suite("RunChainTaskUseCase", .serialized)
-struct RunChainTaskUseCaseTests {
+@Suite("RunMarkdownChainTaskUseCase", .serialized)
+struct RunMarkdownChainTaskUseCaseTests {
 
     // MARK: - Helpers
 
@@ -53,7 +53,7 @@ struct RunChainTaskUseCaseTests {
         defer { cleanup(tmpDir) }
 
         var progressEvents: [String] = []
-        let useCase = RunChainTaskUseCase(client: StubAIClient())
+        let useCase = RunMarkdownChainTaskUseCase(client: StubAIClient())
 
         // Act
         let result = try await useCase.run(
@@ -81,7 +81,7 @@ struct RunChainTaskUseCaseTests {
         defer { cleanup(tmpDir) }
 
         var progressEvents: [String] = []
-        let useCase = RunChainTaskUseCase(client: StubAIClient())
+        let useCase = RunMarkdownChainTaskUseCase(client: StubAIClient())
 
         // Act
         let result = try await useCase.run(
@@ -112,7 +112,7 @@ struct RunChainTaskUseCaseTests {
         var preparedDescription: String?
         var preparedIndex: Int?
         var preparedTotal: Int?
-        let useCase = RunChainTaskUseCase(client: StubAIClient())
+        let useCase = RunMarkdownChainTaskUseCase(client: StubAIClient())
 
         // Act — run in tmpDir (not a git repo) so git checkout -b fails
         do {
@@ -154,7 +154,7 @@ struct RunChainTaskUseCaseTests {
         initGitRepo(at: tmpDir)
 
         var progressEvents: [String] = []
-        let useCase = RunChainTaskUseCase(client: StubAIClient())
+        let useCase = RunMarkdownChainTaskUseCase(client: StubAIClient())
 
         // Act — run in tmpDir (a git repo) so checkout succeeds
         do {
@@ -184,10 +184,10 @@ struct RunChainTaskUseCaseTests {
 
     @Test("PR summary and comment phases come after PR creation in progress sequence")
     func summaryAndCommentAfterPRCreation() {
-        // The implementation in RunChainTaskUseCase.run() executes phases sequentially:
+        // The implementation in RunMarkdownChainTaskUseCase.run() executes phases sequentially:
         //   finalize → prCreated → generatingSummary → summaryCompleted → postingPRComment → prCommentPosted → completed
         //
-        // This ordering is verified by code inspection of RunChainTaskUseCase.swift lines 212-287:
+        // This ordering is verified by code inspection of RunMarkdownChainTaskUseCase.swift lines 212-287:
         //   - Phase 6 (summary) starts AFTER prCreated is emitted (line 213)
         //   - Phase 7 (comment) starts AFTER summary phase (line 246)
         //
@@ -220,7 +220,7 @@ struct RunChainTaskUseCaseTests {
 
 // MARK: - Progress Label Helper
 
-private func progressLabel(_ progress: RunChainTaskUseCase.Progress) -> String {
+private func progressLabel(_ progress: RunMarkdownChainTaskUseCase.Progress) -> String {
     switch progress {
     case .aiCompleted: "aiCompleted"
     case .aiOutput: "aiOutput"
@@ -248,10 +248,10 @@ private func progressLabel(_ progress: RunChainTaskUseCase.Progress) -> String {
 
 // MARK: - appendReviewNote Tests
 
-@Suite("RunChainTaskUseCase.appendReviewNote")
+@Suite("RunMarkdownChainTaskUseCase.appendReviewNote")
 struct AppendReviewNoteTests {
 
-    private let useCase = RunChainTaskUseCase(client: StubAIClient())
+    private let useCase = RunMarkdownChainTaskUseCase(client: StubAIClient())
 
     private func writeTempSpec(_ content: String) throws -> URL {
         let url = FileManager.default.temporaryDirectory

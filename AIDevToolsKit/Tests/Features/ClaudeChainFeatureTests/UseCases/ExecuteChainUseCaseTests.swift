@@ -5,8 +5,8 @@ import ClaudeChainService
 import Foundation
 import Testing
 
-@Suite("ExecuteChainUseCase - spec verification")
-struct ExecuteChainUseCaseSpecTests {
+@Suite("ExecuteMarkdownChainUseCase - spec verification")
+struct ExecuteMarkdownChainUseCaseSpecTests {
 
     let demoRepoPath = URL(fileURLWithPath: "/Users/bill/Developer/personal/claude-chain-demo")
 
@@ -62,7 +62,7 @@ struct ExecuteChainUseCaseSpecTests {
 
     @Test("returns failure for nonexistent project")
     func nonexistentProject() async throws {
-        let useCase = ExecuteChainUseCase(client: StubAIClient())
+        let useCase = ExecuteMarkdownChainUseCase(client: StubAIClient())
         let result = try await useCase.run(options: .init(
             repoPath: demoRepoPath,
             projectName: "nonexistent",

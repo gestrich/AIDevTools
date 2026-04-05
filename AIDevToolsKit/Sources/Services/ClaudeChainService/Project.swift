@@ -28,12 +28,8 @@ public struct Project {
     
     /// Extract project name from a spec.md file path.
     ///
-    /// Handles both regular and maintenance chain formats:
-    /// - `claude-chain/{project_name}/spec.md`
-    /// - `claude-chain-maintenance/{project_name}/spec.md`
-    ///
     /// - Parameter path: File path to parse
-    /// - Returns: Project name if path matches either format, nil otherwise
+    /// - Returns: Project name if path matches a known chain format, nil otherwise
     public static func parseSpecPathToProject(path: String) -> String? {
         let parts = path.components(separatedBy: "/")
 

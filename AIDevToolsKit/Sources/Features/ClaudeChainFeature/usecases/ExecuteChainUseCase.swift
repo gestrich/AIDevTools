@@ -5,7 +5,7 @@ import CredentialService
 import Foundation
 import UseCaseSDK
 
-public struct ExecuteChainUseCase: UseCase {
+public struct ExecuteMarkdownChainUseCase: UseCase {
 
     public struct Options: Sendable {
         public let baseBranch: String
@@ -56,7 +56,7 @@ public struct ExecuteChainUseCase: UseCase {
         }
     }
 
-    public typealias Progress = RunChainTaskUseCase.Progress
+    public typealias Progress = RunMarkdownChainTaskUseCase.Progress
 
     private let client: any AIClient
 
@@ -79,7 +79,7 @@ public struct ExecuteChainUseCase: UseCase {
             }
         }
 
-        let innerOptions = RunChainTaskUseCase.Options(
+        let innerOptions = RunMarkdownChainTaskUseCase.Options(
             repoPath: options.repoPath,
             projectName: options.projectName,
             baseBranch: options.baseBranch,
@@ -87,7 +87,7 @@ public struct ExecuteChainUseCase: UseCase {
             stagingOnly: options.stagingOnly
         )
 
-        let useCase = RunChainTaskUseCase(client: client)
+        let useCase = RunMarkdownChainTaskUseCase(client: client)
         let innerResult = try await useCase.run(options: innerOptions, onProgress: onProgress)
 
         return Result(

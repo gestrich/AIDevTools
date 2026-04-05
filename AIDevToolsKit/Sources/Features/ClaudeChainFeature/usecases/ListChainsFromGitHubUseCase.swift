@@ -67,7 +67,7 @@ public struct ListChainsFromGitHubUseCase {
         let head = try await gitHubPRService.branchHead(branch: branch, ttl: 300)
         let allEntries = try await gitHubPRService.gitTree(treeSHA: head.treeSHA)
         return allEntries.filter {
-            ($0.path.hasPrefix("claude-chain/") || $0.path.hasPrefix("claude-chain-maintenance/")) && $0.type == "blob"
+            ($0.path.hasPrefix(ClaudeChainConstants.projectDirectoryPrefix + "/") || $0.path.hasPrefix(ClaudeChainConstants.maintenanceChainDirectory + "/")) && $0.type == "blob"
         }
     }
 

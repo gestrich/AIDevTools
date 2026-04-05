@@ -176,7 +176,7 @@ private struct ChainProjectDetailView: View {
         return nil
     }
 
-    private var completedResult: ExecuteChainUseCase.Result? {
+    private var completedResult: ExecuteMarkdownChainUseCase.Result? {
         if case .completed(let result) = model.state { return result }
         return nil
     }
@@ -575,7 +575,7 @@ private struct ChainProjectDetailView: View {
 
     // MARK: - Completion / Error
 
-    private func completionBanner(_ result: ExecuteChainUseCase.Result) -> some View {
+    private func completionBanner(_ result: ExecuteMarkdownChainUseCase.Result) -> some View {
         HStack(spacing: 8) {
             Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .foregroundStyle(result.success ? .green : .red)

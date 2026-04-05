@@ -267,6 +267,7 @@ Replace the two-protocol split (`ClaudeChainTaskSource` for display, `TaskSource
 **`ClaudeChainSource`** — extends `TaskSource` so any implementation is also usable by `PipelineRunner`'s `drainTaskSource` loop:
 ```swift
 public protocol ClaudeChainSource: TaskSource {
+    var kindBadge: String? { get }   // display label; nil for standard chains
     func loadProject() async throws -> ChainProject
     func loadDetail() async throws -> ChainProjectDetail
     // nextTask() and markComplete() inherited from TaskSource
@@ -276,16 +277,13 @@ GitHub service injected at construction time — used by `loadDetail()`, ignored
 
 **`ChainProject` changes:**
 ```swift
-public enum ChainKind: String, Codable, Sendable {
-    case regular
-    case maintenance
-}
 public struct ChainProject {
-    public let kind: ChainKind
-    public let branchPrefix: String   // replaces hardcoded "claude-chain-" string
+    public let kindBadge: String?      // display label from source, e.g. "maintenance"; nil for standard chains
+    public let branchPrefix: String    // replaces hardcoded "claude-chain-" string
     // ... existing fields unchanged
 }
 ```
+`kindBadge` is set by each `ClaudeChainSource` implementation via the protocol property `var kindBadge: String? { get }`. `ChainProject` carries it as opaque data for display — no enum, no switching.
 
 **`ChainDiscoveryService`** — new protocol so `ListChainsUseCase` doesn't hardcode directory paths:
 ```swift
@@ -296,13 +294,15 @@ public protocol ChainDiscoveryService: Sendable {
 - `LocalChainDiscoveryService`: scans `claude-chain/` (regular) and `claude-chain-maintenance/` (maintenance); instantiates `MarkdownClaudeChainSource` or `MaintenanceClaudeChainSource` per entry
 - `GitHubChainDiscoveryService`: extends `ListChainsFromGitHubUseCase` filter to include `"claude-chain-maintenance/"` paths
 
-**`MarkdownClaudeChainSource`** — rename/replace `MarkdownChainTaskSource`; implements `ClaudeChainSource` for regular ClaudeChain. `nextTask()` returns one task then nil (existing single-task behavior).
+**`MarkdownClaudeChainSource`** — rename/replace `MarkdownChainTaskSource`; implements `ClaudeChainSource` for markdown chains. `nextTask()` returns one task then nil (existing single-task behavior).
 
 **`ListChainsUseCase`** — accepts injected `ChainDiscoveryService`; calls `loadProject()` on each source. Removes hardcoded `"claude-chain"` directory.
 
 **`GetChainDetailUseCase`** — uses `project.branchPrefix` instead of hardcoded `"claude-chain-"`. Adds generic rule: suppress pending tasks when `openPRs.count > 0`.
 
-**`RunChainTaskUseCase`** — wire to accept `any ClaudeChainSource`; pass to `TaskSourceNode` which feeds `drainTaskSource`.
+**`RunMarkdownChainTaskUseCase`** (renamed from `RunChainTaskUseCase`) — constructs `MarkdownClaudeChainSource` internally; commands pass only plain data (`taskIndex`, `projectName`, `repoPath`). No `source` parameter exposed. Each chain type has its own use case so the source abstraction stays out of the command layer.
+
+**`ExecuteMarkdownChainUseCase`** (renamed from `ExecuteChainUseCase`) — looping wrapper for `RunMarkdownChainTaskUseCase`; delegates to `RunMarkdownChainTaskUseCase` without constructing a source itself.
 
 **`Project.parseSpecPathToProject()`** — add parsing for `claude-chain-maintenance/{name}/spec.md` paths.
 
@@ -312,10 +312,11 @@ Files:
 - `Sources/Services/ClaudeChainService/ClaudeChainSource.swift` (new — replaces `ClaudeChainTaskSource.swift`)
 - `Sources/Services/ClaudeChainService/MarkdownClaudeChainSource.swift` (new — replaces `MarkdownChainTaskSource.swift`)
 - `Sources/Services/ClaudeChainService/ChainDiscoveryService.swift` (new)
-- `Sources/Services/ClaudeChainService/ChainModels.swift` (add `branchPrefix`, `kind`, `ChainKind`)
+- `Sources/Services/ClaudeChainService/ChainModels.swift` (add `branchPrefix`, `kindBadge`)
 - `Sources/Services/ClaudeChainService/Constants.swift`
 - `Sources/Services/ClaudeChainService/Project.swift`
-- `Sources/Features/ClaudeChainFeature/usecases/RunChainTaskUseCase.swift`
+- `Sources/Features/ClaudeChainFeature/usecases/RunChainTaskUseCase.swift` (renamed struct to `RunMarkdownChainTaskUseCase`)
+- `Sources/Features/ClaudeChainFeature/usecases/ExecuteChainUseCase.swift` (renamed struct to `ExecuteMarkdownChainUseCase`)
 - `Sources/Features/ClaudeChainFeature/usecases/ListChainsUseCase.swift`
 - `Sources/Features/ClaudeChainFeature/usecases/ListChainsFromGitHubUseCase.swift`
 - `Sources/Features/ClaudeChainFeature/usecases/GetChainDetailUseCase.swift`
@@ -367,7 +368,7 @@ Single class implementing `ClaudeChainSource` — covers both display and execut
 2. Expand `filePattern`, apply scope, sort alphabetically
 3. Build `ChainTask` list: `description` = file path, `index` = sorted position, `isCompleted` = false
 4. Return candidate pending task (file after cursor) — suppressed by `GetChainDetailUseCase` if open PRs exist
-5. Return `ChainProject(kind: .maintenance, branchPrefix: "claude-chain-<name>-", maxOpenPRs: 1, ...)`
+5. Return `ChainProject(kindBadge: kindBadge, branchPrefix: "claude-chain-<name>-", maxOpenPRs: 1, ...)`
 
 **`loadDetail()`:** GitHub API for PR enrichment — same path as regular chains.
 
@@ -402,8 +403,8 @@ Files:
 **Skills to read**: `swift-app-architecture:swift-architecture`
 
 **`RunMaintenanceBatchUseCase`:**
-- Reads `config.yaml`; builds `MaintenanceClaudeChainSource`
-- Passes it to `TaskSourceNode`; runs `PipelineRunner` with `[TaskSourceNode, PRStep, ChainPRCommentStep]`
+- Constructs `MaintenanceClaudeChainSource` internally (mirrors `RunMarkdownChainTaskUseCase` — each use case owns its source type; commands pass plain data only)
+- Reads `config.yaml`; passes source to `TaskSourceNode`; runs `PipelineRunner` with `[TaskSourceNode, PRStep, ChainPRCommentStep]`
 - `drainTaskSource` handles per-file AITask execution; `PRStep` opens one PR for all batch commits
 
 ```swift
@@ -461,7 +462,59 @@ cat ~/Library/Logs/AIDevTools/aidevtools.log | jq 'select(.label | startswith("M
 
 **Mac app UI verification:**
 1. Place `claude-chain-maintenance/test-task/` in local repo
-2. Sidebar shows maintenance chain with `kind: .maintenance` badge
+2. Sidebar shows maintenance chain with `kindBadge` label (e.g. "maintenance")
 3. No open PRs → one pending task shown (next file after cursor)
 4. Open PR → pending task suppressed; file in Open section
 5. Merged PR → file in Merged/Completed section
+
+---
+
+## - [ ] Phase 6: Audit Local Discovery vs. GitHub API
+
+Investigate every caller of `ListChainsUseCase` (local filesystem) and decide whether each use case is correctly served by local discovery or should use the GitHub API instead.
+
+**Background:** Chain definitions (`spec.md`, `config.yaml`) typically live on feature branches that may only exist remotely, not checked out locally. Local filesystem discovery (`LocalChainDiscoveryService`) only sees chains that happen to be present on disk at the time of the call. GitHub API discovery (`ListChainsFromGitHubUseCase`) sees all chains across all branches regardless of local state. Using local discovery when the intent is "show me all available chains and their status" is almost always wrong — the user may be on `main` with no chain directories checked out at all.
+
+**Known callers to audit:**
+
+| Caller | File | Discovery used | Question |
+|---|---|---|---|
+| CLI `status` command | `StatusCommand.swift` | Local | Is this intended to show only locally-present chains? Or all chains? |
+| MCP server `list chains` | `MCPCommand.swift` | Local | Does an MCP client always have the repo checked out? Would GitHub API be more reliable? |
+| Mac app sidebar | `ClaudeChainModel.swift` | GitHub API | Already correct. |
+
+**For each caller, determine:**
+1. What is the user's actual intent — "show me chains I'm actively editing" or "show me all chains and their status"?
+2. Does a chain always exist on disk when this caller runs? (e.g., `run-task` checks out the branch itself, so local is valid; `status` may be called from `main`)
+3. If GitHub API is more appropriate, migrate the caller to `ListChainsFromGitHubUseCase` and remove the local fallback.
+4. If local is appropriate (e.g., mid-edit workflow), document why and add a comment explaining the constraint.
+
+**Likely outcome:** `StatusCommand` and `MCPCommand` should use the GitHub API. Local discovery may only be appropriate when a command has already checked out the relevant branch (e.g., inside `RunChainTaskUseCase` after checkout). If that holds, `LocalChainDiscoveryService` and `ListChainsUseCase` may be removed or narrowed to internal use only.
+
+---
+
+## - [ ] Phase 7: Move Directory Scheme Knowledge Out of `Project`
+
+`Project` is a data model but currently encodes knowledge of all chain directory schemes in several places:
+
+- `parseSpecPathToProject()` — knows every valid chain directory prefix to identify a spec path
+- `fromBranchName()` — hardcodes `claude-chain-` prefix in branch name regex
+- `findAll()` — hardcodes `spec.md` as the discovery signal
+- `init` — defaults `basePath` to `claude-chain/{name}`
+
+This is a leak: `Project` shouldn't know about source types. Each source type is better positioned to answer "does this path/branch belong to me?"
+
+**Goal:** Make `Project` a pure data model. Move directory scheme knowledge into the source types.
+
+**Approach:**
+- Add a static `matchesSpecPath(_ path: String) -> String?` to each source type (returns project name if the path belongs to that source, nil otherwise). `ListChainsFromGitHubUseCase` and `AutoStartService` iterate known source types to find a match instead of calling `Project.parseSpecPathToProject()`.
+- Add a static `matchesBranchName(_ branch: String) -> String?` to each source type. `Project.fromBranchName()` can be removed or delegated similarly.
+- Remove the `basePath` default from `Project.init` — callers should always pass an explicit path derived from the source's directory constant.
+- Remove `Project.findAll()` — replace with per-source-type discovery in `LocalChainDiscoveryService`.
+
+**Files likely affected:**
+- `Project.swift` — remove `parseSpecPathToProject`, `fromBranchName`, `findAll`, default `basePath`
+- `MarkdownClaudeChainSource.swift` — add `matchesSpecPath`, `matchesBranchName`
+- `MaintenanceClaudeChainSource.swift` — add `matchesSpecPath`, `matchesBranchName`
+- `ListChainsFromGitHubUseCase.swift` — replace `Project.parseSpecPathToProject` call
+- `AutoStartService.swift` — replace `Project.parseSpecPathToProject` calls

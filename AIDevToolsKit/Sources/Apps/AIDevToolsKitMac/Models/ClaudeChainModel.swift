@@ -35,7 +35,7 @@ final class ClaudeChainModel {
     }
 
     enum State {
-        case completed(result: ExecuteChainUseCase.Result)
+        case completed(result: ExecuteMarkdownChainUseCase.Result)
         case error(Error)
         case executing(progress: ExecutionProgress)
         case idle
@@ -53,7 +53,7 @@ final class ClaudeChainModel {
     private(set) var taskPipelines: [Int: PipelineModel] = [:]
     var selectedTaskIndex: Int?
     var executionContentBlocksObserver: (@MainActor ([AIContentBlock]) -> Void)?
-    var executionProgressObserver: (@MainActor (RunChainTaskUseCase.Progress) -> Void)?
+    var executionProgressObserver: (@MainActor (RunMarkdownChainTaskUseCase.Progress) -> Void)?
 
     var selectedPipelineModel: PipelineModel? {
         taskPipelines[selectedTaskIndex ?? -1]
@@ -239,7 +239,7 @@ final class ClaudeChainModel {
                 }
                 handleExecutionProgress(.completed(prURL: prURL))
 
-                let result = ExecuteChainUseCase.Result(
+                let result = ExecuteMarkdownChainUseCase.Result(
                     success: true,
                     message: prURL != nil ? "PR created: \(prURL!)" : (stagingOnly ? "Task completed (staging only)" : "Task completed"),
                     branchName: stagingOnly ? branchName : nil,
@@ -298,7 +298,7 @@ final class ClaudeChainModel {
                 }
                 handleExecutionProgress(.completed(prURL: prURL))
 
-                let result = ExecuteChainUseCase.Result(
+                let result = ExecuteMarkdownChainUseCase.Result(
                     success: true,
                     message: prURL != nil ? "PR created: \(prURL!)" : "Staged task finalized",
                     prURL: prURL,
@@ -313,7 +313,7 @@ final class ClaudeChainModel {
         }
     }
 
-    func createPRFromStaged(project: ChainProject, repoPath: URL, result: ExecuteChainUseCase.Result) {
+    func createPRFromStaged(project: ChainProject, repoPath: URL, result: ExecuteMarkdownChainUseCase.Result) {
         guard let taskDescription = result.taskDescription,
               let task = project.tasks.first(where: { $0.description == taskDescription }) else { return }
         finalizeStaged(at: task.index, project: project, repoPath: repoPath)
@@ -394,7 +394,7 @@ final class ClaudeChainModel {
         ])
     }
 
-    private func handleExecutionProgress(_ progress: RunChainTaskUseCase.Progress) {
+    private func handleExecutionProgress(_ progress: RunMarkdownChainTaskUseCase.Progress) {
         guard case .executing(var current) = state else { return }
 
         switch progress {

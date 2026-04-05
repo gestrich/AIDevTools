@@ -118,7 +118,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         }
     }
 
-    private static func handleProgress(_ progress: RunChainTaskUseCase.Progress, dryRun: Bool = false) {
+    private static func handleProgress(_ progress: RunMarkdownChainTaskUseCase.Progress, dryRun: Bool = false) {
         switch progress {
         case .finalizing:
             print("=== Phase: Finalizing ===")
