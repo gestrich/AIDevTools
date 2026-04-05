@@ -8,12 +8,6 @@ import Logging
 import PipelineSDK
 import UseCaseSDK
 
-struct ReviewOutput: Decodable, Sendable {
-    let commitMessage: String
-    let summary: String
-}
-
-
 public struct RunSpecChainTaskUseCase: UseCase {
 
     public struct Options: Sendable {
@@ -402,7 +396,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
                 onProgress?(.summaryCompleted(summary: summary))
             }
         } catch {
-            // Summary generation is non-fatal
+            logger.warning("summary generation failed: \(error)")
         }
         phasesCompleted += 1
 
@@ -454,7 +448,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
                     onProgress?(.prCommentPosted)
                 }
             } catch {
-                // Comment posting is non-fatal
+                logger.warning("PR comment posting failed: \(error)")
             }
             phasesCompleted += 1
         }
@@ -521,6 +515,11 @@ public struct RunSpecChainTaskUseCase: UseCase {
         try? content.write(toFile: specPath, atomically: true, encoding: .utf8)
     }
 
+}
+
+private struct ReviewOutput: Decodable, Sendable {
+    let commitMessage: String
+    let summary: String
 }
 
 public enum RunSpecChainTaskError: LocalizedError {

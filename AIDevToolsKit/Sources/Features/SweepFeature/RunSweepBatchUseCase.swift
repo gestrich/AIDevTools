@@ -136,7 +136,7 @@ public struct RunSweepBatchUseCase: UseCase {
         let sweepResult = await source.batchStats()
 
         // Phase B: Create PR if any tasks produced changes
-        var prURL: String? = nil
+        var prURL: String?
         if sweepResult.modifyingTasks > 0 {
             onProgress?(.creatingPR)
             logger.info("[\(taskName)] \(sweepResult.modifyingTasks) modifying task(s), creating PR")
@@ -214,7 +214,10 @@ public struct RunSweepBatchUseCase: UseCase {
             environment: nil,
             printCommand: false
         )
-        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else { return 0 }
+        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else {
+            logger.warning("failed to query open PRs for prefix '\(branchPrefix)', assuming 0")
+            return 0
+        }
         let prs = try JSONDecoder().decode([OpenPR].self, from: data)
         return prs.filter { $0.headRefName.hasPrefix(branchPrefix) }.count
     }

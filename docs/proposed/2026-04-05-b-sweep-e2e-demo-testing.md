@@ -399,9 +399,10 @@ End state: All rows pass with no manual intervention beyond running the CLI comm
 
 ---
 
-## - [ ] Phase 11: Enforce Coding Standards
+## - [x] Phase 11: Enforce Coding Standards
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`
+**Principles applied**: Ran enforce across all 6 Swift files changed during this plan. Fixed two silent `catch {}` blocks in `RunSpecChainTaskUseCase` (summary generation and PR comment posting) by adding `logger.warning` calls. Fixed silent `return 0` in `RunSweepBatchUseCase.countOpenSweepPRs` with a warning log. Renamed `RunChainTaskUseCase.swift` → `RunSpecChainTaskUseCase.swift` to match the primary type. Moved `ReviewOutput` from before the primary type to after it as `private struct`. Removed redundant `= nil` from `var prURL: String?`.
 
 After all fixes are applied across Phases 2–10, run the enforce skill against every file changed in AIDevTools during this plan. This catches any quality, architecture, or build issues introduced by the fixes (e.g., the `kindBadge` fix in `GitHubChainProjectSource`, any new CLI commands, capacity-check fixes).
 
