@@ -5,7 +5,6 @@ import Foundation
 import GitSDK
 import Logging
 import PipelineSDK
-import PipelineService
 
 /// Pipeline step that generates an AI summary and posts the full PR comment.
 ///
@@ -72,10 +71,9 @@ public struct ChainPRCommentStep: PipelineNode {
 
         let mainCost = context[AITask<String>.metricsKey]?.cost ?? 0.0
 
-        // Generate AI summary
         let (summaryContent, summaryCost) = await generateSummary(workingDirectory: workingDirectory)
 
-        let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: workingDirectory, git: gitClient)
+        let repoSlug = await detectRepo(workingDirectory: workingDirectory)
         let costBreakdown = CostBreakdown(mainCost: mainCost, summaryCost: summaryCost)
         let report = PullRequestCreatedReport(
             prNumber: prNumber,
@@ -105,6 +103,20 @@ public struct ChainPRCommentStep: PipelineNode {
     }
 
     // MARK: - Private
+
+    private func detectRepo(workingDirectory: String) async -> String {
+        if let repo = ProcessInfo.processInfo.environment["GITHUB_REPOSITORY"], !repo.isEmpty {
+            return repo
+        }
+        guard let remoteURL = try? await gitClient.remoteGetURL(workingDirectory: workingDirectory),
+              remoteURL.contains("github.com") else {
+            return ""
+        }
+        return remoteURL
+            .replacingOccurrences(of: "git@github.com:", with: "")
+            .replacingOccurrences(of: "https://github.com/", with: "")
+            .replacingOccurrences(of: ".git", with: "")
+    }
 
     private func generateSummary(workingDirectory: String) async -> (String?, Double) {
         let prompt = """
@@ -153,4 +165,3 @@ public struct ChainPRCommentStep: PipelineNode {
         }
     }
 }
-

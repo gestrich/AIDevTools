@@ -241,7 +241,6 @@ let package = Package(
             name: "SweepFeature",
             dependencies: [
                 "AIOutputSDK",
-                "ClaudeChainFeature",
                 "ClaudeChainService",
                 .product(name: "CLISDK", package: "SwiftCLI"),
                 "GitSDK",
@@ -309,6 +308,7 @@ let package = Package(
             name: "PipelineService",
             dependencies: [
                 "AIOutputSDK",
+                "ClaudeChainService",
                 .product(name: "CLISDK", package: "SwiftCLI"),
                 "GitSDK",
                 .product(name: "Logging", package: "swift-log"),

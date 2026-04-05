@@ -15,11 +15,11 @@ final class ArchitecturePlannerModel {
         case error(Error)
     }
 
-    var state: State = .idle
-    var guidelines: [Guideline] = []
-    var jobs: [PlanningJob] = []
+    private(set) var state: State = .idle
+    private(set) var guidelines: [Guideline] = []
+    private(set) var jobs: [PlanningJob] = []
     var selectedJob: PlanningJob?
-    var selectedStepIndex: Int?
+    private(set) var selectedStepIndex: Int?
     var featureDescription: String = ""
 
     var selectedProviderName: String {
@@ -50,6 +50,7 @@ final class ArchitecturePlannerModel {
     private let generateReportUseCase: GenerateReportUseCase
     private let manageGuidelinesUseCase: ManageGuidelinesUseCase
     private let providerRegistry: ProviderRegistry
+    private var runAllStepsUseCase: RunAllPlanningStepsUseCase
     private var runStepUseCase: RunPlanningStepUseCase
     private let seedGuidelinesUseCase: SeedGuidelinesUseCase
 
@@ -61,19 +62,23 @@ final class ArchitecturePlannerModel {
         self.dataPathsService = dataPathsService
         self.providerRegistry = providerRegistry
 
-        let client = selectedProviderName.flatMap { providerRegistry.client(named: $0) }
-            ?? providerRegistry.defaultClient!
+        guard let client = selectedProviderName.flatMap({ providerRegistry.client(named: $0) })
+            ?? providerRegistry.defaultClient else {
+            preconditionFailure("ProviderRegistry has no registered providers")
+        }
         self.selectedProviderName = client.name
 
         self.createJobUseCase = CreatePlanningJobUseCase()
         self.generateReportUseCase = GenerateReportUseCase()
         self.manageGuidelinesUseCase = ManageGuidelinesUseCase()
+        self.runAllStepsUseCase = RunAllPlanningStepsUseCase(client: client)
         self.runStepUseCase = RunPlanningStepUseCase(client: client)
         self.seedGuidelinesUseCase = SeedGuidelinesUseCase()
     }
 
     private func rebuildRunStepUseCase() {
         guard let client = providerRegistry.client(named: selectedProviderName) else { return }
+        runAllStepsUseCase = RunAllPlanningStepsUseCase(client: client)
         runStepUseCase = RunPlanningStepUseCase(client: client)
     }
 
@@ -196,10 +201,28 @@ final class ArchitecturePlannerModel {
     }
 
     func runAllSteps() async {
-        while let job = selectedJob,
-              ArchitecturePlannerStep(rawValue: job.currentStepIndex) != nil {
-            await runNextStep()
-            if case .error = state { break }
+        guard let job = selectedJob, let store, let repoPath = currentRepoPath else { return }
+        state = .running(stepName: "Running...", output: "")
+        let options = RunAllPlanningStepsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
+        do {
+            try await runAllStepsUseCase.run(
+                options,
+                store: store,
+                outputStore: outputStore,
+                onStepStart: { [weak self] stepName in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        self.state = .running(stepName: stepName, output: "")
+                    }
+                },
+                onOutput: { [weak self] text in
+                    Task { @MainActor in self?.appendOutput(text) }
+                }
+            )
+            reloadSelectedJob()
+            state = .idle
+        } catch {
+            state = .error(error)
         }
     }
 

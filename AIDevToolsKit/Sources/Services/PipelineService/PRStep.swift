@@ -4,25 +4,6 @@ import GitSDK
 import Logging
 import PipelineSDK
 
-public struct PRConfiguration: Sendable {
-    public let assignees: [String]
-    public let labels: [String]
-    public let maxOpenPRs: Int?
-    public let reviewers: [String]
-
-    public init(
-        assignees: [String] = [],
-        labels: [String] = [],
-        maxOpenPRs: Int? = nil,
-        reviewers: [String] = []
-    ) {
-        self.assignees = assignees
-        self.labels = labels
-        self.maxOpenPRs = maxOpenPRs
-        self.reviewers = reviewers
-    }
-}
-
 public struct PRStep: PipelineNode {
     public static var prNumberKey: PipelineContextKey<String> { .init("PRStep.prNumber") }
     public static var prURLKey: PipelineContextKey<String> { .init("PRStep.prURL") }
@@ -207,9 +188,12 @@ public struct PRStep: PipelineNode {
             environment: nil,
             printCommand: false
         )
-        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else { return 0 }
-        let numbers = (try? JSONDecoder().decode([[String: Int]].self, from: data)) ?? []
-        return numbers.count
+        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else {
+            logger.warning("PRStep: failed to query open PRs for '\(repoSlug)', assuming 0")
+            return 0
+        }
+        let items = try JSONDecoder().decode([PRListItem].self, from: data)
+        return items.count
     }
 
     private func fetchPRNumber(branch: String, repoSlug: String, workingDirectory: String) async throws -> String {
@@ -232,13 +216,6 @@ public struct PRStep: PipelineNode {
 
 }
 
-public enum PRStepError: LocalizedError, Sendable {
-    case commandFailed(command: String, output: String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .commandFailed(let command, let output):
-            return "'\(command)' failed: \(output.isEmpty ? "(no output)" : output)"
-        }
-    }
+private struct PRListItem: Decodable {
+    let number: Int
 }
