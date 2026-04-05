@@ -323,9 +323,10 @@ Files:
 
 ---
 
-## - [ ] Phase 2: MaintenanceSDK Models
+## - [x] Phase 2: MaintenanceSDK Models
 
-**Skills to read**: `swift-app-architecture:swift-architecture`
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: Created `MaintenanceSDK` as a stateless SDK target (no dependencies) per the SDKs layer rules. `MaintenanceCursorConfig` is non-`Codable` since it is not persisted (config comes from `config.yaml` via Yams in a higher layer). `MaintenanceCursorState.load/save` use `.atomic` write and ISO 8601 dates matching the `state.json` schema. Target added to products and targets in `Package.swift` alphabetically.
 
 Create a new `MaintenanceSDK` target in `Package.swift` (alphabetically placed).
 

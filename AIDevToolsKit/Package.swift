@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "GitSDK", targets: ["GitSDK"]),
         .library(name: "KeychainSDK", targets: ["KeychainSDK"]),
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
+        .library(name: "MaintenanceSDK", targets: ["MaintenanceSDK"]),
         .library(name: "MarkdownPlannerFeature", targets: ["MarkdownPlannerFeature"]),
         .library(name: "MarkdownPlannerService", targets: ["MarkdownPlannerService"]),
         .library(name: "OctokitSDK", targets: ["OctokitSDK"]),
@@ -435,6 +436,11 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
             ],
             path: "Sources/SDKs/LoggingSDK"
+        ),
+        .target(
+            name: "MaintenanceSDK",
+            dependencies: [],
+            path: "Sources/SDKs/MaintenanceSDK"
         ),
         .target(
             name: "OctokitSDK",
