@@ -110,9 +110,10 @@ Update each caller to construct a `ClaudeChainService` and call the appropriate 
 
 Each caller needs to construct a `ClaudeChainService`. For remote callers, `GitHubServiceFactory.createPRService(repoPath:)` is already the pattern for getting a `prService` (see `StatusCommand` and `MCPCommand`).
 
-## - [ ] Phase 3: Migrate `ProjectService.detectLocalProjectsFromMerge`
+## - [x] Phase 3: Migrate `ProjectService.detectLocalProjectsFromMerge`
 
-**Skills to read**: (none additional)
+**Skills used**: none
+**Principles applied**: Converted `ParseEventCommand` from `ParsableCommand` to `AsyncParsableCommand` (and `run()` to `async throws`) so the two helper methods that call project detection could become `async throws` and use `service.detectLocalProjects(fromChangedPaths:)`. Constructed `ClaudeChainService` in `run()` using `ClaudeProvider()` + `LocalChainProjectSource(repoPath:)` with the current working directory, matching the pattern already established in `PrepareCommand`. Deleted `ProjectService.swift` and `ProjectServiceTests.swift` (no remaining methods).
 
 Replace `ProjectService.detectLocalProjectsFromMerge(changedFiles:)` with `ClaudeChainService.detectLocalProjects(fromChangedPaths:)`. Find all callers of `ProjectService.detectLocalProjectsFromMerge` and update them to use the service.
 
