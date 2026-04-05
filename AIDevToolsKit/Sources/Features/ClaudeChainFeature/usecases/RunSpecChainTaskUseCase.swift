@@ -124,7 +124,12 @@ public struct RunSpecChainTaskUseCase: UseCase {
         let specURL = URL(fileURLWithPath: project.specPath)
         let githubClient = GitHubClient(workingDirectory: chainDir)
         let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
-        let projectConfig = try? repository.loadLocalConfiguration(project: project)
+        var projectConfig: ProjectConfiguration? = nil
+        do {
+            projectConfig = try repository.loadLocalConfiguration(project: project)
+        } catch {
+            logger.warning("prepare: failed to load project config: \(error)")
+        }
 
         let baseBranch = options.baseBranch
         let repoDir = options.repoPath.path
@@ -267,7 +272,13 @@ public struct RunSpecChainTaskUseCase: UseCase {
 
         // Phase 5b: Review pass (runs only if review.md exists)
         var reviewCost = 0.0
-        if let reviewContent = try? repository.loadLocalReview(project: project) {
+        var reviewContent: String? = nil
+        do {
+            reviewContent = try repository.loadLocalReview(project: project)
+        } catch {
+            logger.warning("prepare: failed to load review.md: \(error)")
+        }
+        if let reviewContent {
             onProgress?(.runningReview)
 
             let reviewPrompt = buildReviewPrompt(
@@ -282,14 +293,21 @@ public struct RunSpecChainTaskUseCase: UseCase {
             let reviewSchema = """
             {"type":"object","properties":{"commitMessage":{"type":"string"},"summary":{"type":"string"}},"required":["commitMessage","summary"]}
             """
+            let reviewAccumulator = StreamAccumulator()
             let reviewResult = try await client.runStructured(
                 ReviewOutput.self,
                 prompt: reviewPrompt,
                 jsonSchema: reviewSchema,
                 options: reviewOptions,
                 onOutput: { text in onProgress?(.aiOutput(text)) },
-                onStreamEvent: { event in onProgress?(.aiStreamEvent(event)) }
+                onStreamEvent: { event in
+                    _ = reviewAccumulator.apply(event)
+                    onProgress?(.aiStreamEvent(event))
+                }
             )
+            reviewCost = reviewAccumulator.blocks.compactMap {
+                if case .metrics(_, let cost, _) = $0 { return cost } else { return nil }
+            }.last ?? 0.0
 
             let reviewStatus = try await git.status(workingDirectory: repoDir)
             if !reviewStatus.isEmpty {
@@ -382,7 +400,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
                 onProgress?(.summaryCompleted(summary: summary))
             }
         } catch {
-            logger.warning("summary generation failed: \(error)")
+            onProgress?(.failed(phase: "summary", error: error.localizedDescription))
         }
         phasesCompleted += 1
 
@@ -414,9 +432,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
                 let comment = formatter.format(report.buildCommentElements())
 
                 if options.dryRun {
-                    print("\n=== PR Comment Preview ===")
-                    print(comment)
-                    print("=== End PR Comment Preview ===\n")
+                    logger.info("\n=== PR Comment Preview ===\n\(comment)\n=== End PR Comment Preview ===")
                 } else {
                     let tempURL = FileManager.default.temporaryDirectory
                         .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
@@ -434,7 +450,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
                     onProgress?(.prCommentPosted)
                 }
             } catch {
-                logger.warning("PR comment posting failed: \(error)")
+                onProgress?(.failed(phase: "pr-comment", error: error.localizedDescription))
             }
             phasesCompleted += 1
         }
@@ -491,7 +507,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
 
     // MARK: - Helpers
 
-    public func appendReviewNote(specPath: String, taskDescription: String, summary: String) {
+    private func appendReviewNote(specPath: String, taskDescription: String, summary: String) {
         guard var content = try? String(contentsOfFile: specPath, encoding: .utf8) else { return }
         let taskLine = "- [x] \(taskDescription)"
         guard let range = content.range(of: taskLine) else { return }
@@ -510,13 +526,3 @@ private struct ReviewOutput: Decodable, Sendable {
     let summary: String
 }
 
-public enum RunSpecChainTaskError: LocalizedError {
-    case capacityExceeded(project: String, openCount: Int, maxOpen: Int)
-
-    public var errorDescription: String? {
-        switch self {
-        case .capacityExceeded(let project, let openCount, let maxOpen):
-            return "Project '\(project)' is at capacity: \(openCount)/\(maxOpen) async slots in use. Cannot create PR."
-        }
-    }
-}

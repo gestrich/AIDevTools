@@ -1,6 +1,5 @@
 import AIOutputSDK
 import CLISDK
-import ClaudeChainFeature
 import ClaudeChainService
 import Foundation
 import GitSDK
@@ -234,8 +233,7 @@ public struct RunSweepBatchUseCase: UseCase {
             printCommand: false
         )
         guard result.isSuccess, let data = result.stdout.data(using: .utf8) else {
-            logger.warning("failed to query open PRs for prefix '\(branchPrefix)', assuming 0")
-            return 0
+            throw RunSweepBatchError.openPRQueryFailed(branchPrefix: branchPrefix)
         }
         let prs = try JSONDecoder().decode([OpenPR].self, from: data)
         return prs.filter { $0.headRefName.hasPrefix(branchPrefix) }.count
@@ -246,13 +244,3 @@ private struct OpenPR: Decodable {
     let headRefName: String
 }
 
-public enum RunSweepBatchError: LocalizedError {
-    case openPRExists(count: Int, branchPrefix: String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .openPRExists(let count, let prefix):
-            return "\(count) open PR(s) already exist with prefix '\(prefix)'. Merge or close them before starting a new batch."
-        }
-    }
-}
