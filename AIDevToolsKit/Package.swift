@@ -721,6 +721,11 @@ let package = Package(
             dependencies: ["SkillScannerSDK"],
             path: "Tests/SDKs/SkillScannerSDKTests"
         ),
+        .testTarget(
+            name: "SweepServiceTests",
+            dependencies: ["SweepService"],
+            path: "Tests/Services/SweepServiceTests"
+        ),
     ],
     swiftLanguageModes: [.v5]
 )

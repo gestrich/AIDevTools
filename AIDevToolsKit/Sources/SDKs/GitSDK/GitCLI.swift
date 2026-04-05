@@ -51,7 +51,8 @@ public struct GitCLI {
     public struct Log {
         @Option("--grep") public var grep: String?
         @Option("--max-count") public var maxCount: String?
-        @Option("--pretty") public var pretty: String?
+        // git requires --pretty=<format>, not --pretty <format>, so use PrefixOption
+        @PrefixOption("--pretty=") public var pretty: String?
     }
 
     @CLICommand

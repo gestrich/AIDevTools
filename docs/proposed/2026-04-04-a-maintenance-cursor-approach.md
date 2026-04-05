@@ -438,9 +438,11 @@ Files:
 
 ---
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
-**Skills to read**: `logging`
+**Skills used**: `logging`
+
+**Principles applied**: Added `apply(to:)` to `SweepScope` for independent testability. Fixed macOS symlink issue in `expandGlob` and `finalizeBatch` using `resolvingSymlinksInPath()`. Fixed `GitCLI.Log.pretty` from `@Option` to `@PrefixOption` (git requires `--pretty=format:` not `--pretty format:`). Guarded `finalizeBatch` commit on non-empty staged files to handle idempotent cursor writes. Used end-to-end git integration for skip detection test rather than manual shell scripting.
 
 **Unit tests:**
 - `PipelineRunnerTests`: `resetContextBetweenTasks: true` clears AI keys; infrastructure keys persist; `taskDiscovered` event fires

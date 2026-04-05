@@ -187,9 +187,11 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         let regex = try NSRegularExpression(pattern: regexPattern)
 
         var results: [String] = []
-        let rootPath = repoPath.path
+        // Resolve symlinks so that fileURL.path and rootPath share the same base (macOS /var → /private/var).
+        let resolvedRepo = repoPath.resolvingSymlinksInPath()
+        let rootPath = resolvedRepo.path
         guard let enumerator = FileManager.default.enumerator(
-            at: repoPath,
+            at: resolvedRepo,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else { return results }
@@ -199,7 +201,7 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
             let isRegularFile = (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
             guard isRegularFile else { continue }
 
-            var relativePath = fileURL.path
+            var relativePath = fileURL.resolvingSymlinksInPath().path
             guard relativePath.hasPrefix(rootPath + "/") else { continue }
             relativePath = String(relativePath.dropFirst(rootPath.count + 1))
 
@@ -242,10 +244,7 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
 
     private func applyScope(_ scope: SweepScope?, to paths: [String]) -> [String] {
         guard let scope else { return paths }
-        if let to = scope.to {
-            return paths.filter { $0 >= scope.from && $0 < to }
-        }
-        return paths.filter { $0.hasPrefix(scope.from) }
+        return scope.apply(to: paths)
     }
 
     private func nextPathIndex(in paths: [String], after cursor: String?) -> Int? {
@@ -292,8 +291,16 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
 
         let processedList = processedPaths.joined(separator: " ")
         let commitMessage = "\(sweepCommitMessage) cursor=\(cursor)\n\(Self.processedKey) \(processedList)"
-        try await git.add(files: [stateURL.path], workingDirectory: repoPath.path)
-        try await git.commit(message: commitMessage, workingDirectory: repoPath.path)
+        // Resolve symlinks so git add/commit work correctly on macOS where /var and /tmp are symlinks.
+        let resolvedStatePath = stateURL.resolvingSymlinksInPath().path
+        let resolvedRepoPath = repoPath.resolvingSymlinksInPath().path
+        try await git.add(files: [resolvedStatePath], workingDirectory: resolvedRepoPath)
+        let staged = try await git.diffCachedNames(workingDirectory: resolvedRepoPath)
+        guard !staged.isEmpty else {
+            logger.info("[\(taskName)] Cursor unchanged, no commit needed: cursor=\(cursor)")
+            return
+        }
+        try await git.commit(message: commitMessage, workingDirectory: resolvedRepoPath)
         logger.info("[\(taskName)] Cursor commit written: cursor=\(cursor), processed=\(processedPaths.count) files")
     }
 }
