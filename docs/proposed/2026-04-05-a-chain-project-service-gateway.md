@@ -119,7 +119,10 @@ Replace `ProjectService.detectLocalProjectsFromMerge(changedFiles:)` with `Claud
 
 Delete `ProjectService` if it has no remaining methods.
 
-## - [ ] Phase 4: Fix hardcoded `"claude-chain"` in `ClaudeChainService`
+## - [x] Phase 4: Fix hardcoded `"claude-chain"` in `ClaudeChainService`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added a private `findLocalProject(named:repoPath:)` helper that uses `self.localSource` if set, otherwise creates a `LocalChainProjectSource` from `options.repoPath` inline — so `buildPipeline`/`buildFinalizePipeline` work regardless of how the service was initialized. Added `projectNotFound` to `ChainServiceError` with an actionable `errorDescription`.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

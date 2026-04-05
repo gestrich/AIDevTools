@@ -134,15 +134,22 @@ public struct ClaudeChainService {
         return try await localSource.listChains()
     }
 
+    private func findLocalProject(named name: String, repoPath: URL) async throws -> ChainProject {
+        let source = localSource ?? LocalChainProjectSource(repoPath: repoPath)
+        let result = try await source.listChains()
+        guard let project = result.projects.first(where: { $0.name == name }) else {
+            throw ChainServiceError.projectNotFound(name: name)
+        }
+        return project
+    }
+
     // MARK: - Pipeline building
 
     public func buildPipeline(for task: ChainTask, options: ChainRunOptions) async throws -> PipelineBlueprint {
         let repoDir = options.repoPath.path
-        let chainDir = options.repoPath.appendingPathComponent("claude-chain").path
-        let project = Project(
-            name: options.projectName,
-            basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
-        )
+        let chainProject = try await findLocalProject(named: options.projectName, repoPath: options.repoPath)
+        let project = Project(name: options.projectName, basePath: chainProject.basePath)
+        let chainDir = (chainProject.basePath as NSString).deletingLastPathComponent
         let githubClient = GitHubClient(workingDirectory: chainDir)
         let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
         let projectConfig = try? repository.loadLocalConfiguration(project: project)
@@ -260,11 +267,9 @@ public struct ClaudeChainService {
 
     public func buildFinalizePipeline(for task: ChainTask, options: ChainRunOptions) async throws -> PipelineBlueprint {
         let repoDir = options.repoPath.path
-        let chainDir = options.repoPath.appendingPathComponent("claude-chain").path
-        let project = Project(
-            name: options.projectName,
-            basePath: (chainDir as NSString).appendingPathComponent(options.projectName)
-        )
+        let chainProject = try await findLocalProject(named: options.projectName, repoPath: options.repoPath)
+        let project = Project(name: options.projectName, basePath: chainProject.basePath)
+        let chainDir = (chainProject.basePath as NSString).deletingLastPathComponent
         let githubClient = GitHubClient(workingDirectory: chainDir)
         let repository = ProjectRepository(repo: "", gitHubOperations: GitHubOperations(githubClient: githubClient))
         let projectConfig = try? repository.loadLocalConfiguration(project: project)
@@ -353,11 +358,14 @@ public struct ClaudeChainService {
 
 private enum ChainServiceError: Error, LocalizedError {
     case missingSource(sourceType: String)
+    case projectNotFound(name: String)
 
     var errorDescription: String? {
         switch self {
         case .missingSource(let sourceType):
             return "ClaudeChainService has no \(sourceType) source — use init(client:git:localSource:remoteSource:) or init(client:git:repoPath:prService:)"
+        case .projectNotFound(let name):
+            return "No local chain project named '\(name)' found — check that a spec.md exists in your claude-chain directory"
         }
     }
 }
