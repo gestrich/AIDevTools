@@ -369,7 +369,10 @@ If the comment is missing or empty, trace through `ChainPRCommentStep` — the A
 
 ---
 
-## - [ ] Phase 10: Validation
+## - [x] Phase 10: Validation
+
+**Skills used**: none
+**Principles applied**: Ran all 14 validation rows via CLI. Skip detection (item 9) required resetting state.json cursor to null on main so the sweep would start from a.txt — the existing sweep commit "processed: src/a.txt" caused a.txt to be skipped, producing "1 task(s), 1 modifying, 1 skipped". All 14 rows passed. Sweep PR title fix from Phase 9 confirmed: new PR #8 title is "ClaudeChain: [add-header] Sweep: 1 file(s) updated, cursor at src/b.txt" (no redundant [add-header]).
 
 All of the following should be provable by running CLI commands from `../AIDevToolsDemo`:
 
