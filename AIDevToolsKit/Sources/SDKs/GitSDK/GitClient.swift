@@ -239,8 +239,6 @@ public struct GitClient: Sendable {
         return "main"  // fallback
     }
 
-    // Claude Chain specific logic moved to ClaudeChainService layer
-
     @discardableResult
     public func clean(force: Bool = true, directories: Bool = true, workingDirectory: String) async throws -> ExecutionResult {
         let command = GitCLI.Clean(force: force, directories: directories)

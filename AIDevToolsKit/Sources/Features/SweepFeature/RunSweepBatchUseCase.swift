@@ -105,6 +105,7 @@ public struct RunSweepBatchUseCase: UseCase {
         onProgress?(.creatingBranch(batchBranch))
         logger.info("[\(taskName)] Creating batch branch: \(batchBranch)")
 
+        // Swallowing intentionally: a fetch failure (network, shallow clone) is non-fatal — proceed with local state.
         if (try? await git.fetch(remote: "origin", branch: options.baseBranch, workingDirectory: repoDir)) != nil {
             try await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
         }
@@ -163,18 +164,16 @@ public struct RunSweepBatchUseCase: UseCase {
                 workingDirectory: repoDir
             )
             var prNodes: [any PipelineNode] = []
-            if !options.dryRun {
-                let prStep = PRStep(
-                    id: "pr-step",
-                    displayName: "Create PR",
-                    baseBranch: options.baseBranch,
-                    configuration: prConfig,
-                    gitClient: git,
-                    projectName: taskName,
-                    taskDescription: batchDescription
-                )
-                prNodes.append(prStep)
-            }
+            let prStep = PRStep(
+                id: "pr-step",
+                displayName: "Create PR",
+                baseBranch: options.baseBranch,
+                configuration: prConfig,
+                gitClient: git,
+                projectName: taskName,
+                taskDescription: batchDescription
+            )
+            prNodes.append(prStep)
             prNodes.append(commentStep)
             let prContext = try await runner.run(
                 nodes: prNodes,

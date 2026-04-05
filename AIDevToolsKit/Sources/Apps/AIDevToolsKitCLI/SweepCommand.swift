@@ -53,6 +53,7 @@ struct SweepRunCommand: AsyncParsableCommand {
         }
 
         let service = SecureSettingsService()
+        // Swallowing intentionally: credential account enumeration failure is non-fatal — fall back to "default".
         let account = githubAccount ?? (try? service.listCredentialAccounts())?.first ?? "default"
         let resolver = CredentialResolver(settingsService: service, githubAccount: account)
         var gitEnvironment: [String: String]?

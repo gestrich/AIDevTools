@@ -304,9 +304,10 @@ End state: All rows pass with no manual intervention beyond running the CLI comm
 
 ---
 
-## - [ ] Phase 8: Enforce Coding Standards
+## - [x] Phase 8: Enforce Coding Standards
 
 **Skills used**: `ai-dev-tools-enforce`
+**Principles applied**: Removed AI-changelog comment from `GitClient.swift`; documented two intentional `try?` suppressions with explanatory comments; removed dead `if !options.dryRun` guard (always false after the early-return at line 92); replaced `filePattern ?? ""` silent fallback with a `guard`+throw and a new `SweepConfigError.missingFilePattern` with an actionable `LocalizedError` message.
 
 After all fixes are applied across Phases 2–7, run the enforce skill against every file changed in AIDevTools during this plan.
 

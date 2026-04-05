@@ -233,7 +233,9 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         let yaml = try Config.loadConfig(filePath: configURL.path)
         let scanLimit = yaml["scanLimit"] as? Int ?? 1
         let rawChangeLimit = yaml["changeLimit"] as? Int ?? 1
-        let filePattern = yaml["filePattern"] as? String ?? ""
+        guard let filePattern = yaml["filePattern"] as? String, !filePattern.isEmpty else {
+            throw SweepConfigError.missingFilePattern(path: configURL.path)
+        }
 
         let scope: SweepScope?
         if let scopeDict = yaml["scope"] as? [String: Any], let from = scopeDict["from"] as? String {
@@ -431,6 +433,17 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         }
         try await git.commit(message: commitMessage, workingDirectory: resolvedRepoPath)
         logger.info("[\(taskName)] Cursor commit written: cursor=\(cursor), processed=\(processedPaths.count) paths")
+    }
+}
+
+private enum SweepConfigError: LocalizedError {
+    case missingFilePattern(path: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingFilePattern(let path):
+            return "'\(path)' is missing required 'filePattern'. Add a 'filePattern' key with a glob pattern (e.g. 'src/**/*.swift' or 'src/*/')."
+        }
     }
 }
 
