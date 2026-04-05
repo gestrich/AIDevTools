@@ -31,7 +31,10 @@ Call sites to migrate:
 
 ## Phases
 
-## - [ ] Phase 1: Extend `ClaudeChainService`
+## - [x] Phase 1: Extend `ClaudeChainService`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `ChainSource` and `ChainKind` enums as public `Sendable` types. Made `localSource`/`remoteSource` optional internally so the existing pipeline-building init (`init(client:git:)`) remains valid — callers using `buildPipeline`/`buildFinalizePipeline` don't need sources; `listChains`/`detectLocalProjects` throw a `LocalizedError` with an actionable message if called on an under-initialized instance. Used `any GitHubPRServiceProtocol` (not the concrete type) in the convenience init to match the existing pattern in `GitHubChainProjectSource`.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

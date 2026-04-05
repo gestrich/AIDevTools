@@ -3,6 +3,7 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitHubService
 import GitSDK
 import PipelineSDK
 import PipelineService
@@ -35,14 +36,94 @@ public struct ChainRunOptions: Sendable {
     }
 }
 
+public enum ChainSource: Sendable {
+    case local
+    case remote
+}
+
+public enum ChainKind: Sendable {
+    case all
+    case spec
+    case sweep
+}
+
 public struct ClaudeChainService {
     private let client: any AIClient
     private let git: GitClient
+    private let localSource: (any ChainProjectSource)?
+    private let remoteSource: (any ChainProjectSource)?
 
     public init(client: any AIClient, git: GitClient = GitClient()) {
         self.client = client
         self.git = git
+        self.localSource = nil
+        self.remoteSource = nil
     }
+
+    public init(
+        client: any AIClient,
+        git: GitClient = GitClient(),
+        localSource: any ChainProjectSource,
+        remoteSource: any ChainProjectSource
+    ) {
+        self.client = client
+        self.git = git
+        self.localSource = localSource
+        self.remoteSource = remoteSource
+    }
+
+    public init(client: any AIClient, git: GitClient = GitClient(), repoPath: URL, prService: any GitHubPRServiceProtocol) {
+        self.init(
+            client: client,
+            git: git,
+            localSource: LocalChainProjectSource(repoPath: repoPath),
+            remoteSource: GitHubChainProjectSource(gitHubPRService: prService)
+        )
+    }
+
+    // MARK: - Chain listing
+
+    public func listChains(source: ChainSource, kind: ChainKind = .all) async throws -> ChainListResult {
+        let result: ChainListResult
+        switch source {
+        case .local:
+            result = try await listLocalChains()
+        case .remote:
+            guard let remoteSource else {
+                throw ChainServiceError.missingSource(sourceType: "remote")
+            }
+            result = try await remoteSource.listChains()
+        }
+        let filtered = result.projects.filter { project in
+            switch kind {
+            case .all: return true
+            case .spec: return project.kindBadge == nil
+            case .sweep: return project.kindBadge != nil
+            }
+        }
+        return ChainListResult(projects: filtered, failures: result.failures)
+    }
+
+    // MARK: - Project detection from changed file paths
+
+    public func detectLocalProjects(fromChangedPaths paths: [String]) async throws -> [Project] {
+        let result = try await listLocalChains()
+        return result.projects
+            .filter { project in paths.contains(project.specPath) }
+            .map { Project(name: $0.name, basePath: $0.basePath) }
+            .sorted { $0.name < $1.name }
+    }
+
+    // MARK: - Private
+
+    private func listLocalChains() async throws -> ChainListResult {
+        guard let localSource else {
+            throw ChainServiceError.missingSource(sourceType: "local")
+        }
+        return try await localSource.listChains()
+    }
+
+    // MARK: - Pipeline building
 
     public func buildPipeline(for task: ChainTask, options: ChainRunOptions) async throws -> PipelineBlueprint {
         let repoDir = options.repoPath.path
@@ -256,5 +337,16 @@ public struct ClaudeChainService {
                 NodeManifest(id: "pr-comment-step", displayName: "Post PR Comment"),
             ]
         )
+    }
+}
+
+private enum ChainServiceError: Error, LocalizedError {
+    case missingSource(sourceType: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSource(let sourceType):
+            return "ClaudeChainService has no \(sourceType) source — use init(client:git:localSource:remoteSource:) or init(client:git:repoPath:prService:)"
+        }
     }
 }
