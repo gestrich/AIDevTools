@@ -79,6 +79,43 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         return Array(paths[startIndex...].prefix(config.scanLimit))
     }
 
+    /// Evaluates the next batch with skip detection and returns stats without modifying the repo.
+    ///
+    /// Examines the next `scanLimit`-wide window of paths, reporting how many would be skipped
+    /// vs. actually processed (up to `changeLimit`).
+    public func dryRunStats() async throws -> SweepBatchStats {
+        let config = try loadSweepConfig()
+        let state = try SweepState.load(from: stateURL)
+        let paths = try candidatePaths(config: config)
+        guard let startIndex = nextPathIndex(in: paths, after: state.cursor) else {
+            return SweepBatchStats(finalCursor: nil, modifyingTasks: 0, skipped: 0, tasks: 0)
+        }
+
+        let window = Array(paths[startIndex...].prefix(config.scanLimit))
+        var tasks: [String] = []
+        var skippedPaths: [String] = []
+
+        for path in window {
+            if tasks.count >= config.changeLimit { break }
+            let skip = config.isDirectoryMode
+                ? try await canSkipDirectory(path: path)
+                : try await canSkip(path: path)
+            if skip {
+                skippedPaths.append(path)
+            } else {
+                tasks.append(path)
+            }
+        }
+
+        let allProcessed = skippedPaths + tasks
+        return SweepBatchStats(
+            finalCursor: allProcessed.last,
+            modifyingTasks: 0,
+            skipped: skippedPaths.count,
+            tasks: tasks.count
+        )
+    }
+
     /// Returns a basic unenriched project detail.
     ///
     /// For enriched PR data use `GetChainDetailUseCase` directly.
@@ -328,22 +365,24 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
     }
 
     private func canSkipDirectory(path: String) async throws -> Bool {
-        guard let entry = try await git.logGrep(sweepLogPattern, workingDirectory: repoPath.path) else { return false }
+        let entries = try await git.logGrepAll(sweepLogPattern, workingDirectory: repoPath.path)
+        for entry in entries {
+            let processedLine = entry.body
+                .components(separatedBy: .newlines)
+                .first(where: { $0.hasPrefix(Self.processedKey) })
+            guard let processedLine else { continue }
 
-        let processedLine = entry.body
-            .components(separatedBy: .newlines)
-            .first(where: { $0.hasPrefix(Self.processedKey) })
-        guard let processedLine else { return false }
+            let processedDirs = processedLine
+                .dropFirst(Self.processedKey.count)
+                .trimmingCharacters(in: .whitespaces)
+                .components(separatedBy: " ")
+                .filter { !$0.isEmpty }
+            guard processedDirs.contains(path) else { continue }
 
-        let processedDirs = processedLine
-            .dropFirst(Self.processedKey.count)
-            .trimmingCharacters(in: .whitespaces)
-            .components(separatedBy: " ")
-            .filter { !$0.isEmpty }
-        guard processedDirs.contains(path) else { return false }
-
-        let hasChanges = try await git.hasDirectoryChanges(from: entry.hash, to: "HEAD", path: path, workingDirectory: repoPath.path)
-        return !hasChanges
+            let hasChanges = try await git.hasDirectoryChanges(from: entry.hash, to: "HEAD", path: path, workingDirectory: repoPath.path)
+            return !hasChanges
+        }
+        return false
     }
 
     private func canSkip(path: String) async throws -> Bool {

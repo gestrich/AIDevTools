@@ -209,20 +209,11 @@ public struct RunSweepBatchUseCase: UseCase {
         onProgress: (@Sendable (Progress) -> Void)?
     ) async throws -> Result {
         onProgress?(.runningTasks)
-        let candidates = try await source.candidatesForNextBatch()
-        for path in candidates {
-            onProgress?(.taskStarted(path))
-        }
-        let sweepResult = SweepBatchStats(
-            finalCursor: candidates.last,
-            modifyingTasks: 0,
-            skipped: 0,
-            tasks: candidates.count
-        )
+        let sweepResult = try await source.dryRunStats()
         onProgress?(.completed(sweepResult))
-        let message = sweepResult.tasks == 0
+        let message = sweepResult.tasks == 0 && sweepResult.skipped == 0
             ? "No files to process"
-            : "\(sweepResult.tasks) candidate(s) found: \(candidates.joined(separator: ", "))"
+            : "\(sweepResult.tasks) task(s), \(sweepResult.modifyingTasks) modifying, \(sweepResult.skipped) skipped"
         return Result(success: true, message: message, sweepResult: sweepResult)
     }
 

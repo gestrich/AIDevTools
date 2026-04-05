@@ -200,7 +200,10 @@ Fix any failures.
 
 ---
 
-## - [ ] Phase 5: Skip Detection — Unchanged Directories
+## - [x] Phase 5: Skip Detection — Unchanged Directories
+
+**Skills used**: none
+**Principles applied**: Fixed two bugs: (1) `canSkipDirectory` only checked the most recent cursor commit — added `logGrepAll` to `GitClient` to search all cursor commits for the path. (2) `runDryRun` bypassed skip detection entirely (called `candidatesForNextBatch()` which is synchronous and skip-unaware) — added `dryRunStats()` to `SweepClaudeChainSource` that applies the `scanLimit` window with skip detection. Also suppressed raw git output in sweep CLI by initializing `GitClient(printOutput: false)` in `SweepCommand`.
 
 After merging the Phase 4 PR (cursor=`src/beta` on main), run the sweep again **without making any changes** inside `src/gamma` or `src/delta`. Both should be processed as candidates but `src/gamma` should not be skipped (no prior commit for it). Confirm the skip count for previously-processed dirs with no new changes.
 

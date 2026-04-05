@@ -11,6 +11,11 @@ public struct GitClient: Sendable {
         self.environment = environment
     }
 
+    public init(printOutput: Bool, environment: [String: String]? = nil) {
+        self.client = CLIClient(printOutput: printOutput)
+        self.environment = environment
+    }
+
     @discardableResult
     public func add(files: [String], workingDirectory: String) async throws -> ExecutionResult {
         let command = GitCLI.Add(files: files)
@@ -328,6 +333,33 @@ public struct GitClient: Sendable {
             return (hash, body)
         } catch {
             return nil
+        }
+    }
+
+    /// Returns all commits matching `pattern` in the commit message, newest first.
+    ///
+    /// Returns an empty array if no matching commits exist or the command fails.
+    public func logGrepAll(_ pattern: String, workingDirectory: String) async throws -> [(hash: String, body: String)] {
+        let command = GitCLI.Log(grep: pattern, pretty: "format:%H%x00%B%x00")
+        do {
+            let result = try await execute(command, workingDirectory: workingDirectory)
+            guard !result.stdout.isEmpty else { return [] }
+            let entries = result.stdout
+                .components(separatedBy: "\0")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            var commits: [(hash: String, body: String)] = []
+            var i = 0
+            while i < entries.count {
+                let hash = entries[i]
+                guard hash.count == 40 else { i += 1; continue }
+                let body = i + 1 < entries.count ? entries[i + 1] : ""
+                commits.append((hash, body))
+                i += 2
+            }
+            return commits
+        } catch {
+            return []
         }
     }
 
