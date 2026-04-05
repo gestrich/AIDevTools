@@ -255,7 +255,10 @@ Commit any added commands: `feat: add claude-chain list command`.
 
 ---
 
-## - [ ] Phase 7: GitHub Status — Both Chain Types
+## - [x] Phase 7: GitHub Status — Both Chain Types
+
+**Skills used**: none
+**Principles applied**: Fixed `GitHubChainProjectSource.fetchChainProject()` to detect sweep chains by checking if `basePath` starts with `ClaudeChainConstants.sweepChainDirectory` and setting `kindBadge = "sweep"` on both `ChainProject` return paths (empty-spec and normal). Updated `StatusCommand.printEnrichedProjectList()` to render the badge inline. Verified: `status --repo-path ../AIDevToolsDemo` shows `add-header [sweep]` and `hello-world` without a badge.
 
 Run the `status` command against `AIDevToolsDemo` and verify it correctly surfaces both spec and sweep chains.
 

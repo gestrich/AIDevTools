@@ -125,6 +125,7 @@ public struct GitHubChainProjectSource: ChainProjectSource {
         let project = Project(name: name, basePath: basePath)
         let specPath = project.specPath
         let configPath = project.configPath
+        let kindBadge: String? = basePath.hasPrefix(ClaudeChainConstants.sweepChainDirectory) ? "sweep" : nil
 
         let specEntry = treeEntries.first { $0.path == specPath }
         let configEntry = treeEntries.first { $0.path == configPath }
@@ -146,6 +147,7 @@ public struct GitHubChainProjectSource: ChainProjectSource {
                 totalTasks: 0,
                 baseBranch: baseRef,
                 isGitHubOnly: true,
+                kindBadge: kindBadge,
                 maxOpenPRs: maxOpenPRs
             )
         }
@@ -159,6 +161,7 @@ public struct GitHubChainProjectSource: ChainProjectSource {
             pendingTasks: spec.pendingTasks,
             totalTasks: spec.totalTasks,
             baseBranch: baseRef,
+            kindBadge: kindBadge,
             maxOpenPRs: maxOpenPRs
         )
     }

@@ -119,8 +119,9 @@ public struct StatusCommand: AsyncParsableCommand {
             } else {
                 actionBadge = ""
             }
+            let kindBadgeStr = project.kindBadge.map { "  [\($0)]" } ?? ""
             let githubOnlyNote = project.isGitHubOnly ? "  (spec on non-default branch)" : ""
-            print("  \(padded)  \(bar)  \(counts)\(actionBadge)\(githubOnlyNote)")
+            print("  \(padded)  \(bar)  \(counts)\(kindBadgeStr)\(actionBadge)\(githubOnlyNote)")
         }
 
         printProjectSummaryFooter(allProjects)
