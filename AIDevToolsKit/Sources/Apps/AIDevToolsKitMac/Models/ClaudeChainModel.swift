@@ -265,7 +265,7 @@ final class ClaudeChainModel {
 
                 let result = ExecuteSpecChainUseCase.Result(
                     success: true,
-                    message: prURL != nil ? "PR created: \(prURL!)" : (stagingOnly ? "Task completed (staging only)" : "Task completed"),
+                    message: prURL.map { "PR created: \($0)" } ?? (stagingOnly ? "Task completed (staging only)" : "Task completed"),
                     branchName: stagingOnly ? branchName : nil,
                     isStagingOnly: stagingOnly,
                     prURL: prURL,
@@ -324,7 +324,7 @@ final class ClaudeChainModel {
 
                 let result = ExecuteSpecChainUseCase.Result(
                     success: true,
-                    message: prURL != nil ? "PR created: \(prURL!)" : "Staged task finalized",
+                    message: prURL.map { "PR created: \($0)" } ?? "Staged task finalized",
                     prURL: prURL,
                     prNumber: prNumber,
                     taskDescription: task.description

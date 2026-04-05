@@ -69,7 +69,10 @@ In `AIDevToolsKitMac/Models/ClaudeChainModel.swift`, update `loadChains(for:cred
 2. Then fetch `listChains(source: .remote, useCache: false)` for fresh data and update state
 3. On network error: if cached data was already shown, leave the state as `.loaded` (don't replace with `.error`); if no cached data was shown, set `state = .error`
 
-## - [ ] Phase 4: Enforce Coding Standards
+## - [x] Phase 4: Enforce Coding Standards
+
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-code-quality`
+**Principles applied**: Fixed two force unwraps in `ClaudeChainModel.swift` (lines 267, 327) where `prURL!` was used inside a ternary after a nil check — replaced with `prURL.map { "PR created: \($0)" } ?? ...`. No other severity 5+ violations found in the changed files; build quality, Swift Testing conventions, and architecture of newly added code were all clean.
 
 **Skills to read**: `ai-dev-tools-enforce`
 
