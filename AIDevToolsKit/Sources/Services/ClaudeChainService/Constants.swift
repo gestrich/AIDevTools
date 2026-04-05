@@ -8,6 +8,9 @@ public struct ClaudeChainConstants {
 
     /// Maintenance chain directory name
     public static let maintenanceChainDirectory = "claude-chain-maintenance"
+
+    /// Sweep chain directory name
+    public static let sweepChainDirectory = "claude-chain-sweep"
     
     /// Spec file path pattern for detecting project changes
     /// Format: claude-chain/*/spec.md

@@ -358,7 +358,10 @@ Files:
 
 ---
 
-## - [ ] Phase 3: `SweepClaudeChainSource`
+## - [x] Phase 3: `SweepClaudeChainSource`
+
+**Skills used**: `swift-app-architecture:swift-architecture`, `logging`
+**Principles applied**: `SweepClaudeChainSource` is an `actor` (mutable batch state: `processedPaths`, `scanCount`, `modifyingTaskCount`). Added `Log` command to `GitCLI` and `logGrep`/`getHeadHash` to `GitClient` to support skip detection and modification tracking. Config.yaml is parsed via the existing `Config.loadConfig` wrapper (avoids direct Yams dependency). Glob expansion uses `FileManager.enumerator` with a `globToRegex` converter supporting `**`. `finalizeBatch()` writes the cursor commit once when `nextTask()` returns nil; guarded by `cursorCommitWritten` flag to prevent double-writes. Added `SweepService` and `Logging` to `ClaudeChainService` Package.swift dependencies. Also added `sweepChainDirectory` to `Constants` and updated `LocalChainDiscoveryService` to discover sweep sources (deferred from Phase 1 since the type didn't exist yet).
 
 **Skills to read**: `swift-app-architecture:swift-architecture`, `logging`
 

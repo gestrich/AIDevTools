@@ -505,11 +505,13 @@ let package = Package(
             name: "ClaudeChainService",
             dependencies: [
                 .product(name: "CLISDK", package: "SwiftCLI"),
+                .product(name: "Logging", package: "swift-log"),
                 .product(name: "Yams", package: "Yams"),
                 "ClaudeChainSDK",
                 "GitSDK",
                 "PipelineSDK",
                 "PRRadarModelsService",
+                "SweepService",
             ],
             path: "Sources/Services/ClaudeChainService"
         ),

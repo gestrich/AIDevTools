@@ -275,6 +275,12 @@ public struct GitClient: Sendable {
         return result.stdout
     }
 
+    public func getHeadHash(workingDirectory: String) async throws -> String {
+        let command = GitCLI.RevParse(ref: "HEAD")
+        let result = try await execute(command, workingDirectory: workingDirectory)
+        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     public func getMergeBase(ref1: String, ref2: String, workingDirectory: String) async throws -> String {
         let command = GitCLI.MergeBase(ref1: ref1, ref2: ref2)
         let result = try await execute(command, workingDirectory: workingDirectory)
@@ -300,6 +306,24 @@ public struct GitClient: Sendable {
     public func isWorkingDirectoryClean(workingDirectory: String) async throws -> Bool {
         let lines = try await status(workingDirectory: workingDirectory)
         return lines.isEmpty
+    }
+
+    /// Returns the most recent commit matching `pattern` in the commit message.
+    ///
+    /// Returns `nil` if no matching commit exists or the command fails.
+    public func logGrep(_ pattern: String, workingDirectory: String) async throws -> (hash: String, body: String)? {
+        let command = GitCLI.Log(grep: pattern, maxCount: "1", pretty: "format:%H%n%B")
+        do {
+            let result = try await execute(command, workingDirectory: workingDirectory)
+            let trimmed = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            let lines = trimmed.components(separatedBy: .newlines)
+            guard let hash = lines.first, hash.count == 40 else { return nil }
+            let body = lines.dropFirst().joined(separator: "\n")
+            return (hash, body)
+        } catch {
+            return nil
+        }
     }
 
     func execute(_ command: some CLICommand, workingDirectory: String) async throws -> ExecutionResult {

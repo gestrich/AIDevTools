@@ -48,6 +48,13 @@ public struct GitCLI {
     public struct Init {}
 
     @CLICommand
+    public struct Log {
+        @Option("--grep") public var grep: String?
+        @Option("--max-count") public var maxCount: String?
+        @Option("--pretty") public var pretty: String?
+    }
+
+    @CLICommand
     public struct Push {
         @Flag("-u") public var setUpstream: Bool = false
         @Flag("--force") public var force: Bool = false
