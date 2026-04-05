@@ -165,6 +165,26 @@ public struct RunSpecChainTaskUseCase: UseCase {
         onProgress?(.preparedTask(description: taskDescription, index: stepIndex, total: totalSteps))
         phasesCompleted += 1
 
+        let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: repoDir, git: git)
+
+        // Check capacity before creating branch so no branch is created when at the PR limit
+        if !options.stagingOnly, let projectConfig, !repoSlug.isEmpty {
+            let prService = PRService(repo: repoSlug)
+            let assigneeService = AssigneeService(repo: repoSlug, prService: prService)
+            let capacityResult = assigneeService.checkCapacity(
+                config: projectConfig,
+                label: Constants.defaultPRLabel,
+                project: options.projectName
+            )
+            guard capacityResult.hasCapacity else {
+                throw RunSpecChainTaskError.capacityExceeded(
+                    project: options.projectName,
+                    openCount: capacityResult.openPRs.count,
+                    maxOpen: capacityResult.maxOpenPRs
+                )
+            }
+        }
+
         // Create feature branch (already on baseBranch from earlier checkout)
         let branchName = chainProject.branchPrefix + task.id
         try await git.checkout(ref: branchName, forceCreate: true, workingDirectory: repoDir)
@@ -295,26 +315,6 @@ public struct RunSpecChainTaskUseCase: UseCase {
 
         // Push branch
         try await git.push(remote: "origin", branch: branchName, setUpstream: true, force: true, workingDirectory: repoDir)
-
-        let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: repoDir, git: git)
-
-        // Guard against creating PR when async slots are at capacity
-        if let projectConfig, !repoSlug.isEmpty {
-            let prService = PRService(repo: repoSlug)
-            let assigneeService = AssigneeService(repo: repoSlug, prService: prService)
-            let capacityResult = assigneeService.checkCapacity(
-                config: projectConfig,
-                label: Constants.defaultPRLabel,
-                project: options.projectName
-            )
-            guard capacityResult.hasCapacity else {
-                throw RunSpecChainTaskError.capacityExceeded(
-                    project: options.projectName,
-                    openCount: capacityResult.openPRs.count,
-                    maxOpen: capacityResult.maxOpenPRs
-                )
-            }
-        }
 
         // Create draft PR
         let prTitle = ChainPRHelpers.buildPRTitle(projectName: options.projectName, task: taskDescription)

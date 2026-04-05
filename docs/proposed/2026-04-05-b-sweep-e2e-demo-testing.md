@@ -285,7 +285,10 @@ Commit fix: `fix: set kindBadge=sweep in GitHubChainProjectSource`.
 
 ---
 
-## - [ ] Phase 8: Capacity Enforcement
+## - [x] Phase 8: Capacity Enforcement
+
+**Skills used**: none
+**Principles applied**: Fixed `RunChainTaskUseCase` to check capacity BEFORE creating the feature branch (previously checked after push, which allowed a branch to be created even when at capacity). Moved `repoSlug` detection and the capacity guard to right after `nextTask()`, guarded by `!options.stagingOnly` so staging-only runs skip the check. Removed the now-redundant post-push capacity block. Set `maxOpenPRs: 1` in `AIDevToolsDemo/claude-chain/hello-world/configuration.yml`. Verified: spec chain blocks with 1 open PR and succeeds after closing it; sweep chain blocks with open sweep PR and proceeds after closing it.
 
 Verify that both chain types block new runs when capacity is reached.
 
