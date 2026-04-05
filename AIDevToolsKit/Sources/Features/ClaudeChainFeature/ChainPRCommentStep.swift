@@ -53,10 +53,19 @@ public struct ChainPRCommentStep: PipelineNode {
         onProgress: @escaping @Sendable (PipelineNodeProgress) -> Void
     ) async throws -> PipelineContext {
         let workingDirectory = context[PipelineContext.workingDirectoryKey] ?? ""
-        guard let prNumber = context[PRStep.prNumberKey],
-              let prURL = context[PRStep.prURLKey] else {
-            logger.debug("ChainPRCommentStep: no PR number/URL in context, skipping comment")
-            return context
+        let prNumber: String
+        let prURL: String
+        if dryRun {
+            prNumber = context[PRStep.prNumberKey] ?? "N/A"
+            prURL = context[PRStep.prURLKey] ?? "N/A"
+        } else {
+            guard let num = context[PRStep.prNumberKey],
+                  let url = context[PRStep.prURLKey] else {
+                logger.debug("ChainPRCommentStep: no PR number/URL in context, skipping comment")
+                return context
+            }
+            prNumber = num
+            prURL = url
         }
 
         logger.debug("ChainPRCommentStep: generating summary for PR #\(prNumber)")

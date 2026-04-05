@@ -143,15 +143,6 @@ public struct RunSweepBatchUseCase: UseCase {
 
             let batchDescription = "Sweep [\(taskName)]: \(sweepResult.modifyingTasks) file(s) updated, cursor at \(sweepResult.finalCursor ?? "end")"
             let prConfig = PRConfiguration(labels: [Constants.defaultPRLabel])
-            let prStep = PRStep(
-                id: "pr-step",
-                displayName: "Create PR",
-                baseBranch: options.baseBranch,
-                configuration: prConfig,
-                gitClient: git,
-                projectName: taskName,
-                taskDescription: batchDescription
-            )
             let commentStep = ChainPRCommentStep(
                 id: "pr-comment-step",
                 displayName: "Post PR Comment",
@@ -167,8 +158,22 @@ public struct RunSweepBatchUseCase: UseCase {
                 provider: client,
                 workingDirectory: repoDir
             )
+            var prNodes: [any PipelineNode] = []
+            if !options.dryRun {
+                let prStep = PRStep(
+                    id: "pr-step",
+                    displayName: "Create PR",
+                    baseBranch: options.baseBranch,
+                    configuration: prConfig,
+                    gitClient: git,
+                    projectName: taskName,
+                    taskDescription: batchDescription
+                )
+                prNodes.append(prStep)
+            }
+            prNodes.append(commentStep)
             let prContext = try await runner.run(
-                nodes: [prStep, commentStep],
+                nodes: prNodes,
                 configuration: prConfiguration
             ) { _ in }
             prURL = prContext[PRStep.prURLKey]

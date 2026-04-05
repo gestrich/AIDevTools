@@ -165,7 +165,10 @@ Fix any failures. Commit fixes.
 
 ---
 
-## - [ ] Phase 4: Test Sweep Chain — First Batch
+## - [x] Phase 4: Test Sweep Chain — First Batch
+
+**Skills used**: none
+**Principles applied**: Discovered and fixed a dry-run bug: `--dry-run` was passing `dryRun` only to `ChainPRCommentStep` but `PRStep` always ran, causing a real branch push and PR creation even in dry-run mode. Fix: conditioned `PRStep` on `!dryRun` in `RunSweepBatchUseCase`, and relaxed the `prNumber`/`prURL` guard in `ChainPRCommentStep` so it generates the comment preview without real PR context. The sweep did process `src/a.txt` (added `# auto-generated header`), committed a `[claude-sweep] cursor=src/a.txt` state commit, and created PR gestrich/AIDevToolsDemo#4. All verification criteria confirmed.
 
 Run one batch of the sweep chain to prove file discovery, AI execution, cursor commit, and (if changes) PR creation.
 
