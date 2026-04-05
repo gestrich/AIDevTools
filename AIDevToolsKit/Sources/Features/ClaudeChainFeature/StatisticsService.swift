@@ -82,36 +82,28 @@ public struct StatisticsService {
         
         // Collect project statistics
         for (config, specBranch) in projectConfigs {
-            do {
-                if let projectStats = collectProjectStats(
-                    projectName: config.project.name,
-                    baseBranch: specBranch,
-                    label: label,
-                    project: config.project,
-                    stalePrDays: config.getStalePRDays(),
-                    daysBack: daysBack
-                ) {
-                    report.addProject(projectStats)
-                }
-            } catch {
-                logger.error("Error collecting stats for \(config.project.name): \(error)")
+            if let projectStats = collectProjectStats(
+                projectName: config.project.name,
+                baseBranch: specBranch,
+                label: label,
+                project: config.project,
+                stalePrDays: config.getStalePRDays(),
+                daysBack: daysBack
+            ) {
+                report.addProject(projectStats)
             }
         }
-        
+
         // Collect team member statistics across all projects (only if enabled)
         if showAssigneeStats {
             if !allAssignees.isEmpty {
-                do {
-                    let teamStats = collectTeamMemberStats(
-                        assignees: Array(allAssignees),
-                        daysBack: daysBack,
-                        label: label
-                    )
-                    for (username, stats) in teamStats {
-                        report.addTeamMember(stats)
-                    }
-                } catch {
-                    print("Error collecting team member stats: \(error)")
+                let teamStats = collectTeamMemberStats(
+                    assignees: Array(allAssignees),
+                    daysBack: daysBack,
+                    label: label
+                )
+                for (_, stats) in teamStats {
+                    report.addTeamMember(stats)
                 }
             } else {
                 logger.info("No assignees configured - skipping team member statistics")
@@ -198,7 +190,7 @@ public struct StatisticsService {
             // Aggregate total cost from all tasks
             stats.totalCostUSD = stats.tasks.reduce(0) { $0 + $1.costUSD }
             if stats.totalCostUSD > 0 {
-                logger.info(String(format: "Cost: $%.2f", stats.totalCostUSD))
+                logger.info("Cost: \(String(format: "$%.2f", stats.totalCostUSD))")
             }
             
             return stats
@@ -362,50 +354,44 @@ public struct StatisticsService {
         var mergedCount = 0
         var openCount = 0
         
-        do {
-            // Query all PRs with claudechain label from GitHub using PRService
-            let allPrs = prService.getAllPrs(label: label, state: "all", limit: 500)
-            
-            for pr in allPrs {
-                // Skip if no assignee or not a ClaudeChain PR
-                if pr.assignees.isEmpty || !pr.isClaudeChainPR {
-                    continue
-                }
-                
-                // Use domain model properties instead of manual parsing
-                guard let projectName = pr.projectName,
-                      let taskHash = pr.taskHash else {
-                    continue
-                }
-                
-                // Create PRReference from GitHub PR
-                let title = "Task \(String(taskHash.prefix(8))): \(pr.taskDescription)"
-                
-                // Determine timestamp based on state
-                let timestamp = pr.state == "merged" && pr.mergedAt != nil ? pr.mergedAt! : pr.createdAt
-                
-                let prRef = PRReference(
-                    prNumber: pr.number,
-                    title: title,
-                    project: projectName,
-                    timestamp: timestamp
-                )
-                
-                // Add to each assignee's stats (use login strings, not GitHubUser objects)
-                for assigneeLogin in pr.getAssigneeLogins() {
-                    if let memberStats = statsDict[assigneeLogin] {
-                        if pr.state == "merged" {
-                            memberStats.addMergedPR(prRef)
-                            mergedCount += 1
-                        } else if pr.state == "open" {
-                            memberStats.addOpenPR(prRef)
-                            openCount += 1
-                        }
+        let allPrs = prService.getAllPrs(label: label, state: "all", limit: 500)
+        for pr in allPrs {
+            // Skip if no assignee or not a ClaudeChain PR
+            if pr.assignees.isEmpty || !pr.isClaudeChainPR {
+                continue
+            }
+
+            // Use domain model properties instead of manual parsing
+            guard let projectName = pr.projectName,
+                  let taskHash = pr.taskHash else {
+                continue
+            }
+
+            // Create PRReference from GitHub PR
+            let title = "Task \(String(taskHash.prefix(8))): \(pr.taskDescription)"
+
+            // Determine timestamp based on state
+            let timestamp = pr.state == "merged" && pr.mergedAt != nil ? pr.mergedAt! : pr.createdAt
+
+            let prRef = PRReference(
+                prNumber: pr.number,
+                title: title,
+                project: projectName,
+                timestamp: timestamp
+            )
+
+            // Add to each assignee's stats (use login strings, not GitHubUser objects)
+            for assigneeLogin in pr.getAssigneeLogins() {
+                if let memberStats = statsDict[assigneeLogin] {
+                    if pr.state == "merged" {
+                        memberStats.addMergedPR(prRef)
+                        mergedCount += 1
+                    } else if pr.state == "open" {
+                        memberStats.addOpenPR(prRef)
+                        openCount += 1
                     }
                 }
             }
-        } catch {
-            logger.warning("Failed to query GitHub PRs: \(error)")
         }
 
         logger.info("Found \(mergedCount) merged PR(s)")
@@ -446,19 +432,11 @@ public struct StatisticsService {
         // Look for the total cost line: | **Total** | **$X.XXXXXX** |
         let pattern = #"\|\s*\*\*Total\*\*\s*\|\s*\*\*\$(\d+\.\d+)\*\*\s*\|"#
         
-        do {
-            let regex = try NSRegularExpression(pattern: pattern, options: [])
-            let range = NSRange(location: 0, length: commentBody.utf16.count)
-            
-            if let match = regex.firstMatch(in: commentBody, options: [], range: range) {
-                guard let costRange = Range(match.range(at: 1), in: commentBody) else { return nil }
-                let costString = String(commentBody[costRange])
-                return Double(costString)
-            }
-        } catch {
-            logger.error("Error parsing cost from comment: \(error)")
-        }
-        
-        return nil
+        // Pattern is a hardcoded constant and cannot fail to compile.
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+        let range = NSRange(location: 0, length: commentBody.utf16.count)
+        guard let match = regex.firstMatch(in: commentBody, options: [], range: range),
+              let costRange = Range(match.range(at: 1), in: commentBody) else { return nil }
+        return Double(String(commentBody[costRange]))
     }
 }
