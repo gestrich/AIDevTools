@@ -17,11 +17,13 @@ public struct SeedGuidelinesUseCase: UseCase {
         }
     }
 
-    public struct Result: Sendable {
+    public struct Result {
+        public let guidelines: [Guideline]
         public let guidelinesCreated: Int
         public let skipped: Bool
 
-        public init(guidelinesCreated: Int, skipped: Bool) {
+        public init(guidelines: [Guideline], guidelinesCreated: Int, skipped: Bool) {
+            self.guidelines = guidelines
             self.guidelinesCreated = guidelinesCreated
             self.skipped = skipped
         }
@@ -39,7 +41,7 @@ public struct SeedGuidelinesUseCase: UseCase {
         let existing = try context.fetch(descriptor)
 
         if !existing.isEmpty {
-            return Result(guidelinesCreated: 0, skipped: true)
+            return Result(guidelines: existing, guidelinesCreated: 0, skipped: true)
         }
 
         var created = 0
@@ -96,7 +98,9 @@ public struct SeedGuidelinesUseCase: UseCase {
         }
 
         try context.save()
-        return Result(guidelinesCreated: created, skipped: false)
+        let allDescriptor = FetchDescriptor<Guideline>(predicate: predicate, sortBy: [SortDescriptor(\.title)])
+        let allGuidelines = try context.fetch(allDescriptor)
+        return Result(guidelines: allGuidelines, guidelinesCreated: created, skipped: false)
     }
 
     // MARK: - Helpers

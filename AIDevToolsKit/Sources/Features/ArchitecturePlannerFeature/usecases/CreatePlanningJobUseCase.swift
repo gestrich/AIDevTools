@@ -18,11 +18,13 @@ public struct CreatePlanningJobUseCase: UseCase {
         }
     }
 
-    public struct Result: Sendable {
+    public struct Result {
         public let jobId: UUID
+        public let jobs: [PlanningJob]
 
-        public init(jobId: UUID) {
+        public init(jobId: UUID, jobs: [PlanningJob]) {
             self.jobId = jobId
+            self.jobs = jobs
         }
     }
 
@@ -64,6 +66,10 @@ public struct CreatePlanningJobUseCase: UseCase {
         context.insert(job)
         try context.save()
 
-        return Result(jobId: job.jobId)
+        let repoNameValue = options.repoName
+        let jobsPredicate = #Predicate<PlanningJob> { $0.repoName == repoNameValue }
+        let jobsDescriptor = FetchDescriptor<PlanningJob>(predicate: jobsPredicate, sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        let jobs = try context.fetch(jobsDescriptor)
+        return Result(jobId: job.jobId, jobs: jobs)
     }
 }

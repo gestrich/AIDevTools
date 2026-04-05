@@ -10,14 +10,13 @@ final class ArchitecturePlannerModel {
 
     enum State {
         case idle
-        case loading
         case running(stepName: String, output: String)
         case error(Error)
     }
 
-    var state: State = .idle
-    var guidelines: [Guideline] = []
-    var jobs: [PlanningJob] = []
+    private(set) var state: State = .idle
+    private(set) var guidelines: [Guideline] = []
+    private(set) var jobs: [PlanningJob] = []
     var selectedJob: PlanningJob?
     var selectedStepIndex: Int?
     var featureDescription: String = ""
@@ -61,8 +60,10 @@ final class ArchitecturePlannerModel {
         self.dataPathsService = dataPathsService
         self.providerRegistry = providerRegistry
 
-        let client = selectedProviderName.flatMap { providerRegistry.client(named: $0) }
-            ?? providerRegistry.defaultClient!
+        guard let client = selectedProviderName.flatMap({ providerRegistry.client(named: $0) })
+            ?? providerRegistry.defaultClient else {
+            preconditionFailure("ArchitecturePlannerModel requires at least one configured provider")
+        }
         self.selectedProviderName = client.name
 
         self.createJobUseCase = CreatePlanningJobUseCase()
@@ -115,11 +116,11 @@ final class ArchitecturePlannerModel {
     func seedGuidelines() {
         guard let repoName = currentRepoName, let repoPath = currentRepoPath, let store else { return }
         do {
-            _ = try seedGuidelinesUseCase.run(
+            let result = try seedGuidelinesUseCase.run(
                 SeedGuidelinesUseCase.Options(repoName: repoName, repoPath: repoPath),
                 store: store
             )
-            guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: store)
+            guidelines = result.guidelines
         } catch {
             state = .error(error)
         }
@@ -138,7 +139,7 @@ final class ArchitecturePlannerModel {
             )
             let result = try createJobUseCase.run(options, store: store)
             featureDescription = ""
-            jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
+            jobs = result.jobs
             selectedJob = jobs.first { $0.jobId == result.jobId }
             state = .idle
         } catch {
