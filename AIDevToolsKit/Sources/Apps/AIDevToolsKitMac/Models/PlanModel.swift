@@ -34,8 +34,8 @@ final class PlanModel {
         }
     }
 
-    var state: State = .idle
-    var plans: [MarkdownPlanEntry] = []
+    private(set) var state: State = .idle
+    private(set) var plans: [MarkdownPlanEntry] = []
     let pipelineModel = PipelineModel()
     private(set) var isLoadingPlans: Bool = false
     private(set) var executionCompleteCount: Int = 0
@@ -265,6 +265,10 @@ final class PlanModel {
 
     func appendReviewTemplate(_ template: ReviewTemplate, to planURL: URL) async throws {
         try await AppendReviewTemplateUseCase().run(.init(planURL: planURL, template: template))
+    }
+
+    func reportError(_ error: Error) {
+        state = .error(error)
     }
 
     func reset() {

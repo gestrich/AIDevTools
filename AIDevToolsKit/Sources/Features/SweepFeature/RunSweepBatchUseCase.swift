@@ -210,10 +210,13 @@ public struct RunSweepBatchUseCase: UseCase {
             printCommand: false
         )
         guard result.isSuccess, let data = result.stdout.data(using: .utf8) else { return 0 }
-        struct PR: Decodable { let headRefName: String }
-        let prs = try JSONDecoder().decode([PR].self, from: data)
+        let prs = try JSONDecoder().decode([OpenPR].self, from: data)
         return prs.filter { $0.headRefName.hasPrefix(branchPrefix) }.count
     }
+}
+
+private struct OpenPR: Decodable {
+    let headRefName: String
 }
 
 public enum RunSweepBatchError: LocalizedError {

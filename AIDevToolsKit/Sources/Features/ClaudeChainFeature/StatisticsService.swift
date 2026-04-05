@@ -1,9 +1,11 @@
 import ClaudeChainService
 import ClaudeChainSDK
 import Foundation
+import Logging
 
 public struct StatisticsService {
 
+    private let logger = Logger(label: "StatisticsService")
     private let repo: String
     private let projectRepository: ProjectRepository
     private let prService: PRService
@@ -51,12 +53,12 @@ public struct StatisticsService {
         report.generatedAt = startTime
         
         if repo.isEmpty {
-            print("Warning: GITHUB_REPOSITORY not set")
+            logger.warning("GITHUB_REPOSITORY not set")
             return report
         }
-        
+
         if projects.isEmpty {
-            print("No projects provided")
+            logger.info("No projects provided")
             return report
         }
         
@@ -70,13 +72,13 @@ public struct StatisticsService {
                 allAssignees = allAssignees.union(Set(config.assignees))
                 projectConfigs.append((config, specBranch))
             } catch {
-                print("Warning: Failed to load project \(projectName): \(error)")
+                logger.warning("Failed to load project \(projectName): \(error)")
                 continue
             }
         }
-        
-        print("Processing \(projectConfigs.count) project(s)...")
-        print("Tracking \(allAssignees.count) unique assignee(s)")
+
+        logger.info("Processing \(projectConfigs.count) project(s)...")
+        logger.info("Tracking \(allAssignees.count) unique assignee(s)")
         
         // Collect project statistics
         for (config, specBranch) in projectConfigs {
@@ -92,7 +94,7 @@ public struct StatisticsService {
                     report.addProject(projectStats)
                 }
             } catch {
-                print("Error collecting stats for \(config.project.name): \(error)")
+                logger.error("Error collecting stats for \(config.project.name): \(error)")
             }
         }
         
@@ -112,10 +114,10 @@ public struct StatisticsService {
                     print("Error collecting team member stats: \(error)")
                 }
             } else {
-                print("No assignees configured - skipping team member statistics")
+                logger.info("No assignees configured - skipping team member statistics")
             }
         } else {
-            print("Team member statistics disabled - skipping collection")
+            logger.info("Team member statistics disabled - skipping collection")
         }
         
         // Calculate generation time
@@ -147,7 +149,7 @@ public struct StatisticsService {
          * Returns:
          *     ProjectStats object, or nil if spec files don't exist in base branch
          */
-        print("Collecting statistics for project: \(projectName)")
+        logger.info("Collecting statistics for project: \(projectName)")
         
         let proj = project ?? Project(name: projectName, basePath: "\(ClaudeChainConstants.projectDirectoryPrefix)/\(projectName)")
         let stats = ProjectStats(projectName: projectName, specPath: proj.specPath)
@@ -155,18 +157,18 @@ public struct StatisticsService {
         // Fetch and parse spec.md using repository
         do {
             guard let spec = try projectRepository.loadSpec(project: proj, baseBranch: baseBranch) else {
-                print("  Warning: Spec file not found in branch '\(baseBranch)', skipping project")
+                logger.warning("Spec file not found in branch '\(baseBranch)', skipping project")
                 return nil
             }
-            
+
             stats.totalTasks = spec.totalTasks
             stats.completedTasks = spec.completedTasks
-            print("  Tasks: \(stats.completedTasks)/\(stats.totalTasks) completed")
-            
+            logger.info("Tasks: \(stats.completedTasks)/\(stats.totalTasks) completed")
+
             // Get PRs from GitHub (open and merged)
             let openPrs = prService.getOpenPrsForProject(project: projectName, label: label)
             stats.inProgressTasks = openPrs.count
-            print("  In-progress: \(stats.inProgressTasks)")
+            logger.info("In-progress: \(stats.inProgressTasks)")
             
             // Store open PRs and calculate stale count
             for pr in openPrs {
@@ -177,11 +179,11 @@ public struct StatisticsService {
             }
             
             if stats.stalePRCount > 0 {
-                print("  Stale PRs: \(stats.stalePRCount) (>\(stalePrDays) days)")
+                logger.info("Stale PRs: \(stats.stalePRCount) (>\(stalePrDays) days)")
             }
-            
+
             let mergedPrs = prService.getMergedPrsForProject(project: projectName, label: label, daysBack: daysBack)
-            print("  Merged PRs (last \(daysBack) days): \(mergedPrs.count)")
+            logger.info("Merged PRs (last \(daysBack) days): \(mergedPrs.count)")
             
             // Fetch costs from artifacts (keyed by PR number)
             let costsByPr = getCostsByPr(projectName: projectName)
@@ -191,17 +193,17 @@ public struct StatisticsService {
             
             // Calculate pending tasks
             stats.pendingTasks = max(0, stats.totalTasks - stats.completedTasks - stats.inProgressTasks)
-            print("  Pending: \(stats.pendingTasks)")
-            
+            logger.info("Pending: \(stats.pendingTasks)")
+
             // Aggregate total cost from all tasks
             stats.totalCostUSD = stats.tasks.reduce(0) { $0 + $1.costUSD }
             if stats.totalCostUSD > 0 {
-                print(String(format: "  Cost: $%.2f", stats.totalCostUSD))
+                logger.info(String(format: "Cost: $%.2f", stats.totalCostUSD))
             }
             
             return stats
         } catch {
-            print("  Warning: Failed to fetch spec file: \(error)")
+            logger.warning("Failed to fetch spec file: \(error)")
             return nil
         }
     }
@@ -287,7 +289,7 @@ public struct StatisticsService {
         }
         
         if !stats.orphanedPRs.isEmpty {
-            print("  Orphaned PRs: \(stats.orphanedPRs.count)")
+            logger.info("Orphaned PRs: \(stats.orphanedPRs.count)")
         }
     }
     
@@ -347,7 +349,7 @@ public struct StatisticsService {
             statsDict[username] = TeamMemberStats(username: username)
         }
         
-        print("Collecting team member statistics for \(assignees.count) assignee(s)...")
+        logger.info("Collecting team member statistics for \(assignees.count) assignee(s)...")
         
         // Calculate cutoff date
         let cutoffDate = Date().addingTimeInterval(-Double(daysBack * 24 * 60 * 60))
@@ -355,7 +357,7 @@ public struct StatisticsService {
         formatter.dateFormat = "yyyy-MM-dd"
         let cutoffIso = formatter.string(from: cutoffDate)
         
-        print("Looking for PRs since \(cutoffIso)...")
+        logger.info("Looking for PRs since \(cutoffIso)...")
         
         var mergedCount = 0
         var openCount = 0
@@ -403,11 +405,11 @@ public struct StatisticsService {
                 }
             }
         } catch {
-            print("Warning: Failed to query GitHub PRs: \(error)")
+            logger.warning("Failed to query GitHub PRs: \(error)")
         }
-        
-        print("Found \(mergedCount) merged PR(s)")
-        print("Found \(openCount) open PR(s)")
+
+        logger.info("Found \(mergedCount) merged PR(s)")
+        logger.info("Found \(openCount) open PR(s)")
         
         return statsDict
     }
@@ -454,7 +456,7 @@ public struct StatisticsService {
                 return Double(costString)
             }
         } catch {
-            print("Error parsing cost from comment: \(error)")
+            logger.error("Error parsing cost from comment: \(error)")
         }
         
         return nil

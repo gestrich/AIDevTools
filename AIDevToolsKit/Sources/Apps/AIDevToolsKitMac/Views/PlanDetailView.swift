@@ -466,7 +466,7 @@ struct PlanDetailView: View {
             planContent = updatedContent
             localPhases = PlanPhase.parsePhases(from: updatedContent)
         } catch {
-            planModel.state = .error(error)
+            planModel.reportError(error)
         }
     }
 
@@ -474,7 +474,7 @@ struct PlanDetailView: View {
         do {
             try planModel.completePlan(plan, repository: repository)
         } catch {
-            planModel.state = .error(error)
+            planModel.reportError(error)
         }
     }
 

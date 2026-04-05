@@ -2,9 +2,11 @@ import ClaudeChainService
 import ClaudeChainSDK
 import Foundation
 import GitSDK
+import Logging
 
 public struct AutoStartService {
 
+    private let logger = Logger(label: "AutoStartService")
     private let repo: String
     private let prService: PRService
     private let autoStartEnabled: Bool
@@ -49,7 +51,7 @@ public struct AutoStartService {
             try await gitClient.ensureRefAvailable(ref: refBefore, workingDirectory: workingDirectory)
             try await gitClient.ensureRefAvailable(ref: refAfter, workingDirectory: workingDirectory)
         } catch {
-            print("Warning: Failed to ensure git refs are available: \(error)")
+            logger.warning("Failed to ensure git refs are available: \(error)")
         }
 
         // Detect added or modified spec files
@@ -68,7 +70,7 @@ public struct AutoStartService {
                 }
             }
         } catch {
-            print("Warning: Failed to detect changed files: \(error)")
+            logger.warning("Failed to detect changed files: \(error)")
         }
 
         // Detect deleted spec files
@@ -87,7 +89,7 @@ public struct AutoStartService {
                 }
             }
         } catch {
-            print("Warning: Failed to detect deleted files: \(error)")
+            logger.warning("Failed to detect deleted files: \(error)")
         }
         
         return changedProjects

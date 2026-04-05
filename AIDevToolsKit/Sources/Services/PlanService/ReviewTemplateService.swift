@@ -1,17 +1,5 @@
 import Foundation
 
-public struct ReviewTemplate: Sendable, Identifiable {
-    public let id: String
-    public let name: String
-    public let url: URL
-
-    public init(id: String, name: String, url: URL) {
-        self.id = id
-        self.name = name
-        self.url = url
-    }
-}
-
 public struct ReviewTemplateService: Sendable {
     public let reviewsDirectory: URL
 
@@ -44,5 +32,17 @@ public struct ReviewTemplateService: Sendable {
             }
             return nil
         }
+    }
+}
+
+public struct ReviewTemplate: Sendable, Identifiable {
+    public let id: String
+    public let name: String
+    public let url: URL
+
+    public init(id: String, name: String, url: URL) {
+        self.id = id
+        self.name = name
+        self.url = url
     }
 }

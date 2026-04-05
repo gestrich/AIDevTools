@@ -18,7 +18,7 @@ final class WorkspaceModel {
     private(set) var selectedRepository: RepositoryConfiguration?
     private(set) var skills: [SkillInfo] = []
     private(set) var isLoadingSkills: Bool = false
-    var state: State = .idle
+    private(set) var state: State = .idle
 
     private let dataPath: URL
     private let repositoryStore: RepositoryStore
@@ -176,9 +176,13 @@ final class WorkspaceModel {
     }
 
     func updatePRRadarSettings(for repoID: UUID, rulePaths: [RulePath], diffSource: DiffSource, agentScriptPath: String) {
-        guard var repo = try? repositoryStore.find(byID: repoID) else { return }
-        repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath)
-        try? repositoryStore.update(repo)
+        do {
+            guard var repo = try repositoryStore.find(byID: repoID) else { return }
+            repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath)
+            try repositoryStore.update(repo)
+        } catch {
+            state = .error(error)
+        }
     }
 
     func updatePlanDirectories(for repoID: UUID, proposedDirectory: String?, completedDirectory: String?) {
