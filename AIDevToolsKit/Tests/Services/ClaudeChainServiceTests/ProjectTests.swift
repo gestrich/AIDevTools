@@ -99,14 +99,13 @@ final class TestProjectFromConfigPath: XCTestCase {
     }
     
     func testFromConfigPathWithDifferentBaseDir() {
-        /// Should extract project name from config path with different base directory
+        /// Should extract project name and preserve the actual path from the config file location
         let configPath = "custom/my-project/configuration.yml"
-        
+
         let project = Project.fromConfigPath(configPath)
-        
+
         XCTAssertEqual(project.name, "my-project")
-        // Note: from_config_path uses default base_path construction
-        XCTAssertEqual(project.basePath, "claude-chain/my-project")
+        XCTAssertEqual(project.basePath, "custom/my-project")
     }
     
     func testFromConfigPathWithNestedDirectories() {

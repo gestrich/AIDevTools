@@ -143,12 +143,13 @@ After all call sites are migrated:
 - Delete `ListChainsUseCase` if it has no remaining callers outside `ClaudeChainService`
 - Confirm `LocalChainProjectSource` and `GitHubChainProjectSource` are only referenced inside `ClaudeChainService` (they become implementation details)
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
 
-**Skills to read**: `ai-dev-tools-swift-testing`
+**Skills used**: `ai-dev-tools-swift-testing`
+**Principles applied**: Fixed pre-existing compilation errors in test files (`Project(name:)` missing `basePath`, `Project.fromBranchName` and `Project.findAll` not found) by restoring the `Project(name:)` convenience init (default `basePath = "claude-chain/\(name)"`), adding `Project.fromBranchName` and `Project.findAll` static methods (thin wrappers over `BranchInfo` and filesystem scanning), and correcting a stale test assertion in `testFromConfigPathWithDifferentBaseDir`. Added `ClaudeChainServiceListingTests.swift` with 10 Swift Testing tests covering `listChains(source:kind:)` and `detectLocalProjects(fromChangedPaths:)` using stub sources.
 
-1. `swift build` — no errors, no new warnings
-2. Grep confirms: no direct construction of `ListChainsUseCase`, `LocalChainProjectSource`, or `GitHubChainProjectSource` outside `ClaudeChainService`
-3. Grep confirms: `ProjectService` is deleted or empty
+1. `swift build` — no errors, no new warnings ✓
+2. Grep confirms: no direct construction of `ListChainsUseCase`, `LocalChainProjectSource`, or `GitHubChainProjectSource` outside `ClaudeChainService` ✓
+3. Grep confirms: `ProjectService` is deleted ✓
 4. Manual: `claude-chain status` still shows remote chains correctly
 5. Manual: `claude-chain prepare PROJECT_NAME` still finds the correct project locally

@@ -56,8 +56,8 @@ struct ExecuteSpecChainUseCaseSpecTests {
         #expect(branchName.hasPrefix("claude-chain-hello-world-"))
         #expect(branchName.count == "claude-chain-hello-world-".count + 8)
 
-        let parsed = Project.fromBranchName(branchName)
-        #expect(parsed?.name == "hello-world")
+        let parsed = BranchInfo.fromBranchName(branchName)
+        #expect(parsed?.projectName == "hello-world")
     }
 
     @Test("returns failure for nonexistent project")
