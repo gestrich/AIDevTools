@@ -81,7 +81,7 @@ struct RunTaskCommand: AsyncParsableCommand {
         if let baseBranch {
             resolvedBaseBranch = baseBranch
         } else {
-            let chainService = ClaudeChainService(client: ClaudeProvider(), localSource: LocalChainProjectSource(repoPath: repoURL))
+            let chainService = ClaudeChainService(client: ClaudeProvider(), repoPath: repoURL)
             let listResult = try await chainService.listChains(source: .local)
             guard let chainProject = listResult.projects.first(where: { $0.name == project }) else {
                 print("Error: Project '\(project)' not found under \(ClaudeChainConstants.projectDirectoryPrefix)/ or \(ClaudeChainConstants.sweepChainDirectory)/")

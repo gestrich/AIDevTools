@@ -83,6 +83,14 @@ public struct ClaudeChainService {
         self.remoteSource = remoteSource
     }
 
+    public init(client: any AIClient, git: GitClient = GitClient(), repoPath: URL) {
+        self.init(
+            client: client,
+            git: git,
+            localSource: LocalChainProjectSource(repoPath: repoPath)
+        )
+    }
+
     public init(client: any AIClient, git: GitClient = GitClient(), repoPath: URL, prService: any GitHubPRServiceProtocol) {
         self.init(
             client: client,

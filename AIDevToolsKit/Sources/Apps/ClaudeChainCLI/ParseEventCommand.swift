@@ -52,7 +52,7 @@ public struct ParseEventCommand: AsyncParsableCommand {
         let defaultBaseBranch = self.defaultBaseBranch == "main" ? (env["DEFAULT_BASE_BRANCH"] ?? "main") : self.defaultBaseBranch
 
         let repoPath = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let chainService = ClaudeChainService(client: ClaudeProvider(), localSource: LocalChainProjectSource(repoPath: repoPath))
+        let chainService = ClaudeChainService(client: ClaudeProvider(), repoPath: repoPath)
 
         let exitCode = try await cmdParseEvent(
             service: chainService,

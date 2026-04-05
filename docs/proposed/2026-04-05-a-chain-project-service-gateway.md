@@ -134,9 +134,10 @@ let project = Project(name: ..., basePath: (chainDir as NSString).appendingPathC
 
 Fix by using `listLocalChains()` to find the project by name and derive `basePath` from `ChainProject.basePath`. Add `repoPath` + `prService` to `ChainRunOptions` if not already present, or pass a `ClaudeChainService` directly.
 
-## - [ ] Phase 5: Remove now-unused types
+## - [x] Phase 5: Remove now-unused types
 
-**Skills to read**: (none additional)
+**Skills used**: none
+**Principles applied**: Deleted `ListChainsUseCase` and its test file (no production callers remained; test file used an outdated API that no longer matched the implementation). Added a `init(client:git:repoPath:)` convenience init to `ClaudeChainService` so callers constructing a local-only service no longer need to import or construct `LocalChainProjectSource` directly. Updated `RunTaskCommand`, `PrepareCommand`, and `ParseEventCommand` to use the new init. After these changes, `LocalChainProjectSource` and `GitHubChainProjectSource` are only referenced inside `ClaudeChainService.swift` and their own definition files.
 
 After all call sites are migrated:
 - Delete `ListChainsUseCase` if it has no remaining callers outside `ClaudeChainService`

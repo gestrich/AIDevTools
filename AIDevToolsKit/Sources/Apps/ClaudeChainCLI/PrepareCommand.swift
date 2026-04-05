@@ -68,7 +68,7 @@ public struct PrepareCommand: AsyncParsableCommand {
             }
             
             let repoURL = URL(fileURLWithPath: workingDirectory)
-            let chainService = ClaudeChainService(client: ClaudeProvider(), localSource: LocalChainProjectSource(repoPath: repoURL))
+            let chainService = ClaudeChainService(client: ClaudeProvider(), repoPath: repoURL)
             let result = try await chainService.listChains(source: .local)
             guard let chainProject = result.projects.first(where: { $0.name == projectName }) else {
                 gh.setError(message: "Project '\(projectName)' not found under \(ClaudeChainConstants.projectDirectoryPrefix)/ or \(ClaudeChainConstants.sweepChainDirectory)/")
