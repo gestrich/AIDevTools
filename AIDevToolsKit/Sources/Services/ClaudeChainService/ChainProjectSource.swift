@@ -1,3 +1,3 @@
 public protocol ChainProjectSource: Sendable {
-    func listChains() async throws -> ChainListResult
+    func listChains(useCache: Bool) async throws -> ChainListResult
 }

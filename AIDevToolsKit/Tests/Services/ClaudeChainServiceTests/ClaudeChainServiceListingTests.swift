@@ -34,11 +34,11 @@ private struct StubAIClient: AIClient {
 private struct StubChainProjectSource: ChainProjectSource {
     let result: ChainListResult
 
-    func listChains() async throws -> ChainListResult { result }
+    func listChains(useCache: Bool) async throws -> ChainListResult { result }
 }
 
 private struct ThrowingChainProjectSource: ChainProjectSource {
-    func listChains() async throws -> ChainListResult {
+    func listChains(useCache: Bool) async throws -> ChainListResult {
         throw NSError(domain: "TestError", code: 1)
     }
 }

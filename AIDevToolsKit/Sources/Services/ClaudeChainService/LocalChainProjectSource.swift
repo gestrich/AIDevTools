@@ -10,7 +10,7 @@ public struct LocalChainProjectSource: ChainProjectSource {
         self.discoveryService = discoveryService
     }
 
-    public func listChains() async throws -> ChainListResult {
+    public func listChains(useCache: Bool) async throws -> ChainListResult {
         let sources = try discoveryService.discoverSources(repoPath: repoPath)
         var projects: [ChainProject] = []
         var failures: [ChainFetchFailure] = []

@@ -12,8 +12,8 @@ public struct GitHubChainProjectSource: ChainProjectSource {
         self.gitHubPRService = gitHubPRService
     }
 
-    public func listChains() async throws -> ChainListResult {
-        let defaultBranch = try await gitHubPRService.repository(useCache: false).defaultBranch
+    public func listChains(useCache: Bool) async throws -> ChainListResult {
+        let defaultBranch = try await gitHubPRService.repository(useCache: useCache).defaultBranch
         let nonDefaultBranches = try await discoverNonDefaultBranches(defaultBranch: defaultBranch)
 
         var treeEntriesByBranch: [String: [GitTreeEntry]] = [:]

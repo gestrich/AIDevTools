@@ -111,7 +111,7 @@ public struct ClaudeChainService {
             guard let remoteSource else {
                 throw ChainServiceError.missingSource(sourceType: "remote")
             }
-            result = try await remoteSource.listChains()
+            result = try await remoteSource.listChains(useCache: false)
         }
         let filtered = result.projects.filter { project in
             switch kind {
@@ -139,12 +139,12 @@ public struct ClaudeChainService {
         guard let localSource else {
             throw ChainServiceError.missingSource(sourceType: "local")
         }
-        return try await localSource.listChains()
+        return try await localSource.listChains(useCache: false)
     }
 
     private func findLocalProject(named name: String, repoPath: URL) async throws -> ChainProject {
         let source = localSource ?? LocalChainProjectSource(repoPath: repoPath)
-        let result = try await source.listChains()
+        let result = try await source.listChains(useCache: false)
         guard let project = result.projects.first(where: { $0.name == name }) else {
             throw ChainServiceError.projectNotFound(name: name)
         }

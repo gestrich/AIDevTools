@@ -15,7 +15,10 @@ CLI callers (`StatusCommand`, `MCPCommand`, etc.) always want fresh data and sho
 
 ## Phases
 
-## - [ ] Phase 1: Add `useCache` to `ChainProjectSource` and implementations
+## - [x] Phase 1: Add `useCache` to `ChainProjectSource` and implementations
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `useCache: Bool` to the protocol requirement and both implementations. Swift protocols don't support default parameter values, and protocol extension methods aren't accessible via `any` existentials, so updated the three call sites in `ClaudeChainService.swift` to pass `useCache: false` explicitly — keeping behavior identical until Phase 2 threads the parameter properly.
 
 **Skills to read**: `ai-dev-tools-architecture`
 
