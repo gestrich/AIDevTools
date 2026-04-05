@@ -12,7 +12,7 @@ struct AIDevToolsKit: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "ai-dev-tools-kit",
         abstract: "Developer tools for AI-assisted workflows",
-        subcommands: [ArchPlannerCommand.self, ChatCommand.self, ClaudeChainCLI.self, ClearArtifactsCommand.self, ConfigCommand.self, CredentialsCommand.self, ListCasesCommand.self, LogsCommand.self, PlanCommand.self, MCPCommand.self, PRRadarCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self]
+        subcommands: [ArchPlannerCommand.self, ChatCommand.self, ClaudeChainCLI.self, ClearArtifactsCommand.self, ConfigCommand.self, CredentialsCommand.self, ListCasesCommand.self, LogsCommand.self, PlanCommand.self, MCPCommand.self, PRRadarCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self, SweepCommand.self]
     )
 
     @Option(name: .long, help: "Log level: trace, debug, info, notice, warning, error, critical")

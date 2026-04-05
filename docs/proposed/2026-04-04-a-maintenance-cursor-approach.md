@@ -402,7 +402,12 @@ Files:
 
 ---
 
-## - [ ] Phase 4: `SweepFeature` Use Case + CLI
+## - [x] Phase 4: `SweepFeature` Use Case + CLI
+
+**Skills used**: `swift-app-architecture:swift-architecture`
+**Principles applied**: `SweepFeature` is a new Features-layer target depending on `ClaudeChainFeature` and `ClaudeChainService`. `RunSweepBatchUseCase` owns `SweepClaudeChainSource` construction internally — `SweepCommand` passes only plain data. Two-phase pipeline: `[TaskSourceNode]` drains all tasks first; `[PRStep, ChainPRCommentStep]` runs only if `modifyingTasks > 0`. `SweepClaudeChainSource.markComplete` was extended to commit AI-produced changes per task (before HEAD hash check) so `modifyingTaskCount` is accurate. `batchStats()` added to expose internal batch state. Open PR check uses `gh pr list` filtered by `branchPrefix`. Batch branch named `claude-chain-<taskName>-<yyyyMMdd-HHmmss>`.
+
+
 
 **Skills to read**: `swift-app-architecture:swift-architecture`
 

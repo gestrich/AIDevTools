@@ -6,10 +6,15 @@
 
 ### Skills to use
 
+* ai-dev-tools-architecture: When reviewing or fixing Swift code for 4-layer architecture violations (layer placement, dependencies, orchestration, etc.)
+* ai-dev-tools-build-quality: When cleaning up compiler warnings, TODO/FIXME comments, dead code, or debug artifacts
+* ai-dev-tools-code-organization: When reviewing or fixing Swift file and type organization
+* ai-dev-tools-code-quality: When reviewing or fixing code quality issues (force unwraps, raw strings, fallback values, duplicated logic, etc.)
 * ai-dev-tools-debug: When the user describes a problem, reports an error, or posts a screenshot showing an issue
-* logging: When reading logs, debugging via logs, or adding logging to new features
-* pr-radar-add-rule: When adding new PRRadar code review rules
-* pr-radar-debug: When debugging PRRadar behavior, inspecting pipeline output, or reproducing Mac app issues via CLI
-* pr-radar-todo: When adding items to the PRRadar TODO list
-* pr-radar-verify-work: When verifying PRRadar changes against the test repo
+* ai-dev-tools-enforce: After making code changes, when asked to enforce standards, apply architecture guidelines, analyze for violations, or review what would need to change
+* ai-dev-tools-logging: When reading logs, debugging via logs, or adding logging to new features
+* ai-dev-tools-pr-radar-add-rule: When adding new PRRadar code review rules
+* ai-dev-tools-pr-radar-debug: When debugging PRRadar behavior, inspecting pipeline output, or reproducing Mac app issues via CLI
+* ai-dev-tools-pr-radar-todo: When adding items to the PRRadar TODO list
+* ai-dev-tools-swift-testing: When writing or reviewing Swift test files
 * swift-architecture: For any architecture or planning activities

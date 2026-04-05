@@ -6,15 +6,19 @@ import CredentialService
 import Foundation
 import ProviderRegistryService
 
-func makeProviderRegistry() -> ProviderRegistry {
-    var providers: [any AIClient] = [
-        ClaudeProvider(),
-        CodexProvider(),
-    ]
-    if let client = makeAnthropicClientIfAvailable() {
-        providers.append(client)
+func makeProviderRegistry(credentialResolver: CredentialResolver) -> ProviderRegistry {
+    var providers: [any AIClient] = [ClaudeProvider(), CodexProvider()]
+    if let key = credentialResolver.getAnthropicKey(), !key.isEmpty {
+        providers.append(AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key)))
     }
     return ProviderRegistry(providers: providers)
+}
+
+func makeProviderRegistry() -> ProviderRegistry {
+    let service = SecureSettingsService()
+    let account = (try? service.listCredentialAccounts())?.first ?? "default"
+    let resolver = CredentialResolver(settingsService: service, githubAccount: account)
+    return makeProviderRegistry(credentialResolver: resolver)
 }
 
 func makeEvalRegistry(debug: Bool = false) -> EvalProviderRegistry {
@@ -22,14 +26,4 @@ func makeEvalRegistry(debug: Bool = false) -> EvalProviderRegistry {
         EvalProviderEntry(client: ClaudeProvider()),
         EvalProviderEntry(client: CodexProvider()),
     ])
-}
-
-func makeAnthropicClientIfAvailable() -> AnthropicProvider? {
-    let service = SecureSettingsService()
-    let account = (try? service.listCredentialAccounts())?.first ?? "default"
-    let resolver = CredentialResolver(settingsService: service, githubAccount: account)
-    guard let key = resolver.getAnthropicKey(), !key.isEmpty else {
-        return nil
-    }
-    return AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key))
 }

@@ -120,12 +120,34 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         processedPaths.append(task.id)
         scanCount += 1
 
+        // Commit any AI-produced changes before checking HEAD hash
+        let status = try await git.status(workingDirectory: repoPath.path)
+        if !status.isEmpty {
+            _ = try await git.addAll(workingDirectory: repoPath.path)
+            let staged = try await git.diffCachedNames(workingDirectory: repoPath.path)
+            if !staged.isEmpty {
+                _ = try await git.commit(
+                    message: "Sweep [\(taskName)]: \(task.id)",
+                    workingDirectory: repoPath.path
+                )
+            }
+        }
+
         let after = try await git.getHeadHash(workingDirectory: repoPath.path)
         if let before = headHashAtTaskStart, after != before {
             modifyingTaskCount += 1
             logger.debug("[\(taskName)] Task produced changes: \(task.id), modifyingTasks=\(modifyingTaskCount)")
         }
         headHashAtTaskStart = nil
+    }
+
+    public func batchStats() -> SweepBatchStats {
+        SweepBatchStats(
+            finalCursor: processedPaths.last,
+            modifyingTasks: modifyingTaskCount,
+            skipped: processedPaths.count - scanCount,
+            tasks: scanCount
+        )
     }
 
     // MARK: - Private
@@ -274,4 +296,11 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         try await git.commit(message: commitMessage, workingDirectory: repoPath.path)
         logger.info("[\(taskName)] Cursor commit written: cursor=\(cursor), processed=\(processedPaths.count) files")
     }
+}
+
+public struct SweepBatchStats: Sendable {
+    public let finalCursor: String?
+    public let modifyingTasks: Int
+    public let skipped: Int
+    public let tasks: Int
 }

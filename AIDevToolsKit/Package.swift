@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "GitSDK", targets: ["GitSDK"]),
         .library(name: "KeychainSDK", targets: ["KeychainSDK"]),
         .library(name: "LoggingSDK", targets: ["LoggingSDK"]),
+        .library(name: "SweepFeature", targets: ["SweepFeature"]),
         .library(name: "SweepService", targets: ["SweepService"]),
         .library(name: "PlanFeature", targets: ["PlanFeature"]),
         .library(name: "PlanService", targets: ["PlanService"]),
@@ -78,6 +79,7 @@ let package = Package(
                 "ChatFeature",
                 "ClaudeChainCLI",
                 "ClaudeChainFeature",
+                "ClaudeChainService",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
                 "CredentialFeature",
@@ -99,6 +101,7 @@ let package = Package(
                 "RepositorySDK",
                 "SettingsService",
                 "SkillBrowserFeature",
+                "SweepFeature",
             ],
             path: "Sources/Apps/AIDevToolsKitCLI"
         ),
@@ -232,6 +235,21 @@ let package = Package(
                 "UseCaseSDK",
             ],
             path: "Sources/Features/SkillBrowserFeature"
+        ),
+        .target(
+            name: "SweepFeature",
+            dependencies: [
+                "AIOutputSDK",
+                "ClaudeChainFeature",
+                "ClaudeChainService",
+                .product(name: "CLISDK", package: "SwiftCLI"),
+                "GitSDK",
+                .product(name: "Logging", package: "swift-log"),
+                "PipelineSDK",
+                "PipelineService",
+                "UseCaseSDK",
+            ],
+            path: "Sources/Features/SweepFeature"
         ),
 
         // Services Layer
