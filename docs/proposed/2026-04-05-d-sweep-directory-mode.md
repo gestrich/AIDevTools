@@ -46,7 +46,10 @@ Add a computed property to `SweepConfig` that infers the sweep mode from `filePa
   - Add `var isDirectoryMode: Bool { filePattern.hasSuffix("/") }`
   - No changes to config.yaml parsing — `filePattern` already accepts any string
 
-## - [ ] Phase 2: Directory Enumeration
+## - [x] Phase 2: Directory Enumeration
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `expandDirectories(pattern:repoPath:)` that walks the repo enumerating directories, strips the trailing `/` before glob-to-regex conversion, and returns results sorted alphabetically. Branched `candidatePaths` on `config.isDirectoryMode` so both `loadProject` and `nextTask` use the correct expansion path without duplicating the branch.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

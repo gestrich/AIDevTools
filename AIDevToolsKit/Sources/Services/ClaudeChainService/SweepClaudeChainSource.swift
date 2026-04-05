@@ -201,8 +201,43 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
     }
 
     private func candidatePaths(config: SweepConfig) throws -> [String] {
-        let allPaths = try expandGlob(pattern: config.filePattern).sorted()
+        let allPaths: [String]
+        if config.isDirectoryMode {
+            allPaths = try expandDirectories(pattern: config.filePattern, repoPath: repoPath.path)
+        } else {
+            allPaths = try expandGlob(pattern: config.filePattern).sorted()
+        }
         return applyScope(config.scope, to: allPaths)
+    }
+
+    private func expandDirectories(pattern: String, repoPath: String) throws -> [String] {
+        let trimmedPattern = pattern.hasSuffix("/") ? String(pattern.dropLast()) : pattern
+        let regexPattern = "^" + globToRegex(trimmedPattern) + "$"
+        let regex = try NSRegularExpression(pattern: regexPattern)
+
+        var results: [String] = []
+        let resolvedRepo = URL(fileURLWithPath: repoPath).resolvingSymlinksInPath()
+        let rootPath = resolvedRepo.path
+        guard let enumerator = FileManager.default.enumerator(
+            at: resolvedRepo,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return results }
+
+        for case let itemURL as URL in enumerator {
+            let isDirectory = (try? itemURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            guard isDirectory else { continue }
+
+            var relativePath = itemURL.resolvingSymlinksInPath().path
+            guard relativePath.hasPrefix(rootPath + "/") else { continue }
+            relativePath = String(relativePath.dropFirst(rootPath.count + 1))
+
+            let range = NSRange(relativePath.startIndex..<relativePath.endIndex, in: relativePath)
+            if regex.firstMatch(in: relativePath, range: range) != nil {
+                results.append(relativePath)
+            }
+        }
+        return results.sorted()
     }
 
     private func expandGlob(pattern: String) throws -> [String] {
