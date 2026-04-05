@@ -124,9 +124,10 @@ When building an `AITask` for a directory, pass the directory path as the scope 
   - Cursor advances through directory list and wraps correctly
   - `scanLimit` and `changeLimit` behave the same as in file mode
 
-## - [ ] Phase 7: Validation
+## - [x] Phase 7: Validation
 
-**Skills to read**: `ai-dev-tools-swift-testing`
+**Skills used**: `ai-dev-tools-swift-testing`
+**Principles applied**: Ran all 21 sweep tests (SweepConfigTests + SweepClaudeChainSourceTests) — all passed with zero regressions across 6 suites covering file mode, directory mode, skip detection, cursor advancement, scanLimit, and SweepScope.
 
 - Run all existing sweep tests — no regressions
 - Run new Phase 6 tests
