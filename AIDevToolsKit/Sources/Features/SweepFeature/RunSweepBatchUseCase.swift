@@ -59,6 +59,7 @@ public struct RunSweepBatchUseCase: UseCase {
     public enum Progress: Sendable {
         case checkingOpenPRs
         case completed(SweepBatchStats)
+        case contentBlocks([AIContentBlock])
         case creatingBranch(String)
         case creatingPR
         case prCreated(prURL: String)
@@ -69,6 +70,7 @@ public struct RunSweepBatchUseCase: UseCase {
         public var displayText: String {
             switch self {
             case .checkingOpenPRs:          return "Checking for open PRs..."
+            case .contentBlocks:            return ""
             case .creatingBranch(let b):    return "Creating branch: \(b)"
             case .runningTasks:             return "Running sweep tasks..."
             case .taskStarted(let id):      return "Processing: \(id)"
@@ -82,7 +84,7 @@ public struct RunSweepBatchUseCase: UseCase {
         public var phaseId: String? {
             switch self {
             case .checkingOpenPRs, .creatingBranch:             return "prepare"
-            case .runningTasks, .taskStarted, .taskCompleted:   return "ai"
+            case .contentBlocks, .runningTasks, .taskStarted, .taskCompleted: return "ai"
             case .creatingPR, .prCreated:                       return "finalize"
             case .completed:                                     return nil
             }
@@ -163,6 +165,10 @@ public struct RunSweepBatchUseCase: UseCase {
                 onProgress?(.taskStarted(id))
             case .nodeCompleted(let id, _) where id != "sweep-source":
                 onProgress?(.taskCompleted(id))
+            case .nodeProgress(_, let progress):
+                if case .contentBlocks(let blocks) = progress {
+                    onProgress?(.contentBlocks(blocks))
+                }
             default:
                 break
             }

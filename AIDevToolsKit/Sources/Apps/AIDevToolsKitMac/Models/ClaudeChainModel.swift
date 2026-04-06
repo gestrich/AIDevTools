@@ -332,6 +332,9 @@ final class ClaudeChainModel {
             current.setPhaseStatus(id: "finalize", status: .completed)
         case .completed:
             current.setPhaseStatus(id: "ai", status: .completed)
+        case .contentBlocks(let blocks):
+            executionContentBlocksObserver?(blocks)
+            return
         case .runningTasks, .taskStarted, .taskCompleted:
             break
         }

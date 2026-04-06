@@ -108,6 +108,8 @@ struct SweepRunCommand: AsyncParsableCommand {
             print("Creating PR for batch changes...")
         case .prCreated(let url):
             print("PR: \(url)")
+        case .contentBlocks:
+            break
         case .completed(let r):
             print("\(r.tasks) task(s), \(r.modifyingTasks) modifying, \(r.skipped) skipped")
         }
