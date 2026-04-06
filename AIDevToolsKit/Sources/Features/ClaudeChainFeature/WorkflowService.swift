@@ -2,10 +2,12 @@ import ClaudeChainService
 import ClaudeChainSDK
 import Foundation
 import GitHubService
+import Logging
 
 public struct WorkflowService {
 
     private let githubService: (any GitHubPRServiceProtocol)?
+    private let logger = Logger(label: "WorkflowService")
 
     public init() {
         self.githubService = nil
@@ -61,10 +63,10 @@ public struct WorkflowService {
             do {
                 try triggerClaudeChainWorkflow(projectName: project, baseBranch: baseBranch, checkoutRef: checkoutRef)
                 successful.append(project)
-                print("  ✅ Successfully triggered workflow for project: \(project)")
+                logger.info("triggered workflow for project: \(project)")
             } catch {
                 failed.append(project)
-                print("  ⚠️  Failed to trigger workflow for project '\(project)': \(error)")
+                logger.error("failed to trigger workflow for project '\(project)': \(error)")
             }
         }
 

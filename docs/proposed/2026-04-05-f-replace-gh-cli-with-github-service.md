@@ -264,9 +264,10 @@ Run `ai-dev-tools-enforce` on all files changed in Phase 7.
 
 **`FinalizeCommand.swift`:** Build `GitHubPRService.make(token: ghToken, ...)`. Replace `runGhCommand` PR create/view calls with service methods.
 
-## - [ ] Phase 10: Enforce on Phase 9
+## - [x] Phase 10: Enforce on Phase 9
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-build-quality`, `ai-dev-tools-code-organization`, `ai-dev-tools-code-quality`
+**Principles applied**: Replaced `print` calls with structured `Logger` in `WorkflowService.batchTriggerClaudeChainWorkflows` (build quality). Moved `TextAccumulator` (supporting type) below the primary type `FinalizeStagedTaskUseCase` in `FinalizeStagedTaskUseCase.swift` (code organization). Improved error-swallowing comments in `FinalizeStagedTaskUseCase` to explain impact per architecture skill guidance. Removed misleading block comment with incorrect `Returns:` doc from `FinalizeCommand.run()` (code quality). Fixed two `init(contentsOfFile:)` macOS 15 deprecation warnings in `FinalizeCommand.swift`. One remaining deprecation warning — `runGhCommand` called from `WorkflowService`'s legacy no-arg fallback path — cannot be suppressed without Swift per-call-site suppression; Phase 11 deletes both the deprecated method and this call site. Build confirmed clean.
 
 Run `ai-dev-tools-enforce` on all files changed in Phase 9.
 

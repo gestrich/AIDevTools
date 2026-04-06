@@ -11,10 +11,6 @@ import PipelineSDK
 import PRRadarCLIService
 import UseCaseSDK
 
-private final class TextAccumulator: @unchecked Sendable {
-    var text = ""
-}
-
 public struct FinalizeStagedTaskUseCase: UseCase {
 
     public struct Options: Sendable {
@@ -223,7 +219,8 @@ public struct FinalizeStagedTaskUseCase: UseCase {
                 onProgress?(.summaryCompleted(summary: summary))
             }
         } catch {
-            // Summary generation is non-fatal
+            // Swallowing intentionally: summary generation is best-effort; a failure here
+            // omits the AI summary from the PR comment but does not affect PR creation.
         }
 
         // Post PR comment
@@ -252,7 +249,8 @@ public struct FinalizeStagedTaskUseCase: UseCase {
                 try await githubService.postIssueComment(prNumber: createdPR.number, body: comment)
                 onProgress?(.prCommentPosted)
             } catch {
-                // Comment posting is non-fatal
+                // Swallowing intentionally: comment posting is best-effort; a failure here
+                // means the run summary is not visible on the PR but does not affect PR creation.
             }
         }
 
@@ -350,4 +348,8 @@ public struct FinalizeStagedTaskUseCase: UseCase {
             taskDescription: options.taskDescription
         )
     }
+}
+
+private final class TextAccumulator: @unchecked Sendable {
+    var text = ""
 }

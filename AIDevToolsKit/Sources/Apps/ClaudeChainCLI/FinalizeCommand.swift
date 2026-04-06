@@ -18,18 +18,6 @@ public struct FinalizeCommand: AsyncParsableCommand {
     public init() {}
     
     public func run() async throws {
-        /**
-         * Orchestrate finalization workflow using Service Layer classes.
-         *
-         * This command instantiates services and coordinates their operations but
-         * does not implement business logic directly. Follows Service Layer pattern
-         * where CLI acts as thin orchestration layer.
-         *
-         * Workflow: commit changes, create-pr, summary
-         *
-         * Returns:
-         *     Exit code (0 for success, 1 for failure)
-         */
         do {
             // === Get common dependencies ===
             let environment = ProcessInfo.processInfo.environment
@@ -126,7 +114,7 @@ public struct FinalizeCommand: AsyncParsableCommand {
             if FileManager.default.fileExists(atPath: actionDir.path) {
                 let excludeFile = URL(fileURLWithPath: currentDir).appendingPathComponent(".git/info/exclude")
                 do {
-                    let excludeContent = try String(contentsOfFile: excludeFile.path)
+                    let excludeContent = try String(contentsOfFile: excludeFile.path, encoding: .utf8)
                     if !excludeContent.contains(".action") {
                         let fileHandle = FileHandle(forWritingAtPath: excludeFile.path)
                         fileHandle?.seekToEndOfFile()
@@ -240,7 +228,7 @@ public struct FinalizeCommand: AsyncParsableCommand {
             // Load PR template and substitute
             var prBody: String
             if FileManager.default.fileExists(atPath: prTemplatePath) {
-                let templateContent = try String(contentsOfFile: prTemplatePath)
+                let templateContent = try String(contentsOfFile: prTemplatePath, encoding: .utf8)
                 prBody = Config.substituteTemplate(templateContent, variables: ["TASK_DESCRIPTION": task])
             } else {
                 prBody = "## Task\n\(task)"
