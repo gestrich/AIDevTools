@@ -6,10 +6,6 @@ import Logging
 import PipelineSDK
 import PRRadarCLIService
 
-private final class TextAccumulator: @unchecked Sendable {
-    var text = ""
-}
-
 public struct CreatePRStepHandler: StepHandler {
     private let client: any AIClient
     private let git: GitClient
@@ -144,4 +140,8 @@ public struct CreatePRStepHandler: StepHandler {
         }
         return GitHubServiceFactory.make(token: token, owner: String(parts[0]), repo: String(parts[1]))
     }
+}
+
+private final class TextAccumulator: @unchecked Sendable {
+    var text = ""
 }

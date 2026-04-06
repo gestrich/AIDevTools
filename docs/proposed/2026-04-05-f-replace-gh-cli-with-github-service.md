@@ -222,9 +222,10 @@ Run `ai-dev-tools-enforce` on all files changed in Phase 5.
 - Replace `CLIClient.execute("gh", ["pr", "comment", ...])` → `githubService.postIssueComment(prNumber:body:)`
 - No temp file needed
 
-## - [ ] Phase 8: Enforce on Phase 7
+## - [x] Phase 8: Enforce on Phase 7
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-code-organization`
+**Principles applied**: Moved `TextAccumulator` (supporting type) below the primary type `CreatePRStepHandler` in `CreatePRStepHandler.swift` — supporting types must appear after the primary type. No architectural violations, force unwraps, or AI-changelog comments in Phase 7 additions. Build confirmed clean.
 
 Run `ai-dev-tools-enforce` on all files changed in Phase 7.
 
