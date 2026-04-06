@@ -121,7 +121,10 @@ Update `ClaudeChainModel` to reference the new types, renaming `PhaseInfo` → `
 
 ---
 
-## - [ ] Phase 4: Progress cases carry their display text and phase mapping
+## - [x] Phase 4: Progress cases carry their display text and phase mapping
+
+**Skills used**: `ai-dev-tools-architecture`, `ai-dev-tools-code-quality`
+**Principles applied**: Added `displayText: String` and `phaseId: String?` to both `RunSweepBatchUseCase.Progress` and `RunSpecChainTaskUseCase.Progress`. Also added `phaseStatus: ChainPhaseStatus?` to `RunSpecChainTaskUseCase.Progress` to encode the per-case status transition (including conditional `.completed`/`.skipped` for script results). `handleExecutionProgress` in `ClaudeChainModel` collapses to a generic `displayText`/`phaseId`/`phaseStatus` path with two remaining special cases: `preparedTask` (updates task info) and `failed` (marks running phase as failed). `handleSweepProgress` retains a switch for phase status only — no string literals remain in the model — because sweep has double-phase transitions (`.creatingBranch` completes "prepare" AND starts "ai") that can't be expressed as a single `(id, status)` pair.
 
 **Skills to read**: `ai-dev-tools-architecture`, `ai-dev-tools-code-quality`
 

@@ -65,6 +65,28 @@ public struct RunSweepBatchUseCase: UseCase {
         case runningTasks
         case taskCompleted(String)
         case taskStarted(String)
+
+        public var displayText: String {
+            switch self {
+            case .checkingOpenPRs:          return "Checking for open PRs..."
+            case .creatingBranch(let b):    return "Creating branch: \(b)"
+            case .runningTasks:             return "Running sweep tasks..."
+            case .taskStarted(let id):      return "Processing: \(id)"
+            case .taskCompleted(let id):    return "Completed: \(id)"
+            case .creatingPR:               return "Creating PR..."
+            case .prCreated(let url):       return "PR created: \(url)"
+            case .completed:                return "Completed"
+            }
+        }
+
+        public var phaseId: String? {
+            switch self {
+            case .checkingOpenPRs, .creatingBranch:             return "prepare"
+            case .runningTasks, .taskStarted, .taskCompleted:   return "ai"
+            case .creatingPR, .prCreated:                       return "finalize"
+            case .completed:                                     return nil
+            }
+        }
     }
 
     public static let phases: [ChainExecutionPhase] = [

@@ -90,6 +90,62 @@ public struct RunSpecChainTaskUseCase: UseCase {
         case runningReview
         case summaryCompleted(summary: String)
         case summaryStreamEvent(AIStreamEvent)
+
+        public var displayText: String {
+            switch self {
+            case .preparingProject:                     return "Preparing project..."
+            case .preparedTask:                         return ""
+            case .runningPreScript:                     return "Running pre-action script..."
+            case .preScriptCompleted:                   return ""
+            case .runningAI(let desc):                  return "Running AI: \(desc)"
+            case .aiStreamEvent, .aiOutput:             return ""
+            case .aiCompleted:                          return ""
+            case .runningPostScript:                    return "Running post-action script..."
+            case .postScriptCompleted:                  return ""
+            case .finalizing:                           return "Finalizing..."
+            case .prCreated(let num, _):                return "PR #\(num) created"
+            case .generatingSummary:                    return "Generating PR summary..."
+            case .summaryStreamEvent:                   return ""
+            case .summaryCompleted:                     return ""
+            case .postingPRComment:                     return "Posting PR comment..."
+            case .prCommentPosted:                      return ""
+            case .runningReview:                        return "Running review..."
+            case .reviewCompleted(let summary):         return "Review: \(summary)"
+            case .completed:                            return "Completed"
+            case .failed(let phase, let error):         return "\(phase) failed: \(error)"
+            }
+        }
+
+        public var phaseId: String? {
+            switch self {
+            case .preparingProject, .preparedTask:                                      return "prepare"
+            case .runningPreScript, .preScriptCompleted:                                return "preScript"
+            case .runningAI, .aiStreamEvent, .aiOutput, .aiCompleted:                  return "ai"
+            case .runningPostScript, .postScriptCompleted:                              return "postScript"
+            case .finalizing, .prCreated:                                               return "finalize"
+            case .generatingSummary, .summaryStreamEvent, .summaryCompleted:            return "summary"
+            case .postingPRComment, .prCommentPosted:                                   return "prComment"
+            case .runningReview, .reviewCompleted:                                      return "review"
+            case .completed, .failed:                                                   return nil
+            }
+        }
+
+        public var phaseStatus: ChainPhaseStatus? {
+            switch self {
+            case .preparingProject, .runningPreScript, .runningAI, .runningPostScript,
+                 .finalizing, .generatingSummary, .postingPRComment, .runningReview:
+                return .running
+            case .preparedTask, .aiCompleted, .prCreated, .summaryCompleted,
+                 .prCommentPosted, .reviewCompleted:
+                return .completed
+            case .preScriptCompleted(let result):
+                return result.success ? .completed : .skipped
+            case .postScriptCompleted(let result):
+                return result.success ? .completed : .skipped
+            case .aiStreamEvent, .aiOutput, .summaryStreamEvent, .completed, .failed:
+                return nil
+            }
+        }
     }
 
     public static let phases: [ChainExecutionPhase] = [

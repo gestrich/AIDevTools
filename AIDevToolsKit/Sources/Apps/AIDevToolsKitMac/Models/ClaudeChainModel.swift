@@ -423,30 +423,23 @@ final class ClaudeChainModel {
     private func handleSweepProgress(_ progress: RunSweepBatchUseCase.Progress) {
         guard case .executing(var current) = state else { return }
 
+        current.currentPhase = progress.displayText
+
         switch progress {
         case .checkingOpenPRs:
-            current.currentPhase = "Checking for open PRs..."
             current.setPhaseStatus(id: "prepare", status: .running)
-        case .creatingBranch(let branch):
-            current.currentPhase = "Creating branch: \(branch)"
+        case .creatingBranch:
             current.setPhaseStatus(id: "prepare", status: .completed)
             current.setPhaseStatus(id: "ai", status: .running)
-        case .runningTasks:
-            current.currentPhase = "Running sweep tasks..."
-        case .taskStarted(let id):
-            current.currentPhase = "Processing: \(id)"
-        case .taskCompleted(let id):
-            current.currentPhase = "Completed: \(id)"
         case .creatingPR:
-            current.currentPhase = "Creating PR..."
             current.setPhaseStatus(id: "ai", status: .completed)
             current.setPhaseStatus(id: "finalize", status: .running)
-        case .prCreated(let prURL):
-            current.currentPhase = "PR created: \(prURL)"
+        case .prCreated:
             current.setPhaseStatus(id: "finalize", status: .completed)
         case .completed:
-            current.currentPhase = "Completed"
             current.setPhaseStatus(id: "ai", status: .completed)
+        case .runningTasks, .taskStarted, .taskCompleted:
+            break
         }
 
         state = .executing(progress: current)
@@ -463,60 +456,22 @@ final class ClaudeChainModel {
     private func handleExecutionProgress(_ progress: RunSpecChainTaskUseCase.Progress) {
         guard case .executing(var current) = state else { return }
 
-        switch progress {
-        case .preparingProject:
-            current.currentPhase = "Preparing project..."
-            current.setPhaseStatus(id: "prepare", status: .running)
-        case .preparedTask(let description, let index, let total):
+        let text = progress.displayText
+        if !text.isEmpty {
+            current.currentPhase = text
+        }
+
+        if let id = progress.phaseId, let status = progress.phaseStatus {
+            current.setPhaseStatus(id: id, status: status)
+        }
+
+        if case .preparedTask(let description, let index, let total) = progress {
             current.taskDescription = description
             current.taskIndex = index
             current.totalTasks = total
-            current.setPhaseStatus(id: "prepare", status: .completed)
-        case .runningPreScript:
-            current.currentPhase = "Running pre-action script..."
-            current.setPhaseStatus(id: "preScript", status: .running)
-        case .preScriptCompleted(let result):
-            current.setPhaseStatus(id: "preScript", status: result.success ? .completed : .skipped)
-        case .runningAI(let taskDescription):
-            current.currentPhase = "Running AI: \(taskDescription)"
-            current.setPhaseStatus(id: "ai", status: .running)
-        case .aiStreamEvent, .aiOutput:
-            break
-        case .aiCompleted:
-            current.setPhaseStatus(id: "ai", status: .completed)
-        case .runningPostScript:
-            current.currentPhase = "Running post-action script..."
-            current.setPhaseStatus(id: "postScript", status: .running)
-        case .postScriptCompleted(let result):
-            current.setPhaseStatus(id: "postScript", status: result.success ? .completed : .skipped)
-        case .finalizing:
-            current.currentPhase = "Finalizing..."
-            current.setPhaseStatus(id: "finalize", status: .running)
-        case .prCreated(let prNumber, _):
-            current.currentPhase = "PR #\(prNumber) created"
-            current.setPhaseStatus(id: "finalize", status: .completed)
-        case .generatingSummary:
-            current.currentPhase = "Generating PR summary..."
-            current.setPhaseStatus(id: "summary", status: .running)
-        case .summaryStreamEvent:
-            break
-        case .summaryCompleted:
-            current.setPhaseStatus(id: "summary", status: .completed)
-        case .postingPRComment:
-            current.currentPhase = "Posting PR comment..."
-            current.setPhaseStatus(id: "prComment", status: .running)
-        case .prCommentPosted:
-            current.setPhaseStatus(id: "prComment", status: .completed)
-        case .runningReview:
-            current.currentPhase = "Running review..."
-            current.setPhaseStatus(id: "review", status: .running)
-        case .reviewCompleted(let summary):
-            current.currentPhase = "Review: \(summary)"
-            current.setPhaseStatus(id: "review", status: .completed)
-        case .completed:
-            current.currentPhase = "Completed"
-        case .failed(let phase, let error):
-            current.currentPhase = "\(phase) failed: \(error)"
+        }
+
+        if case .failed = progress {
             if let idx = current.phases.firstIndex(where: { $0.status == .running }) {
                 current.phases[idx].status = .failed
             }
