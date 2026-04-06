@@ -275,10 +275,6 @@ private enum GitHubPath {
         "\(pullRequest(owner, repository, number: number))/merge"
     }
 
-    static func pullRequestReviewers(_ owner: String, _ repository: String, number: Int) -> String {
-        "\(pullRequest(owner, repository, number: number))/requested_reviewers"
-    }
-
     static func workflowDispatch(_ owner: String, _ repository: String, workflowId: String) -> String {
         "\(self.repository(owner, repository))/actions/workflows/\(workflowId)/dispatches"
     }
@@ -1336,7 +1332,7 @@ public struct OctokitClient: Sendable {
         reviewers: [String]
     ) async throws {
         let request = try makeMutationRequest(
-            path: GitHubPath.pullRequestReviewers(owner, repository, number: number),
+            path: GitHubPath.pullRequestRequestedReviewers(owner, repository, number: number),
             method: "POST",
             payload: ["reviewers": reviewers]
         )

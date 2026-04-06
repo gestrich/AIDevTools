@@ -93,9 +93,10 @@ New public async methods:
 | `listWorkflowRuns(owner:repository:workflow:branch:limit:)` | GET `/actions/runs` | 200→`[WorkflowRun]` |
 | `pullRequestByHeadBranch(owner:repository:branch:)` | GET `/pulls?head={owner}:{branch}` | 200→`CreatedPullRequest?` first open match |
 
-## - [ ] Phase 2: Enforce on Phase 1
+## - [x] Phase 2: Enforce on Phase 1
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-architecture`, `ai-dev-tools-build-quality`, `ai-dev-tools-code-organization`, `ai-dev-tools-code-quality`, `ai-dev-tools-swift-testing`
+**Principles applied**: Removed duplicate `GitHubPath.pullRequestReviewers` (identical path to pre-existing `pullRequestRequestedReviewers`); updated `requestReviewers` mutation to use the canonical path function. Build confirmed clean. No other violations in the Phase 1 additions — new public types are correctly `Sendable` structs with `let` properties, all write methods follow the existing single-operation SDK pattern, and `fromEnvironment()` correctly reads env vars at the SDK layer.
 
 Run `ai-dev-tools-enforce` on all files changed in Phase 1.
 
