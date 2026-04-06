@@ -18,6 +18,7 @@ public struct ChainProject: Hashable, Sendable {
     public let totalTasks: Int
 
     public var basePath: String { (specPath as NSString).deletingLastPathComponent }
+    public var cacheIndexKey: String { "chain-\(name)" }
 
     public init(
         name: String,

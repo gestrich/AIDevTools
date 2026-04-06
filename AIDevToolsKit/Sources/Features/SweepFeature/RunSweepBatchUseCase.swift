@@ -176,7 +176,7 @@ public struct RunSweepBatchUseCase: UseCase {
             onProgress?(.creatingPR)
             logger.info("[\(taskName)] \(sweepResult.modifyingTasks) modifying task(s), creating PR")
 
-            let batchDescription = "Sweep: \(sweepResult.modifyingTasks) file(s) updated, cursor at \(sweepResult.finalCursor ?? "end")"
+            let batchDescription = "Sweep: \(sweepResult.modifyingTasks) file(s) updated, \(BranchInfo.sweepCursorPrefix)\(sweepResult.finalCursor ?? "end")"
             let prConfig = PRConfiguration(labels: [Constants.defaultPRLabel])
             let commentStep = ChainPRCommentStep(
                 id: "pr-comment-step",

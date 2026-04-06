@@ -125,7 +125,7 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
     public func loadDetail() async throws -> ChainProjectDetail {
         let project = try await loadProject()
         let enrichedTasks = project.tasks.map { EnrichedChainTask(task: $0) }
-        return ChainProjectDetail(project: project, enrichedTasks: enrichedTasks, actionItems: [])
+        return ChainProjectDetail(project: project, enrichedTasks: enrichedTasks)
     }
 
     // MARK: - TaskSource
