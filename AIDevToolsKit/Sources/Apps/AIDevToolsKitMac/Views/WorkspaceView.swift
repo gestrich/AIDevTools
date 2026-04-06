@@ -92,6 +92,10 @@ struct WorkspaceView: View {
             SkillsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
                 .tabItem { Label("Skills", systemImage: "star") }
                 .tag("skills")
+
+            WorktreesView()
+                .tabItem { Label("Worktrees", systemImage: "square.split.2x1") }
+                .tag("worktrees")
         }
     }
 }

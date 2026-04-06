@@ -27,6 +27,7 @@ final class WorkspaceModel {
     private let configureNewRepository: ConfigureNewRepositoryUseCase
     private let removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase
     private let updateRepository: UpdateRepositoryUseCase
+    private let worktreeModel: WorktreeModel?
 
     init(
         dataPath: URL,
@@ -35,7 +36,8 @@ final class WorkspaceModel {
         loadSkills: LoadSkillsUseCase,
         configureNewRepository: ConfigureNewRepositoryUseCase,
         removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase,
-        updateRepository: UpdateRepositoryUseCase
+        updateRepository: UpdateRepositoryUseCase,
+        worktreeModel: WorktreeModel? = nil
     ) {
         self.dataPath = dataPath
         self.repositoryStore = repositoryStore
@@ -44,6 +46,7 @@ final class WorkspaceModel {
         self.configureNewRepository = configureNewRepository
         self.removeRepositoryWithSettings = removeRepositoryWithSettings
         self.updateRepository = updateRepository
+        self.worktreeModel = worktreeModel
     }
 
     func evalConfig(for repo: RepositoryConfiguration) -> RepositoryEvalConfig? {
@@ -73,6 +76,7 @@ final class WorkspaceModel {
         selectedRepository = repo
         skills = []
         isLoadingSkills = true
+        Task { await worktreeModel?.load(repoPath: repo.path.path(percentEncoded: false)) }
         do {
             let loaded = try await loadSkills.run(options: repo)
             guard self.selectedRepository?.id == repo.id else { return }

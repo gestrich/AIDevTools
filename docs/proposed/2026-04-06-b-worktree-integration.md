@@ -207,7 +207,10 @@ Register `WorktreeCommand` in the CLI's main command group. Add `WorktreeFeature
 
 ---
 
-## - [ ] Phase 3: Apps Layer — WorktreeModel, WorktreesView, tab
+## - [x] Phase 3: Apps Layer — WorktreeModel, WorktreesView, tab
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: `WorktreeModel` uses enum-based state with `prior` pattern to retain last-known data across reloads. `UseCases` private struct groups all three use cases into one init-time assignment. Model created once in the entry view and injected via SwiftUI environment; `WorkspaceModel` holds an optional `WorktreeModel?` reference (nil in settings view) and fires `load` as a detached `Task` in `selectRepository(_:)` so worktree refresh runs in parallel with skill loading. `import Observation` added explicitly since `WorktreeModel` doesn't import SwiftUI directly.
 
 **Skills to read**: `ai-dev-tools-architecture` (Apps layer rules)
 

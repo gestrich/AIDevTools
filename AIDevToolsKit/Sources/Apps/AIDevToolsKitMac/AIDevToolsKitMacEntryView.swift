@@ -2,6 +2,7 @@ import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import DataPathsService
 import EvalService
+import GitSDK
 import PlanFeature
 import PlanService
 import ProviderRegistryService
@@ -10,6 +11,7 @@ import SettingsService
 import SkillBrowserFeature
 import SkillScannerSDK
 import SwiftUI
+import WorktreeFeature
 
 public struct AIDevToolsKitMacEntryView: View {
     @State private var appModel: AppModel
@@ -19,6 +21,7 @@ public struct AIDevToolsKitMacEntryView: View {
     @State private var ipcServer = AppIPCServer()
     @State private var planModel: PlanModel
     @State private var settingsModel: SettingsModel
+    @State private var worktreeModel: WorktreeModel
     @State private var workspaceModel: WorkspaceModel
     private let evalProviderRegistry: EvalProviderRegistry
 
@@ -30,6 +33,8 @@ public struct AIDevToolsKitMacEntryView: View {
         let appModel = AppModel(providerModel: root.providerModel)
         _appModel = State(initialValue: appModel)
         let store = root.settingsService.repositoryStore
+        let worktreeModel = WorktreeModel(gitClient: root.gitClientFactory(nil))
+        _worktreeModel = State(initialValue: worktreeModel)
         _workspaceModel = State(initialValue: WorkspaceModel(
             dataPath: root.settingsModel.dataPath,
             repositoryStore: store,
@@ -43,7 +48,8 @@ public struct AIDevToolsKitMacEntryView: View {
             removeRepositoryWithSettings: RemoveRepositoryWithSettingsUseCase(
                 removeRepository: RemoveRepositoryUseCase(store: store)
             ),
-            updateRepository: UpdateRepositoryUseCase(store: store)
+            updateRepository: UpdateRepositoryUseCase(store: store),
+            worktreeModel: worktreeModel
         ))
         let storedPlannerProviderName = UserDefaults.standard.string(forKey: "mdPlannerProviderName")
         _planModel = State(initialValue: PlanModel(
@@ -73,6 +79,7 @@ public struct AIDevToolsKitMacEntryView: View {
             .environment(claudeChainModel)
             .environment(credentialModel)
             .environment(planModel)
+            .environment(worktreeModel)
             .environment(workspaceModel)
             .frame(minWidth: 800, minHeight: 600)
             .task { await ipcServer.start() }

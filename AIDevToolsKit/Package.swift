@@ -148,6 +148,7 @@ let package = Package(
                 "SkillScannerSDK",
                 "SkillService",
                 "SweepFeature",
+                "WorktreeFeature",
             ],
             path: "Sources/Apps/AIDevToolsKitMac"
         ),
