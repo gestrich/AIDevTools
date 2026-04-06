@@ -40,6 +40,21 @@ public struct ChainProject: Hashable, Sendable {
         self.tasks = tasks
         self.totalTasks = totalTasks
     }
+
+    public init(merging localTaskData: ChainProject, into remote: ChainProject) {
+        self.init(
+            name: remote.name,
+            specPath: remote.specPath,
+            tasks: localTaskData.tasks,
+            completedTasks: localTaskData.completedTasks,
+            pendingTasks: localTaskData.pendingTasks,
+            totalTasks: localTaskData.totalTasks,
+            baseBranch: remote.baseBranch,
+            isGitHubOnly: remote.isGitHubOnly,
+            kindBadge: remote.kindBadge,
+            maxOpenPRs: remote.maxOpenPRs
+        )
+    }
 }
 
 public struct ChainTask: Hashable, Identifiable, Sendable {

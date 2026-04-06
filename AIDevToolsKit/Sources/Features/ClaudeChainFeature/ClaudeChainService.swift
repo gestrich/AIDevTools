@@ -146,18 +146,7 @@ public struct ClaudeChainService {
             guard remote.kindBadge == "sweep", let local = localByName[remote.name] else {
                 return remote
             }
-            return ChainProject(
-                name: remote.name,
-                specPath: remote.specPath,
-                tasks: local.tasks,
-                completedTasks: local.completedTasks,
-                pendingTasks: local.pendingTasks,
-                totalTasks: local.totalTasks,
-                baseBranch: remote.baseBranch,
-                isGitHubOnly: remote.isGitHubOnly,
-                kindBadge: remote.kindBadge,
-                maxOpenPRs: remote.maxOpenPRs
-            )
+            return ChainProject(merging: local, into: remote)
         }
         return ChainListResult(projects: merged, failures: remoteResult.failures)
     }
