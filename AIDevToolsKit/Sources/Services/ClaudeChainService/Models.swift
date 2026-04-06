@@ -85,6 +85,8 @@ public struct BranchInfo {
     /// Branch format version (currently always "hash")
     public let formatVersion: String = "hash"
     
+    public static let sweepCursorPrefix = "cursor at "
+
     public init(projectName: String, taskHash: String) {
         self.projectName = projectName
         self.taskHash = taskHash
@@ -116,6 +118,21 @@ public struct BranchInfo {
         let projectName = String(branch[projectRange])
         let identifier = String(branch[identifierRange])
         return BranchInfo(projectName: projectName, taskHash: identifier)
+    }
+
+    /// Extract the cursor file path from sweep PR body text.
+    ///
+    /// Sweep PRs embed the last-processed file path in their body as "cursor at {path}".
+    /// This is the authoritative source for matching a sweep PR to its cursor task — the
+    /// PR title is truncated and cannot be relied upon.
+    ///
+    /// - Parameter text: The PR body string to search
+    /// - Returns: The cursor file path, or nil if the pattern is not found
+    public static func sweepCursorPath(fromText text: String) -> String? {
+        guard let cursorRange = text.range(of: Self.sweepCursorPrefix) else { return nil }
+        return String(text[cursorRange.upperBound...])
+            .components(separatedBy: .newlines).first?
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 

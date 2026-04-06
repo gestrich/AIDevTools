@@ -69,7 +69,7 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
     public func loadDetail() async throws -> ChainProjectDetail {
         let chainProject = try await loadProject()
         let enrichedTasks = chainProject.tasks.map { EnrichedChainTask(task: $0) }
-        return ChainProjectDetail(project: chainProject, enrichedTasks: enrichedTasks, actionItems: [])
+        return ChainProjectDetail(project: chainProject, enrichedTasks: enrichedTasks)
     }
 
     // MARK: - TaskSource
