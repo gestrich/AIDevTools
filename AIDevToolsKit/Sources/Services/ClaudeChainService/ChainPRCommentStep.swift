@@ -1,10 +1,11 @@
 import AIOutputSDK
-import CLISDK
 import Foundation
+import GitHubService
 import GitSDK
 import Logging
 import PipelineSDK
 import PipelineService
+import PRRadarCLIService
 
 /// Pipeline step that generates an AI summary and posts the full PR comment.
 ///
@@ -18,9 +19,9 @@ public struct ChainPRCommentStep: PipelineNode {
 
     private let baseBranch: String
     private let client: any AIClient
-    private let cliClient: CLIClient
     private let dryRun: Bool
     private let gitClient: GitClient
+    private let githubService: (any GitHubPRServiceProtocol)?
     private let logger = Logger(label: "ChainPRCommentStep")
     private let projectName: String
     private let taskDescription: String
@@ -34,14 +35,14 @@ public struct ChainPRCommentStep: PipelineNode {
         projectName: String,
         taskDescription: String,
         dryRun: Bool = false,
-        cliClient: CLIClient = CLIClient()
+        githubService: (any GitHubPRServiceProtocol)? = nil
     ) {
         self.baseBranch = baseBranch
         self.client = client
-        self.cliClient = cliClient
         self.displayName = displayName
         self.dryRun = dryRun
         self.gitClient = gitClient
+        self.githubService = githubService
         self.id = id
         self.projectName = projectName
         self.taskDescription = taskDescription
@@ -94,7 +95,7 @@ public struct ChainPRCommentStep: PipelineNode {
             return context
         }
 
-        try await postComment(prNumber: prNumber, repoSlug: repoSlug, comment: comment, workingDirectory: workingDirectory)
+        try await postComment(prNumber: prNumber, repoSlug: repoSlug, comment: comment)
         logger.debug("ChainPRCommentStep: posted comment to PR #\(prNumber)")
         return context
     }
@@ -142,23 +143,37 @@ public struct ChainPRCommentStep: PipelineNode {
         return (text.isEmpty ? nil : text, cost)
     }
 
-    private func postComment(prNumber: String, repoSlug: String, comment: String, workingDirectory: String) async throws {
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
-        try comment.write(to: tempURL, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-
-        var args = ["pr", "comment", prNumber, "--body-file", tempURL.path]
-        if !repoSlug.isEmpty { args += ["--repo", repoSlug] }
-        let result = try await cliClient.execute(
-            command: "gh",
-            arguments: args,
-            workingDirectory: workingDirectory,
-            environment: nil,
-            printCommand: false
-        )
-        guard result.isSuccess else {
-            throw PRStepError.commandFailed(command: "gh pr comment", output: result.errorOutput)
+    private func postComment(prNumber: String, repoSlug: String, comment: String) async throws {
+        let service: any GitHubPRServiceProtocol
+        if let injected = githubService {
+            service = injected
+        } else {
+            let env = ProcessInfo.processInfo.environment
+            guard let token = env["GH_TOKEN"] ?? env["GITHUB_TOKEN"] else {
+                throw PRStepError.commandFailed(
+                    command: "GitHub auth",
+                    output: "No GH_TOKEN or GITHUB_TOKEN found in environment"
+                )
+            }
+            let parts = repoSlug.split(separator: "/")
+            guard parts.count == 2 else {
+                throw PRStepError.commandFailed(
+                    command: "repo detection",
+                    output: "Cannot parse repo slug '\(repoSlug)' as owner/repo"
+                )
+            }
+            service = GitHubServiceFactory.make(
+                token: token,
+                owner: String(parts[0]),
+                repo: String(parts[1])
+            )
         }
+        guard let number = Int(prNumber) else {
+            throw PRStepError.commandFailed(
+                command: "PR comment",
+                output: "Invalid PR number: \(prNumber)"
+            )
+        }
+        try await service.postIssueComment(prNumber: number, body: comment)
     }
 }

@@ -1,8 +1,11 @@
-import CLISDK
 import Foundation
+import GitHubService
 import GitSDK
 import Logging
+import OctokitSDK
 import PipelineSDK
+import PRRadarCLIService
+import PRRadarModelsService
 
 public struct PRStep: PipelineNode {
     public static var prNumberKey: PipelineContextKey<String> { .init("PRStep.prNumber") }
@@ -12,12 +15,12 @@ public struct PRStep: PipelineNode {
     public let configuration: PRConfiguration
     public let displayName: String
     private let gitClient: GitClient
+    private let githubService: (any GitHubPRServiceProtocol)?
     public let id: String
     public let prTemplatePath: String?
     public let projectName: String?
     public let taskDescription: String?
 
-    private let cliClient: CLIClient
     private let logger = Logger(label: "PRStep")
 
     public init(
@@ -29,13 +32,13 @@ public struct PRStep: PipelineNode {
         projectName: String? = nil,
         taskDescription: String? = nil,
         prTemplatePath: String? = nil,
-        cliClient: CLIClient = CLIClient()
+        githubService: (any GitHubPRServiceProtocol)? = nil
     ) {
         self.baseBranch = baseBranch
-        self.cliClient = cliClient
         self.configuration = configuration
         self.displayName = displayName
         self.gitClient = gitClient
+        self.githubService = githubService
         self.id = id
         self.prTemplatePath = prTemplatePath
         self.projectName = projectName
@@ -79,88 +82,59 @@ public struct PRStep: PipelineNode {
         )
 
         let repoSlug = try await detectRepoSlug(workingDirectory: workingDirectory)
+        let service = try resolveGitHubService(repoSlug: repoSlug)
 
         if let maxOpen = configuration.maxOpenPRs, !repoSlug.isEmpty {
-            let openCount = try await countOpenPRs(repoSlug: repoSlug, workingDirectory: workingDirectory)
+            let openCount = try await service.listPullRequests(limit: 500, filter: PRFilter(state: .open)).count
             guard openCount < maxOpen else {
                 throw PipelineError.capacityExceeded(openCount: openCount, maxOpen: maxOpen)
             }
         }
 
-        var prCreateArgs = ["pr", "create", "--draft", "--head", branch, "--base", baseBranch]
-        var tempBodyURL: URL?
-        defer { tempBodyURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
-
+        let title: String
+        let body: String
         if let taskDescription {
             let prefix = projectName.map { "ClaudeChain: [\($0)] " } ?? "ClaudeChain: "
             let maxTask = 80 - prefix.count
             let truncated = taskDescription.count > maxTask
                 ? String(taskDescription.prefix(maxTask - 3)) + "..."
                 : taskDescription
-            let body: String
+            title = "\(prefix)\(truncated)"
             if let path = prTemplatePath, let template = try? String(contentsOfFile: path, encoding: .utf8) {
                 body = template.replacingOccurrences(of: "{{TASK_DESCRIPTION}}", with: taskDescription)
             } else {
                 body = taskDescription
             }
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
-            try body.write(to: tempURL, atomically: true, encoding: .utf8)
-            tempBodyURL = tempURL
-            prCreateArgs += ["--title", "\(prefix)\(truncated)", "--body-file", tempURL.path]
         } else {
-            prCreateArgs += ["--fill"]
-        }
-        if !repoSlug.isEmpty {
-            prCreateArgs += ["--repo", repoSlug]
-        }
-        for label in configuration.labels {
-            prCreateArgs += ["--label", label]
-        }
-        for assignee in configuration.assignees {
-            prCreateArgs += ["--assignee", assignee]
-        }
-        for reviewer in configuration.reviewers {
-            prCreateArgs += ["--reviewer", reviewer]
+            title = branch
+            body = ""
         }
 
-        logger.debug("PRStep.run: creating PR with args: \(prCreateArgs.joined(separator: " "))")
-        let prURL: String
+        logger.debug("PRStep.run: creating PR with title: '\(title)'")
+        let pr: CreatedPullRequest
         do {
-            let result = try await cliClient.execute(
-                command: "gh",
-                arguments: prCreateArgs,
-                workingDirectory: workingDirectory,
-                environment: nil,
-                printCommand: false
+            pr = try await service.createPullRequest(
+                title: title,
+                body: body,
+                head: branch,
+                base: baseBranch,
+                draft: true,
+                labels: configuration.labels,
+                assignees: configuration.assignees,
+                reviewers: configuration.reviewers
             )
-            guard result.isSuccess else {
-                logger.error("PRStep.run: gh pr create failed: \(result.errorOutput)")
-                throw PRStepError.commandFailed(command: "gh pr create", output: result.errorOutput)
-            }
-            prURL = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-            logger.debug("PRStep.run: PR created at \(prURL)")
-        } catch let error as PRStepError {
-            throw error
+            logger.debug("PRStep.run: PR created at \(pr.htmlURL)")
         } catch {
-            logger.warning("PRStep.run: gh pr create threw, attempting recovery via gh pr view: \(error)")
-            // Already-exists recovery
-            var viewArgs = ["pr", "view", branch, "--json", "url", "--jq", ".url"]
-            if !repoSlug.isEmpty { viewArgs += ["--repo", repoSlug] }
-            let viewResult = try await cliClient.execute(
-                command: "gh",
-                arguments: viewArgs,
-                workingDirectory: workingDirectory,
-                environment: nil,
-                printCommand: false
-            )
-            prURL = viewResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            logger.warning("PRStep.run: createPullRequest threw, attempting recovery via pullRequestByHeadBranch: \(error)")
+            guard let existingPR = try? await service.pullRequestByHeadBranch(branch: branch) else {
+                throw error
+            }
+            pr = existingPR
         }
-
-        let prNumber = try await fetchPRNumber(branch: branch, repoSlug: repoSlug, workingDirectory: workingDirectory)
 
         var updated = context
-        updated[Self.prURLKey] = prURL
-        updated[Self.prNumberKey] = prNumber
+        updated[Self.prURLKey] = pr.htmlURL
+        updated[Self.prNumberKey] = String(pr.number)
         return updated
     }
 
@@ -178,47 +152,24 @@ public struct PRStep: PipelineNode {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func countOpenPRs(repoSlug: String, workingDirectory: String) async throws -> Int {
-        var args = ["pr", "list", "--state", "open", "--json", "number"]
-        if !repoSlug.isEmpty { args += ["--repo", repoSlug] }
-        let result = try await cliClient.execute(
-            command: "gh",
-            arguments: args,
-            workingDirectory: workingDirectory,
-            environment: nil,
-            printCommand: false
-        )
-        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else {
-            logger.warning("PRStep: failed to query open PRs for '\(repoSlug)', assuming 0")
-            return 0
+    private func resolveGitHubService(repoSlug: String) throws -> any GitHubPRServiceProtocol {
+        if let service = githubService {
+            return service
         }
-        let items = try JSONDecoder().decode([PRListItem].self, from: data)
-        return items.count
-    }
-
-    private func fetchPRNumber(branch: String, repoSlug: String, workingDirectory: String) async throws -> String {
-        var args = ["pr", "view", branch, "--json", "number"]
-        if !repoSlug.isEmpty { args += ["--repo", repoSlug] }
-        let result = try await cliClient.execute(
-            command: "gh",
-            arguments: args,
-            workingDirectory: workingDirectory,
-            environment: nil,
-            printCommand: false
-        )
-        guard result.isSuccess, let data = result.stdout.data(using: .utf8) else {
-            throw PRStepError.commandFailed(command: "gh pr view", output: result.errorOutput)
+        let env = ProcessInfo.processInfo.environment
+        guard let token = env["GH_TOKEN"] ?? env["GITHUB_TOKEN"] else {
+            throw PRStepError.commandFailed(
+                command: "GitHub auth",
+                output: "No GH_TOKEN or GITHUB_TOKEN found in environment"
+            )
         }
-        let item = try JSONDecoder().decode(PRNumberItem.self, from: data)
-        return String(item.number)
+        let parts = repoSlug.split(separator: "/")
+        guard parts.count == 2 else {
+            throw PRStepError.commandFailed(
+                command: "repo detection",
+                output: "Cannot parse repo slug '\(repoSlug)' as owner/repo"
+            )
+        }
+        return GitHubServiceFactory.make(token: token, owner: String(parts[0]), repo: String(parts[1]))
     }
-
-}
-
-private struct PRListItem: Decodable {
-    let number: Int
-}
-
-private struct PRNumberItem: Decodable {
-    let number: Int
 }

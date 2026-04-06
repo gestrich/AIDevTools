@@ -189,7 +189,10 @@ Run `ai-dev-tools-enforce` on all files changed in Phase 5.
 
 ---
 
-## - [ ] Phase 7: Update `Package.swift` + Migrate `PRStep`, `CreatePRStepHandler`, `ChainPRCommentStep`
+## - [x] Phase 7: Update `Package.swift` + Migrate `PRStep`, `CreatePRStepHandler`, `ChainPRCommentStep`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `GitHubService`, `OctokitSDK`, `PRRadarCLIService`, `PRRadarModelsService` to `PipelineService` deps; added `GitHubService`, `PRRadarCLIService` to `ClaudeChainService` deps. `PRRadarCLIService` needed (beyond the spec's `GitHubService`-only mention) because `GitHubServiceFactory.make` — which Phase 5 placed there to avoid a circular dep — is required to construct `GitHubPRService` lazily in the default case. `OctokitSDK` needed for explicit `CreatedPullRequest` type annotation. All three types now store `githubService: (any GitHubPRServiceProtocol)?` with nil default; when nil, the service is built lazily in `run()`/`execute()` using env token + detected repo slug, keeping existing callers unmodified. Temp body files eliminated — body strings passed directly. `PRListItem`/`PRNumberItem` private structs removed; PR number and URL now come from `CreatedPullRequest` returned by `createPullRequest` or recovered via `pullRequestByHeadBranch`. `postIssueComment(prNumber:body:)` replaces `gh pr comment` in `ChainPRCommentStep`. Build confirmed clean.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

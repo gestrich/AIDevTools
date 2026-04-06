@@ -1,9 +1,10 @@
 import AIOutputSDK
-import CLISDK
 import Foundation
+import GitHubService
 import GitSDK
 import Logging
 import PipelineSDK
+import PRRadarCLIService
 
 private final class TextAccumulator: @unchecked Sendable {
     var text = ""
@@ -11,18 +12,18 @@ private final class TextAccumulator: @unchecked Sendable {
 
 public struct CreatePRStepHandler: StepHandler {
     private let client: any AIClient
-    private let cliClient: CLIClient
     private let git: GitClient
+    private let githubService: (any GitHubPRServiceProtocol)?
     private let logger = Logger(label: "CreatePRStepHandler")
 
     public init(
         client: any AIClient,
-        cliClient: CLIClient,
-        git: GitClient
+        git: GitClient,
+        githubService: (any GitHubPRServiceProtocol)? = nil
     ) {
         self.client = client
-        self.cliClient = cliClient
         self.git = git
+        self.githubService = githubService
     }
 
     public func execute(_ step: PRStepData, context: StepExecutionContext) async throws -> [any PipelineStep] {
@@ -33,7 +34,6 @@ public struct CreatePRStepHandler: StepHandler {
             branch = try await git.getCurrentBranch(workingDirectory: context.workingDirectory)
         }
 
-        // Push the branch
         try await git.push(
             remote: "origin",
             branch: branch,
@@ -42,77 +42,31 @@ public struct CreatePRStepHandler: StepHandler {
             workingDirectory: context.workingDirectory
         )
 
-        // Detect repo slug for gh commands
         let repoSlug = try await detectRepo(workingDirectory: context.workingDirectory)
+        let service = try resolveGitHubService(repoSlug: repoSlug)
 
-        // Create draft PR
-        var prCreateArgs = [
-            "pr", "create",
-            "--draft",
-            "--title", step.titleTemplate,
-            "--body", step.bodyTemplate,
-            "--head", branch,
-        ]
-        if let label = step.label {
-            prCreateArgs += ["--label", label]
-        }
-        if !repoSlug.isEmpty {
-            prCreateArgs += ["--repo", repoSlug]
-        }
-        let prURLResult = try await cliClient.execute(
-            command: "gh",
-            arguments: prCreateArgs,
-            workingDirectory: context.workingDirectory,
-            environment: nil,
-            printCommand: false
+        let label = step.label.map { [$0] } ?? []
+        let pr = try await service.createPullRequest(
+            title: step.titleTemplate,
+            body: step.bodyTemplate,
+            head: branch,
+            base: "",
+            draft: true,
+            labels: label,
+            assignees: [],
+            reviewers: []
         )
-        guard prURLResult.isSuccess else {
-            throw CreatePRError.commandFailed(
-                command: "gh \(prCreateArgs.joined(separator: " "))",
-                output: prURLResult.errorOutput
-            )
-        }
-        let prURL = prURLResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Validate PR URL is not empty
-        guard !prURL.isEmpty else {
-            throw CreatePRError.commandFailed(
-                command: "gh \(prCreateArgs.joined(separator: " "))",
-                output: "Empty PR URL returned"
-            )
-        }
 
-        // Get PR number
-        var prViewArgs = ["pr", "view", branch, "--json", "number"]
-        if !repoSlug.isEmpty {
-            prViewArgs += ["--repo", repoSlug]
-        }
-        let prViewResult = try await cliClient.execute(
-            command: "gh",
-            arguments: prViewArgs,
-            workingDirectory: context.workingDirectory,
-            environment: nil,
-            printCommand: false
-        )
-        guard prViewResult.isSuccess else {
-            throw CreatePRError.commandFailed(
-                command: "gh \(prViewArgs.joined(separator: " "))",
-                output: prViewResult.errorOutput
-            )
-        }
-        let prNumber = try parsePRNumber(from: prViewResult.stdout)
-
-        // Post PR summary comment via Claude
         try await postPRSummary(
-            prNumber: prNumber,
-            repoSlug: repoSlug,
+            prNumber: pr.number,
+            service: service,
             workingDirectory: context.workingDirectory
         )
 
         return []
     }
 
-    private func postPRSummary(prNumber: String, repoSlug: String, workingDirectory: String) async throws {
+    private func postPRSummary(prNumber: Int, service: any GitHubPRServiceProtocol, workingDirectory: String) async throws {
         let summaryPrompt = """
         You are reviewing a pull request. Analyze the changes made by running \
         `git diff HEAD~1...HEAD` and write a concise markdown summary of what was changed \
@@ -149,28 +103,7 @@ public struct CreatePRStepHandler: StepHandler {
             )
         }
 
-        let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
-        try summary.write(to: tempURL, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-
-        var commentArgs = ["pr", "comment", prNumber, "--body-file", tempURL.path]
-        if !repoSlug.isEmpty {
-            commentArgs += ["--repo", repoSlug]
-        }
-        let commentResult = try await cliClient.execute(
-            command: "gh",
-            arguments: commentArgs,
-            workingDirectory: workingDirectory,
-            environment: nil,
-            printCommand: false
-        )
-        guard commentResult.isSuccess else {
-            throw CreatePRError.commandFailed(
-                command: "gh \(commentArgs.joined(separator: " "))",
-                output: commentResult.errorOutput
-            )
-        }
+        try await service.postIssueComment(prNumber: prNumber, body: summary)
     }
 
     private func detectRepo(workingDirectory: String) async throws -> String {
@@ -191,14 +124,24 @@ public struct CreatePRStepHandler: StepHandler {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func parsePRNumber(from jsonOutput: String) throws -> String {
-        guard let data = jsonOutput.data(using: .utf8) else {
+    private func resolveGitHubService(repoSlug: String) throws -> any GitHubPRServiceProtocol {
+        if let service = githubService {
+            return service
+        }
+        let env = ProcessInfo.processInfo.environment
+        guard let token = env["GH_TOKEN"] ?? env["GITHUB_TOKEN"] else {
             throw CreatePRError.commandFailed(
-                command: "JSON parsing",
-                output: "Failed to encode JSON output as UTF-8"
+                command: "GitHub auth",
+                output: "No GH_TOKEN or GITHUB_TOKEN found in environment"
             )
         }
-        let response = try JSONDecoder().decode(PRViewResponse.self, from: data)
-        return String(response.number)
+        let parts = repoSlug.split(separator: "/")
+        guard parts.count == 2 else {
+            throw CreatePRError.commandFailed(
+                command: "repo detection",
+                output: "Cannot parse repo slug '\(repoSlug)' as owner/repo"
+            )
+        }
+        return GitHubServiceFactory.make(token: token, owner: String(parts[0]), repo: String(parts[1]))
     }
 }
