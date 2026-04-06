@@ -33,11 +33,11 @@ final class EvalRunnerModel {
         var currentOutput: String = ""
     }
 
-    var state: State = .idle(prior: [])
+    private(set) var state: State = .idle(prior: [])
 
-    var suites: [EvalSuite] = []
-    var selectedSuite: EvalSuite?
-    var displayedCases: [EvalCase] = []
+    private(set) var suites: [EvalSuite] = []
+    private(set) var selectedSuite: EvalSuite?
+    private(set) var displayedCases: [EvalCase] = []
 
     let evalConfig: RepositoryEvalConfig
     let registry: EvalProviderRegistry
@@ -236,7 +236,12 @@ final class EvalRunnerModel {
             outputDirectory: evalConfig.outputDirectory,
             rubricFormatter: rubricFormatter
         )
-        return try? readCaseOutput.run(options)
+        do {
+            return try readCaseOutput.run(options)
+        } catch {
+            state = .error(error, prior: state.lastResults)
+            return nil
+        }
     }
 
     private func reloadLastResults() {
