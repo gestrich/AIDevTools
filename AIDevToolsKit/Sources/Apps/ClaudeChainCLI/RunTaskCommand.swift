@@ -51,19 +51,8 @@ struct RunTaskCommand: AsyncParsableCommand {
             repoURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         }
 
-        // Resolve GitHub auth
-        let service = SecureSettingsService()
-        let account = githubAccount ?? (try? service.listCredentialAccounts())?.first ?? "default"
-        let resolver = CredentialResolver(settingsService: service, githubAccount: account)
-
-        var gitEnvironment: [String: String]?
-        if case .token(let token) = resolver.getGitHubAuth() {
-            setenv("GH_TOKEN", token, 1)
-            gitEnvironment = ["GH_TOKEN": token]
-        }
-
-        // Build provider registry and resolve AI client
-        let registry = makeRegistry(credentialResolver: resolver)
+        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount)
+        let registry = makeProviderRegistry(credentialResolver: resolver)
         guard let client = provider.flatMap({ registry.client(named: $0) }) ?? registry.defaultClient else {
             print("Error: No AI provider available. Configure an API key or install Claude CLI.")
             throw ExitCode.failure
@@ -74,8 +63,6 @@ struct RunTaskCommand: AsyncParsableCommand {
         print("Repo: \(repoURL.path)")
         print("Provider: \(client.name)")
         print()
-
-        let git = GitClient(environment: gitEnvironment)
 
         let resolvedBaseBranch: String
         if let baseBranch {
@@ -89,12 +76,13 @@ struct RunTaskCommand: AsyncParsableCommand {
             }
             let domainProject = Project(name: project, basePath: chainProject.basePath)
             let repository = ProjectRepository(repo: "")
-            let config = (try? repository.loadLocalConfiguration(project: domainProject))
+            // Swallowing intentionally: missing/invalid config falls back to defaults so the task can still run.
+        let config = (try? repository.loadLocalConfiguration(project: domainProject))
                 ?? ProjectConfiguration.default(project: domainProject)
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }
 
-        let useCase = RunSpecChainTaskUseCase(client: client, git: git)
+        let useCase = RunSpecChainTaskUseCase(client: client, git: GitClient(environment: gitEnvironment))
         let options = RunSpecChainTaskUseCase.Options(
             repoPath: repoURL,
             projectName: project,
@@ -211,14 +199,4 @@ struct RunTaskCommand: AsyncParsableCommand {
         }
     }
 
-    private func makeRegistry(credentialResolver: CredentialResolver) -> ProviderRegistry {
-        var providers: [any AIClient] = [
-            ClaudeProvider(),
-            CodexProvider(),
-        ]
-        if let key = credentialResolver.getAnthropicKey(), !key.isEmpty {
-            providers.append(AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key)))
-        }
-        return ProviderRegistry(providers: providers)
-    }
 }

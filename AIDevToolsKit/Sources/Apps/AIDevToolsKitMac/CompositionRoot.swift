@@ -1,7 +1,9 @@
 import ClaudeCLISDK
 import CodexCLISDK
+import CredentialService
 import DataPathsService
 import Foundation
+import GitSDK
 import ProviderRegistryService
 import RepositorySDK
 import SettingsService
@@ -10,6 +12,7 @@ import SettingsService
 struct CompositionRoot {
     let dataPathsService: DataPathsService
     let evalProviderRegistry: EvalProviderRegistry
+    let gitClientFactory: @Sendable (String?) -> GitClient
     let providerModel: ProviderModel
     let settingsModel: SettingsModel
     let settingsService: SettingsService
@@ -28,9 +31,21 @@ struct CompositionRoot {
 
         writeMCPConfig()
 
+        let gitClientFactory: @Sendable (String?) -> GitClient = { account in
+            guard let account else { return GitClient() }
+            let resolver = CredentialResolver(
+                settingsService: SecureSettingsService(),
+                githubAccount: account
+            )
+            guard case .token(let token) = resolver.getGitHubAuth() else { return GitClient() }
+            setenv("GH_TOKEN", token, 1)
+            return GitClient(environment: ["GH_TOKEN": token])
+        }
+
         return CompositionRoot(
             dataPathsService: dataPathsService,
             evalProviderRegistry: evalProviderRegistry,
+            gitClientFactory: gitClientFactory,
             providerModel: ProviderModel(),
             settingsModel: settingsModel,
             settingsService: settingsService
@@ -64,6 +79,7 @@ struct CompositionRoot {
         }
         """
         let fileURL = DataPathsService.mcpConfigFileURL
+        // Swallowing intentionally: MCP config is optional; if the write fails the app continues without MCP.
         try? FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true

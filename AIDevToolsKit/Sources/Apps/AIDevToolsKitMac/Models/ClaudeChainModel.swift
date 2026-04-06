@@ -1,7 +1,6 @@
 import AIOutputSDK
 import ClaudeChainFeature
 import ClaudeChainService
-import CredentialService
 import DataPathsService
 import Foundation
 import GitHubService
@@ -68,15 +67,18 @@ final class ClaudeChainModel {
     private var currentRepoPath: URL?
     private var gitHubPRService: (any GitHubPRServiceProtocol)?
     private let dataPathsService: DataPathsService
+    private let gitClientFactory: @Sendable (String?) -> GitClient
     private let providerRegistry: ProviderRegistry
 
     init(
         providerRegistry: ProviderRegistry,
         selectedProviderName: String? = nil,
-        dataPathsService: DataPathsService
+        dataPathsService: DataPathsService,
+        gitClientFactory: @Sendable @escaping (String?) -> GitClient
     ) {
         self.providerRegistry = providerRegistry
         self.dataPathsService = dataPathsService
+        self.gitClientFactory = gitClientFactory
 
         guard let client = selectedProviderName.flatMap({ providerRegistry.client(named: $0) })
             ?? providerRegistry.defaultClient else {
@@ -289,18 +291,7 @@ final class ClaudeChainModel {
     // MARK: - Private
 
     private func makeGitClient() -> GitClient {
-        guard let account = currentCredentialAccount else {
-            return GitClient()
-        }
-        let resolver = CredentialResolver(
-            settingsService: SecureSettingsService(),
-            githubAccount: account
-        )
-        guard case .token(let token) = resolver.getGitHubAuth() else {
-            return GitClient()
-        }
-        setenv("GH_TOKEN", token, 1)
-        return GitClient(environment: ["GH_TOKEN": token])
+        gitClientFactory(currentCredentialAccount)
     }
 
     private func makeOrGetGitHubPRService(repoPath: URL) async throws -> any GitHubPRServiceProtocol {

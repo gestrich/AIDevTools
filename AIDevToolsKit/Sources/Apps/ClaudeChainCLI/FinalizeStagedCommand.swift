@@ -8,6 +8,7 @@ import ClaudeCLISDK
 import CodexCLISDK
 import CredentialService
 import Foundation
+import GitSDK
 import ProviderRegistryService
 
 struct FinalizeStagedCommand: AsyncParsableCommand {
@@ -50,15 +51,8 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
             repoURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         }
 
-        let service = SecureSettingsService()
-        let account = githubAccount ?? (try? service.listCredentialAccounts())?.first ?? "default"
-        let resolver = CredentialResolver(settingsService: service, githubAccount: account)
-
-        if case .token(let token) = resolver.getGitHubAuth() {
-            setenv("GH_TOKEN", token, 1)
-        }
-
-        let registry = makeRegistry(credentialResolver: resolver)
+        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount)
+        let registry = makeProviderRegistry(credentialResolver: resolver)
         guard let client = provider.flatMap({ registry.client(named: $0) }) ?? registry.defaultClient else {
             print("Error: No AI provider available. Configure an API key or install Claude CLI.")
             throw ExitCode.failure
@@ -74,7 +68,8 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
                 basePath: (chainDir as NSString).appendingPathComponent(project)
             )
             let repository = ProjectRepository(repo: "")
-            let config = (try? repository.loadLocalConfiguration(project: chainProject))
+            // Swallowing intentionally: missing/invalid config falls back to defaults so the task can still run.
+        let config = (try? repository.loadLocalConfiguration(project: chainProject))
                 ?? ProjectConfiguration.default(project: chainProject)
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }
@@ -86,7 +81,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         print("Provider: \(client.name)")
         print()
 
-        let useCase = FinalizeStagedTaskUseCase(client: client)
+        let useCase = FinalizeStagedTaskUseCase(client: client, git: GitClient(environment: gitEnvironment))
         let result = try await useCase.run(
             options: .init(
                 repoPath: repoURL,
@@ -154,14 +149,4 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         }
     }
 
-    private func makeRegistry(credentialResolver: CredentialResolver) -> ProviderRegistry {
-        var providers: [any AIClient] = [
-            ClaudeProvider(),
-            CodexProvider(),
-        ]
-        if let key = credentialResolver.getAnthropicKey(), !key.isEmpty {
-            providers.append(AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key)))
-        }
-        return ProviderRegistry(providers: providers)
-    }
 }
