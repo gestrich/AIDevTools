@@ -90,7 +90,10 @@ The goal is to remove `setenv("GH_TOKEN", token, 1)` from Feature-layer use case
 
 ---
 
-## - [ ] Phase 3: PhaseInfo and PhaseStatus move to Services layer
+## - [x] Phase 3: PhaseInfo and PhaseStatus move to Services layer
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Created `ChainExecutionPhase` and `ChainPhaseStatus` in a new `ClaudeChainService/ChainExecutionPhase.swift` (Services layer, accessible to all layers above). Added `static let phases: [ChainExecutionPhase]` to `RunSpecChainTaskUseCase`, `RunSweepBatchUseCase`, and `FinalizeStagedTaskUseCase` so each use case owns its phase list. Updated `ClaudeChainModel` to remove the nested `PhaseInfo`/`PhaseStatus` types and drive the three progress factory methods from the use cases' static `phases` instead of hardcoded arrays. Updated `ClaudeChainView` to reference `ChainPhaseStatus` directly from the Services layer.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

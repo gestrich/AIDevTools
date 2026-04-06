@@ -568,7 +568,7 @@ private struct ChainProjectDetailView: View {
     }
 
     @ViewBuilder
-    private func phaseStatusIcon(_ status: ClaudeChainModel.PhaseStatus) -> some View {
+    private func phaseStatusIcon(_ status: ChainPhaseStatus) -> some View {
         switch status {
         case .completed:
             Image(systemName: "checkmark.circle.fill")
@@ -589,7 +589,7 @@ private struct ChainProjectDetailView: View {
         }
     }
 
-    private func phaseTextStyle(_ status: ClaudeChainModel.PhaseStatus) -> some ShapeStyle {
+    private func phaseTextStyle(_ status: ChainPhaseStatus) -> some ShapeStyle {
         switch status {
         case .completed, .skipped:
             return AnyShapeStyle(.secondary)

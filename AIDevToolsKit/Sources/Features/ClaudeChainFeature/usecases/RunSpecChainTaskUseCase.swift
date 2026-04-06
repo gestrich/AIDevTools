@@ -92,6 +92,17 @@ public struct RunSpecChainTaskUseCase: UseCase {
         case summaryStreamEvent(AIStreamEvent)
     }
 
+    public static let phases: [ChainExecutionPhase] = [
+        ChainExecutionPhase(id: "prepare", displayName: "Prepare"),
+        ChainExecutionPhase(id: "preScript", displayName: "Pre-Script"),
+        ChainExecutionPhase(id: "ai", displayName: "AI Execution"),
+        ChainExecutionPhase(id: "review", displayName: "Review"),
+        ChainExecutionPhase(id: "postScript", displayName: "Post-Script"),
+        ChainExecutionPhase(id: "finalize", displayName: "Finalize / Create PR"),
+        ChainExecutionPhase(id: "summary", displayName: "PR Summary"),
+        ChainExecutionPhase(id: "prComment", displayName: "Post PR Comment"),
+    ]
+
     private let client: any AIClient
     private let git: GitClient
     private let logger = Logger(label: "RunSpecChainTaskUseCase")

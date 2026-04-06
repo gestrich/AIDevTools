@@ -15,23 +15,9 @@ import SweepFeature
 @MainActor @Observable
 final class ClaudeChainModel {
 
-    enum PhaseStatus {
-        case completed
-        case failed
-        case pending
-        case running
-        case skipped
-    }
-
-    struct PhaseInfo: Identifiable {
-        let displayName: String
-        let id: String
-        var status: PhaseStatus
-    }
-
     struct ExecutionProgress {
         var currentPhase: String = ""
-        var phases: [PhaseInfo] = []
+        var phases: [ChainExecutionPhase] = []
         var taskDescription: String = ""
         var taskIndex: Int = 0
         var totalTasks: Int = 0
@@ -431,11 +417,7 @@ final class ClaudeChainModel {
     }
 
     private static func finalizeProgress() -> ExecutionProgress {
-        ExecutionProgress(phases: [
-            PhaseInfo(displayName: "Finalize / Create PR", id: "finalize", status: .pending),
-            PhaseInfo(displayName: "PR Summary", id: "summary", status: .pending),
-            PhaseInfo(displayName: "Post PR Comment", id: "prComment", status: .pending),
-        ])
+        ExecutionProgress(phases: FinalizeStagedTaskUseCase.phases)
     }
 
     private func handleSweepProgress(_ progress: RunSweepBatchUseCase.Progress) {
@@ -471,24 +453,11 @@ final class ClaudeChainModel {
     }
 
     private static func sweepBatchProgress() -> ExecutionProgress {
-        ExecutionProgress(phases: [
-            PhaseInfo(displayName: "Prepare", id: "prepare", status: .pending),
-            PhaseInfo(displayName: "AI Execution", id: "ai", status: .pending),
-            PhaseInfo(displayName: "Create PR", id: "finalize", status: .pending),
-        ])
+        ExecutionProgress(phases: RunSweepBatchUseCase.phases)
     }
 
     private static func initialProgress() -> ExecutionProgress {
-        ExecutionProgress(phases: [
-            PhaseInfo(displayName: "Prepare", id: "prepare", status: .pending),
-            PhaseInfo(displayName: "Pre-Script", id: "preScript", status: .pending),
-            PhaseInfo(displayName: "AI Execution", id: "ai", status: .pending),
-            PhaseInfo(displayName: "Review", id: "review", status: .pending),
-            PhaseInfo(displayName: "Post-Script", id: "postScript", status: .pending),
-            PhaseInfo(displayName: "Finalize / Create PR", id: "finalize", status: .pending),
-            PhaseInfo(displayName: "PR Summary", id: "summary", status: .pending),
-            PhaseInfo(displayName: "Post PR Comment", id: "prComment", status: .pending),
-        ])
+        ExecutionProgress(phases: RunSpecChainTaskUseCase.phases)
     }
 
     private func handleExecutionProgress(_ progress: RunSpecChainTaskUseCase.Progress) {
@@ -559,7 +528,7 @@ final class ClaudeChainModel {
 }
 
 extension ClaudeChainModel.ExecutionProgress {
-    mutating func setPhaseStatus(id: String, status: ClaudeChainModel.PhaseStatus) {
+    mutating func setPhaseStatus(id: String, status: ChainPhaseStatus) {
         guard let idx = phases.firstIndex(where: { $0.id == id }) else { return }
         phases[idx].status = status
     }

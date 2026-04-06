@@ -67,6 +67,12 @@ public struct RunSweepBatchUseCase: UseCase {
         case taskStarted(String)
     }
 
+    public static let phases: [ChainExecutionPhase] = [
+        ChainExecutionPhase(id: "prepare", displayName: "Prepare"),
+        ChainExecutionPhase(id: "ai", displayName: "AI Execution"),
+        ChainExecutionPhase(id: "finalize", displayName: "Create PR"),
+    ]
+
     private let client: any AIClient
     private let git: GitClient
     private let logger = Logger(label: "RunSweepBatchUseCase")

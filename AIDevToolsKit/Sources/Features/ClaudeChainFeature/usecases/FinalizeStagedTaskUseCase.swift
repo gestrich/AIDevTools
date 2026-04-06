@@ -56,6 +56,12 @@ public struct FinalizeStagedTaskUseCase: UseCase {
 
     public typealias Progress = RunSpecChainTaskUseCase.Progress
 
+    public static let phases: [ChainExecutionPhase] = [
+        ChainExecutionPhase(id: "finalize", displayName: "Finalize / Create PR"),
+        ChainExecutionPhase(id: "summary", displayName: "PR Summary"),
+        ChainExecutionPhase(id: "prComment", displayName: "Post PR Comment"),
+    ]
+
     private let client: any AIClient
     private let git: GitClient
     private let logger = Logger(label: "FinalizeStagedTaskUseCase")
