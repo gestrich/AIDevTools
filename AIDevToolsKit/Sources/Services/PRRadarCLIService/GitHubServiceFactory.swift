@@ -73,6 +73,17 @@ public struct GitHubServiceFactory: Sendable {
         return try await createPRService(repoPath: repoPath.path, githubAccount: account, dataPathsService: dataPathsService)
     }
 
+    public static func make(token: String, owner: String, repo: String) -> GitHubPRService {
+        let octokitClient = OctokitClient(token: token)
+        let apiService = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
+        let normalizedSlug = "\(owner)-\(repo)"
+        let cacheURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent("AIDevToolsKit/github/\(normalizedSlug)")
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("github/\(normalizedSlug)")
+        return GitHubPRService(rootURL: cacheURL, apiClient: apiService)
+    }
+
     public static func resolveToken(githubAccount: String) async throws -> String {
         let resolver = CredentialResolver.createPlatform(githubAccount: githubAccount)
         guard let auth = resolver.getGitHubAuth() else {

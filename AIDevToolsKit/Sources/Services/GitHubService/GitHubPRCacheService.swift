@@ -66,6 +66,18 @@ actor GitHubPRCacheService {
         try data.write(to: indexURL(key: key))
     }
 
+    // MARK: - Branch List
+
+    func readBranchList(ttl: TimeInterval) throws -> [String]? {
+        try readFile(at: branchListURL(), ttl: ttl)
+    }
+
+    func writeBranchList(_ branches: [String]) throws {
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(branches)
+        try data.write(to: branchListURL())
+    }
+
     // MARK: - Branch HEAD
 
     func readBranchHead(branch: String, ttl: TimeInterval? = nil) throws -> BranchHead? {
@@ -100,6 +112,18 @@ actor GitHubPRCacheService {
         try FileManager.default.createDirectory(at: dirsDirectory(), withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(names)
         try data.write(to: directoryURL(path: path, ref: ref))
+    }
+
+    // MARK: - Workflow Runs
+
+    func readWorkflowRuns(workflow: String, branch: String?, limit: Int, ttl: TimeInterval) throws -> [WorkflowRun]? {
+        try readFile(at: workflowRunsURL(workflow: workflow, branch: branch, limit: limit), ttl: ttl)
+    }
+
+    func writeWorkflowRuns(_ runs: [WorkflowRun], workflow: String, branch: String?, limit: Int) throws {
+        try FileManager.default.createDirectory(at: workflowsDirectory(), withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(runs)
+        try data.write(to: workflowRunsURL(workflow: workflow, branch: branch, limit: limit))
     }
 
     // MARK: - File Blob
@@ -166,6 +190,10 @@ actor GitHubPRCacheService {
         prDirectory(number: number).appendingPathComponent("gh-reviews.json")
     }
 
+    private func branchListURL() -> URL {
+        rootURL.appendingPathComponent("branch-list.json")
+    }
+
     private func branchesDirectory() -> URL {
         rootURL.appendingPathComponent("branches")
     }
@@ -196,6 +224,20 @@ actor GitHubPRCacheService {
                 .replacingOccurrences(of: " ", with: "-")
         }
         return dirsDirectory().appendingPathComponent("\(sanitise(ref))-\(sanitise(path)).json")
+    }
+
+    private func workflowsDirectory() -> URL {
+        rootURL.appendingPathComponent("workflows")
+    }
+
+    private func workflowRunsURL(workflow: String, branch: String?, limit: Int) -> URL {
+        let sanitise: (String) -> String = {
+            $0.replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+                .replacingOccurrences(of: " ", with: "-")
+        }
+        let branchKey = branch.map { "-\(sanitise($0))" } ?? ""
+        return workflowsDirectory().appendingPathComponent("\(sanitise(workflow))\(branchKey)-\(limit).json")
     }
 
     private func blobsDirectory() -> URL {

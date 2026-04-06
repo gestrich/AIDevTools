@@ -23,6 +23,7 @@ public protocol GitHubAPIServiceProtocol: Sendable {
     func listReviews(prNumber: Int) async throws -> [GitHubReview]
     func listWorkflowRuns(workflow: String, branch: String?, limit: Int) async throws -> [WorkflowRun]
     func mergePullRequest(number: Int, mergeMethod: String) async throws
+    func postIssueComment(number: Int, body: String) async throws
     func pullRequestByHeadBranch(branch: String) async throws -> CreatedPullRequest?
     func requestedReviewers(prNumber: Int) async throws -> [String]
     func requestReviewers(prNumber: Int, reviewers: [String]) async throws

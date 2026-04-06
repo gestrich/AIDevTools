@@ -170,12 +170,12 @@ public struct ReviewCommentData: Sendable {
     public let userId: Int?
 }
 
-public struct CreatedPullRequest: Sendable {
+public struct CreatedPullRequest: Codable, Sendable {
     public let number: Int
     public let htmlURL: String
 }
 
-public struct WorkflowRun: Sendable {
+public struct WorkflowRun: Codable, Sendable {
     public let id: Int
     public let status: String
     public let conclusion: String?

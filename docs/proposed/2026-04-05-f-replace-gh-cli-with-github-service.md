@@ -140,7 +140,10 @@ Run `ai-dev-tools-enforce` on all files changed in Phase 3.
 
 ---
 
-## - [ ] Phase 5: Add Write + Cached-Read Methods to `GitHubPRServiceProtocol` and `GitHubPRService`
+## - [x] Phase 5: Add Write + Cached-Read Methods to `GitHubPRServiceProtocol` and `GitHubPRService`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: All mutation methods forward to `apiClient` with no caching; `createPullRequest` orchestrates create → addLabels → addAssignees → requestReviewers then invalidates the PR list cache via `updateAllPRs`. `listBranches(ttl:)` and `listWorkflowRuns(ttl:)` follow the TTL-cache pattern from `branchHead` and `listDirectoryNames`. `WorkflowRun` and `CreatedPullRequest` gained `Codable` conformance in `OctokitSDK` to enable JSON caching. `postIssueComment` added to `GitHubAPIServiceProtocol` to expose the existing `GitHubAPIService` implementation through the protocol. Convenience factory `make(token:owner:repo:)` added to `GitHubServiceFactory` in `PRRadarCLIService` (rather than directly on `GitHubPRService`) to avoid creating a circular dependency (`GitHubService` → `PRRadarCLIService` → `GitHubService`).
 
 **Skills to read**: `ai-dev-tools-architecture`
 

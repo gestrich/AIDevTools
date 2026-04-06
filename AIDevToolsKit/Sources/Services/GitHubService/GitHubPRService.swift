@@ -117,6 +117,90 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         changeStream
     }
 
+    // MARK: - Write Operations
+
+    public func closePullRequest(number: Int) async throws {
+        try await apiClient.closePullRequest(number: number)
+        _ = try await updateAllPRs(filter: PRFilter())
+    }
+
+    public func createLabel(name: String, color: String, description: String) async throws {
+        try await apiClient.createLabel(name: name, color: color, description: description)
+    }
+
+    public func createPullRequest(
+        title: String,
+        body: String,
+        head: String,
+        base: String,
+        draft: Bool,
+        labels: [String],
+        assignees: [String],
+        reviewers: [String]
+    ) async throws -> CreatedPullRequest {
+        let created = try await apiClient.createPullRequest(
+            title: title, body: body, head: head, base: base, draft: draft
+        )
+        if !labels.isEmpty {
+            try await apiClient.addLabels(prNumber: created.number, labels: labels)
+        }
+        if !assignees.isEmpty {
+            try await apiClient.addAssignees(prNumber: created.number, assignees: assignees)
+        }
+        if !reviewers.isEmpty {
+            try await apiClient.requestReviewers(prNumber: created.number, reviewers: reviewers)
+        }
+        _ = try await updateAllPRs(filter: PRFilter())
+        return created
+    }
+
+    public func deleteBranch(branch: String) async throws {
+        try await apiClient.deleteBranch(branch: branch)
+    }
+
+    public func mergePullRequest(number: Int, mergeMethod: String) async throws {
+        try await apiClient.mergePullRequest(number: number, mergeMethod: mergeMethod)
+        _ = try await updateAllPRs(filter: PRFilter())
+    }
+
+    public func postIssueComment(prNumber: Int, body: String) async throws {
+        try await apiClient.postIssueComment(number: prNumber, body: body)
+    }
+
+    public func pullRequestByHeadBranch(branch: String) async throws -> CreatedPullRequest? {
+        try await apiClient.pullRequestByHeadBranch(branch: branch)
+    }
+
+    public func triggerWorkflowDispatch(workflowId: String, ref: String, inputs: [String: String]) async throws {
+        try await apiClient.triggerWorkflowDispatch(workflowId: workflowId, ref: ref, inputs: inputs)
+    }
+
+    // MARK: - Cached Reads
+
+    public func listBranches(ttl: TimeInterval) async throws -> [String] {
+        if let cached = try await cache.readBranchList(ttl: ttl) {
+            logger.debug("listBranches cache hit")
+            return cached
+        }
+        logger.debug("listBranches cache miss, fetching from API")
+        let branches = try await apiClient.listBranches()
+        try await cache.writeBranchList(branches)
+        return branches
+    }
+
+    public func listWorkflowRuns(workflow: String, branch: String?, limit: Int, ttl: TimeInterval) async throws -> [WorkflowRun] {
+        if let cached = try await cache.readWorkflowRuns(workflow: workflow, branch: branch, limit: limit, ttl: ttl) {
+            logger.debug("listWorkflowRuns cache hit", metadata: ["workflow": .string(workflow)])
+            return cached
+        }
+        logger.debug("listWorkflowRuns cache miss, fetching from API", metadata: ["workflow": .string(workflow)])
+        let runs = try await apiClient.listWorkflowRuns(workflow: workflow, branch: branch, limit: limit)
+        try await cache.writeWorkflowRuns(runs, workflow: workflow, branch: branch, limit: limit)
+        return runs
+    }
+
+    // MARK: - Branch HEAD
+
     public func branchHead(branch: String, ttl: TimeInterval) async throws -> BranchHead {
         if let cached = try await cache.readBranchHead(branch: branch, ttl: ttl) {
             logger.debug("branchHead cache hit", metadata: ["branch": .string(branch)])
