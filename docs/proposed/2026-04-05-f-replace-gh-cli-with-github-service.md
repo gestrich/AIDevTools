@@ -297,7 +297,10 @@ Run `ai-dev-tools-enforce` on all files changed in this phase.
 
 ---
 
-## - [ ] Phase 12: Integration Test Against `gestrich/AIDevToolsDemo`
+## - [x] Phase 12: Integration Test Against `gestrich/AIDevToolsDemo`
+
+**Skills used**: `ai-dev-tools-debug`, `ai-dev-tools-pr-radar-debug`
+**Principles applied**: Manually prepared a branch in `gestrich/AIDevToolsDemo` with hello-2.txt, then ran `finalize-staged` via the CLI against the `gestrich` keychain account. The credential resolver resolved the token from keychain and injected it into the environment via `setenv("GH_TOKEN", ...)`, satisfying `FinalizeStagedTaskUseCase`'s env-based token lookup. PR #11 was created as a draft with the `claudechain` label, a PR summary was generated via Anthropic API, and the comment was posted — all via `GitHubPRService` with zero `gh` binary invocations. `grep -r '"gh"' Sources` → zero matches. Pre-existing test failures in `SkillScannerTests` and `ProjectTests` are unrelated to this migration.
 
 **Skills to read**: `ai-dev-tools-debug`, `ai-dev-tools-pr-radar-debug`
 
