@@ -33,7 +33,7 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
 
     // MARK: - ClaudeChainSource
 
-    public let kindBadge: String? = nil
+    public let kind: ChainKind = .spec
     nonisolated public var projectName: String { project.name }
     nonisolated public var projectBasePath: String { project.basePath }
 

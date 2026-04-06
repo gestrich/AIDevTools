@@ -63,6 +63,7 @@ final class ClaudeChainModel {
 
     private var activeClient: any AIClient
     @ObservationIgnored private var chatModels: [String: ChatModel] = [:]
+    @ObservationIgnored private let streamAccumulator = StreamAccumulator()
     private var currentCredentialAccount: String?
     private var currentRepoPath: URL?
     private var gitHubPRService: (any GitHubPRServiceProtocol)?
@@ -160,127 +161,30 @@ final class ClaudeChainModel {
     }
 
     func executeChain(project: ChainProject, repoPath: URL, taskIndex: Int? = nil, stagingOnly: Bool = false) {
-        if project.kindBadge == "sweep" {
-            executeSweepBatch(project: project, repoPath: repoPath)
-            return
-        }
-        let task: ChainTask?
-        if let taskIndex {
-            task = project.tasks.first(where: { $0.index == taskIndex })
-        } else {
-            task = project.tasks.first(where: { !$0.isCompleted })
-        }
-        guard let task else {
-            state = .error(NSError(
-                domain: "ClaudeChainModel",
-                code: 0,
-                userInfo: [NSLocalizedDescriptionKey: "No pending task found"]
-            ))
-            return
-        }
-        executeTask(at: task.index, project: project, repoPath: repoPath, stagingOnly: stagingOnly)
-    }
-
-    func executeSweepBatch(project: ChainProject, repoPath: URL) {
-        state = .executing(progress: Self.sweepBatchProgress())
+        let strategy = ChainExecutionStrategyFactory.strategy(for: project.kind)
+        state = .executing(progress: ExecutionProgress(phases: strategy.initialPhases))
+        streamAccumulator.reset()
 
         Task {
             let git = makeGitClient()
-            let useCase = ExecuteSweepChainUseCase(client: activeClient, git: git)
-            let options = ExecuteSweepChainUseCase.Options(
-                project: project,
-                repoPath: repoPath,
-                githubAccount: currentCredentialAccount
-            )
-
             do {
-                let result = try await useCase.run(options: options) { [weak self] progress in
+                let result = try await strategy.execute(
+                    project: project,
+                    repoPath: repoPath,
+                    taskIndex: taskIndex,
+                    stagingOnly: stagingOnly,
+                    client: activeClient,
+                    git: git,
+                    githubAccount: currentCredentialAccount
+                ) { [weak self] event in
                     Task { @MainActor [weak self] in
-                        self?.handleSweepProgress(progress)
+                        self?.handleProgressEvent(event)
                     }
                 }
                 state = .completed(result: result)
                 refreshChainDetail(project: project)
             } catch {
-                logger.error("executeSweepBatch: failed: \(error)")
-                state = .error(error)
-            }
-        }
-    }
-
-    func executeTask(at index: Int, project: ChainProject, repoPath: URL, stagingOnly: Bool) {
-        guard let task = project.tasks.first(where: { $0.index == index }) else { return }
-
-        state = .executing(progress: Self.initialProgress())
-        selectedTaskIndex = index
-
-        let pipelineModel = PipelineModel()
-        taskPipelines[index] = pipelineModel
-
-        let taskHash = TaskService.generateTaskHash(description: task.description)
-        let branchName = PRService.formatBranchName(projectName: project.name, taskHash: taskHash)
-
-        let options = ChainRunOptions(
-            baseBranch: project.baseBranch,
-            githubAccount: currentCredentialAccount,
-            projectName: project.name,
-            repoPath: repoPath,
-            stagingOnly: stagingOnly
-        )
-
-        handleExecutionProgress(.preparedTask(description: task.description, index: task.index, total: project.totalTasks))
-
-        pipelineModel.onEvent = { @MainActor [weak self] event in
-            guard let self else { return }
-            switch event {
-            case .nodeStarted(let id, _):
-                switch id {
-                case "task-source":
-                    self.handleExecutionProgress(.preparingProject)
-                case "pr-step":
-                    self.handleExecutionProgress(.finalizing)
-                default:
-                    self.handleExecutionProgress(.runningAI(taskDescription: task.description))
-                }
-            case .nodeProgress(_, let progress):
-                if case .contentBlocks(let blocks) = progress {
-                    executionContentBlocksObserver?(blocks)
-                }
-            case .nodeCompleted(let id, _):
-                if id != "task-source" && id != "pr-step" {
-                    self.handleExecutionProgress(.aiCompleted)
-                }
-            default:
-                break
-            }
-        }
-
-        Task {
-            do {
-                let blueprint = try await BuildTaskPipelineUseCase(client: activeClient).run(task: task, options: options)
-                let finalContext = try await pipelineModel.run(blueprint: blueprint)
-
-                let prURL = finalContext[PRStep.prURLKey]
-                let prNumber = finalContext[PRStep.prNumberKey]
-
-                if let prNum = prNumber, let prURLStr = prURL {
-                    handleExecutionProgress(.prCreated(prNumber: prNum, prURL: prURLStr))
-                }
-                handleExecutionProgress(.completed(prURL: prURL))
-
-                let result = ExecuteSpecChainUseCase.Result(
-                    success: true,
-                    message: prURL.map { "PR created: \($0)" } ?? (stagingOnly ? "Task completed (staging only)" : "Task completed"),
-                    branchName: stagingOnly ? branchName : nil,
-                    isStagingOnly: stagingOnly,
-                    prURL: prURL,
-                    prNumber: prNumber,
-                    taskDescription: task.description
-                )
-                state = .completed(result: result)
-                refreshChainDetail(project: project)
-            } catch {
-                logger.error("executeTask: failed for task '\(task.description)': \(error)")
+                logger.error("executeChain: failed: \(error)")
                 state = .error(error)
             }
         }
@@ -445,12 +349,16 @@ final class ClaudeChainModel {
         state = .executing(progress: current)
     }
 
-    private static func sweepBatchProgress() -> ExecutionProgress {
-        ExecutionProgress(phases: RunSweepBatchUseCase.phases)
-    }
-
-    private static func initialProgress() -> ExecutionProgress {
-        ExecutionProgress(phases: RunSpecChainTaskUseCase.phases)
+    private func handleProgressEvent(_ event: ChainProgressEvent) {
+        switch event {
+        case .sweep(let progress): handleSweepProgress(progress)
+        case .spec(let progress):
+            if case .aiStreamEvent(let streamEvent) = progress {
+                let blocks = streamAccumulator.apply(streamEvent)
+                executionContentBlocksObserver?(blocks)
+            }
+            handleExecutionProgress(progress)
+        }
     }
 
     private func handleExecutionProgress(_ progress: RunSpecChainTaskUseCase.Progress) {

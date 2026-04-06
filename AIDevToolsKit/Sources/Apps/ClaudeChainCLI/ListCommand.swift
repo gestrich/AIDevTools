@@ -47,14 +47,14 @@ struct ListCommand: AsyncParsableCommand {
 
         for project in sorted {
             let padded = project.name.padding(toLength: maxNameLen, withPad: " ", startingAt: 0)
-            let badge = project.kindBadge ?? "spec"
+            let badge = project.kind == .sweep ? "sweep" : "spec"
             print("  \(padded)  [\(badge)]")
         }
 
         print("\n\(result.projects.count) project(s)")
     }
 
-    private func resolveKind(_ kind: String?) throws -> ChainKind {
+    private func resolveKind(_ kind: String?) throws -> ChainKindFilter {
         guard let kind else { return .all }
         switch kind.lowercased() {
         case "all": return .all

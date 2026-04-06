@@ -62,7 +62,7 @@ private func makeSpecProject(name: String, specPath: String) -> ChainProject {
 }
 
 private func makeSweepProject(name: String, specPath: String) -> ChainProject {
-    ChainProject(name: name, specPath: specPath, completedTasks: 0, pendingTasks: 1, totalTasks: 1, kindBadge: "sweep")
+    ChainProject(name: name, specPath: specPath, completedTasks: 0, pendingTasks: 1, totalTasks: 1, kind: .sweep)
 }
 
 // MARK: - listChains(source:kind:) tests

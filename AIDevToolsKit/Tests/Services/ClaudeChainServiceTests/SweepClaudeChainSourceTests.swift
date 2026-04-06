@@ -143,7 +143,7 @@ struct SweepClaudeChainSourceLoadProjectTests {
         let project = try await source.loadProject()
 
         #expect(project.branchPrefix == "claude-chain-my-sweep-")
-        #expect(project.kindBadge == "sweep")
+        #expect(project.kind == .sweep)
     }
 }
 

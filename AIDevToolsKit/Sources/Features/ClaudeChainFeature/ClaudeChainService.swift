@@ -41,7 +41,7 @@ public enum ChainSource: Sendable {
     case remote
 }
 
-public enum ChainKind: Sendable {
+public enum ChainKindFilter: Sendable {
     case all
     case spec
     case sweep
@@ -102,7 +102,7 @@ public struct ClaudeChainService {
 
     // MARK: - Chain listing
 
-    public func listChains(source: ChainSource, kind: ChainKind = .all, useCache: Bool = false) async throws -> ChainListResult {
+    public func listChains(source: ChainSource, kind: ChainKindFilter = .all, useCache: Bool = false) async throws -> ChainListResult {
         var result: ChainListResult
         switch source {
         case .local:
@@ -119,8 +119,8 @@ public struct ClaudeChainService {
         let filtered = result.projects.filter { project in
             switch kind {
             case .all: return true
-            case .spec: return project.kindBadge == nil
-            case .sweep: return project.kindBadge != nil
+            case .spec: return project.kind == .spec
+            case .sweep: return project.kind == .sweep
             }
         }
         return ChainListResult(projects: filtered, failures: result.failures)
@@ -143,7 +143,7 @@ public struct ClaudeChainService {
         let localByName = Dictionary(uniqueKeysWithValues: localResult.projects.map { ($0.name, $0) })
 
         let merged = remoteResult.projects.map { remote -> ChainProject in
-            guard remote.kindBadge == "sweep", let local = localByName[remote.name] else {
+            guard remote.kind == .sweep, let local = localByName[remote.name] else {
                 return remote
             }
             return ChainProject(merging: local, into: remote)

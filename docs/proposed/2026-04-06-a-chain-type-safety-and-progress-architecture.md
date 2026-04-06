@@ -172,7 +172,10 @@ The string literals move out of the model and into the Progress types where they
 
 ---
 
-## - [ ] Phase 5: Protocol-based execution dispatch — remove `kindBadge` check from model
+## - [x] Phase 5: Protocol-based execution dispatch — remove `kindBadge` check from model
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `ChainKind` enum (`.spec`, `.sweep`) to Services layer (`ChainModels.swift`). Replaced `kindBadge: String?` on `ChainProject`, `ClaudeChainSource`, and all producers/consumers with the typed `kind: ChainKind`. Renamed the existing Features-layer `ChainKind` (which had `.all` for filtering) to `ChainKindFilter` to avoid ambiguity. Created `ChainExecutionStrategy` protocol in `ClaudeChainFeature` with `SpecChainExecutionStrategy` and `SweepChainExecutionStrategy` implementations, plus a `ChainExecutionStrategyFactory` keyed on `ChainKind`. `ClaudeChainModel.executeChain` now calls `ChainExecutionStrategyFactory.strategy(for: project.kind)` — no type check. Removed `executeTask` and `executeSweepBatch` from the model; AI stream events flow through a `StreamAccumulator` in `handleProgressEvent` to deliver content blocks via `executionContentBlocksObserver`.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

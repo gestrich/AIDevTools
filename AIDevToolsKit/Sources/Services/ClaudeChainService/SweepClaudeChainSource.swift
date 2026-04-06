@@ -42,7 +42,7 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
 
     // MARK: - ClaudeChainSource
 
-    public let kindBadge: String? = "sweep"
+    public let kind: ChainKind = .sweep
     nonisolated public var projectName: String { taskName }
     nonisolated public var projectBasePath: String { taskDirectory.path }
 
@@ -68,7 +68,7 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
             pendingTasks: pendingCount,
             totalTasks: tasks.count,
             branchPrefix: "claude-chain-\(taskName)-",
-            kindBadge: kindBadge,
+            kind: kind,
             maxOpenPRs: 1
         )
     }
