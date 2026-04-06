@@ -3,9 +3,12 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitHubService
 import GitSDK
 import Logging
+import OctokitSDK
 import PipelineSDK
+import PRRadarCLIService
 import UseCaseSDK
 
 private final class TextAccumulator: @unchecked Sendable {
@@ -136,43 +139,42 @@ public struct FinalizeStagedTaskUseCase: UseCase {
 
         let repoSlug = await ChainPRHelpers.detectRepo(workingDirectory: repoDir, git: git)
 
+        let env = ProcessInfo.processInfo.environment
+        let ghToken = env["GH_TOKEN"] ?? env["GITHUB_TOKEN"] ?? ""
+        let slugParts = repoSlug.split(separator: "/")
+        guard !ghToken.isEmpty, slugParts.count == 2 else {
+            throw GitHubAPIError("Missing GH_TOKEN or cannot parse repo slug '\(repoSlug)'")
+        }
+        let githubService = GitHubServiceFactory.make(
+            token: ghToken,
+            owner: String(slugParts[0]),
+            repo: String(slugParts[1])
+        )
+
         // Create draft PR
         let prTitle = ChainPRHelpers.buildPRTitle(projectName: options.projectName, task: options.taskDescription)
         let prBody = "Task \(stepIndex)/\(totalSteps): \(options.taskDescription)"
-        var prCreateArgs = [
-            "pr", "create",
-            "--draft",
-            "--title", prTitle,
-            "--body", prBody,
-            "--label", Constants.defaultPRLabel,
-            "--head", options.branchName,
-            "--base", options.baseBranch,
-        ]
-        if !repoSlug.isEmpty {
-            prCreateArgs += ["--repo", repoSlug]
-        }
-        for assignee in projectConfig?.assignees ?? [] {
-            prCreateArgs += ["--assignee", assignee]
-        }
-        for reviewer in projectConfig?.reviewers ?? [] {
-            prCreateArgs += ["--reviewer", reviewer]
-        }
-        let prURL: String
+        let createdPR: CreatedPullRequest
         do {
-            prURL = try GitHubOperations.runGhCommand(args: prCreateArgs)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            createdPR = try await githubService.createPullRequest(
+                title: prTitle,
+                body: prBody,
+                head: options.branchName,
+                base: options.baseBranch,
+                draft: true,
+                labels: [Constants.defaultPRLabel],
+                assignees: projectConfig?.assignees ?? [],
+                reviewers: projectConfig?.reviewers ?? []
+            )
         } catch {
-            guard error.localizedDescription.contains("already exists") else { throw error }
-            var prViewURLArgs = ["pr", "view", options.branchName, "--json", "url", "--jq", ".url"]
-            if !repoSlug.isEmpty { prViewURLArgs += ["--repo", repoSlug] }
-            prURL = try GitHubOperations.runGhCommand(args: prViewURLArgs)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard error.localizedDescription.contains("already_exists") else { throw error }
+            guard let existing = try await githubService.pullRequestByHeadBranch(branch: options.branchName) else {
+                throw error
+            }
+            createdPR = existing
         }
-
-        var prViewArgs = ["pr", "view", options.branchName, "--json", "number"]
-        if !repoSlug.isEmpty { prViewArgs += ["--repo", repoSlug] }
-        let prViewOutput = try GitHubOperations.runGhCommand(args: prViewArgs)
-        let prNumber = ChainPRHelpers.parsePRNumber(from: prViewOutput)
+        let prURL = createdPR.htmlURL
+        let prNumber: String? = String(createdPR.number)
 
         if let prNumber {
             onProgress?(.prCreated(prNumber: prNumber, prURL: prURL))
@@ -247,14 +249,7 @@ public struct FinalizeStagedTaskUseCase: UseCase {
                 let formatter = MarkdownReportFormatter()
                 let comment = formatter.format(report.buildCommentElements())
 
-                let tempURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
-                try comment.write(to: tempURL, atomically: true, encoding: String.Encoding.utf8)
-                defer { try? FileManager.default.removeItem(at: tempURL) }
-
-                var commentArgs = ["pr", "comment", prNumber, "--body-file", tempURL.path]
-                if !repoSlug.isEmpty { commentArgs += ["--repo", repoSlug] }
-                _ = try GitHubOperations.runGhCommand(args: commentArgs)
+                try await githubService.postIssueComment(prNumber: createdPR.number, body: comment)
                 onProgress?(.prCommentPosted)
             } catch {
                 // Comment posting is non-fatal

@@ -3,10 +3,12 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitHubService
 import GitSDK
 import Logging
 import PipelineSDK
 import PipelineService
+import PRRadarCLIService
 import UseCaseSDK
 
 public struct RunSpecChainTaskUseCase: UseCase {
@@ -434,19 +436,21 @@ public struct RunSpecChainTaskUseCase: UseCase {
                 if options.dryRun {
                     logger.info("\n=== PR Comment Preview ===\n\(comment)\n=== End PR Comment Preview ===")
                 } else {
-                    let tempURL = FileManager.default.temporaryDirectory
-                        .appendingPathComponent("pr_comment_\(UUID().uuidString).md")
-                    try comment.write(to: tempURL, atomically: true, encoding: .utf8)
-                    defer { try? FileManager.default.removeItem(at: tempURL) }
-
-                    var commentArgs = [
-                        "pr", "comment", prNumber,
-                        "--body-file", tempURL.path,
-                    ]
-                    if !repoSlug.isEmpty {
-                        commentArgs += ["--repo", repoSlug]
+                    let env = ProcessInfo.processInfo.environment
+                    let ghToken = env["GH_TOKEN"] ?? env["GITHUB_TOKEN"] ?? ""
+                    let slugParts = repoSlug.split(separator: "/")
+                    guard !ghToken.isEmpty, slugParts.count == 2 else {
+                        throw GitHubAPIError("Missing GH_TOKEN or cannot parse repo slug '\(repoSlug)'")
                     }
-                    _ = try GitHubOperations.runGhCommand(args: commentArgs)
+                    let commentService = GitHubServiceFactory.make(
+                        token: ghToken,
+                        owner: String(slugParts[0]),
+                        repo: String(slugParts[1])
+                    )
+                    guard let prNumberInt = Int(prNumber) else {
+                        throw GitHubAPIError("Invalid PR number: \(prNumber)")
+                    }
+                    try await commentService.postIssueComment(prNumber: prNumberInt, body: comment)
                     onProgress?(.prCommentPosted)
                 }
             } catch {

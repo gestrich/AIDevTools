@@ -231,7 +231,10 @@ Run `ai-dev-tools-enforce` on all files changed in Phase 7.
 
 ---
 
-## - [ ] Phase 9: Migrate `GitHubOperations` + Chain Feature Callers
+## - [x] Phase 9: Migrate `GitHubOperations` + Chain Feature Callers
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added dual init overload to `GitHubOperations` (keeps `GitHubClient` init for existing callers, adds new `GitHubPRServiceProtocol` init) to avoid breaking 9 untouched call sites; instance methods prefer `githubService` when available, fall back to `githubClient`. `WorkflowService` converted from `class` to `struct` per architecture; uses semaphore bridge to call async `triggerWorkflowDispatch` from sync interface, with fallback to `runGhCommand` when no service injected. `FinalizeStagedTaskUseCase` and `RunSpecChainTaskUseCase` build `GitHubServiceFactory.make(token:owner:repo:)` inline from env token + detected repo slug; required adding `PRRadarCLIService` to `ClaudeChainFeature` Package.swift deps. Temp body files eliminated — bodies passed directly to service. `FinalizeCommand` similarly replaced `getFileFromBranch` static call with `githubService.fileContent(path:ref:)` and PR create/view calls with `createPullRequest`/`createdPR.number`. Build confirmed clean.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

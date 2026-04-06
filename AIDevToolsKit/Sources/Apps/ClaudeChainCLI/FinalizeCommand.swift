@@ -4,7 +4,10 @@ import ClaudeChainSDK
 import ClaudeChainService
 import CredentialService
 import Foundation
+import GitHubService
 import GitSDK
+import OctokitSDK
+import PRRadarCLIService
 
 public struct FinalizeCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
@@ -101,6 +104,16 @@ public struct FinalizeCommand: AsyncParsableCommand {
             if branchName.isEmpty || task.isEmpty || taskIndex.isEmpty || project.isEmpty || specPath.isEmpty || ghToken.isEmpty || githubRepository.isEmpty {
                 throw ConfigurationError("Missing required environment variables")
             }
+
+            let repoSlugParts = githubRepository.split(separator: "/")
+            guard repoSlugParts.count == 2 else {
+                throw ConfigurationError("Cannot parse GITHUB_REPOSITORY '\(githubRepository)' as owner/repo")
+            }
+            let githubService = GitHubServiceFactory.make(
+                token: ghToken,
+                owner: String(repoSlugParts[0]),
+                repo: String(repoSlugParts[1])
+            )
             
             // === STEP 1: Commit Any Uncommitted Changes ===
             print("=== Step 1/3: Committing changes ===")
@@ -162,7 +175,18 @@ public struct FinalizeCommand: AsyncParsableCommand {
             // Fetch spec.md from base branch and mark task as complete
             print("Fetching spec.md from base branch...")
             do {
-                if let specContent = try GitHubOperations.getFileFromBranch(repo: githubRepository, branch: baseBranch, filePath: specPath) {
+                var specContent: String?
+                do {
+                    specContent = try await githubService.fileContent(path: specPath, ref: baseBranch)
+                } catch let e {
+                    let desc = e.localizedDescription
+                    if desc.contains("404") || desc.lowercased().contains("not found") {
+                        specContent = nil
+                    } else {
+                        throw e
+                    }
+                }
+                if let specContent {
                     // Write spec content to local file in PR branch
                     let specFileURL = URL(fileURLWithPath: currentDir).appendingPathComponent(specPath)
                     let specDir = specFileURL.deletingLastPathComponent()
@@ -228,14 +252,6 @@ public struct FinalizeCommand: AsyncParsableCommand {
                 prBody += "\n\n---\n\n*Created by [ClaudeChain run](\(actionsUrl))*"
             }
             
-            // Create PR using temp file for body to avoid command-line length/escaping issues
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".md")
-            try prBody.write(to: tempURL, atomically: true, encoding: .utf8)
-            defer {
-                // Clean up temp file
-                try? FileManager.default.removeItem(at: tempURL)
-            }
-            
             // Build PR title with truncation to avoid overly long titles
             let maxTitleLength = 80
             let titlePrefix = "ClaudeChain: [\(project)] "
@@ -247,49 +263,28 @@ public struct FinalizeCommand: AsyncParsableCommand {
                 truncatedTask = task
             }
             let prTitle = "\(titlePrefix)\(truncatedTask)"
-            
-            // Build PR creation command (assignee is optional)
-            var prCreateArgs = [
-                "pr", "create",
-                "--draft",
-                "--title", prTitle,
-                "--body-file", tempURL.path,
-                "--label", label,
-                "--head", branchName,
-                "--base", baseBranch
-            ]
-            for assignee in assignees {
-                prCreateArgs.append(contentsOf: ["--assignee", assignee])
-            }
-            // Explicit reviewers (not assignees)
-            for reviewer in reviewers {
-                prCreateArgs.append(contentsOf: ["--reviewer", reviewer])
-            }
-            
-            // Add additional PR labels (comma-separated)
+
             let prLabels = prLabelsStr
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
-            for prLabel in prLabels {
-                prCreateArgs.append(contentsOf: ["--label", prLabel])
-            }
-            
-            let prUrl = try GitHubOperations.runGhCommand(args: prCreateArgs)
-            
+            var allLabels = [label].filter { !$0.isEmpty }
+            allLabels.append(contentsOf: prLabels)
+
+            let createdPR = try await githubService.createPullRequest(
+                title: prTitle,
+                body: prBody,
+                head: branchName,
+                base: baseBranch,
+                draft: true,
+                labels: allLabels,
+                assignees: assignees.filter { !$0.isEmpty },
+                reviewers: reviewers.filter { !$0.isEmpty }
+            )
+            let prUrl = createdPR.htmlURL
+            let prNumber = createdPR.number
+
             print("✅ Created PR: \(prUrl)")
-            
-            // Query PR number and title
-            let prOutput = try GitHubOperations.runGhCommand(args: [
-                "pr", "view", branchName,
-                "--json", "number,title"
-            ])
-            
-            guard let data = prOutput.data(using: .utf8),
-                  let prData = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                  let prNumber = prData["number"] as? Int else {
-                throw GitHubAPIError("Failed to parse PR data")
-            }
             
             // No metadata storage - PR state is tracked via GitHub API
             print("\n=== Step 3/3: Finalization complete ===")

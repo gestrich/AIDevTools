@@ -1,16 +1,27 @@
 import ClaudeChainSDK
 import Foundation
 import CLISDK
+import GitHubService
+import OctokitSDK
 
 /// GitHub CLI and API operations
 public struct GitHubOperations: GitHubOperationsProtocol {
 
-    private let githubClient: GitHubClient
+    private let githubClient: GitHubClient?
+    private let githubService: (any GitHubPRServiceProtocol)?
     private let repositoryService: RepositoryService
 
     /// Public initializer for dependency injection
     public init(githubClient: GitHubClient, repositoryService: RepositoryService = RepositoryService()) {
         self.githubClient = githubClient
+        self.githubService = nil
+        self.repositoryService = repositoryService
+    }
+
+    /// Initializer accepting a GitHubPRServiceProtocol for service-based GitHub operations
+    public init(githubService: any GitHubPRServiceProtocol, repositoryService: RepositoryService = RepositoryService()) {
+        self.githubClient = nil
+        self.githubService = githubService
         self.repositoryService = repositoryService
     }
 
@@ -69,8 +80,12 @@ public struct GitHubOperations: GitHubOperationsProtocol {
     /// - Parameter method: HTTP method (GET, POST, etc.)
     /// - Returns: Parsed JSON response
     /// - Throws: GitHubAPIError if API call fails
+    @available(*, deprecated, message: "Use GitHubPRServiceProtocol methods instead")
     public func ghApiCall(endpoint: String, method: String = "GET") async throws -> [String: Any] {
-        let output = try await githubClient.apiCall(endpoint: endpoint, method: method)
+        guard let client = githubClient else {
+            throw GitHubAPIError("No GitHub client configured")
+        }
+        let output = try await client.apiCall(endpoint: endpoint, method: method)
 
         if output.isEmpty {
             return [:]
@@ -376,9 +391,28 @@ public struct GitHubOperations: GitHubOperationsProtocol {
 
     // MARK: - Protocol Implementation
 
-    /// Instance method that delegates to the static method for protocol conformance
     public func getFileFromBranch(repo: String, branch: String, filePath: String) throws -> String? {
-        return try GitHubOperations.getFileFromBranch(repo: repo, branch: branch, filePath: filePath)
+        if let service = githubService {
+            var fileResult: String?
+            var fetchError: Error?
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                do {
+                    fileResult = try await service.fileContent(path: filePath, ref: branch)
+                } catch let e {
+                    let desc = e.localizedDescription
+                    if !desc.contains("404") && !desc.lowercased().contains("not found") {
+                        fetchError = e
+                    }
+                }
+                semaphore.signal()
+            }
+            semaphore.wait()
+            if let fetchError { throw fetchError }
+            return fileResult
+        } else {
+            return try GitHubOperations.getFileFromBranch(repo: repo, branch: branch, filePath: filePath)
+        }
     }
 
     /// Check if a file exists in a specific branch
@@ -794,17 +828,24 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         _ = try runGhCommand(args: args)
     }
 
-    /// Post a comment on a pull request (async version using GitHubClient)
+    /// Post a comment on a pull request (async version)
     ///
     /// - Parameter repo: GitHub repository (owner/name)
     /// - Parameter prNumber: Pull request number to comment on
     /// - Parameter body: Comment text to post
-    /// - Throws: GitHubAPIError if gh command fails
+    /// - Throws: GitHubAPIError if the operation fails
     public func postPRCommentAsync(repo: String, prNumber: Int, body: String) async throws {
-        do {
-            _ = try await githubClient.commentOnPullRequest(repo: repo, prNumber: prNumber, body: body)
-        } catch {
-            throw GitHubAPIError("Failed to post PR comment: \(error.localizedDescription)")
+        if let service = githubService {
+            try await service.postIssueComment(prNumber: prNumber, body: body)
+        } else {
+            guard let client = githubClient else {
+                throw GitHubAPIError("No GitHub client or service configured")
+            }
+            do {
+                _ = try await client.commentOnPullRequest(repo: repo, prNumber: prNumber, body: body)
+            } catch {
+                throw GitHubAPIError("Failed to post PR comment: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -835,20 +876,25 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         }
     }
 
-    /// Delete a remote branch (async version using GitHubClient)
+    /// Delete a remote branch (async version)
     ///
     /// - Parameter repo: GitHub repository (owner/name)
     /// - Parameter branch: Branch name to delete
-    /// - Throws: GitHubAPIError if gh command fails
+    /// - Throws: GitHubAPIError if the operation fails
     public func deleteBranchAsync(repo: String, branch: String) async throws {
-        let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
-
-        do {
-            _ = try await githubClient.apiCall(endpoint: endpoint, method: "DELETE")
-        } catch {
-            // Ignore 404 errors (branch already deleted)
-            if !error.localizedDescription.contains("404") {
-                throw GitHubAPIError("Failed to delete branch: \(error.localizedDescription)")
+        if let service = githubService {
+            try await service.deleteBranch(branch: branch)
+        } else {
+            guard let client = githubClient else {
+                throw GitHubAPIError("No GitHub client or service configured")
+            }
+            let endpoint = "/repos/\(repo)/git/refs/heads/\(branch)"
+            do {
+                _ = try await client.apiCall(endpoint: endpoint, method: "DELETE")
+            } catch {
+                if !error.localizedDescription.contains("404") {
+                    throw GitHubAPIError("Failed to delete branch: \(error.localizedDescription)")
+                }
             }
         }
     }
@@ -900,35 +946,35 @@ public struct GitHubOperations: GitHubOperationsProtocol {
         }
     }
 
-    /// List remote branches, optionally filtered by prefix (async version using GitHubClient)
+    /// List remote branches, optionally filtered by prefix (async version)
     ///
     /// - Parameter repo: GitHub repository (owner/name)
     /// - Parameter prefix: Optional prefix to filter branches (e.g., "claude-chain-")
     /// - Returns: Array of branch names
-    /// - Throws: GitHubAPIError if gh command fails
+    /// - Throws: GitHubAPIError if the operation fails
     public func listBranchesAsync(repo: String, prefix: String? = nil) async throws -> [String] {
-        let endpoint = "/repos/\(repo)/branches?per_page=100"
-
-        do {
-            let output = try await githubClient.apiCall(endpoint: endpoint, method: "GET")
-
-            guard !output.isEmpty,
-                  let data = output.data(using: .utf8),
-                  let branchArray = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] else {
-                return []
+        var allBranches: [String]
+        if let service = githubService {
+            allBranches = try await service.listBranches(ttl: 0)
+        } else {
+            guard let client = githubClient else {
+                throw GitHubAPIError("No GitHub client or service configured")
             }
-
-            let branches = branchArray.compactMap { $0["name"] as? String }
-
-            // Filter by prefix if specified
-            if let prefix = prefix {
-                return branches.filter { $0.hasPrefix(prefix) }
+            do {
+                let output = try await client.apiCall(endpoint: "/repos/\(repo)/branches?per_page=100", method: "GET")
+                guard !output.isEmpty,
+                      let data = output.data(using: .utf8),
+                      let branchArray = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] else {
+                    return []
+                }
+                allBranches = branchArray.compactMap { $0["name"] as? String }
+            } catch {
+                throw GitHubAPIError("Failed to list branches: \(error.localizedDescription)")
             }
-
-            return branches
-
-        } catch {
-            throw GitHubAPIError("Failed to list branches: \(error.localizedDescription)")
         }
+        if let prefix {
+            return allBranches.filter { $0.hasPrefix(prefix) }
+        }
+        return allBranches
     }
 }
