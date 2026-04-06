@@ -128,6 +128,7 @@ let package = Package(
                 "EvalSDK",
                 "EvalService",
                 "GitHubService",
+                "GitSDK",
                 "LoggingSDK",
                 "PlanFeature",
                 "PlanService",

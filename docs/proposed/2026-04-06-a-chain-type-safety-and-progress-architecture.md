@@ -63,7 +63,10 @@ return ChainProject(merging: local, into: remote)
 
 ---
 
-## - [ ] Phase 2: `setenv` → injected `GitClient` environment
+## - [x] Phase 2: `setenv` → injected `GitClient` environment
+
+**Skills used**: `ai-dev-tools-architecture`, `ai-dev-tools-code-quality`
+**Principles applied**: Removed `setenv` + `CredentialResolver` from three feature-layer use cases (`ExecuteSweepChainUseCase`, `ExecuteSpecChainUseCase`, `FinalizeStagedTaskUseCase`). Added `git: GitClient = GitClient()` to the two use cases that didn't already have it; the third already had it. Added `makeGitClient()` to `ClaudeChainModel` (Apps layer) which resolves the credential once, calls `setenv` for subprocess inheritance, and returns a `GitClient(environment:)`. Removed the unused `import CredentialService` from `RunSpecChainTaskUseCase`. Added `GitSDK` to `AIDevToolsKitMac` Package.swift dependencies.
 
 **Skills to read**: `ai-dev-tools-architecture`, `ai-dev-tools-code-quality`
 

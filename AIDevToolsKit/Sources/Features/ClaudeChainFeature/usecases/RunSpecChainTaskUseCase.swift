@@ -1,7 +1,6 @@
 import AIOutputSDK
 import ClaudeChainSDK
 import ClaudeChainService
-import CredentialService
 import Foundation
 import GitHubService
 import GitSDK

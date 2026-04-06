@@ -1,7 +1,6 @@
 import AIOutputSDK
 import ClaudeChainSDK
 import ClaudeChainService
-import CredentialService
 import Foundation
 import GitHubService
 import GitSDK
@@ -70,16 +69,6 @@ public struct FinalizeStagedTaskUseCase: UseCase {
         options: Options,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> Result {
-        if let githubAccount = options.githubAccount {
-            let resolver = CredentialResolver(
-                settingsService: SecureSettingsService(),
-                githubAccount: githubAccount
-            )
-            if case .token(let token) = resolver.getGitHubAuth() {
-                setenv("GH_TOKEN", token, 1)
-            }
-        }
-
         let repoDir = options.repoPath.path
         let chainDir = options.repoPath.appendingPathComponent("claude-chain").path
         let project = Project(

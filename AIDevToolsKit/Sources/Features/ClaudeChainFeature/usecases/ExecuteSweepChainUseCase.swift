@@ -1,7 +1,7 @@
 import AIOutputSDK
 import ClaudeChainService
-import CredentialService
 import Foundation
+import GitSDK
 import SweepFeature
 import UseCaseSDK
 
@@ -24,27 +24,19 @@ public struct ExecuteSweepChainUseCase: UseCase {
     public typealias Progress = RunSweepBatchUseCase.Progress
 
     private let client: any AIClient
+    private let git: GitClient
 
-    public init(client: any AIClient) {
+    public init(client: any AIClient, git: GitClient = GitClient()) {
         self.client = client
+        self.git = git
     }
 
     public func run(
         options: Options,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> ExecuteSpecChainUseCase.Result {
-        if let account = options.githubAccount {
-            let resolver = CredentialResolver(
-                settingsService: SecureSettingsService(),
-                githubAccount: account
-            )
-            if case .token(let token) = resolver.getGitHubAuth() {
-                setenv("GH_TOKEN", token, 1)
-            }
-        }
-
         let taskDirectory = options.repoPath.appendingPathComponent(options.project.basePath)
-        let useCase = RunSweepBatchUseCase(client: client)
+        let useCase = RunSweepBatchUseCase(client: client, git: git)
         let sweepOptions = RunSweepBatchUseCase.Options(
             taskDirectory: taskDirectory,
             repoPath: options.repoPath,

@@ -1,9 +1,11 @@
 import AIOutputSDK
 import ClaudeChainFeature
 import ClaudeChainService
+import CredentialService
 import DataPathsService
 import Foundation
 import GitHubService
+import GitSDK
 import Logging
 import PipelineService
 import PRRadarCLIService
@@ -119,7 +121,6 @@ final class ClaudeChainModel {
                 return
             }
             let listChainsUseCase = ListChainsUseCase(client: activeClient, repoPath: repoPath, prService: prService)
-            var showedCachedData = false
             do {
                 for try await result in listChainsUseCase.stream() {
                     lastLoadedProjects = result.projects
@@ -128,15 +129,9 @@ final class ClaudeChainModel {
                     for project in result.projects {
                         loadChainDetail(project: project)
                     }
-                    showedCachedData = true
                 }
             } catch {
-                if !showedCachedData {
-                    state = .error(error)
-                }
-                // Swallowing intentionally when showedCachedData is true: stale results are
-                // already visible; replacing them with an error would discard data the user
-                // can act on. A reload will retry on the next call to loadChains.
+                state = .error(error)
             }
         }
     }
@@ -204,7 +199,8 @@ final class ClaudeChainModel {
         state = .executing(progress: Self.sweepBatchProgress())
 
         Task {
-            let useCase = ExecuteSweepChainUseCase(client: activeClient)
+            let git = makeGitClient()
+            let useCase = ExecuteSweepChainUseCase(client: activeClient, git: git)
             let options = ExecuteSweepChainUseCase.Options(
                 project: project,
                 repoPath: repoPath,
@@ -402,6 +398,21 @@ final class ClaudeChainModel {
     }
 
     // MARK: - Private
+
+    private func makeGitClient() -> GitClient {
+        guard let account = currentCredentialAccount else {
+            return GitClient()
+        }
+        let resolver = CredentialResolver(
+            settingsService: SecureSettingsService(),
+            githubAccount: account
+        )
+        guard case .token(let token) = resolver.getGitHubAuth() else {
+            return GitClient()
+        }
+        setenv("GH_TOKEN", token, 1)
+        return GitClient(environment: ["GH_TOKEN": token])
+    }
 
     private func makeOrGetGitHubPRService(repoPath: URL) async throws -> any GitHubPRServiceProtocol {
         if let service = gitHubPRService { return service }

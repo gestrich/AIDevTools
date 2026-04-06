@@ -1,8 +1,8 @@
 import AIOutputSDK
 import ClaudeChainSDK
 import ClaudeChainService
-import CredentialService
 import Foundation
+import GitSDK
 import UseCaseSDK
 
 public struct ExecuteSpecChainUseCase: UseCase {
@@ -59,26 +59,17 @@ public struct ExecuteSpecChainUseCase: UseCase {
     public typealias Progress = RunSpecChainTaskUseCase.Progress
 
     private let client: any AIClient
+    private let git: GitClient
 
-    public init(client: any AIClient) {
+    public init(client: any AIClient, git: GitClient = GitClient()) {
         self.client = client
+        self.git = git
     }
 
     public func run(
         options: Options,
         onProgress: (@Sendable (Progress) -> Void)? = nil
     ) async throws -> Result {
-        // Resolve GH_TOKEN from credential system when a github account is configured
-        if let githubAccount = options.githubAccount {
-            let resolver = CredentialResolver(
-                settingsService: SecureSettingsService(),
-                githubAccount: githubAccount
-            )
-            if case .token(let token) = resolver.getGitHubAuth() {
-                setenv("GH_TOKEN", token, 1)
-            }
-        }
-
         let innerOptions = RunSpecChainTaskUseCase.Options(
             repoPath: options.repoPath,
             projectName: options.projectName,
@@ -87,7 +78,7 @@ public struct ExecuteSpecChainUseCase: UseCase {
             stagingOnly: options.stagingOnly
         )
 
-        let useCase = RunSpecChainTaskUseCase(client: client)
+        let useCase = RunSpecChainTaskUseCase(client: client, git: git)
         let innerResult = try await useCase.run(options: innerOptions, onProgress: onProgress)
 
         return Result(
