@@ -180,9 +180,10 @@ public static func make(token: String, owner: String, repo: String) -> GitHubPRS
 // builds OctokitClient → GitHubAPIService → GitHubPRService
 ```
 
-## - [ ] Phase 6: Enforce on Phase 5
+## - [x] Phase 6: Enforce on Phase 5
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-code-quality`
+**Principles applied**: Extracted duplicated `sanitise` closure in `GitHubPRCacheService` (introduced by Phase 5's `workflowRunsURL`) into a shared private method used by `branchHeadURL`, `directoryURL`, and `workflowRunsURL`. Replaced `?? temporaryDirectory` fallback in `GitHubServiceFactory.make` with a `guard`/`preconditionFailure` since app support directory unavailability is a genuine programming error, not a recoverable condition. Build confirmed clean.
 
 Run `ai-dev-tools-enforce` on all files changed in Phase 5.
 

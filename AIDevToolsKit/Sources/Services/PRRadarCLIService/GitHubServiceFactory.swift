@@ -77,10 +77,10 @@ public struct GitHubServiceFactory: Sendable {
         let octokitClient = OctokitClient(token: token)
         let apiService = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
         let normalizedSlug = "\(owner)-\(repo)"
-        let cacheURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first?
-            .appendingPathComponent("AIDevToolsKit/github/\(normalizedSlug)")
-            ?? FileManager.default.temporaryDirectory.appendingPathComponent("github/\(normalizedSlug)")
+        guard let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            preconditionFailure("Application Support directory unavailable")
+        }
+        let cacheURL = appSupportURL.appendingPathComponent("AIDevToolsKit/github/\(normalizedSlug)")
         return GitHubPRService(rootURL: cacheURL, apiClient: apiService)
     }
 

@@ -198,11 +198,14 @@ actor GitHubPRCacheService {
         rootURL.appendingPathComponent("branches")
     }
 
-    private func branchHeadURL(branch: String) -> URL {
-        let sanitised = branch.replacingOccurrences(of: "/", with: "-")
+    private func sanitise(_ string: String) -> String {
+        string.replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .replacingOccurrences(of: " ", with: "-")
-        return branchesDirectory().appendingPathComponent("\(sanitised).json")
+    }
+
+    private func branchHeadURL(branch: String) -> URL {
+        branchesDirectory().appendingPathComponent("\(sanitise(branch)).json")
     }
 
     private func treesDirectory() -> URL {
@@ -218,12 +221,7 @@ actor GitHubPRCacheService {
     }
 
     private func directoryURL(path: String, ref: String) -> URL {
-        let sanitise: (String) -> String = {
-            $0.replacingOccurrences(of: "/", with: "-")
-                .replacingOccurrences(of: ":", with: "-")
-                .replacingOccurrences(of: " ", with: "-")
-        }
-        return dirsDirectory().appendingPathComponent("\(sanitise(ref))-\(sanitise(path)).json")
+        dirsDirectory().appendingPathComponent("\(sanitise(ref))-\(sanitise(path)).json")
     }
 
     private func workflowsDirectory() -> URL {
@@ -231,11 +229,6 @@ actor GitHubPRCacheService {
     }
 
     private func workflowRunsURL(workflow: String, branch: String?, limit: Int) -> URL {
-        let sanitise: (String) -> String = {
-            $0.replacingOccurrences(of: "/", with: "-")
-                .replacingOccurrences(of: ":", with: "-")
-                .replacingOccurrences(of: " ", with: "-")
-        }
         let branchKey = branch.map { "-\(sanitise($0))" } ?? ""
         return workflowsDirectory().appendingPathComponent("\(sanitise(workflow))\(branchKey)-\(limit).json")
     }
