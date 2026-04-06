@@ -170,6 +170,19 @@ public struct ReviewCommentData: Sendable {
     public let userId: Int?
 }
 
+public struct CreatedPullRequest: Sendable {
+    public let number: Int
+    public let htmlURL: String
+}
+
+public struct WorkflowRun: Sendable {
+    public let id: Int
+    public let status: String
+    public let conclusion: String?
+    public let headBranch: String?
+    public let htmlURL: String?
+}
+
 private enum GitHubPath {
     static func repository(_ owner: String, _ repository: String) -> String {
         "repos/\(owner)/\(repository)"
@@ -236,6 +249,43 @@ private enum GitHubPath {
     static func user(login: String) -> String {
         "users/\(login)"
     }
+
+    static func branchRef(_ owner: String, _ repository: String, branch: String) -> String {
+        let encoded = branch.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? branch
+        return "\(self.repository(owner, repository))/git/refs/heads/\(encoded)"
+    }
+
+    static func branches(_ owner: String, _ repository: String) -> String {
+        "\(self.repository(owner, repository))/branches"
+    }
+
+    static func issueAssignees(_ owner: String, _ repository: String, number: Int) -> String {
+        "\(self.repository(owner, repository))/issues/\(number)/assignees"
+    }
+
+    static func issueLabels(_ owner: String, _ repository: String, number: Int) -> String {
+        "\(self.repository(owner, repository))/issues/\(number)/labels"
+    }
+
+    static func labels(_ owner: String, _ repository: String) -> String {
+        "\(self.repository(owner, repository))/labels"
+    }
+
+    static func pullRequestMerge(_ owner: String, _ repository: String, number: Int) -> String {
+        "\(pullRequest(owner, repository, number: number))/merge"
+    }
+
+    static func pullRequestReviewers(_ owner: String, _ repository: String, number: Int) -> String {
+        "\(pullRequest(owner, repository, number: number))/requested_reviewers"
+    }
+
+    static func workflowDispatch(_ owner: String, _ repository: String, workflowId: String) -> String {
+        "\(self.repository(owner, repository))/actions/workflows/\(workflowId)/dispatches"
+    }
+
+    static func workflowRuns(_ owner: String, _ repository: String) -> String {
+        "\(self.repository(owner, repository))/actions/runs"
+    }
 }
 
 public struct OctokitClient: Sendable {
@@ -250,6 +300,19 @@ public struct OctokitClient: Sendable {
     public init(token: String, enterpriseURL: String) {
         self.token = token
         self.apiEndpoint = enterpriseURL
+    }
+
+    public static func fromEnvironment() -> OctokitClient? {
+        let token = ProcessInfo.processInfo.environment["GH_TOKEN"]
+            ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
+        guard let token else { return nil }
+        return OctokitClient(token: token)
+    }
+
+    public func parseRepoSlug(_ slug: String) -> (owner: String, repository: String)? {
+        let parts = slug.split(separator: "/", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        return (owner: String(parts[0]), repository: String(parts[1]))
     }
 
     private var baseURL: String {
@@ -1045,7 +1108,466 @@ public struct OctokitClient: Sendable {
         try await getJSON(path: GitHubPath.user(login: login))
     }
 
+    // MARK: - Write / Mutation Operations
+
+    public func createPullRequest(
+        owner: String,
+        repository: String,
+        title: String,
+        body: String,
+        head: String,
+        base: String,
+        draft: Bool
+    ) async throws -> CreatedPullRequest {
+        let request = try makeMutationRequest(
+            path: GitHubPath.pullRequests(owner, repository),
+            method: "POST",
+            payload: [
+                "title": title,
+                "body": body,
+                "head": head,
+                "base": base,
+                "draft": draft
+            ]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 201:
+            struct Response: Decodable {
+                let number: Int
+                let htmlUrl: String
+                enum CodingKeys: String, CodingKey {
+                    case number
+                    case htmlUrl = "html_url"
+                }
+            }
+            let decoded = try JSONDecoder().decode(Response.self, from: data)
+            return CreatedPullRequest(number: decoded.number, htmlURL: decoded.htmlUrl)
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 422:
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw OctokitClientError.requestFailed("already_exists: \(body)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func updatePullRequestState(
+        owner: String,
+        repository: String,
+        number: Int,
+        state: String
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.pullRequest(owner, repository, number: number),
+            method: "PATCH",
+            payload: ["state": state]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Pull request \(number)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func mergePullRequest(
+        owner: String,
+        repository: String,
+        number: Int,
+        mergeMethod: String
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.pullRequestMerge(owner, repository, number: number),
+            method: "PUT",
+            payload: ["merge_method": mergeMethod]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Pull request \(number)")
+        case 405:
+            throw OctokitClientError.requestFailed("Pull request \(number) is not mergeable")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func addAssignees(
+        owner: String,
+        repository: String,
+        issueNumber: Int,
+        assignees: [String]
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.issueAssignees(owner, repository, number: issueNumber),
+            method: "POST",
+            payload: ["assignees": assignees]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 201:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Issue \(issueNumber)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func addLabels(
+        owner: String,
+        repository: String,
+        issueNumber: Int,
+        labels: [String]
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.issueLabels(owner, repository, number: issueNumber),
+            method: "POST",
+            payload: ["labels": labels]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Issue \(issueNumber)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func createLabel(
+        owner: String,
+        repository: String,
+        name: String,
+        color: String,
+        description: String
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.labels(owner, repository),
+            method: "POST",
+            payload: [
+                "name": name,
+                "color": color,
+                "description": description
+            ]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 201, 422:
+            // 422 means label already exists — treat as success
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func requestReviewers(
+        owner: String,
+        repository: String,
+        number: Int,
+        reviewers: [String]
+    ) async throws {
+        let request = try makeMutationRequest(
+            path: GitHubPath.pullRequestReviewers(owner, repository, number: number),
+            method: "POST",
+            payload: ["reviewers": reviewers]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 201:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Pull request \(number)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func deleteBranchRef(owner: String, repository: String, branch: String) async throws {
+        try await deleteResource(path: GitHubPath.branchRef(owner, repository, branch: branch))
+    }
+
+    public func listBranches(owner: String, repository: String) async throws -> [String] {
+        let request = makeRequest(
+            path: GitHubPath.branches(owner, repository),
+            queryItems: [URLQueryItem(name: "per_page", value: "100")]
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            struct BranchEntry: Decodable {
+                let name: String
+            }
+            let entries = try JSONDecoder().decode([BranchEntry].self, from: data)
+            return entries.map(\.name)
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func triggerWorkflowDispatch(
+        owner: String,
+        repository: String,
+        workflowId: String,
+        ref: String,
+        inputs: [String: String]
+    ) async throws {
+        var payload: [String: Any] = ["ref": ref]
+        if !inputs.isEmpty {
+            payload["inputs"] = inputs
+        }
+        let request = try makeMutationRequest(
+            path: GitHubPath.workflowDispatch(owner, repository, workflowId: workflowId),
+            method: "POST",
+            payload: payload
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 204:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Workflow \(workflowId)")
+        case 422:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("Unprocessable: \(errorBody)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func listWorkflowRuns(
+        owner: String,
+        repository: String,
+        workflow: String?,
+        branch: String?,
+        limit: Int
+    ) async throws -> [WorkflowRun] {
+        var queryItems = [URLQueryItem(name: "per_page", value: String(min(limit, 100)))]
+        if let branch { queryItems.append(URLQueryItem(name: "branch", value: branch)) }
+
+        let request = makeRequest(
+            path: GitHubPath.workflowRuns(owner, repository),
+            queryItems: queryItems
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            struct RunsResponse: Decodable {
+                let workflowRuns: [RunEntry]
+
+                struct RunEntry: Decodable {
+                    let id: Int
+                    let status: String
+                    let conclusion: String?
+                    let headBranch: String?
+                    let htmlUrl: String?
+
+                    enum CodingKeys: String, CodingKey {
+                        case id, status, conclusion
+                        case headBranch = "head_branch"
+                        case htmlUrl = "html_url"
+                    }
+                }
+
+                enum CodingKeys: String, CodingKey {
+                    case workflowRuns = "workflow_runs"
+                }
+            }
+            let decoded = try JSONDecoder().decode(RunsResponse.self, from: data)
+            let runs = decoded.workflowRuns.map {
+                WorkflowRun(
+                    id: $0.id,
+                    status: $0.status,
+                    conclusion: $0.conclusion,
+                    headBranch: $0.headBranch,
+                    htmlURL: $0.htmlUrl
+                )
+            }
+            guard let workflow else { return runs }
+            return runs.filter { $0.headBranch == workflow || $0.status == workflow }
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
+    public func pullRequestByHeadBranch(
+        owner: String,
+        repository: String,
+        branch: String
+    ) async throws -> CreatedPullRequest? {
+        let queryItems = [
+            URLQueryItem(name: "head", value: "\(owner):\(branch)"),
+            URLQueryItem(name: "state", value: "open")
+        ]
+        let request = makeRequest(
+            path: GitHubPath.pullRequests(owner, repository),
+            queryItems: queryItems
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            struct PREntry: Decodable {
+                let number: Int
+                let htmlUrl: String
+                enum CodingKeys: String, CodingKey {
+                    case number
+                    case htmlUrl = "html_url"
+                }
+            }
+            let prs = try JSONDecoder().decode([PREntry].self, from: data)
+            guard let first = prs.first else { return nil }
+            return CreatedPullRequest(number: first.number, htmlURL: first.htmlUrl)
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        case 404:
+            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
+        default:
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+        }
+    }
+
     // MARK: - Private
+
+    private func deleteResource(path: String) async throws {
+        var request = makeRequest(path: path)
+        request.httpMethod = "DELETE"
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 204, 404:
+            return
+        case 401:
+            throw OctokitClientError.authenticationFailed
+        case 403:
+            throw OctokitClientError.rateLimitExceeded
+        default:
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+        }
+    }
 
     /// All API calls use Bearer auth via direct URLSession requests. OctoKit's router
     /// sends `Authorization: Basic <token>` which GitHub Actions' GITHUB_TOKEN rejects

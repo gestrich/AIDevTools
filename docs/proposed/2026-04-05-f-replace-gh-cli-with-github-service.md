@@ -37,7 +37,10 @@ GitHubPRServiceProtocol  (GitHubService)     ← chain/sweep target interface
 
 ---
 
-## - [ ] Phase 1: Extend `OctokitClient` with Write/Mutation Methods
+## - [x] Phase 1: Extend `OctokitClient` with Write/Mutation Methods
+
+**Skills used**: `swift-architecture`, `ai-dev-tools-architecture`
+**Principles applied**: All new methods follow the existing `makeMutationRequest` / `URLSession.shared.data(for:)` / `switch httpResponse.statusCode` pattern. New `GitHubPath` entries added alphabetically. `CreatedPullRequest` and `WorkflowRun` added as `public Sendable` structs (SDK layer convention). `fromEnvironment()` reads `GH_TOKEN` then `GITHUB_TOKEN`. `deleteResource` tolerates 204/404 for idempotent branch deletion. `createLabel` silently succeeds on 422 (already exists).
 
 **Skills to read**: `swift-architecture`, `ai-dev-tools-architecture`
 
