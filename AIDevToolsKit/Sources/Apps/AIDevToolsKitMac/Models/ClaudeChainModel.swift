@@ -184,7 +184,6 @@ final class ClaudeChainModel {
                 state = .completed(result: result)
                 refreshChainDetail(project: project)
             } catch {
-                logger.error("executeChain: failed: \(error)")
                 state = .error(error)
             }
         }

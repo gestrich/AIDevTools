@@ -204,7 +204,7 @@ public struct RunSpecChainTaskUseCase: UseCase {
 
         // Best-effort fetch so spec.md reflects the latest remote state; continue on failure
         logger.debug("prepare: fetching origin/\(baseBranch)")
-        if let _ = try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir) {
+        if (try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)) != nil {
             logger.debug("prepare: fetch complete, checking out FETCH_HEAD")
             try? await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
         } else {

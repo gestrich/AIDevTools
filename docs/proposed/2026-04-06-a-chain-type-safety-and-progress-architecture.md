@@ -211,7 +211,10 @@ func executeChain(project: ChainProject, ...) {
 
 ---
 
-## - [ ] Phase 6: Enforce all changed files
+## - [x] Phase 6: Enforce all changed files
+
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-architecture`, `ai-dev-tools-code-quality`, `ai-dev-tools-code-organization`, `ai-dev-tools-build-quality`, `ai-dev-tools-swift-testing`
+**Principles applied**: Removed redundant `logger.error` alongside `state = .error(error)` in `ClaudeChainModel.executeChain` (architecture: Apps layer state update is sufficient). Extracted duplicated credential-resolution block from `buildPipeline`/`buildFinalizePipeline` in `ClaudeChainService` into a single private `resolveGitHubEnvironment` helper (code quality: duplicated logic). Moved `SweepBatchStats` public struct from the bottom of `SweepClaudeChainSource.swift` into its own `SweepBatchStats.swift` file (code organization: one file per public type). Fixed `if let _ = try? await` to `if (try? await ...) != nil` in `RunSpecChainTaskUseCase` (idiomatic Swift). Build confirmed clean after all changes.
 
 **Skills to read**: `ai-dev-tools-enforce`
 

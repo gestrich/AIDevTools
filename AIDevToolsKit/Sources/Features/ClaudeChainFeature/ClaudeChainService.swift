@@ -158,6 +158,15 @@ public struct ClaudeChainService {
         return try await localSource.listChains(useCache: false)
     }
 
+    private func resolveGitHubEnvironment(account: String?) -> [String: String]? {
+        guard let account else { return nil }
+        let resolver = CredentialResolver(settingsService: SecureSettingsService(), githubAccount: account)
+        guard case .token(let token) = resolver.getGitHubAuth() else { return nil }
+        var env = ProcessInfo.processInfo.environment
+        env["GH_TOKEN"] = token
+        return env
+    }
+
     private func findLocalProject(named name: String, repoPath: URL) async throws -> ChainProject {
         let source = localSource ?? LocalChainProjectSource(repoPath: repoPath)
         let result = try await source.listChains(useCache: false)
@@ -186,18 +195,7 @@ public struct ClaudeChainService {
         try await git.checkout(ref: branchName, forceCreate: true, workingDirectory: repoDir)
 
         // Resolve credentials
-        var environment: [String: String]?
-        if let githubAccount = options.githubAccount {
-            let resolver = CredentialResolver(
-                settingsService: SecureSettingsService(),
-                githubAccount: githubAccount
-            )
-            if case .token(let token) = resolver.getGitHubAuth() {
-                var env = ProcessInfo.processInfo.environment
-                env["GH_TOKEN"] = token
-                environment = env
-            }
-        }
+        let environment = resolveGitHubEnvironment(account: options.githubAccount)
 
         // Load spec content for instruction enrichment
         let spec = try? repository.loadLocalSpec(project: project)
@@ -295,18 +293,7 @@ public struct ClaudeChainService {
         let projectConfig = try? repository.loadLocalConfiguration(project: project)
 
         // Resolve credentials
-        var environment: [String: String]?
-        if let githubAccount = options.githubAccount {
-            let resolver = CredentialResolver(
-                settingsService: SecureSettingsService(),
-                githubAccount: githubAccount
-            )
-            if case .token(let token) = resolver.getGitHubAuth() {
-                var env = ProcessInfo.processInfo.environment
-                env["GH_TOKEN"] = token
-                environment = env
-            }
-        }
+        let environment = resolveGitHubEnvironment(account: options.githubAccount)
 
         // Checkout existing staged branch
         if let branchName = options.branchName {
