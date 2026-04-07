@@ -23,3 +23,8 @@ public enum ServicePath {
         }
     }
 }
+
+public extension ServicePath {
+    static var claudeChainWorktrees: ServicePath { .worktrees(feature: "claude-chain") }
+    static var planWorktrees: ServicePath { .worktrees(feature: "plan") }
+}

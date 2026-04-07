@@ -291,7 +291,7 @@ final class PlanModel {
         let stem = plan.planURL.deletingPathExtension().lastPathComponent
         let identifier = hashString(stem)
         let branchName = "plan-\(identifier)"
-        guard let worktreesDir = try? service.path(for: .worktrees(feature: "plan")) else { return nil }
+        guard let worktreesDir = try? service.path(for: .planWorktrees) else { return nil }
         let destinationPath = worktreesDir.appendingPathComponent(branchName).path
         return WorktreeOptions(
             branchName: branchName,

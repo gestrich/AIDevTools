@@ -317,7 +317,7 @@ final class ClaudeChainModel {
         guard let task = nextTask else { return nil }
         let taskHash = TaskService.generateTaskHash(description: task.description)
         let branchName = PRService.formatBranchName(projectName: project.name, taskHash: taskHash)
-        guard let worktreesDir = try? dataPathsService.path(for: .worktrees(feature: "claude-chain")) else { return nil }
+        guard let worktreesDir = try? dataPathsService.path(for: .claudeChainWorktrees) else { return nil }
         let destinationPath = worktreesDir.appendingPathComponent(branchName).path
         return WorktreeOptions(
             branchName: branchName,
