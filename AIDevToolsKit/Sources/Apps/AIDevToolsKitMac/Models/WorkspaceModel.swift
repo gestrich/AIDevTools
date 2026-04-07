@@ -11,13 +11,13 @@ final class WorkspaceModel {
         case idle
         case loading
         case loaded
+        case loadingSkills
         case error(Error)
     }
 
     private(set) var repositories: [RepositoryConfiguration] = []
     private(set) var selectedRepository: RepositoryConfiguration?
     private(set) var skills: [SkillInfo] = []
-    private(set) var isLoadingSkills: Bool = false
     private(set) var state: State = .idle
 
     private let dataPath: URL
@@ -75,18 +75,18 @@ final class WorkspaceModel {
     func selectRepository(_ repo: RepositoryConfiguration) async {
         selectedRepository = repo
         skills = []
-        isLoadingSkills = true
+        state = .loadingSkills
         Task { await worktreeModel?.load(repoPath: repo.path.path(percentEncoded: false)) }
         do {
             let loaded = try await loadSkills.run(options: repo)
             guard self.selectedRepository?.id == repo.id else { return }
             self.skills = loaded
+            self.state = .loaded
         } catch {
             guard self.selectedRepository?.id == repo.id else { return }
             self.skills = []
             self.state = .error(error)
         }
-        self.isLoadingSkills = false
     }
 
     func addRepository(
@@ -141,7 +141,7 @@ final class WorkspaceModel {
             } else {
                 repo.eval = nil
             }
-            try repositoryStore.update(repo)
+            try updateRepository.run(repo)
             load()
         } catch {
             state = .error(error)
@@ -183,7 +183,7 @@ final class WorkspaceModel {
         do {
             guard var repo = try repositoryStore.find(byID: repoID) else { return }
             repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath)
-            try repositoryStore.update(repo)
+            try updateRepository.run(repo)
         } catch {
             state = .error(error)
         }
@@ -208,7 +208,7 @@ final class WorkspaceModel {
             } else {
                 repo.planner = nil
             }
-            try repositoryStore.update(repo)
+            try updateRepository.run(repo)
             load()
         } catch {
             state = .error(error)
