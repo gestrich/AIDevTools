@@ -32,6 +32,12 @@ public struct LogReaderService: Sendable {
         return Array(all[lastStartIndex...])
     }
 
+    public func clearLogs() throws {
+        let handle = try FileHandle(forWritingTo: fileURL)
+        try handle.truncate(atOffset: 0)
+        try handle.close()
+    }
+
     public func readRuns(marker: String) throws -> [[LogEntry]] {
         let all = try readAll()
         var runs: [[LogEntry]] = []

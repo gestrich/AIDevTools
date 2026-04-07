@@ -1,20 +1,20 @@
 import Foundation
 import LoggingSDK
+import LogsFeature
 import Observation
 
-struct LogItem: Identifiable {
-    let id: Int
-    let entry: LogEntry
-}
-
-@Observable
 @MainActor
+@Observable
 final class LogsModel {
-    private(set) var items: [LogItem] = []
+    private(set) var state: ModelState = .loading
     var searchText: String = ""
-    private(set) var isLoading = false
     private var hasLoaded = false
     private var nextID = 0
+
+    var items: [LogItem] {
+        if case .streaming(let items) = state { return items }
+        return []
+    }
 
     var filteredItems: [LogItem] {
         guard !searchText.isEmpty else { return items }
@@ -30,26 +30,26 @@ final class LogsModel {
     func load() async {
         guard !hasLoaded else { return }
         hasLoaded = true
-
-        isLoading = true
-        let reader = LogReaderService()
-        let existing = (try? reader.readAll()) ?? []
-        append(existing)
-        isLoading = false
-
-        for await newEntries in LogFileWatcher().stream() {
-            append(newEntries)
+        state = .loading
+        do {
+            for try await entries in StreamLogsUseCase().stream() {
+                append(entries)
+            }
+        } catch {
+            state = .error(error)
         }
     }
 
     func deleteLogs() {
         // Truncate rather than delete so the DispatchSource in LogFileWatcher
         // keeps its file descriptor and streaming resumes for new entries.
-        if let handle = try? FileHandle(forWritingTo: AIDevToolsLogging.defaultLogFileURL) {
-            try? handle.truncate(atOffset: 0)
-            try? handle.close()
+        do {
+            try LogReaderService().clearLogs()
+        } catch {
+            state = .error(error)
+            return
         }
-        items = []
+        state = .streaming([])
         nextID = 0
     }
 
@@ -58,6 +58,12 @@ final class LogsModel {
             LogItem(id: nextID + offset, entry: entry)
         }
         nextID += entries.count
-        items.append(contentsOf: newItems)
+        state = .streaming(items + newItems)
+    }
+
+    enum ModelState {
+        case error(Error)
+        case loading
+        case streaming([LogItem])
     }
 }

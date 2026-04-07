@@ -29,9 +29,16 @@ struct DiagnosticsView: View {
 
             Divider()
 
-            if model.isLoading {
+            if case .loading = model.state {
                 ProgressView("Loading logs…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if case .error(let error) = model.state {
+                ContentUnavailableView(
+                    "Failed to Load Logs",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error.localizedDescription)
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.filteredItems.isEmpty {
                 ContentUnavailableView(
                     "No Log Entries",
