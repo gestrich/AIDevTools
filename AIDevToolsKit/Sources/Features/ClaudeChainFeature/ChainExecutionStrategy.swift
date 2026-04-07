@@ -72,11 +72,15 @@ struct SweepChainExecutionStrategy: ChainExecutionStrategy {
         githubAccount: String?,
         onProgress: @escaping @Sendable (ChainProgressEvent) -> Void
     ) async throws -> ExecuteSpecChainUseCase.Result {
+        let worktreesDirectory = worktreeOptions.map {
+            URL(fileURLWithPath: $0.destinationPath).deletingLastPathComponent()
+        }
         let useCase = ExecuteSweepChainUseCase(client: client, git: git)
         let options = ExecuteSweepChainUseCase.Options(
             project: project,
             repoPath: repoPath,
-            githubAccount: githubAccount
+            githubAccount: githubAccount,
+            worktreesDirectory: worktreesDirectory
         )
         return try await useCase.run(options: options) { progress in
             onProgress(.sweep(progress))

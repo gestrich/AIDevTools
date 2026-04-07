@@ -176,16 +176,21 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         scanCount += 1
 
         // Commit any AI-produced changes before checking HEAD hash
-        let status = try await git.status(workingDirectory: repoPath.path)
-        if !status.isEmpty {
-            _ = try await git.addAll(workingDirectory: repoPath.path)
-            let staged = try await git.diffCachedNames(workingDirectory: repoPath.path)
-            if !staged.isEmpty {
-                _ = try await git.commit(
-                    message: "Sweep [\(taskName)]: \(task.id)",
-                    workingDirectory: repoPath.path
-                )
+        do {
+            let status = try await git.status(workingDirectory: repoPath.path)
+            if !status.isEmpty {
+                _ = try await git.addAll(workingDirectory: repoPath.path)
+                let staged = try await git.diffCachedNames(workingDirectory: repoPath.path)
+                if !staged.isEmpty {
+                    _ = try await git.commit(
+                        message: "Sweep [\(taskName)]: \(task.id)",
+                        workingDirectory: repoPath.path
+                    )
+                }
             }
+        } catch {
+            logger.error("[\(taskName)] Failed to commit changes for task '\(task.id)' in '\(repoPath.path)': \(error)")
+            throw error
         }
 
         let after = try await git.getHeadHash(workingDirectory: repoPath.path)
@@ -428,14 +433,19 @@ public actor SweepClaudeChainSource: ClaudeChainSource {
         // Resolve symlinks so git add/commit work correctly on macOS where /var and /tmp are symlinks.
         let resolvedStatePath = stateURL.resolvingSymlinksInPath().path
         let resolvedRepoPath = repoPath.resolvingSymlinksInPath().path
-        try await git.add(files: [resolvedStatePath], workingDirectory: resolvedRepoPath)
-        let staged = try await git.diffCachedNames(workingDirectory: resolvedRepoPath)
-        guard !staged.isEmpty else {
-            logger.info("[\(taskName)] Cursor unchanged, no commit needed: cursor=\(cursor)")
-            return
+        do {
+            try await git.add(files: [resolvedStatePath], workingDirectory: resolvedRepoPath)
+            let staged = try await git.diffCachedNames(workingDirectory: resolvedRepoPath)
+            guard !staged.isEmpty else {
+                logger.info("[\(taskName)] Cursor unchanged, no commit needed: cursor=\(cursor)")
+                return
+            }
+            try await git.commit(message: commitMessage, workingDirectory: resolvedRepoPath)
+            logger.info("[\(taskName)] Cursor commit written: cursor=\(cursor), processed=\(processedPaths.count) paths")
+        } catch {
+            logger.error("[\(taskName)] Failed to write cursor commit in '\(resolvedRepoPath)': \(error)")
+            throw error
         }
-        try await git.commit(message: commitMessage, workingDirectory: resolvedRepoPath)
-        logger.info("[\(taskName)] Cursor commit written: cursor=\(cursor), processed=\(processedPaths.count) paths")
     }
 }
 

@@ -46,6 +46,26 @@ public struct GitClient: Sendable {
         return try await execute(command, workingDirectory: workingDirectory)
     }
 
+    @discardableResult
+    public func createWorktreeWithNewBranch(branchName: String, basedOn: String, destination: String, workingDirectory: String) async throws -> ExecutionResult {
+        let result = try await client.execute(
+            command: "git",
+            arguments: ["worktree", "add", "-b", branchName, destination, basedOn],
+            workingDirectory: workingDirectory,
+            environment: environment,
+            printCommand: false
+        )
+        if result.exitCode != 0 {
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw CLIClientError.executionFailed(
+                command: "git worktree add -b \(branchName) \(destination) \(basedOn)",
+                exitCode: result.exitCode,
+                output: stderr.isEmpty ? result.stdout : stderr
+            )
+        }
+        return result
+    }
+
     public func listWorktrees(workingDirectory: String) async throws -> [WorktreeInfo] {
         let command = GitCLI.Worktree.List(porcelain: true)
         let result = try await execute(command, workingDirectory: workingDirectory)

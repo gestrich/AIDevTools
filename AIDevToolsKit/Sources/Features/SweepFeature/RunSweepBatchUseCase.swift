@@ -19,18 +19,24 @@ public struct RunSweepBatchUseCase: UseCase {
         public let repoPath: URL
         public let taskDirectory: URL
         public let taskName: String
+        public let taskRelativePath: String
+        public let worktreesDirectory: URL?
 
         public init(
             taskDirectory: URL,
+            taskRelativePath: String,
             repoPath: URL,
             baseBranch: String = "main",
-            dryRun: Bool = false
+            dryRun: Bool = false,
+            worktreesDirectory: URL? = nil
         ) {
             self.baseBranch = baseBranch
             self.dryRun = dryRun
             self.repoPath = repoPath
             self.taskDirectory = taskDirectory
             self.taskName = taskDirectory.lastPathComponent
+            self.taskRelativePath = taskRelativePath
+            self.worktreesDirectory = worktreesDirectory
         }
     }
 
@@ -137,23 +143,57 @@ public struct RunSweepBatchUseCase: UseCase {
         onProgress?(.creatingBranch(batchBranch))
         logger.info("[\(taskName)] Creating batch branch: \(batchBranch)")
 
-        // Swallowing intentionally: a fetch failure (network, shallow clone) is non-fatal — proceed with local state.
-        if (try? await git.fetch(remote: "origin", branch: options.baseBranch, workingDirectory: repoDir)) != nil {
-            try await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
+        // Fetch is non-destructive regardless of worktree mode.
+        // Swallowing intentionally: a fetch failure (network, shallow clone) is non-fatal.
+        let fetchSucceeded = (try? await git.fetch(remote: "origin", branch: options.baseBranch, workingDirectory: repoDir)) != nil
+
+        let effectiveRepoPath: URL
+        let effectiveTaskDirectory: URL
+        if let worktreesDir = options.worktreesDirectory {
+            let worktreePath = worktreesDir.appendingPathComponent(batchBranch).path
+            let basedOn = fetchSucceeded ? "FETCH_HEAD" : "HEAD"
+            logger.info("[\(taskName)] Creating worktree at \(worktreePath) based on \(basedOn)")
+            do {
+                try await git.createWorktreeWithNewBranch(
+                    branchName: batchBranch,
+                    basedOn: basedOn,
+                    destination: worktreePath,
+                    workingDirectory: repoDir
+                )
+            } catch {
+                logger.error("[\(taskName)] Failed to create worktree at \(worktreePath): \(error)")
+                throw error
+            }
+            effectiveRepoPath = URL(fileURLWithPath: worktreePath)
+            effectiveTaskDirectory = effectiveRepoPath.appendingPathComponent(options.taskRelativePath)
+        } else {
+            if fetchSucceeded {
+                try await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
+            }
+            try await git.checkout(ref: batchBranch, forceCreate: true, workingDirectory: repoDir)
+            effectiveRepoPath = options.repoPath
+            effectiveTaskDirectory = options.taskDirectory
         }
-        try await git.checkout(ref: batchBranch, forceCreate: true, workingDirectory: repoDir)
+
+        let effectiveRepoDir = effectiveRepoPath.path
+        let effectiveSource = SweepClaudeChainSource(
+            taskName: taskName,
+            taskDirectory: effectiveTaskDirectory,
+            repoPath: effectiveRepoPath,
+            git: git
+        )
 
         // Phase A: Drain all tasks via pipeline
         onProgress?(.runningTasks)
         let taskSourceNode = TaskSourceNode(
             id: "sweep-source",
             displayName: "Sweep: \(taskName)",
-            source: source
+            source: effectiveSource
         )
         let taskConfiguration = PipelineConfiguration(
             executionMode: .all,
             provider: client,
-            workingDirectory: repoDir
+            workingDirectory: effectiveRepoDir
         )
         let runner = PipelineRunner()
         _ = try await runner.run(
@@ -174,7 +214,7 @@ public struct RunSweepBatchUseCase: UseCase {
             }
         }
 
-        let sweepResult = await source.batchStats()
+        let sweepResult = await effectiveSource.batchStats()
 
         // Phase B: Create PR if any tasks produced changes
         var prURL: String?
@@ -197,7 +237,7 @@ public struct RunSweepBatchUseCase: UseCase {
             let prConfiguration = PipelineConfiguration(
                 executionMode: .all,
                 provider: client,
-                workingDirectory: repoDir
+                workingDirectory: effectiveRepoDir
             )
             var prNodes: [any PipelineNode] = []
             let templatePath = options.taskDirectory.appendingPathComponent("pr-template.md").path

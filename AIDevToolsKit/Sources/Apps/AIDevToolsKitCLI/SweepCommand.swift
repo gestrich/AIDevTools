@@ -69,6 +69,9 @@ struct SweepRunCommand: AsyncParsableCommand {
         let useCase = RunSweepBatchUseCase(client: client, git: GitClient(printOutput: false, environment: gitEnvironment))
         let options = RunSweepBatchUseCase.Options(
             taskDirectory: taskURL,
+            taskRelativePath: taskURL.path.hasPrefix(repoURL.path + "/")
+                ? String(taskURL.path.dropFirst(repoURL.path.count + 1))
+                : taskURL.lastPathComponent,
             repoPath: repoURL,
             baseBranch: baseBranch,
             dryRun: dryRun
