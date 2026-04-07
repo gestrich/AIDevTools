@@ -21,17 +21,27 @@ final class PlanModel {
         }
     }
 
-    enum State {
+    indirect enum State {
         case idle
         case executing
         case generating(step: String)
         case completed(PlanService.ExecuteResult, phases: [PlanPhase])
+        case loadingPlans(prior: State)
         case error(Error)
 
         var lastExecutionPhases: [PlanPhase] {
             switch self {
             case .completed(_, let phases): return phases
+            case .loadingPlans(let prior): return prior.lastExecutionPhases
             default: return []
+            }
+        }
+
+        var completionResult: PlanService.ExecuteResult? {
+            switch self {
+            case .completed(let result, _): return result
+            case .loadingPlans(let prior): return prior.completionResult
+            default: return nil
             }
         }
     }
@@ -39,7 +49,6 @@ final class PlanModel {
     private(set) var state: State = .idle
     private(set) var plans: [MarkdownPlanEntry] = []
     let pipelineModel = PipelineModel()
-    private(set) var isLoadingPlans: Bool = false
     private(set) var executionCompleteCount: Int = 0
     private(set) var phaseCompleteCount: Int = 0
     private(set) var currentRepository: RepositoryConfiguration?
@@ -59,6 +68,16 @@ final class PlanModel {
 
     private var activeClient: any AIClient
     @ObservationIgnored private var chatModels: [String: ChatModel] = [:]
+
+    private var planService: PlanService {
+        PlanService(
+            client: activeClient,
+            resolveProposedDirectory: { repo in
+                let s = repo.planner ?? PlanRepoSettings()
+                return s.resolvedProposedDirectory(repoPath: repo.path)
+            }
+        )
+    }
     private let dataPathsService: DataPathsService?
     private let deletePlanUseCase: DeletePlanUseCase
     private let mcpConfigPath: String?
@@ -98,16 +117,19 @@ final class PlanModel {
         }
         currentRepository = repo
         plans = []
-        isLoadingPlans = true
-        do {
-            let proposedDir = resolvedProposedDirectory(for: repo)
-            let loaded = await LoadPlansUseCase(proposedDirectory: proposedDir).run()
-            guard self.currentRepository?.id == repo.id else { return }
-            self.plans = loaded
-        } catch {
-            state = .error(error)
+        let prior: State = {
+            if case .loadingPlans(let inner) = state { return inner }
+            return state
+        }()
+        state = .loadingPlans(prior: prior)
+        let proposedDir = resolvedProposedDirectory(for: repo)
+        let loaded = await LoadPlansUseCase(proposedDirectory: proposedDir).run()
+        guard self.currentRepository?.id == repo.id else {
+            state = prior
+            return
         }
-        self.isLoadingPlans = false
+        self.plans = loaded
+        state = prior
     }
 
     func deletePlan(_ plan: MarkdownPlanEntry) throws {
@@ -150,13 +172,6 @@ final class PlanModel {
         phaseCompleteCount = 0
 
         do {
-            let service = PlanService(
-                client: activeClient,
-                resolveProposedDirectory: { repo in
-                    let s = repo.planner ?? PlanRepoSettings()
-                    return s.resolvedProposedDirectory(repoPath: repo.path)
-                }
-            )
             let worktreeOptions = useWorktree ? computePlanWorktreeOptions(plan: plan, repoPath: repository.path) : nil
             let options = PlanService.ExecuteOptions(
                 executeMode: executeMode,
@@ -166,7 +181,7 @@ final class PlanModel {
                 stopAfterArchitectureDiagram: stopAfterArchitectureDiagram,
                 worktreeOptions: worktreeOptions
             )
-            let blueprint = try await service.buildExecutePipeline(
+            let blueprint = try await planService.buildExecutePipeline(
                 options: options,
                 pendingTasksProvider: { [weak self] in
                     guard let self else { return [] }
@@ -195,13 +210,6 @@ final class PlanModel {
     func generate(prompt: String, repositories: [RepositoryConfiguration], selectedRepository: RepositoryConfiguration? = nil) async -> String? {
         state = .generating(step: selectedRepository != nil ? "Generating plan..." : "Matching repository...")
 
-        let service = PlanService(
-            client: activeClient,
-            resolveProposedDirectory: { repo in
-                let settings = repo.planner ?? PlanRepoSettings()
-                return settings.resolvedProposedDirectory(repoPath: repo.path)
-            }
-        )
         let options = PlanService.GenerateOptions(
             prompt: prompt,
             repositories: repositories,
@@ -209,7 +217,7 @@ final class PlanModel {
         )
 
         do {
-            let result = try await service.generate(options: options) { [weak self] progress in
+            let result = try await planService.generate(options: options) { [weak self] progress in
                 guard let self else { return }
                 Task { @MainActor in
                     switch progress {
@@ -288,6 +296,7 @@ final class PlanModel {
     private func computePlanWorktreeOptions(plan: MarkdownPlanEntry, repoPath: URL) -> WorktreeOptions? {
         guard let service = dataPathsService else { return nil }
         let branchName = PlanService.worktreeBranchName(for: plan.planURL)
+        // Swallowing intentionally: worktree creation is best-effort; returning nil falls back to non-worktree execution.
         guard let worktreesDir = try? service.path(for: .planWorktrees) else { return nil }
         let destinationPath = worktreesDir.appendingPathComponent(branchName).path
         return WorktreeOptions(

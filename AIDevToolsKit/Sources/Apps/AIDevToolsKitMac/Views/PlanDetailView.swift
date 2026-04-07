@@ -85,7 +85,7 @@ struct PlanDetailView: View {
                     }
                 }
 
-                if case .completed(let result, _) = planModel.state {
+                if let result = planModel.state.completionResult {
                     completionBanner(result)
                 }
 

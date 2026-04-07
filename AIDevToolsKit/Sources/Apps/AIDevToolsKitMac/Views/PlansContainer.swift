@@ -42,7 +42,7 @@ struct PlansContainer: View {
             showGenerateSheet = true
         } content: {
             List(selection: $selectedPlanName) {
-                if planModel.isLoadingPlans {
+                if case .loadingPlans = planModel.state {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
                         Text("Loading plans...").font(.caption).foregroundStyle(.secondary)
