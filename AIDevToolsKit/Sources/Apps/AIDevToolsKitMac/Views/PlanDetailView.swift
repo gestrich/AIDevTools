@@ -16,7 +16,7 @@ struct PlanDetailView: View {
     @State private var architectureDiagram: ArchitectureDiagram?
     @State private var selectedModule: ModuleSelection?
     @State private var isArchitectureExpanded = true
-    @State private var executeNextOnly = false
+    @AppStorage("planExecuteNextOnly") private var executeNextOnly = false
     @AppStorage("planStopAfterArchitectureDiagram") private var stopAfterArchitectureDiagram = false
 
     @State private var executionChatModel: ChatModel?
