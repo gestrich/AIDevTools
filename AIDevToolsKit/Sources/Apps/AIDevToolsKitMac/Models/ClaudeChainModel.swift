@@ -41,8 +41,7 @@ final class ClaudeChainModel {
     private(set) var state: State = .idle
     private(set) var taskPipelines: [Int: PipelineModel] = [:]
     var selectedTaskIndex: Int?
-    var executionContentBlocksObserver: (@MainActor ([AIContentBlock]) -> Void)?
-    var executionProgressObserver: (@MainActor (RunSpecChainTaskUseCase.Progress) -> Void)?
+    private(set) var executionChatModel: ChatModel?
 
     var selectedPipelineModel: PipelineModel? {
         taskPipelines[selectedTaskIndex ?? -1]
@@ -171,6 +170,7 @@ final class ClaudeChainModel {
     ) {
         let strategy = ChainExecutionStrategyFactory.strategy(for: project.kind)
         state = .executing(progress: ExecutionProgress(phases: strategy.initialPhases))
+        executionChatModel = makeChatModel(workingDirectory: repoPath.path())
         streamAccumulator.reset()
 
         let worktreeOptions = useWorktree ? computeChainWorktreeOptions(
@@ -294,11 +294,16 @@ final class ClaudeChainModel {
 
     func reset() {
         state = .idle
+        executionChatModel = nil
         taskPipelines = [:]
         selectedTaskIndex = nil
         if let repoPath = currentRepoPath {
             loadChains(for: repoPath, credentialAccount: currentCredentialAccount)
         }
+    }
+
+    func clearExecutionOutput() {
+        executionChatModel = nil
     }
 
     // MARK: - Private
@@ -358,21 +363,31 @@ final class ClaudeChainModel {
         switch progress {
         case .checkingOpenPRs:
             current.setPhaseStatus(id: "prepare", status: .running)
-        case .creatingBranch:
+            executionChatModel?.appendStatusMessage("Checking for open PRs...")
+        case .creatingBranch(let b):
             current.setPhaseStatus(id: "prepare", status: .completed)
             current.setPhaseStatus(id: "ai", status: .running)
+            executionChatModel?.appendStatusMessage("Creating branch: \(b)")
+        case .runningTasks:
+            executionChatModel?.appendStatusMessage("Running sweep tasks...")
+        case .taskStarted(let id):
+            executionChatModel?.appendStatusMessage("Processing: \(id)")
+            executionChatModel?.beginStreamingMessage()
+        case .taskCompleted:
+            executionChatModel?.finalizeCurrentStreamingMessage()
+        case .contentBlocks(let blocks):
+            executionChatModel?.updateCurrentStreamingBlocks(blocks)
+            return
         case .creatingPR:
             current.setPhaseStatus(id: "ai", status: .completed)
             current.setPhaseStatus(id: "finalize", status: .running)
-        case .prCreated:
+            executionChatModel?.appendStatusMessage("Creating PR...")
+        case .prCreated(let url):
             current.setPhaseStatus(id: "finalize", status: .completed)
+            executionChatModel?.appendStatusMessage("PR: \(url)")
         case .completed:
             current.setPhaseStatus(id: "ai", status: .completed)
-        case .contentBlocks(let blocks):
-            executionContentBlocksObserver?(blocks)
-            return
-        case .runningTasks, .taskStarted, .taskCompleted:
-            break
+            executionChatModel?.appendStatusMessage("Completed")
         }
 
         state = .executing(progress: current)
@@ -384,7 +399,7 @@ final class ClaudeChainModel {
         case .spec(let progress):
             if case .aiStreamEvent(let streamEvent) = progress {
                 let blocks = streamAccumulator.apply(streamEvent)
-                executionContentBlocksObserver?(blocks)
+                executionChatModel?.updateCurrentStreamingBlocks(blocks)
             }
             handleExecutionProgress(progress)
         }
@@ -415,7 +430,63 @@ final class ClaudeChainModel {
         }
 
         state = .executing(progress: current)
-        executionProgressObserver?(progress)
+        updateExecutionChatModel(for: progress)
+    }
+
+    private func updateExecutionChatModel(for progress: RunSpecChainTaskUseCase.Progress) {
+        guard let chatModel = executionChatModel else { return }
+        switch progress {
+        case .preparingProject:
+            chatModel.appendStatusMessage("Preparing project...")
+        case .preparedTask(let description, let index, let total):
+            chatModel.appendStatusMessage("Task \(index + 1)/\(total): \(description)")
+        case .runningPreScript:
+            chatModel.appendStatusMessage("Running pre-action script...")
+        case .preScriptCompleted(let result):
+            chatModel.appendStatusMessage(result.success ? "Pre-script completed" : "Pre-script skipped")
+        case .runningAI:
+            chatModel.finalizeCurrentStreamingMessage()
+            chatModel.appendStatusMessage("Starting AI execution...")
+            chatModel.beginStreamingMessage()
+        case .aiStreamEvent, .aiOutput:
+            break
+        case .aiCompleted:
+            chatModel.finalizeCurrentStreamingMessage()
+        case .runningPostScript:
+            chatModel.appendStatusMessage("Running post-action script...")
+        case .postScriptCompleted(let result):
+            chatModel.appendStatusMessage(result.success ? "Post-script completed" : "Post-script skipped")
+        case .finalizing:
+            chatModel.appendStatusMessage("Finalizing...")
+        case .prCreated(let prNumber, let prURL):
+            chatModel.appendStatusMessage("PR created: #\(prNumber) \u{2014} \(prURL)")
+        case .generatingSummary:
+            chatModel.finalizeCurrentStreamingMessage()
+            chatModel.appendStatusMessage("Generating PR summary...")
+            chatModel.beginStreamingMessage()
+        case .summaryStreamEvent:
+            break
+        case .summaryCompleted:
+            chatModel.finalizeCurrentStreamingMessage()
+        case .postingPRComment:
+            chatModel.appendStatusMessage("Posting PR comment...")
+        case .prCommentPosted:
+            chatModel.appendStatusMessage("Summary posted to PR")
+        case .completed(let prURL):
+            chatModel.finalizeCurrentStreamingMessage()
+            if let prURL {
+                chatModel.appendStatusMessage("Completed \u{2014} PR: \(prURL)")
+            } else {
+                chatModel.appendStatusMessage("Completed")
+            }
+        case .runningReview:
+            chatModel.appendStatusMessage("Running review...")
+        case .reviewCompleted(let summary):
+            chatModel.appendStatusMessage("Review: \(summary)")
+        case .failed(let phase, let error):
+            chatModel.finalizeCurrentStreamingMessage()
+            chatModel.appendStatusMessage("Failed during \(phase): \(error)")
+        }
     }
 }
 

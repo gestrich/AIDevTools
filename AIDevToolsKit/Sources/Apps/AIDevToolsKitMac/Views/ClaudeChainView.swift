@@ -192,7 +192,6 @@ private struct ChainProjectDetailView: View {
 
     @AppStorage("chainCreatePR") private var createPR: Bool = true
     @AppStorage("chainUseWorktree") private var useWorktree: Bool = false
-    @State private var executionChatModel: ChatModel?
 
     private var isExecuting: Bool {
         if case .executing = model.state { return true }
@@ -234,7 +233,7 @@ private struct ChainProjectDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: project.name) {
-            executionChatModel = nil
+            model.clearExecutionOutput()
             model.loadChainDetail(project: project)
         }
     }
@@ -345,7 +344,7 @@ private struct ChainProjectDetailView: View {
                 .frame(minWidth: 300, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                 // Right: log output (wider)
-                if let execModel = executionChatModel {
+                if let execModel = model.executionChatModel {
                     ChatMessagesView()
                         .environment(execModel)
                         .clipShape(RoundedRectangle(cornerRadius: 0))
@@ -632,7 +631,6 @@ private struct ChainProjectDetailView: View {
             }
             Button("Dismiss") {
                 model.reset()
-                executionChatModel = nil
             }
             .buttonStyle(.borderless)
         }
@@ -650,7 +648,6 @@ private struct ChainProjectDetailView: View {
             Spacer()
             Button("Dismiss") {
                 model.reset()
-                executionChatModel = nil
             }
             .buttonStyle(.borderless)
         }
@@ -662,76 +659,7 @@ private struct ChainProjectDetailView: View {
     // MARK: - Execution
 
     private func startExecution(taskIndex: Int? = nil) {
-        let execModel = model.makeChatModel(workingDirectory: repository.path.path())
-        executionChatModel = execModel
-
-        model.executionContentBlocksObserver = { @MainActor [weak execModel] blocks in
-            execModel?.updateCurrentStreamingBlocks(blocks)
-        }
-
-        model.executionProgressObserver = { @MainActor [weak execModel] progress in
-            guard let chatModel = execModel else { return }
-            switch progress {
-            case .preparingProject:
-                chatModel.appendStatusMessage("Preparing project...")
-            case .preparedTask(let description, let index, let total):
-                chatModel.appendStatusMessage("Task \(index + 1)/\(total): \(description)")
-            case .runningPreScript:
-                chatModel.appendStatusMessage("Running pre-action script...")
-            case .preScriptCompleted(let result):
-                chatModel.appendStatusMessage(result.success ? "Pre-script completed" : "Pre-script skipped")
-            case .runningAI:
-                chatModel.finalizeCurrentStreamingMessage()
-                chatModel.appendStatusMessage("Starting AI execution...")
-                chatModel.beginStreamingMessage()
-            case .aiStreamEvent, .aiOutput:
-                break
-            case .aiCompleted:
-                chatModel.finalizeCurrentStreamingMessage()
-            case .runningPostScript:
-                chatModel.appendStatusMessage("Running post-action script...")
-            case .postScriptCompleted(let result):
-                chatModel.appendStatusMessage(result.success ? "Post-script completed" : "Post-script skipped")
-            case .finalizing:
-                chatModel.appendStatusMessage("Finalizing...")
-            case .prCreated(let prNumber, let prURL):
-                chatModel.appendStatusMessage("PR created: #\(prNumber) \u{2014} \(prURL)")
-            case .generatingSummary:
-                chatModel.finalizeCurrentStreamingMessage()
-                chatModel.appendStatusMessage("Generating PR summary...")
-                chatModel.beginStreamingMessage()
-            case .summaryStreamEvent:
-                break
-            case .summaryCompleted:
-                chatModel.finalizeCurrentStreamingMessage()
-            case .postingPRComment:
-                chatModel.appendStatusMessage("Posting PR comment...")
-            case .prCommentPosted:
-                chatModel.appendStatusMessage("Summary posted to PR")
-            case .completed(let prURL):
-                chatModel.finalizeCurrentStreamingMessage()
-                if let prURL {
-                    chatModel.appendStatusMessage("Completed \u{2014} PR: \(prURL)")
-                } else {
-                    chatModel.appendStatusMessage("Completed")
-                }
-            case .runningReview:
-                chatModel.appendStatusMessage("Running review...")
-            case .reviewCompleted(let summary):
-                chatModel.appendStatusMessage("Review: \(summary)")
-            case .failed(let phase, let error):
-                chatModel.finalizeCurrentStreamingMessage()
-                chatModel.appendStatusMessage("Failed during \(phase): \(error)")
-            }
-        }
-
-        model.executeChain(
-            project: project,
-            repoPath: repository.path,
-            taskIndex: taskIndex,
-            stagingOnly: !createPR,
-            useWorktree: useWorktree
-        )
+        model.executeChain(project: project, repoPath: repository.path, taskIndex: taskIndex, stagingOnly: !createPR, useWorktree: useWorktree)
     }
 
 }

@@ -318,7 +318,7 @@ struct PlanDetailView: View {
 
     @ViewBuilder
     private var phaseSection: some View {
-        if planModel.pipelineModel.isRunning {
+        if case .running = planModel.pipelineModel.state {
             PipelineView()
                 .environment(planModel.pipelineModel)
         } else if !localPhases.isEmpty {

@@ -11,17 +11,21 @@ final class PipelineModel {
         var isCurrent: Bool = false
     }
 
-    var error: Error?
-    var isRunning: Bool = false
+    enum ModelState {
+        case idle
+        case running
+        case failed(Error)
+    }
+
     var nodes: [NodeState] = []
+    var state: ModelState = .idle
     var onEvent: (@MainActor (PipelineEvent) -> Void)?
 
     @ObservationIgnored private var runningTask: Task<Void, any Error>?
 
     @discardableResult
     func run(blueprint: PipelineBlueprint) async throws -> PipelineContext {
-        isRunning = true
-        error = nil
+        state = .running
         nodes = blueprint.initialNodeManifest.map {
             NodeState(displayName: $0.displayName, id: $0.id)
         }
@@ -44,12 +48,15 @@ final class PipelineModel {
         }
         runningTask = task
 
-        defer {
-            isRunning = false
+        do {
+            try await task.value
+            state = .idle
+        } catch {
+            state = .failed(error)
             runningTask = nil
+            throw error
         }
-
-        try await task.value
+        runningTask = nil
         return box.context ?? PipelineContext()
     }
 
