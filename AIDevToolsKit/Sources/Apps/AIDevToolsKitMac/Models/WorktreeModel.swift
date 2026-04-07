@@ -20,9 +20,10 @@ final class WorktreeModel {
         let remove: RemoveWorktreeUseCase
 
         init(gitClient: GitClient) {
-            add = AddWorktreeUseCase(gitClient: gitClient)
-            list = ListWorktreesUseCase(gitClient: gitClient)
-            remove = RemoveWorktreeUseCase(gitClient: gitClient)
+            let listUseCase = ListWorktreesUseCase(gitClient: gitClient)
+            add = AddWorktreeUseCase(gitClient: gitClient, listUseCase: listUseCase)
+            list = listUseCase
+            remove = RemoveWorktreeUseCase(gitClient: gitClient, listUseCase: listUseCase)
         }
     }
 
@@ -53,20 +54,24 @@ final class WorktreeModel {
     }
 
     func addWorktree(repoPath: String, destination: String, branch: String) async {
+        let prior = worktrees
+        state = .loading(prior: prior)
         do {
-            try await useCases.add.execute(repoPath: repoPath, destination: destination, branch: branch)
-            await load(repoPath: repoPath)
+            let statuses = try await useCases.add.execute(repoPath: repoPath, destination: destination, branch: branch)
+            state = .loaded(statuses)
         } catch {
-            state = .error(error, prior: worktrees)
+            state = .error(error, prior: prior)
         }
     }
 
     func removeWorktree(repoPath: String, worktreePath: String) async {
+        let prior = worktrees
+        state = .loading(prior: prior)
         do {
-            try await useCases.remove.execute(repoPath: repoPath, worktreePath: worktreePath, force: true)
-            await load(repoPath: repoPath)
+            let statuses = try await useCases.remove.execute(repoPath: repoPath, worktreePath: worktreePath, force: true)
+            state = .loaded(statuses)
         } catch {
-            state = .error(error, prior: worktrees)
+            state = .error(error, prior: prior)
         }
     }
 }
