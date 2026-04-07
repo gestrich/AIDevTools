@@ -134,6 +134,7 @@ let package = Package(
                 "PlanFeature",
                 "PlanService",
                 "OctokitSDK",
+                "PipelineFeature",
                 "PipelineSDK",
                 "PipelineService",
                 "PRRadarCLIService",
