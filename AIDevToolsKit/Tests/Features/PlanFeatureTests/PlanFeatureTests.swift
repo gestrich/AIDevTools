@@ -167,11 +167,11 @@ struct PlanFeatureModelTests {
         #expect(error.localizedDescription.contains(unknownUUID))
     }
 
-    // MARK: - ExecutePlanUseCase
+    // MARK: - PlanService Execute types
 
-    @Test("ExecutePlanUseCase.Options has correct defaults")
-    func executePlanOptionsDefaults() {
-        let options = ExecutePlanUseCase.Options(
+    @Test("PlanService.ExecuteOptions has correct defaults")
+    func planServiceExecuteOptionsDefaults() {
+        let options = PlanService.ExecuteOptions(
             planPath: URL(fileURLWithPath: "/tmp/plan.md")
         )
         #expect(options.maxMinutes == 90)
@@ -179,16 +179,16 @@ struct PlanFeatureModelTests {
         #expect(options.repository == nil)
     }
 
-    @Test("ExecutePlanUseCase.ExecuteError describes phase failure")
-    func executeErrorDescription() {
-        let error = ExecutePlanUseCase.ExecuteError.phaseFailed(index: 2, description: "Build the widget", underlyingError: "build failed")
+    @Test("PlanService.ExecuteError describes phase failure")
+    func planServiceExecuteErrorDescription() {
+        let error = PlanService.ExecuteError.phaseFailed(index: 2, description: "Build the widget", underlyingError: "build failed")
         #expect(error.localizedDescription.contains("Phase 3"))
         #expect(error.localizedDescription.contains("Build the widget"))
     }
 
-    @Test("ExecutePlanUseCase.ExecuteError describes plan not found")
-    func executeErrorPlanNotFound() {
-        let error = ExecutePlanUseCase.ExecuteError.planNotFound("/tmp/missing.md")
+    @Test("PlanService.ExecuteError describes plan not found")
+    func planServiceExecuteErrorPlanNotFound() {
+        let error = PlanService.ExecuteError.planNotFound("/tmp/missing.md")
         #expect(error.localizedDescription.contains("/tmp/missing.md"))
     }
 }

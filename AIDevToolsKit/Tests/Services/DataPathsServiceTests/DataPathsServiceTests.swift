@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import DataPathsService
 
+@Suite("DataPathsService")
 struct DataPathsServiceTests {
     private func makeTempRoot() -> URL {
         FileManager.default.temporaryDirectory
@@ -14,7 +15,7 @@ struct DataPathsServiceTests {
 
     // MARK: - Initialization
 
-    @Test func initCreatesRootDirectory() throws {
+    @Test("init creates root directory") func initCreatesRootDirectory() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
 
@@ -26,7 +27,7 @@ struct DataPathsServiceTests {
         #expect(isDir.boolValue)
     }
 
-    @Test func initWithTempDirectoryWorks() throws {
+    @Test("init with temp directory works") func initWithTempDirectoryWorks() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
 
@@ -37,7 +38,7 @@ struct DataPathsServiceTests {
 
     // MARK: - ServicePath Resolution
 
-    @Test func architecturePlannerResolvesToExpectedPath() throws {
+    @Test("architecturePlanner resolves to expected path") func architecturePlannerResolvesToExpectedPath() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -48,7 +49,7 @@ struct DataPathsServiceTests {
         #expect(path.path(percentEncoded: false).hasPrefix(root.path(percentEncoded: false)))
     }
 
-    @Test func repositoriesResolvesToExpectedPath() throws {
+    @Test("repositories resolves to expected path") func repositoriesResolvesToExpectedPath() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -71,7 +72,7 @@ struct DataPathsServiceTests {
         #expect(path.relativePath == "plan/worktrees")
     }
 
-    @Test func repoOutputResolvesToExpectedPath() throws {
+    @Test("repoOutput resolves to expected path") func repoOutputResolvesToExpectedPath() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -84,7 +85,7 @@ struct DataPathsServiceTests {
 
     // MARK: - Directory Auto-Creation
 
-    @Test func pathForServicePathCreatesDirectory() throws {
+    @Test("path(for:) creates directory for ServicePath") func pathForServicePathCreatesDirectory() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -97,7 +98,7 @@ struct DataPathsServiceTests {
         #expect(isDir.boolValue)
     }
 
-    @Test func pathForStringCreatesDirectory() throws {
+    @Test("path(for:) creates directory for string") func pathForStringCreatesDirectory() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -110,7 +111,7 @@ struct DataPathsServiceTests {
         #expect(isDir.boolValue)
     }
 
-    @Test func pathForStringWithSubdirectoryCreatesBothDirectories() throws {
+    @Test("path(for:subdirectory:) creates both directories") func pathForStringWithSubdirectoryCreatesBothDirectories() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -126,7 +127,7 @@ struct DataPathsServiceTests {
 
     // MARK: - Error Cases
 
-    @Test func pathForEmptyServiceNameThrows() throws {
+    @Test("path(for:) throws for empty service name") func pathForEmptyServiceNameThrows() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
@@ -136,7 +137,7 @@ struct DataPathsServiceTests {
         }
     }
 
-    @Test func pathForEmptySubdirectoryThrows() throws {
+    @Test("path(for:subdirectory:) throws for empty subdirectory") func pathForEmptySubdirectoryThrows() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
