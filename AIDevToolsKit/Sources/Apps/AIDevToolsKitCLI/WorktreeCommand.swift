@@ -27,7 +27,8 @@ struct AddWorktree: AsyncParsableCommand {
     var branch: String
 
     func run() async throws {
-        let useCase = AddWorktreeUseCase(gitClient: GitClient())
+        let gitClient = GitClient()
+        let useCase = AddWorktreeUseCase(gitClient: gitClient, listUseCase: ListWorktreesUseCase(gitClient: gitClient))
         try await useCase.execute(repoPath: repoPath, destination: destination, branch: branch)
         print("Added worktree at \(destination) on branch \(branch).")
     }
@@ -74,7 +75,8 @@ struct RemoveWorktree: AsyncParsableCommand {
     var force: Bool = false
 
     func run() async throws {
-        let useCase = RemoveWorktreeUseCase(gitClient: GitClient())
+        let gitClient = GitClient()
+        let useCase = RemoveWorktreeUseCase(gitClient: gitClient, listUseCase: ListWorktreesUseCase(gitClient: gitClient))
         try await useCase.execute(repoPath: repoPath, worktreePath: worktreePath, force: force)
         print("Removed worktree at \(worktreePath).")
     }

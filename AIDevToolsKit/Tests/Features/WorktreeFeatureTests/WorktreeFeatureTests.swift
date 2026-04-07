@@ -159,7 +159,7 @@ struct AddWorktreeUseCaseTests {
         let repo = try await makeCommittedRepo(name: "AddUseCase", client: client)
         defer { cleanup(repo) }
 
-        let useCase = AddWorktreeUseCase(gitClient: client)
+        let useCase = AddWorktreeUseCase(gitClient: client, listUseCase: ListWorktreesUseCase(gitClient: client))
 
         await #expect(throws: WorktreeError.self) {
             try await useCase.execute(
@@ -192,7 +192,7 @@ struct RemoveWorktreeUseCaseTests {
             workingDirectory: repo
         )
 
-        let useCase = RemoveWorktreeUseCase(gitClient: client)
+        let useCase = RemoveWorktreeUseCase(gitClient: client, listUseCase: ListWorktreesUseCase(gitClient: client))
         try await useCase.execute(repoPath: repo, worktreePath: worktreePath, force: false)
 
         #expect(!FileManager.default.fileExists(atPath: worktreePath))
@@ -212,7 +212,7 @@ struct RemoveWorktreeUseCaseTests {
             workingDirectory: repo
         )
 
-        let useCase = RemoveWorktreeUseCase(gitClient: client)
+        let useCase = RemoveWorktreeUseCase(gitClient: client, listUseCase: ListWorktreesUseCase(gitClient: client))
         try await useCase.execute(repoPath: repo, worktreePath: worktreePath, force: true)
 
         #expect(!FileManager.default.fileExists(atPath: worktreePath))
@@ -223,7 +223,7 @@ struct RemoveWorktreeUseCaseTests {
         let repo = try await makeCommittedRepo(name: "RemoveUseCaseInvalid", client: client)
         defer { cleanup(repo) }
 
-        let useCase = RemoveWorktreeUseCase(gitClient: client)
+        let useCase = RemoveWorktreeUseCase(gitClient: client, listUseCase: ListWorktreesUseCase(gitClient: client))
 
         await #expect(throws: WorktreeError.self) {
             try await useCase.execute(

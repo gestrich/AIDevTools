@@ -47,7 +47,7 @@ struct SkillsContainer: View {
             }
             .listStyle(.sidebar)
             .overlay {
-                if model.isLoadingSkills {
+                if case .loadingSkills = model.state {
                     ProgressView("Loading skills...")
                 }
             }
