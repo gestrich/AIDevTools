@@ -98,7 +98,10 @@ Wire `WorktreeOptions` into the ClaudeChain execution pipeline.
 
 `ClaudeChainFeature` already declares `PipelineService` as a dependency in `Package.swift` — no change needed there.
 
-## - [ ] Phase 3: PlanFeature integration
+## - [x] Phase 3: PlanFeature integration
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added `PipelineService` dependency to `PlanFeature` in `Package.swift`. Replaced dead `useWorktree: Bool` with `worktreeOptions: WorktreeOptions?` in both `PlanService.ExecuteOptions` and `ExecutePlanUseCase.Options`. Updated `buildExecutePipeline` to prepend `WorktreeNode` when `worktreeOptions` is non-nil, matching the ClaudeChain pattern.
 
 **Skills to read**: `swift-architecture`
 

@@ -1,9 +1,11 @@
 import AIOutputSDK
 import CredentialService
 import Foundation
+import GitSDK
 import Logging
-import PlanService
 import PipelineSDK
+import PipelineService
+import PlanService
 import RepositorySDK
 import UseCaseSDK
 
@@ -78,7 +80,7 @@ public struct PlanService: UseCase {
         public let maxMinutes: Int
         public let repository: RepositoryConfiguration?
         public let stopAfterArchitectureDiagram: Bool
-        public let useWorktree: Bool
+        public let worktreeOptions: WorktreeOptions?
 
         public init(
             executeMode: ExecuteMode = .all,
@@ -87,7 +89,7 @@ public struct PlanService: UseCase {
             maxMinutes: Int = 90,
             repository: RepositoryConfiguration? = nil,
             stopAfterArchitectureDiagram: Bool = false,
-            useWorktree: Bool = false
+            worktreeOptions: WorktreeOptions? = nil
         ) {
             self.executeMode = executeMode
             self.planPath = planPath
@@ -95,7 +97,7 @@ public struct PlanService: UseCase {
             self.maxMinutes = maxMinutes
             self.repository = repository
             self.stopAfterArchitectureDiagram = stopAfterArchitectureDiagram
-            self.useWorktree = useWorktree
+            self.worktreeOptions = worktreeOptions
         }
     }
 
@@ -296,8 +298,14 @@ public struct PlanService: UseCase {
             betweenTasks: betweenTasks
         )
 
+        var nodes: [any PipelineNode] = []
+        if let wo = options.worktreeOptions {
+            nodes.append(WorktreeNode(options: wo, gitClient: GitClient()))
+        }
+        nodes.append(taskSourceNode)
+
         return PipelineBlueprint(
-            nodes: [taskSourceNode],
+            nodes: nodes,
             configuration: configuration,
             initialNodeManifest: initialNodeManifest
         )

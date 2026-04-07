@@ -23,7 +23,6 @@ public struct ExecutePlanUseCase: UseCase {
         public let maxMinutes: Int
         public let repository: RepositoryConfiguration?
         public let stopAfterArchitectureDiagram: Bool
-        public let useWorktree: Bool
 
         public init(
             executeMode: ExecuteMode = .all,
@@ -31,8 +30,7 @@ public struct ExecutePlanUseCase: UseCase {
             repoPath: URL? = nil,
             maxMinutes: Int = 90,
             repository: RepositoryConfiguration? = nil,
-            stopAfterArchitectureDiagram: Bool = false,
-            useWorktree: Bool = false
+            stopAfterArchitectureDiagram: Bool = false
         ) {
             self.executeMode = executeMode
             self.planPath = planPath
@@ -40,7 +38,6 @@ public struct ExecutePlanUseCase: UseCase {
             self.maxMinutes = maxMinutes
             self.repository = repository
             self.stopAfterArchitectureDiagram = stopAfterArchitectureDiagram
-            self.useWorktree = useWorktree
         }
     }
 
