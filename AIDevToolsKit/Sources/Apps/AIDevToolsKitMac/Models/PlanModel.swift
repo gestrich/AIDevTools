@@ -1,5 +1,4 @@
 import AIOutputSDK
-import CryptoKit
 import DataPathsService
 import Foundation
 import PipelineService
@@ -288,9 +287,7 @@ final class PlanModel {
 
     private func computePlanWorktreeOptions(plan: MarkdownPlanEntry, repoPath: URL) -> WorktreeOptions? {
         guard let service = dataPathsService else { return nil }
-        let stem = plan.planURL.deletingPathExtension().lastPathComponent
-        let identifier = hashString(stem)
-        let branchName = "plan-\(identifier)"
+        let branchName = PlanService.worktreeBranchName(for: plan.planURL)
         guard let worktreesDir = try? service.path(for: .planWorktrees) else { return nil }
         let destinationPath = worktreesDir.appendingPathComponent(branchName).path
         return WorktreeOptions(
@@ -298,13 +295,6 @@ final class PlanModel {
             destinationPath: destinationPath,
             repoPath: repoPath.path
         )
-    }
-
-    private func hashString(_ value: String) -> String {
-        let normalized = value.split(separator: " ").joined(separator: " ")
-        let data = normalized.data(using: .utf8) ?? Data()
-        let hash = SHA256.hash(data: data)
-        return hash.compactMap { String(format: "%02x", $0) }.joined().prefix(8).lowercased()
     }
 
     private func resolvedProposedDirectory(for repo: RepositoryConfiguration) -> URL {

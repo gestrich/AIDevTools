@@ -1,5 +1,6 @@
 import AIOutputSDK
 import CredentialService
+import CryptoKit
 import Foundation
 import GitSDK
 import Logging
@@ -309,6 +310,17 @@ public struct PlanService: UseCase {
             configuration: configuration,
             initialNodeManifest: initialNodeManifest
         )
+    }
+
+    // MARK: - Worktree
+
+    public static func worktreeBranchName(for planURL: URL) -> String {
+        let stem = planURL.deletingPathExtension().lastPathComponent
+        let normalized = stem.split(separator: " ").joined(separator: " ")
+        let data = normalized.data(using: .utf8) ?? Data()
+        let hash = SHA256.hash(data: data)
+        let identifier = hash.compactMap { String(format: "%02x", $0) }.joined().prefix(8).lowercased()
+        return "plan-\(identifier)"
     }
 
     static func parseSkillsToRead(planPath: URL, phaseIndex: Int) -> [String] {

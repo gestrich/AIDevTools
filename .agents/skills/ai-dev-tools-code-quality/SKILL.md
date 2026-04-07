@@ -5,8 +5,10 @@ description: >
   backwards-compatibility shims for unreleased code, raw String/[String:Any] types where
   typed models should exist, optional properties that should be non-optional, AI-changelog
   comments that describe what changed rather than why, duplicated logic across call sites,
-  and force unwraps. Use when reviewing Swift code for quality, before committing, when
-  asked to clean up or harden code, or when ai-dev-tools-enforce is running.
+  inline string formatting for derived identifiers (branch names, keys, paths),
+  raw string literals used as shared identifiers, and force unwraps. Use when reviewing
+  Swift code for quality, before committing, when asked to clean up or harden code,
+  or when ai-dev-tools-enforce is running.
 user-invocable: true
 ---
 
@@ -127,6 +129,65 @@ func updateDataPath(_ path: String) throws {
 - Identical `switch` arms or `if/else` chains in multiple files
 
 **Fix:** Extract into a single function, computed property, or type that all sites call. For structural duplication across use cases, consider whether shared logic belongs in a Service. Do not create an abstraction for only two instances if they are likely to diverge — use judgment.
+
+---
+
+## Inline String Formatting for Derived Identifiers
+
+String formatting logic for derived values — branch names, cache keys, file paths, URL paths — must live in one place. When callers construct these strings themselves, small differences in format accumulate silently and become hard to find.
+
+**Look for:**
+- `let branchName = "plan-\(identifier)"` or `"claude-chain-\(project)-\(hash)"` inline in a model or use case
+- The same interpolation pattern appearing in more than one file
+- A private helper method on a model that formats an identifier — the method likely belongs on the owning service or use case instead
+
+**Fix:** Extract to a `static func` on the type that owns the concept. All callers use that method — no one builds the string themselves:
+
+```swift
+// BEFORE (inline in PlanModel, and potentially duplicated elsewhere)
+let identifier = hashString(stem)
+let branchName = "plan-\(identifier)"
+
+// AFTER — single definition, all callers use it
+// In PlanService (Features layer):
+public static func worktreeBranchName(for planURL: URL) -> String {
+    let stem = planURL.deletingPathExtension().lastPathComponent
+    // ... hash ...
+    return "plan-\(identifier)"
+}
+
+// In PlanModel:
+let branchName = PlanService.worktreeBranchName(for: plan.planURL)
+```
+
+---
+
+## Raw String Literals as Shared Identifiers
+
+A string literal used in multiple places as an identifier (feature name, path component, dictionary key) is a coordination hazard. If one call site changes spelling, the others silently diverge.
+
+**Look for:**
+- `ServicePath.worktrees(feature: "plan")` and `ServicePath.worktrees(feature: "claude-chain")` repeated across files
+- The same string literal appearing in both production code and tests
+- Dictionary keys, UserDefaults keys, or notification names written as literals at each call site
+
+**Fix:** Define a named constant — a `static var` on the owning type, a `static let` on the relevant service or model, or a dedicated `enum` of cases. All callers reference the constant, not the literal:
+
+```swift
+// BEFORE
+dataPathsService.path(for: .worktrees(feature: "claude-chain"))
+dataPathsService.path(for: .worktrees(feature: "plan"))
+
+// AFTER — defined once on ServicePath
+public extension ServicePath {
+    static var claudeChainWorktrees: ServicePath { .worktrees(feature: "claude-chain") }
+    static var planWorktrees: ServicePath { .worktrees(feature: "plan") }
+}
+
+// Callers
+dataPathsService.path(for: .claudeChainWorktrees)
+dataPathsService.path(for: .planWorktrees)
+```
 
 ---
 
