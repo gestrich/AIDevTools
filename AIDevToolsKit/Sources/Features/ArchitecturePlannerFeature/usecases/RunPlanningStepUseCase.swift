@@ -36,6 +36,11 @@ public struct RunPlanningStepUseCase: UseCase {
     }
 
     @MainActor
+    public func loadJob(jobId: UUID, store: ArchitecturePlannerStore) throws -> PlanningJob? {
+        try ManageGuidelinesUseCase().getJob(jobId: jobId, store: store)
+    }
+
+    @MainActor
     public func run(
         _ options: Options,
         store: ArchitecturePlannerStore,

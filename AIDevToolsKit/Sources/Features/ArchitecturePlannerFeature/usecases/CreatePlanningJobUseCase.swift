@@ -26,7 +26,24 @@ public struct CreatePlanningJobUseCase: UseCase {
         }
     }
 
+    public struct RunAndListResult {
+        public let jobId: UUID
+        public let jobs: [PlanningJob]
+
+        public init(jobId: UUID, jobs: [PlanningJob]) {
+            self.jobId = jobId
+            self.jobs = jobs
+        }
+    }
+
     public init() {}
+
+    @MainActor
+    public func runAndListJobs(_ options: Options, store: ArchitecturePlannerStore) throws -> RunAndListResult {
+        let result = try run(options, store: store)
+        let jobs = try ManageGuidelinesUseCase().listJobs(repoName: options.repoName, store: store)
+        return RunAndListResult(jobId: result.jobId, jobs: jobs)
+    }
 
     @MainActor
     public func run(_ options: Options, store: ArchitecturePlannerStore) throws -> Result {

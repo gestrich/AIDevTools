@@ -47,6 +47,7 @@ public struct SeedGuidelinesUseCase: UseCase {
         // Seed from ARCHITECTURE.md if it exists
         let architectureMDPath = URL(fileURLWithPath: options.repoPath)
             .appendingPathComponent("ARCHITECTURE.md")
+        // Intentional: ARCHITECTURE.md may not exist in all repos; absence is not an error.
         if let content = try? String(contentsOf: architectureMDPath, encoding: .utf8), !content.isEmpty {
             let guideline = Guideline(
                 repoName: repoName,
@@ -99,12 +100,19 @@ public struct SeedGuidelinesUseCase: UseCase {
         return Result(guidelinesCreated: created, skipped: false)
     }
 
+    @MainActor
+    public func runAndListGuidelines(_ options: Options, store: ArchitecturePlannerStore) throws -> [Guideline] {
+        _ = try run(options, store: store)
+        return try ManageGuidelinesUseCase().listGuidelines(repoName: options.repoName, store: store)
+    }
+
     // MARK: - Helpers
 
     @MainActor
     private func findOrCreateCategory(name: String, repoName: String, context: ModelContext) -> GuidelineCategory {
         let predicate = #Predicate<GuidelineCategory> { $0.name == name && $0.repoName == repoName }
         let descriptor = FetchDescriptor<GuidelineCategory>(predicate: predicate)
+        // Intentional: fetch failure is treated as "not found" and a new category is created.
         if let existing = try? context.fetch(descriptor).first {
             return existing
         }

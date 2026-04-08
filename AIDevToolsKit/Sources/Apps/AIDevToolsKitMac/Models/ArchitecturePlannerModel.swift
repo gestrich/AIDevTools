@@ -10,7 +10,6 @@ final class ArchitecturePlannerModel {
 
     enum State {
         case idle
-        case loading
         case running(stepName: String, output: String)
         case error(Error)
     }
@@ -50,9 +49,8 @@ final class ArchitecturePlannerModel {
     private let generateReportUseCase: GenerateReportUseCase
     private let manageGuidelinesUseCase: ManageGuidelinesUseCase
     private let providerRegistry: ProviderRegistry
-    private var runAllStepsUseCase: RunAllPlanningStepsUseCase
-    private var runStepUseCase: RunPlanningStepUseCase
     private let seedGuidelinesUseCase: SeedGuidelinesUseCase
+    private var useCases: UseCases
 
     init(
         dataPathsService: DataPathsService,
@@ -71,15 +69,13 @@ final class ArchitecturePlannerModel {
         self.createJobUseCase = CreatePlanningJobUseCase()
         self.generateReportUseCase = GenerateReportUseCase()
         self.manageGuidelinesUseCase = ManageGuidelinesUseCase()
-        self.runAllStepsUseCase = RunAllPlanningStepsUseCase(client: client)
-        self.runStepUseCase = RunPlanningStepUseCase(client: client)
+        self.useCases = UseCases(client: client)
         self.seedGuidelinesUseCase = SeedGuidelinesUseCase()
     }
 
     private func rebuildRunStepUseCase() {
         guard let client = providerRegistry.client(named: selectedProviderName) else { return }
-        runAllStepsUseCase = RunAllPlanningStepsUseCase(client: client)
-        runStepUseCase = RunPlanningStepUseCase(client: client)
+        useCases = UseCases(client: client)
     }
 
     func loadJobs(repoName: String, repoPath: String) {
@@ -120,11 +116,10 @@ final class ArchitecturePlannerModel {
     func seedGuidelines() {
         guard let repoName = currentRepoName, let repoPath = currentRepoPath, let store else { return }
         do {
-            _ = try seedGuidelinesUseCase.run(
+            guidelines = try seedGuidelinesUseCase.runAndListGuidelines(
                 SeedGuidelinesUseCase.Options(repoName: repoName, repoPath: repoPath),
                 store: store
             )
-            guidelines = try manageGuidelinesUseCase.listGuidelines(repoName: repoName, store: store)
         } catch {
             state = .error(error)
         }
@@ -141,10 +136,10 @@ final class ArchitecturePlannerModel {
                 repoPath: repoPath,
                 featureDescription: featureDescription
             )
-            let result = try createJobUseCase.run(options, store: store)
+            let result = try createJobUseCase.runAndListJobs(options, store: store)
             featureDescription = ""
-            jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
-            selectedJob = jobs.first { $0.jobId == result.jobId }
+            jobs = result.jobs
+            selectedJob = result.jobs.first { $0.jobId == result.jobId }
             state = .idle
         } catch {
             state = .error(error)
@@ -154,22 +149,9 @@ final class ArchitecturePlannerModel {
     func runNextStep() async {
         guard let job = selectedJob, let store, let repoPath = currentRepoPath else { return }
         guard let stepDef = ArchitecturePlannerStep(rawValue: job.currentStepIndex) else { return }
-
         state = .running(stepName: stepDef.name, output: "")
-        let session = makeSession(jobId: job.jobId, stepIndex: job.currentStepIndex)
-        let options = RunPlanningStepUseCase.Options(jobId: job.jobId, repoPath: repoPath, step: stepDef)
-
         do {
-            if let session {
-                try await session.run(onOutput: { [weak self] text in
-                    Task { @MainActor in self?.appendOutput(text) }
-                }) { outputHandler in
-                    try await self.runStepUseCase.run(options, store: store, onOutput: outputHandler)
-                }
-            } else {
-                try await runStepUseCase.run(options, store: store)
-            }
-            reloadSelectedJob()
+            try await executeStep(stepDef, job: job, store: store, repoPath: repoPath)
             state = .idle
         } catch {
             state = .error(error)
@@ -178,22 +160,9 @@ final class ArchitecturePlannerModel {
 
     func runStep(_ step: ArchitecturePlannerStep) async {
         guard let job = selectedJob, let store, let repoPath = currentRepoPath else { return }
-
         state = .running(stepName: step.name, output: "")
-        let session = makeSession(jobId: job.jobId, stepIndex: step.rawValue)
-        let options = RunPlanningStepUseCase.Options(jobId: job.jobId, repoPath: repoPath, step: step)
-
         do {
-            if let session {
-                try await session.run(onOutput: { [weak self] text in
-                    Task { @MainActor in self?.appendOutput(text) }
-                }) { outputHandler in
-                    try await self.runStepUseCase.run(options, store: store, onOutput: outputHandler)
-                }
-            } else {
-                try await runStepUseCase.run(options, store: store)
-            }
-            reloadSelectedJob()
+            try await executeStep(step, job: job, store: store, repoPath: repoPath)
             state = .idle
         } catch {
             state = .error(error)
@@ -205,7 +174,7 @@ final class ArchitecturePlannerModel {
         state = .running(stepName: "Running...", output: "")
         let options = RunAllPlanningStepsUseCase.Options(jobId: job.jobId, repoPath: repoPath)
         do {
-            try await runAllStepsUseCase.run(
+            let updatedJob = try await useCases.runAllSteps.run(
                 options,
                 store: store,
                 outputStore: outputStore,
@@ -219,7 +188,10 @@ final class ArchitecturePlannerModel {
                     Task { @MainActor in self?.appendOutput(text) }
                 }
             )
-            reloadSelectedJob()
+            if let updatedJob {
+                selectedJob = updatedJob
+                jobs = jobs.map { $0.jobId == updatedJob.jobId ? updatedJob : $0 }
+            }
             state = .idle
         } catch {
             state = .error(error)
@@ -269,6 +241,39 @@ final class ArchitecturePlannerModel {
 
     // MARK: - Private
 
+    private struct UseCases {
+        let runAllSteps: RunAllPlanningStepsUseCase
+        let runStep: RunPlanningStepUseCase
+
+        init(client: any AIClient) {
+            self.runAllSteps = RunAllPlanningStepsUseCase(client: client)
+            self.runStep = RunPlanningStepUseCase(client: client)
+        }
+    }
+
+    private func executeStep(
+        _ step: ArchitecturePlannerStep,
+        job: PlanningJob,
+        store: ArchitecturePlannerStore,
+        repoPath: String
+    ) async throws {
+        let session = makeSession(jobId: job.jobId, stepIndex: step.rawValue)
+        let options = RunPlanningStepUseCase.Options(jobId: job.jobId, repoPath: repoPath, step: step)
+        if let session {
+            try await session.run(onOutput: { [weak self] text in
+                Task { @MainActor in self?.appendOutput(text) }
+            }) { outputHandler in
+                try await self.useCases.runStep.run(options, store: store, onOutput: outputHandler)
+            }
+        } else {
+            try await useCases.runStep.run(options, store: store)
+        }
+        if let updatedJob = try useCases.runStep.loadJob(jobId: job.jobId, store: store) {
+            selectedJob = updatedJob
+            jobs = jobs.map { $0.jobId == updatedJob.jobId ? updatedJob : $0 }
+        }
+    }
+
     private func appendOutput(_ text: String) {
         guard case .running(let stepName, let output) = state else { return }
         state = .running(stepName: stepName, output: output + text)
@@ -279,15 +284,4 @@ final class ArchitecturePlannerModel {
         return AIRunSession(key: "\(jobId.uuidString)/\(stepIndex)", store: outputStore)
     }
 
-    private func reloadSelectedJob() {
-        guard let repoName = currentRepoName, let store else { return }
-        do {
-            jobs = try manageGuidelinesUseCase.listJobs(repoName: repoName, store: store)
-            if let jobId = selectedJob?.jobId {
-                selectedJob = jobs.first { $0.jobId == jobId }
-            }
-        } catch {
-            state = .error(error)
-        }
-    }
 }

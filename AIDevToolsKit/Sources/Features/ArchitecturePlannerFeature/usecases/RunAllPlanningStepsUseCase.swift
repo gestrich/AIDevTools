@@ -30,7 +30,7 @@ public struct RunAllPlanningStepsUseCase: UseCase {
         outputStore: AIOutputStore?,
         onStepStart: (@Sendable (String) -> Void)? = nil,
         onOutput: (@Sendable (String) -> Void)? = nil
-    ) async throws {
+    ) async throws -> PlanningJob? {
         while let job = try manageGuidelines.getJob(jobId: options.jobId, store: store),
               let step = ArchitecturePlannerStep(rawValue: job.currentStepIndex) {
             onStepStart?(step.name)
@@ -48,5 +48,6 @@ public struct RunAllPlanningStepsUseCase: UseCase {
                 try await runStep.run(stepOptions, store: store, onOutput: onOutput)
             }
         }
+        return try manageGuidelines.getJob(jobId: options.jobId, store: store)
     }
 }
