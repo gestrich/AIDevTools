@@ -76,7 +76,10 @@ Do not change `createPlatform` or `SecureSettingsService` — they are correct.
 - Change `githubAccount: info.credentialAccount ?? ""` to `githubAccount: info.credentialAccount`. Update `PRRadarRepoConfig.githubAccount` to `String?`.
 - Callers that use `config.githubAccount` now unwrap it explicitly and throw `CredentialError.notConfigured` if nil.
 
-## - [ ] Phase 3: Wire CLI --github-token Override
+## - [x] Phase 3: Wire CLI --github-token Override
+
+**Skills used**: `swift-architecture`
+**Principles applied**: Added `@Option var githubToken: String?` to `RunTaskCommand`, `FinalizeStagedCommand`, `SweepRunCommand`, `StatusCommand`, and `PRRadarCLIOptions` (covering all PRRadar subcommands). Updated `resolveGitHubCredentials` in `CLICredentialSetup` to use `CredentialResolver.withExplicitToken()` when a token is provided. Threaded `explicitToken` through `PRRadarRepoConfig` → `GitHubServiceFactory.resolveToken/create/createGitOps/createPRService` → all PRReviewFeature use case call sites, providing strict override semantics with no fallback.
 
 **Skills to read**: `swift-architecture`
 

@@ -21,6 +21,9 @@ struct PRRadarCLIOptions: ParsableArguments {
     @Option(name: .long, help: "Diff source: 'git' (local git history) or 'github-api' (GitHub REST API)")
     var diffSource: DiffSource?
 
+    @Option(name: .long, help: "GitHub token (overrides all other credential sources)")
+    var githubToken: String?
+
     @Flag(name: .long, help: "Output results as JSON")
     var json: Bool = false
 }
@@ -42,7 +45,7 @@ enum PRRadarCLIError: Error, CustomStringConvertible {
     }
 }
 
-func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) throws -> PRRadarRepoConfig {
+func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil, githubToken: String? = nil) throws -> PRRadarRepoConfig {
     let dataPathsService = try DataPathsService.fromCLI(dataPath: nil)
     let settingsService = try SettingsService(dataPathsService: dataPathsService)
     let repos = try settingsService.loadRepositories()
@@ -70,7 +73,8 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
         settings: settings,
         outputDir: outputDirString,
         agentScriptPath: settings.agentScriptPath,
-        dataRootURL: dataPathsService.rootPath
+        dataRootURL: dataPathsService.rootPath,
+        explicitToken: githubToken
     )
 
     if let diffSource {
@@ -84,7 +88,8 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
             githubAccount: config.githubAccount,
             diffSource: diffSource,
             defaultBaseBranch: config.defaultBaseBranch,
-            dataRootURL: config.dataRootURL
+            dataRootURL: config.dataRootURL,
+            explicitToken: config.explicitToken
         )
     }
 
@@ -92,7 +97,7 @@ func resolvePRRadarConfig(repoName: String?, diffSource: DiffSource? = nil) thro
 }
 
 func resolvePRRadarConfigFromOptions(_ options: PRRadarCLIOptions) throws -> PRRadarRepoConfig {
-    try resolvePRRadarConfig(repoName: options.config, diffSource: options.diffSource)
+    try resolvePRRadarConfig(repoName: options.config, diffSource: options.diffSource, githubToken: options.githubToken)
 }
 
 func resolveRulesDir(rulesPathName: String?, config: PRRadarRepoConfig) throws -> String {

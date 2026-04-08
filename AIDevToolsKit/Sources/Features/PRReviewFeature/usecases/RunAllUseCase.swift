@@ -35,7 +35,7 @@ public struct RunAllUseCase: StreamingUseCase {
                     guard let githubAccount = config.githubAccount else {
                         throw CredentialError.notConfigured(account: config.name)
                     }
-                    let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount)
+                    let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
 
                     let limitNum = Int(limit ?? "10000") ?? 10000
                     let dateLabel = filter.dateFilter.map { "Fetching PRs \($0.fieldLabel) since \($0.date)" } ?? "Fetching all PRs"

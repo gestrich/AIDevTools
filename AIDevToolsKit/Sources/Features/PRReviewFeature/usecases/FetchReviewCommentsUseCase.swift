@@ -30,7 +30,7 @@ public struct FetchReviewCommentsUseCase: UseCase {
             }
             let cacheURL = try config.requireGitHubCacheURL()
             let (gitHub, gitOps) = try await GitHubServiceFactory.create(
-                repoPath: config.repoPath, githubAccount: githubAccount
+                repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken
             )
             let gitHubPRService = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
             let historyProvider = LocalGitHistoryProvider(gitOps: gitOps, repoPath: config.repoPath)

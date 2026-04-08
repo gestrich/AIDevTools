@@ -38,6 +38,9 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
     @Option(help: "Credential account name to override auto-detection")
     var githubAccount: String?
 
+    @Option(help: "GitHub token (overrides all other credential sources)")
+    var githubToken: String?
+
     @Flag(help: "Generate and print the PR comment without pushing, creating a PR, or posting")
     var dryRun: Bool = false
 
@@ -51,7 +54,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
             repoURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         }
 
-        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount)
+        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
         let registry = makeProviderRegistry(credentialResolver: resolver)
         guard let client = provider.flatMap({ registry.client(named: $0) }) ?? registry.defaultClient else {
             print("Error: No AI provider available. Configure an API key or install Claude CLI.")

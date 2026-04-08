@@ -21,7 +21,7 @@ public struct PostSingleCommentUseCase: UseCase {
         guard let githubAccount = config.githubAccount else {
             throw CredentialError.notConfigured(account: config.name)
         }
-        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount)
+        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
         let commentService = CommentService(githubService: gitHub)
 
         do {

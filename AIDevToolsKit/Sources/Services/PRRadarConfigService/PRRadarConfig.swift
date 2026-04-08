@@ -15,6 +15,7 @@ public struct PRRadarRepoConfig: Sendable {
     public let diffSource: DiffSource
     public let defaultBaseBranch: String
     public let dataRootURL: URL?
+    public let explicitToken: String?
 
     public init(
         id: UUID = UUID(),
@@ -26,7 +27,8 @@ public struct PRRadarRepoConfig: Sendable {
         githubAccount: String?,
         diffSource: DiffSource = .git,
         defaultBaseBranch: String,
-        dataRootURL: URL? = nil
+        dataRootURL: URL? = nil,
+        explicitToken: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -38,6 +40,7 @@ public struct PRRadarRepoConfig: Sendable {
         self.diffSource = diffSource
         self.defaultBaseBranch = defaultBaseBranch
         self.dataRootURL = dataRootURL
+        self.explicitToken = explicitToken
     }
 
     public static func make(
@@ -45,7 +48,8 @@ public struct PRRadarRepoConfig: Sendable {
         settings: PRRadarRepoSettings,
         outputDir: String,
         agentScriptPath: String,
-        dataRootURL: URL? = nil
+        dataRootURL: URL? = nil,
+        explicitToken: String? = nil
     ) -> PRRadarRepoConfig {
         PRRadarRepoConfig(
             id: info.id,
@@ -57,7 +61,8 @@ public struct PRRadarRepoConfig: Sendable {
             githubAccount: info.credentialAccount,
             diffSource: settings.diffSource,
             defaultBaseBranch: info.pullRequest?.baseBranch ?? "main",
-            dataRootURL: dataRootURL
+            dataRootURL: dataRootURL,
+            explicitToken: explicitToken
         )
     }
 

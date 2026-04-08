@@ -9,8 +9,8 @@ import PRRadarConfigService
 import RepositorySDK
 
 public struct GitHubServiceFactory: Sendable {
-    public static func create(repoPath: String, githubAccount: String) async throws -> (gitHub: GitHubAPIService, gitOps: GitOperationsService) {
-        let token = try await resolveToken(githubAccount: githubAccount)
+    public static func create(repoPath: String, githubAccount: String, explicitToken: String? = nil) async throws -> (gitHub: GitHubAPIService, gitOps: GitOperationsService) {
+        let token = try await resolveToken(githubAccount: githubAccount, explicitToken: explicitToken)
 
         let gitOps = createGitOps(gitHubToken: token)
         let remoteURL = try await gitOps.getRemoteURL(path: repoPath)
@@ -47,17 +47,18 @@ public struct GitHubServiceFactory: Sendable {
         return GitOperationsService(client: CLIClient(printOutput: false), environment: environment)
     }
 
-    public static func createGitOps(githubAccount: String) async throws -> GitOperationsService {
-        let token = try await resolveToken(githubAccount: githubAccount)
+    public static func createGitOps(githubAccount: String, explicitToken: String? = nil) async throws -> GitOperationsService {
+        let token = try await resolveToken(githubAccount: githubAccount, explicitToken: explicitToken)
         return createGitOps(gitHubToken: token)
     }
 
     public static func createPRService(
         repoPath: String,
         githubAccount: String,
+        explicitToken: String? = nil,
         dataPathsService: DataPathsService
     ) async throws -> GitHubPRService {
-        let (gitHub, _) = try await create(repoPath: repoPath, githubAccount: githubAccount)
+        let (gitHub, _) = try await create(repoPath: repoPath, githubAccount: githubAccount, explicitToken: explicitToken)
         let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
         let cacheURL = try dataPathsService.path(for: .github(repoSlug: normalizedSlug))
         return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
@@ -74,7 +75,8 @@ public struct GitHubServiceFactory: Sendable {
         return GitHubPRService(rootURL: cacheURL, apiClient: apiService)
     }
 
-    public static func resolveToken(githubAccount: String) async throws -> String {
+    public static func resolveToken(githubAccount: String, explicitToken: String? = nil) async throws -> String {
+        if let explicitToken { return explicitToken }
         let resolver = CredentialResolver.createPlatform(githubAccount: githubAccount)
         guard let auth = resolver.getGitHubAuth() else {
             throw GitHubServiceError.missingToken

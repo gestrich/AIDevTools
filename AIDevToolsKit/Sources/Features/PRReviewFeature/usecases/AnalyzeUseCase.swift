@@ -271,14 +271,14 @@ public struct AnalyzeUseCase: StreamingUseCase {
                 totalCost = freshResults.compactMap(\.costUsd).reduce(0, +)
             } catch {
                 if let branch = branchToRestore, let account = config.githubAccount {
-                    let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: account)
+                    let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: account, explicitToken: config.explicitToken)
                     try? await gitOps?.checkoutBranch(branch, repoPath: config.repoPath)
                 }
                 throw error
             }
 
             if let branch = branchToRestore, let account = config.githubAccount {
-                let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: account)
+                let gitOps = try? await GitHubServiceFactory.createGitOps(githubAccount: account, explicitToken: config.explicitToken)
                 continuation.yield(.log(text: "Restoring branch \(branch)...\n"))
                 try? await gitOps?.checkoutBranch(branch, repoPath: config.repoPath)
             }
@@ -303,7 +303,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
         guard let githubAccount = config.githubAccount else {
             throw CredentialError.notConfigured(account: config.name)
         }
-        let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: githubAccount)
+        let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: githubAccount, explicitToken: config.explicitToken)
         let originalBranch = try? await gitOps.getCurrentBranch(path: config.repoPath)
         continuation.yield(.log(text: "Checking out PR #\(prNumber) commit \(String(fullHash.prefix(7)))...\n"))
         try await gitOps.fetchBranch(remote: "origin", branch: "pull/\(prNumber)/head", repoPath: config.repoPath)

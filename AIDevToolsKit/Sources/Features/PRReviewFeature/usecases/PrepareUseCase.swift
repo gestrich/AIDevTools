@@ -133,7 +133,7 @@ public struct PrepareUseCase: StreamingUseCase {
                         return
                     }
 
-                    let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: githubAccount)
+                    let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: githubAccount, explicitToken: config.explicitToken)
                     let ruleLoader = RuleLoaderService(gitOps: gitOps)
                     var allRules: [ReviewRule] = []
                     var rulesByDir: [(rulesDir: String, rules: [ReviewRule])] = []
@@ -159,7 +159,7 @@ public struct PrepareUseCase: StreamingUseCase {
                     if let historyProvider {
                         resolvedProvider = historyProvider
                     } else {
-                        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount)
+                        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
                         resolvedProvider = GitHubServiceFactory.createHistoryProvider(
                             diffSource: config.diffSource,
                             gitHub: gitHub,

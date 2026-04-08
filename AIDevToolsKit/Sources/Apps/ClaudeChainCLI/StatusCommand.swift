@@ -19,6 +19,9 @@ public struct StatusCommand: AsyncParsableCommand {
     @Argument(help: "Project name to show details for (optional, shows all if omitted)")
     public var project: String?
 
+    @Option(name: .long, help: "GitHub token (overrides all other credential sources)")
+    public var githubToken: String?
+
     public init() {}
 
     public func run() async throws {
@@ -32,16 +35,24 @@ public struct StatusCommand: AsyncParsableCommand {
         }
 
         let repoURL = URL(fileURLWithPath: path)
-        let accounts = try SecureSettingsService().listCredentialAccounts()
         let dataRoot = ResolveDataPathUseCase().resolve().path
         let dataPathsService = try DataPathsService(rootPath: dataRoot)
-        let gitOps = GitHubServiceFactory.createGitOps()
-        let remoteURL = try await gitOps.getRemoteURL(path: repoURL.path)
-        let owner = GitHubAPIService.parseOwnerRepo(from: remoteURL)?.owner
-        let account = owner.flatMap { o in accounts.first(where: { $0 == o }) } ?? accounts.first ?? "default"
+
+        let account: String
+        if githubToken == nil {
+            let accounts = try SecureSettingsService().listCredentialAccounts()
+            let gitOps = GitHubServiceFactory.createGitOps()
+            let remoteURL = try await gitOps.getRemoteURL(path: repoURL.path)
+            let owner = GitHubAPIService.parseOwnerRepo(from: remoteURL)?.owner
+            account = owner.flatMap { o in accounts.first(where: { $0 == o }) } ?? accounts.first ?? "default"
+        } else {
+            account = ""
+        }
+
         let prService = try await GitHubServiceFactory.createPRService(
             repoPath: repoURL.path,
             githubAccount: account,
+            explicitToken: githubToken,
             dataPathsService: dataPathsService
         )
         let chainService = ClaudeChainService(client: ClaudeProvider(), repoPath: repoURL, prService: prService)

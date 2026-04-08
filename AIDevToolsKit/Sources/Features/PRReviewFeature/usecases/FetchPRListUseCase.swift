@@ -29,7 +29,7 @@ public struct FetchPRListUseCase: StreamingUseCase {
                     guard let account = config.githubAccount, !account.isEmpty else {
                         throw CredentialError.notConfigured(account: config.name)
                     }
-                    let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: account)
+                    let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: account, explicitToken: config.explicitToken)
 
                     continuation.yield(.log(text: "Fetching PRs from GitHub...\n"))
 

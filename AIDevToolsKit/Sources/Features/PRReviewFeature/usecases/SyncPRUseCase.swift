@@ -67,7 +67,7 @@ public struct SyncPRUseCase: StreamingUseCase {
                     guard let githubAccount = config.githubAccount else {
                         throw CredentialError.notConfigured(account: config.name)
                     }
-                    let (gitHub, gitOps) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount)
+                    let (gitHub, gitOps) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
 
                     try Task.checkCancellation()
 
