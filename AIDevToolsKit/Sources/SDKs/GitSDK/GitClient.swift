@@ -47,6 +47,12 @@ public struct GitClient: Sendable {
     }
 
     @discardableResult
+    public func createWorktreeForExistingLocalBranch(branchName: String, destination: String, workingDirectory: String) async throws -> ExecutionResult {
+        let command = GitCLI.Worktree.Add(destination: destination, commitish: branchName)
+        return try await execute(command, workingDirectory: workingDirectory)
+    }
+
+    @discardableResult
     public func createWorktreeWithNewBranch(branchName: String, basedOn: String, destination: String, workingDirectory: String) async throws -> ExecutionResult {
         let result = try await client.execute(
             command: "git",

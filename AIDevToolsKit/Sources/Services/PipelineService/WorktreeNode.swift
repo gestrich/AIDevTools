@@ -1,3 +1,5 @@
+import CLISDK
+import Foundation
 import GitSDK
 import PipelineSDK
 
@@ -20,15 +22,26 @@ public struct WorktreeNode: PipelineNode {
         context: PipelineContext,
         onProgress: @escaping @Sendable (PipelineNodeProgress) -> Void
     ) async throws -> PipelineContext {
-        onProgress(.output("Creating worktree at \(options.destinationPath)..."))
-        if let basedOn = options.basedOn {
-            try await gitClient.createWorktreeWithNewBranch(
-                branchName: options.branchName,
-                basedOn: basedOn,
-                destination: options.destinationPath,
-                workingDirectory: options.repoPath
-            )
+        if FileManager.default.fileExists(atPath: options.destinationPath) {
+            onProgress(.output("Reusing existing worktree at \(options.destinationPath)..."))
+        } else if let basedOn = options.basedOn {
+            onProgress(.output("Creating worktree at \(options.destinationPath)..."))
+            do {
+                try await gitClient.createWorktreeWithNewBranch(
+                    branchName: options.branchName,
+                    basedOn: basedOn,
+                    destination: options.destinationPath,
+                    workingDirectory: options.repoPath
+                )
+            } catch CLIClientError.executionFailed(_, _, let output) where output.contains("already exists") {
+                try await gitClient.createWorktreeForExistingLocalBranch(
+                    branchName: options.branchName,
+                    destination: options.destinationPath,
+                    workingDirectory: options.repoPath
+                )
+            }
         } else {
+            onProgress(.output("Creating worktree at \(options.destinationPath)..."))
             try await gitClient.createWorktree(
                 baseBranch: options.branchName,
                 destination: options.destinationPath,

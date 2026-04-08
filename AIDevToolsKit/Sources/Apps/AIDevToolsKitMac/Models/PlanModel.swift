@@ -302,7 +302,8 @@ final class PlanModel {
         return WorktreeOptions(
             branchName: branchName,
             destinationPath: destinationPath,
-            repoPath: repoPath.path
+            repoPath: repoPath.path,
+            basedOn: "HEAD"
         )
     }
 
