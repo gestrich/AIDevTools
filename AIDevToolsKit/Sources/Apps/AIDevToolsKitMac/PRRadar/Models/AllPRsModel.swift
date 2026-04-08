@@ -39,8 +39,7 @@ final class AllPRsModel {
     /// Reads PR metadata from the cache on a background thread, then updates state on the main actor.
     @discardableResult
     private func discoverAndMerge(filter: PRFilter? = nil) async -> [PRModel] {
-        let all = await PRDiscoveryService.discoverPRs(config: config)
-        let metadata = filter.map { f in all.filter { f.matches($0) } } ?? all
+        let metadata = await DiscoverPRsUseCase(config: config).execute(filter: filter)
         let prior = currentPRModels
         let models = await buildPRModels(from: metadata, reusingExisting: prior)
         state = .ready(models)
@@ -59,16 +58,6 @@ final class AllPRsModel {
             }
         }
         return await discoverAndMerge(filter: config.makeFilter()).first(where: { $0.metadata.number == prNumber })
-    }
-
-    enum SyncError: LocalizedError {
-        case failed(String)
-
-        var errorDescription: String? {
-            switch self {
-            case .failed(let message): return message
-            }
-        }
     }
 
     // MARK: - Refresh from GitHub
@@ -222,7 +211,7 @@ final class AllPRsModel {
         changesTask = Task { [weak self] in
             for await prNumber in service.changes() {
                 guard let self else { break }
-                let updated = await PRDiscoveryService.discoverPR(number: prNumber, config: self.config)
+                let updated = await DiscoverPRsUseCase(config: self.config).executeSingle(prNumber: prNumber)
                 guard let updated else { continue }
                 if let model = self.currentPRModels?.first(where: { $0.prNumber == prNumber }) {
                     model.updateMetadata(updated)
@@ -280,6 +269,16 @@ final class AllPRsModel {
             }
         }
         return models
+    }
+
+    enum SyncError: LocalizedError {
+        case failed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .failed(let message): return message
+            }
+        }
     }
 
     enum State {

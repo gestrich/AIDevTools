@@ -573,6 +573,7 @@ final class PRModel: Identifiable, Hashable {
             }
         } catch {
             submittingCommentIds.remove(reviewComment.id)
+            commentPostingState = .failed(error: error.localizedDescription, logs: "")
         }
     }
 
@@ -582,21 +583,25 @@ final class PRModel: Identifiable, Hashable {
         guard let commitSHA = fullDiff?.commitHash else { return }
 
         let useCase = PostManualCommentUseCase(config: config)
-        let success = try? await useCase.execute(
-            prNumber: prNumber,
-            filePath: filePath,
-            lineNumber: lineNumber,
-            body: body,
-            commitSHA: commitSHA
-        )
-
-        guard success == true else { return }
-
-        await refreshReviewCommentsFromGitHub()
+        do {
+            let success = try await useCase.execute(
+                prNumber: prNumber,
+                filePath: filePath,
+                lineNumber: lineNumber,
+                body: body,
+                commitSHA: commitSHA
+            )
+            guard success else { return }
+            await refreshReviewCommentsFromGitHub()
+        } catch {
+            commentPostingState = .failed(error: error.localizedDescription, logs: "")
+        }
     }
 
     private func refreshReviewCommentsFromGitHub() async {
         let fetchUseCase = FetchReviewCommentsUseCase(config: config)
+        // Swallowing intentionally: this is a best-effort background refresh after
+        // a successful post. A failure leaves stale data but does not undo the post.
         if let updated = try? await fetchUseCase.execute(
             prNumber: prNumber,
             minScore: 1,
@@ -809,12 +814,14 @@ final class PRModel: Identifiable, Hashable {
                     inProgressAnalysis = nil
                     for key in evaluations.keys { evaluations[key]?.accumulator = nil }
                     reloadDetail()
-                case .failed:
+                case .failed(let error, let logs):
                     for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+                    failPhase(.analyze, error: error, logs: logs)
                 }
             }
         } catch {
             for key in evaluations.keys { evaluations[key]?.accumulator = nil }
+            failPhase(.analyze, error: error.localizedDescription, logs: "")
         }
     }
 
