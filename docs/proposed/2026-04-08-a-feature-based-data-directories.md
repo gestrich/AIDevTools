@@ -115,7 +115,10 @@ There is also a `GitHubServiceFactory.make(token:owner:repo:)` method that hardc
 | `DataPathsService/MigrateDataPathsUseCase.swift` | Add migration step (see Phase 3) |
 | `Tests/DataPathsServiceTests/DataPathsServiceTests.swift` | Update path assertions |
 
-## - [ ] Phase 1: Update ServicePath
+## - [x] Phase 1: Update ServicePath
+
+**Skills used**: `swift-architecture`
+**Principles applied**: All `relativePath` values prefixed with `services/` (or `sdks/` for the new `.anthropicSessions` case). Renamed `.repoOutput` → `.evalsOutput` everywhere it was referenced (3 CLI commands, 1 test file). Updated test assertions to match new paths. No backwards-compat shims added — compiler errors surfaced all call sites immediately.
 
 **Skills to read**: `swift-architecture`
 

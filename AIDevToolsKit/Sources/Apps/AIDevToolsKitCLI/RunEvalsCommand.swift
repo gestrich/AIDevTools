@@ -69,7 +69,7 @@ struct RunEvalsCommand: AsyncParsableCommand {
                 throw ValidationError("No cases directory configured for repository: \(repoConfig.name)")
             }
             resolvedCasesDir = evalSettings.resolvedCasesDirectory(repoPath: repoURL)
-            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
+            resolvedOutputDir = try service.path(for: .evalsOutput(repoConfig.name))
             resolvedRepoRoot = repoURL
         } else {
             throw ValidationError("Must specify either --cases-dir or --repo")

@@ -45,7 +45,7 @@ struct DataPathsServiceTests {
 
         let path = try service.path(for: .architecturePlanner)
 
-        #expect(path.path(percentEncoded: false).hasSuffix("architecture-planner"))
+        #expect(path.path(percentEncoded: false).hasSuffix("services/architecture-planner"))
         #expect(path.path(percentEncoded: false).hasPrefix(root.path(percentEncoded: false)))
     }
 
@@ -56,28 +56,28 @@ struct DataPathsServiceTests {
 
         let path = try service.path(for: .repositories)
 
-        #expect(path.path(percentEncoded: false).hasSuffix("repositories"))
+        #expect(path.path(percentEncoded: false).hasSuffix("services/repositories"))
         #expect(path.path(percentEncoded: false).hasPrefix(root.path(percentEncoded: false)))
     }
 
-    @Test("claudeChainWorktrees resolves to claude-chain/worktrees")
+    @Test("claudeChainWorktrees resolves to services/claude-chain/worktrees")
     func claudeChainWorktreesRelativePath() {
-        #expect(ServicePath.claudeChainWorktrees.relativePath == "claude-chain/worktrees")
+        #expect(ServicePath.claudeChainWorktrees.relativePath == "services/claude-chain/worktrees")
     }
 
-    @Test("planWorktrees resolves to plan/worktrees")
+    @Test("planWorktrees resolves to services/plan/worktrees")
     func planWorktreesRelativePath() {
-        #expect(ServicePath.planWorktrees.relativePath == "plan/worktrees")
+        #expect(ServicePath.planWorktrees.relativePath == "services/plan/worktrees")
     }
 
-    @Test("repoOutput resolves to expected path") func repoOutputResolvesToExpectedPath() throws {
+    @Test("evalsOutput resolves to expected path") func evalsOutputResolvesToExpectedPath() throws {
         let root = makeTempRoot()
         defer { cleanup(root) }
         let service = try DataPathsService(rootPath: root)
 
-        let path = try service.path(for: .repoOutput("my-repo"))
+        let path = try service.path(for: .evalsOutput("my-repo"))
 
-        #expect(path.path(percentEncoded: false).hasSuffix("repos/my-repo"))
+        #expect(path.path(percentEncoded: false).hasSuffix("services/evals/my-repo"))
         #expect(path.path(percentEncoded: false).hasPrefix(root.path(percentEncoded: false)))
     }
 

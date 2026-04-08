@@ -1,25 +1,28 @@
 public enum ServicePath {
+    case anthropicSessions
     case architecturePlanner
+    case evalsOutput(String)
     case github(repoSlug: String)
     case prradarOutput(String)
-    case repoOutput(String)
     case repositories
     case worktrees(feature: String)
 
     var relativePath: String {
         switch self {
+        case .anthropicSessions:
+            return "sdks/anthropic/sessions"
         case .architecturePlanner:
-            return "architecture-planner"
+            return "services/architecture-planner"
+        case .evalsOutput(let repoName):
+            return "services/evals/\(repoName)"
         case .github(let repoSlug):
-            return "github/\(repoSlug)"
+            return "services/github/\(repoSlug)"
         case .prradarOutput(let repoName):
-            return "prradar/repos/\(repoName)"
-        case .repoOutput(let repoName):
-            return "repos/\(repoName)"
+            return "services/pr-radar/repos/\(repoName)"
         case .repositories:
-            return "repositories"
+            return "services/repositories"
         case .worktrees(let feature):
-            return "\(feature)/worktrees"
+            return "services/\(feature)/worktrees"
         }
     }
 }

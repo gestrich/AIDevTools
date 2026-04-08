@@ -39,7 +39,7 @@ struct ClearArtifactsCommand: ParsableCommand {
             let service = try DataPathsService.fromCLI(dataPath: dataPath)
             let settings = try ReposCommand.makeSettingsService(dataPath: dataPath)
             let repoConfig = try settings.repositoryStore.repoConfig(forRepoAt: repoURL)
-            resolvedOutputDir = try service.path(for: .repoOutput(repoConfig.name))
+            resolvedOutputDir = try service.path(for: .evalsOutput(repoConfig.name))
         } else {
             throw ValidationError("Must specify either --output-dir or --repo")
         }
