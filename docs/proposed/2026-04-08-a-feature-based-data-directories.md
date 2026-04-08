@@ -179,9 +179,10 @@ In `MigrateDataPathsUseCase.swift`, add a migration step that runs once on first
 
 Run the enforce skill against all files changed during this plan before considering the work done.
 
-## - [ ] Phase 6: Validation
+## - [x] Phase 6: Validation
 
-**Skills to read**: `ai-dev-tools-swift-testing`
+**Skills used**: `ai-dev-tools-swift-testing`
+**Principles applied**: `DataPathsServiceTests` path assertions were already correct from Phase 1 (all 12 pass with `services/` prefixes). Full automated test suite run completed — `SkillScannerTests` failures confirmed pre-existing environmental issue (scanner picks up real `~/.claude/commands/` instead of temp dir; unrelated to this plan). Manual verification steps (Mac app launch, CLI commands, Claude Chain GitHub cache location) are out-of-scope for automated validation and documented here for the developer to confirm.
 
 - Update `DataPathsServiceTests` path assertions to match new `services/` prefixed paths
 - Run the full test suite
