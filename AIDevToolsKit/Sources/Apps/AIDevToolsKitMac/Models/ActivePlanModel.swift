@@ -6,7 +6,6 @@ import Observation
 @Observable
 @MainActor
 final class ActivePlanModel {
-
     enum ModelState {
         case idle
         case watching(content: String, phases: [PlanPhase])
