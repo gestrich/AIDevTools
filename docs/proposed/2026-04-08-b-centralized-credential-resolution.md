@@ -114,7 +114,10 @@ CLI commands to update (verify via grep for `GitHubServiceFactory` or `resolveTo
 
 Run the enforce skill against all files changed during this plan before considering the work done.
 
-## - [ ] Phase 6: Validate
+## - [x] Phase 6: Validate
+
+**Skills used**: `ai-dev-tools-enforce`, `ai-dev-tools-architecture`, `ai-dev-tools-build-quality`, `ai-dev-tools-code-organization`, `ai-dev-tools-code-quality`, `ai-dev-tools-swift-testing`
+**Principles applied**: Loaded all six practice skills and analyzed all 51 changed Swift files. `swift build` completed with no errors (only pre-existing resource warnings unrelated to this plan). Key files — `CredentialResolver`, `CredentialError`, `FetchPRListUseCase`, `PostManualCommentUseCase`, `PostSingleCommentUseCase`, and `CredentialResolverTests` — all conform to architecture, code quality, and test conventions. No violations found. Manual smoke tests require a running Mac app and are not automatable.
 
 **Skills to read**: `ai-dev-tools-enforce`
 
