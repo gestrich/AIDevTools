@@ -179,7 +179,7 @@ struct TaskCreatorServiceHistoryProviderTests {
         // Arrange
         var provider = MockGitHistoryProvider()
         provider.blobHashes["abc123:file.swift"] = "hash-abc"
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let ruleLoader = RuleLoaderService(gitOps: gitOps)
         let service = TaskCreatorService(ruleLoader: ruleLoader, gitOps: gitOps, historyProvider: provider)
 
@@ -204,7 +204,7 @@ struct TaskCreatorServiceHistoryProviderTests {
         // Arrange
         let provider = MockGitHistoryProvider()
         // No blobHashes configured — will throw MockError.hashNotFound
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let ruleLoader = RuleLoaderService(gitOps: gitOps)
         let service = TaskCreatorService(ruleLoader: ruleLoader, gitOps: gitOps, historyProvider: provider)
 
@@ -226,7 +226,7 @@ struct TaskCreatorServiceHistoryProviderTests {
         // Arrange
         var provider = MockGitHistoryProvider()
         provider.blobHashes["abc123:file.swift"] = "hash-abc"
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let ruleLoader = RuleLoaderService(gitOps: gitOps)
         let service = TaskCreatorService(ruleLoader: ruleLoader, gitOps: gitOps, historyProvider: provider)
 
@@ -258,7 +258,7 @@ struct TaskCreatorServiceHistoryProviderTests {
         var provider = MockGitHistoryProvider()
         provider.blobHashes["abc123:file1.swift"] = "hash-1"
         provider.blobHashes["abc123:file2.swift"] = "hash-2"
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let ruleLoader = RuleLoaderService(gitOps: gitOps)
         let service = TaskCreatorService(ruleLoader: ruleLoader, gitOps: gitOps, historyProvider: provider)
 
@@ -369,7 +369,7 @@ struct GitHistoryProviderFactoryTests {
     @Test("Returns LocalGitHistoryProvider for .git source")
     func gitSourceReturnsLocal() {
         // Arrange
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let octokitClient = OctokitClient(token: "fake-token")
         let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: "test", repo: "repo")
 
@@ -391,7 +391,7 @@ struct GitHistoryProviderFactoryTests {
     @Test("Returns GitHubAPIHistoryProvider for .githubAPI source")
     func githubAPISourceReturnsGitHub() {
         // Arrange
-        let gitOps = GitOperationsService(client: CLIClient())
+        let gitOps = GitService(client: CLIClient())
         let octokitClient = OctokitClient(token: "fake-token")
         let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: "test", repo: "repo")
 

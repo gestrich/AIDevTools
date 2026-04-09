@@ -9,26 +9,21 @@ import PRRadarConfigService
 import RepositorySDK
 
 public struct GitHubServiceFactory: Sendable {
-    public static func create(repoPath: String, githubAccount: String, explicitToken: String? = nil) async throws -> (gitHub: GitHubAPIService, gitOps: GitOperationsService) {
+    public static func createGitHubAPI(repoPath: String, githubAccount: String, explicitToken: String? = nil) async throws -> GitHubAPIService {
         let token = try await resolveToken(githubAccount: githubAccount, explicitToken: explicitToken)
-
         let gitOps = createGitOps(gitHubToken: token)
         let remoteURL = try await gitOps.getRemoteURL(path: repoPath)
-
         guard let (owner, repo) = GitHubAPIService.parseOwnerRepo(from: remoteURL) else {
             throw GitHubServiceError.cannotParseRemoteURL(remoteURL)
         }
-
         let octokitClient = OctokitClient(token: token)
-        let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
-
-        return (gitHub, gitOps)
+        return GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
     }
 
     public static func createHistoryProvider(
         diffSource: DiffSource,
         gitHub: GitHubAPIService,
-        gitOps: GitOperationsService,
+        gitOps: GitService,
         repoPath: String,
         prNumber: Int,
         baseBranch: String,
@@ -42,12 +37,12 @@ public struct GitHubServiceFactory: Sendable {
         }
     }
 
-    public static func createGitOps(gitHubToken: String? = nil) -> GitOperationsService {
+    public static func createGitOps(gitHubToken: String? = nil) -> GitService {
         let environment: [String: String]? = gitHubToken.map { ["GH_TOKEN": $0] }
-        return GitOperationsService(client: CLIClient(printOutput: false), environment: environment)
+        return GitService(client: CLIClient(printOutput: false), environment: environment)
     }
 
-    public static func createGitOps(githubAccount: String, explicitToken: String? = nil) async throws -> GitOperationsService {
+    public static func createGitOps(githubAccount: String, explicitToken: String? = nil) async throws -> GitService {
         let token = try await resolveToken(githubAccount: githubAccount, explicitToken: explicitToken)
         return createGitOps(gitHubToken: token)
     }
@@ -58,7 +53,7 @@ public struct GitHubServiceFactory: Sendable {
         explicitToken: String? = nil,
         dataPathsService: DataPathsService
     ) async throws -> GitHubPRService {
-        let (gitHub, _) = try await create(repoPath: repoPath, githubAccount: githubAccount, explicitToken: explicitToken)
+        let gitHub = try await createGitHubAPI(repoPath: repoPath, githubAccount: githubAccount, explicitToken: explicitToken)
         let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
         let cacheURL = try dataPathsService.path(for: .github(repoSlug: normalizedSlug))
         return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)

@@ -1,13 +1,13 @@
 import GitSDK
 
 public struct LocalGitHistoryProvider: GitHistoryProvider {
-    private let gitOps: GitOperationsService
+    private let gitOps: GitService
     private let repoPath: String
     private let baseBranch: String
     private let headBranch: String
     private let remote: String
 
-    public init(gitOps: GitOperationsService, repoPath: String, baseBranch: String = "", headBranch: String = "", remote: String = "origin") {
+    public init(gitOps: GitService, repoPath: String, baseBranch: String = "", headBranch: String = "", remote: String = "origin") {
         self.gitOps = gitOps
         self.repoPath = repoPath
         self.baseBranch = baseBranch

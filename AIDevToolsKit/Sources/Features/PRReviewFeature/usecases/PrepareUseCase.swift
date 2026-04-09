@@ -159,7 +159,7 @@ public struct PrepareUseCase: StreamingUseCase {
                     if let historyProvider {
                         resolvedProvider = historyProvider
                     } else {
-                        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
+                        let gitHub = try await GitHubServiceFactory.createGitHubAPI(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
                         resolvedProvider = GitHubServiceFactory.createHistoryProvider(
                             diffSource: config.diffSource,
                             gitHub: gitHub,

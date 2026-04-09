@@ -29,9 +29,8 @@ public struct FetchReviewCommentsUseCase: UseCase {
                 throw CredentialError.notConfigured(account: config.name)
             }
             let cacheURL = try config.requireGitHubCacheURL()
-            let (gitHub, gitOps) = try await GitHubServiceFactory.create(
-                repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken
-            )
+            let gitHub = try await GitHubServiceFactory.createGitHubAPI(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
+            let gitOps = try await GitHubServiceFactory.createGitOps(githubAccount: githubAccount, explicitToken: config.explicitToken)
             let gitHubPRService = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
             let historyProvider = LocalGitHistoryProvider(gitOps: gitOps, repoPath: config.repoPath)
             let acquisition = PRAcquisitionService(

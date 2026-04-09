@@ -190,7 +190,7 @@ public struct PostCommentsUseCase: StreamingUseCase {
         guard let githubAccount = config.githubAccount else {
             throw CredentialError.notConfigured(account: config.name)
         }
-        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
+        let gitHub = try await GitHubServiceFactory.createGitHubAPI(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
         let commentService = CommentService(githubService: gitHub)
 
         var successful = 0

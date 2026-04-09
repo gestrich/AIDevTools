@@ -15,10 +15,10 @@ import PRRadarModelsService
 /// files to the prepare phase output directory.
 public struct TaskCreatorService: Sendable {
     private let ruleLoader: RuleLoaderService
-    private let gitOps: GitOperationsService
+    private let gitOps: GitService
     private let historyProvider: GitHistoryProvider
 
-    public init(ruleLoader: RuleLoaderService, gitOps: GitOperationsService, historyProvider: GitHistoryProvider) {
+    public init(ruleLoader: RuleLoaderService, gitOps: GitService, historyProvider: GitHistoryProvider) {
         self.ruleLoader = ruleLoader
         self.gitOps = gitOps
         self.historyProvider = historyProvider

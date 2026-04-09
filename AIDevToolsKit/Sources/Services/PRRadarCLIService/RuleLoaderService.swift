@@ -25,9 +25,9 @@ public enum RuleLoaderError: LocalizedError {
 /// filtered against file patterns and grep patterns. Uses Foundation `FileManager`
 /// for directory scanning — no CLI dependency.
 public struct RuleLoaderService: Sendable {
-    private let gitOps: GitOperationsService
+    private let gitOps: GitService
 
-    public init(gitOps: GitOperationsService) {
+    public init(gitOps: GitService) {
         self.gitOps = gitOps
     }
 

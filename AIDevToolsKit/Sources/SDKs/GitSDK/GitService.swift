@@ -27,7 +27,7 @@ public enum GitOperationsError: LocalizedError {
     }
 }
 
-public struct GitOperationsService: Sendable {
+public struct GitService: Sendable {
     private let gitClient: GitClient
 
     public init(client: CLIClient, environment: [String: String]? = nil) {

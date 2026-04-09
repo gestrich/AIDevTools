@@ -21,7 +21,7 @@ public struct PostManualCommentUseCase: UseCase {
         guard let githubAccount = config.githubAccount else {
             throw CredentialError.notConfigured(account: config.name)
         }
-        let (gitHub, _) = try await GitHubServiceFactory.create(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
+        let gitHub = try await GitHubServiceFactory.createGitHubAPI(repoPath: config.repoPath, githubAccount: githubAccount, explicitToken: config.explicitToken)
         try await gitHub.postReviewComment(
             number: prNumber,
             commitId: commitSHA,
