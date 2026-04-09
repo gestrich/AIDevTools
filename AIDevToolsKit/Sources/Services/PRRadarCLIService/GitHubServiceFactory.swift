@@ -64,6 +64,33 @@ public struct GitHubServiceFactory: Sendable {
         return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
     }
 
+    public static func createPRService(
+        repoPath: String,
+        resolver: CredentialService.CredentialResolver,
+        dataPathsService: DataPathsService
+    ) async throws -> GitHubPRService {
+        let auth = try resolver.requireGitHubAuth()
+        let token: String
+        switch auth {
+        case .token(let pat):
+            token = pat
+        case .app(let appId, let installationId, let privateKeyPEM):
+            token = try await GitHubAppTokenService().generateInstallationToken(
+                appId: appId, installationId: installationId, privateKeyPEM: privateKeyPEM
+            )
+        }
+        let gitOps = createGitOps(gitHubToken: token)
+        let remoteURL = try await gitOps.getRemoteURL(path: repoPath)
+        guard let (owner, repo) = GitHubAPIService.parseOwnerRepo(from: remoteURL) else {
+            throw GitHubServiceError.cannotParseRemoteURL(remoteURL)
+        }
+        let octokitClient = OctokitClient(token: token)
+        let gitHub = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)
+        let normalizedSlug = gitHub.repoSlug.replacingOccurrences(of: "/", with: "-")
+        let cacheURL = try dataPathsService.path(for: .github(repoSlug: normalizedSlug))
+        return GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
+    }
+
     public static func make(token: String, owner: String, repo: String) -> GitHubPRService {
         let octokitClient = OctokitClient(token: token)
         let apiService = GitHubAPIService(octokitClient: octokitClient, owner: owner, repo: repo)

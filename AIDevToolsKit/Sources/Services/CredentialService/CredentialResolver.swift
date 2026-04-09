@@ -73,6 +73,12 @@ public struct CredentialResolver: Sendable {
         return auth
     }
 
+    /// Environment dict to pass to child processes (e.g. GitClient) so they inherit the GitHub token.
+    public var gitEnvironment: [String: String]? {
+        guard case .token(let token) = getGitHubAuth() else { return nil }
+        return ["GH_TOKEN": token]
+    }
+
     public func getAnthropicKey() -> String? {
         resolveValue(envKey: Self.anthropicAPIKeyKey, keychainType: SecureSettingsService.anthropicKeyType)
     }

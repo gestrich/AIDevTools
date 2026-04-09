@@ -6,6 +6,7 @@ import ClaudeChainSDK
 import ClaudeChainService
 import ClaudeCLISDK
 import CodexCLISDK
+import CredentialFeature
 import CredentialService
 import Foundation
 import GitSDK
@@ -54,7 +55,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
             repoURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         }
 
-        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
+        let resolver = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
         let registry = makeProviderRegistry(credentialResolver: resolver)
         guard let client = provider.flatMap({ registry.client(named: $0) }) ?? registry.defaultClient else {
             print("Error: No AI provider available. Configure an API key or install Claude CLI.")
@@ -84,7 +85,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
         print("Provider: \(client.name)")
         print()
 
-        let useCase = FinalizeStagedTaskUseCase(client: client, git: GitClient(environment: gitEnvironment))
+        let useCase = FinalizeStagedTaskUseCase(client: client, git: GitClient(environment: resolver.gitEnvironment))
         let result = try await useCase.run(
             options: .init(
                 repoPath: repoURL,

@@ -546,6 +546,7 @@ let package = Package(
                 "ClaudeChainFeature",
                 "ClaudeCLISDK",
                 "CodexCLISDK",
+                "CredentialFeature",
                 "CredentialService",
                 "DataPathsService",
                 "GitHubService",

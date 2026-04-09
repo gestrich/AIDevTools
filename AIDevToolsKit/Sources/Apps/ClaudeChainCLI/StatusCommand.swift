@@ -2,6 +2,7 @@ import ArgumentParser
 import ClaudeChainFeature
 import ClaudeChainService
 import ClaudeCLISDK
+import CredentialFeature
 import CredentialService
 import DataPathsService
 import Foundation
@@ -13,14 +14,17 @@ public struct StatusCommand: AsyncParsableCommand {
         abstract: "Show chain project status and task progress"
     )
 
-    @Option(name: .long, help: "Path to the repository containing claude-chain/")
-    public var repoPath: String?
+    @Option(name: .long, help: "GitHub account name (from stored credentials)")
+    public var githubAccount: String?
+
+    @Option(name: .long, help: "GitHub token (overrides all other credential sources)")
+    public var githubToken: String?
 
     @Argument(help: "Project name to show details for (optional, shows all if omitted)")
     public var project: String?
 
-    @Option(name: .long, help: "GitHub token (overrides all other credential sources)")
-    public var githubToken: String?
+    @Option(name: .long, help: "Path to the repository containing claude-chain/")
+    public var repoPath: String?
 
     public init() {}
 
@@ -38,21 +42,10 @@ public struct StatusCommand: AsyncParsableCommand {
         let dataRoot = ResolveDataPathUseCase().resolve().path
         let dataPathsService = try DataPathsService(rootPath: dataRoot)
 
-        let account: String
-        if githubToken == nil {
-            let accounts = try SecureSettingsService().listCredentialAccounts()
-            let gitOps = GitHubServiceFactory.createGitOps()
-            let remoteURL = try await gitOps.getRemoteURL(path: repoURL.path)
-            let owner = GitHubAPIService.parseOwnerRepo(from: remoteURL)?.owner
-            account = owner.flatMap { o in accounts.first(where: { $0 == o }) } ?? accounts.first ?? "default"
-        } else {
-            account = ""
-        }
-
+        let resolver = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
         let prService = try await GitHubServiceFactory.createPRService(
             repoPath: repoURL.path,
-            githubAccount: account,
-            explicitToken: githubToken,
+            resolver: resolver,
             dataPathsService: dataPathsService
         )
         let chainService = ClaudeChainService(client: ClaudeProvider(), repoPath: repoURL, prService: prService)

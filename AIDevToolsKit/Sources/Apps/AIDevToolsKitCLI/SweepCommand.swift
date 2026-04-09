@@ -1,7 +1,7 @@
 import AIOutputSDK
 import ArgumentParser
-import ClaudeChainCLI
 import ClaudeChainService
+import CredentialFeature
 import Foundation
 import GitSDK
 import ProviderRegistryService
@@ -55,7 +55,7 @@ struct SweepRunCommand: AsyncParsableCommand {
             repoURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         }
 
-        let (gitEnvironment, resolver) = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
+        let resolver = resolveGitHubCredentials(githubAccount: githubAccount, githubToken: githubToken)
         let registry = makeProviderRegistry(credentialResolver: resolver)
         guard let client = provider.flatMap({ registry.client(named: $0) }) ?? registry.defaultClient else {
             print("Error: No AI provider available. Configure an API key or install Claude CLI.")
@@ -69,7 +69,7 @@ struct SweepRunCommand: AsyncParsableCommand {
         print("Provider: \(client.name)")
         print()
 
-        let useCase = RunSweepBatchUseCase(client: client, git: GitClient(printOutput: false, environment: gitEnvironment))
+        let useCase = RunSweepBatchUseCase(client: client, git: GitClient(printOutput: false, environment: resolver.gitEnvironment))
         let options = RunSweepBatchUseCase.Options(
             taskDirectory: taskURL,
             taskRelativePath: taskURL.path.hasPrefix(repoURL.path + "/")
