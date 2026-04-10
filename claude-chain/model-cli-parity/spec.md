@@ -30,6 +30,7 @@ For each task below:
 - [x] Check `AIDevToolsKitMac/Models/ClaudeChainModel.swift` and corresponding `ClaudeChainCLI/` commands for parity
   <!-- review: CLI `setup` can create a new chain project (spec.md + supporting files) but the Mac app had a placeholder "not yet implemented" sheet. Added `CreateChainProjectUseCase` to `ClaudeChainFeature`, added `createProject(name:baseBranch:)` to `ClaudeChainModel`, and implemented `CreateChainSheet` with a form that calls it. All other operations (list chains, get detail, execute task) were already in parity. -->
 - [x] Check `AIDevToolsKitMac/Models/ChatModel.swift` and corresponding `ChatCommand.swift` for parity
+  <!-- review: Found parity gap: ChatModel.resumeSession() uses LoadSessionMessagesUseCase to display session transcripts in the Mac app, but the CLI had no equivalent; added `chat show-session <id>` subcommand to close the gap, and fixed missing `import AIOutputSDK` caught by enforcement. -->
 - [ ] Check `AIDevToolsKitMac/Models/CredentialModel.swift` and corresponding `CredentialsCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/EvalRunnerModel.swift` and corresponding `RunEvalsCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/MarkdownPlannerModel.swift` and corresponding `MarkdownPlanner*Command.swift` files for parity
