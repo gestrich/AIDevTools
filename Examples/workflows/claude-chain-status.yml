@@ -1,0 +1,63 @@
+name: Claude Chain Status
+
+# Shows the current status of all Claude Chain projects and workflow run statistics.
+# Runs daily and can also be triggered manually.
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+# No secrets required beyond the automatically provided GITHUB_TOKEN.
+
+jobs:
+  status:
+    name: Claude Chain Status
+    runs-on: macos-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout AIDevTools
+        uses: actions/checkout@v4
+        with:
+          repository: gestrich/AIDevTools
+          ref: main
+          path: aidevtools
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Swift 6.2
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+
+      - name: Mark workspace as safe directory
+        run: git config --global --add safe.directory ${{ github.workspace }}
+
+      - name: Build AIDevTools CLI
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift build -c release --product ai-dev-tools-kit
+
+      # Shows each project's task completion progress and open PR count
+      - name: Show Claude Chain status
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift run -c release ai-dev-tools-kit claude-chain status \
+            --repo-path ${{ github.workspace }}
+
+      # Shows workflow run success/failure statistics over the past 30 days.
+      # Update --repo and --workflow-file to match your repository and workflow filename.
+      - name: Show Claude Chain statistics
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift run -c release ai-dev-tools-kit claude-chain statistics \
+            --repo "${{ github.repository }}" \
+            --workflow-file "claude-chain.yml" \
+            --days-back 30

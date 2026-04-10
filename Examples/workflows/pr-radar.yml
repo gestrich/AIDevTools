@@ -1,0 +1,100 @@
+name: PR Radar
+
+# Triggered manually on a specific PR, or automatically on any PR opened/updated.
+# To run automatically, change the trigger below to:
+#   pull_request:
+#     types: [opened, synchronize]
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+      mode:
+        description: 'Analysis mode'
+        required: false
+        default: 'regex'
+        type: choice
+        options:
+          - regex   # Pattern matching only — no AI cost
+          - all     # Regex + AI evaluation
+          - ai      # AI evaluation only
+      post_comments:
+        description: 'Post inline comments to the PR'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  pull-requests: write  # Required to post inline review comments
+  contents: read
+
+# Required secrets:
+#   ANTHROPIC_API_KEY — needed for 'ai' and 'all' modes (prepare step uses Claude Haiku,
+#                       evaluate step uses Claude Sonnet). Not needed for 'regex' mode,
+#                       but the prepare step still calls the API to generate focus areas.
+#
+# No additional secrets needed. GITHUB_TOKEN is provided automatically by GitHub Actions.
+#
+# Rules directory:
+#   Add your code review rules to a directory in your repo (e.g. code-review-rules/).
+#   Update --rules-dir below to match. See docs/rule-examples/ for rule file format.
+
+jobs:
+  review:
+    runs-on: macos-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout AIDevTools
+        uses: actions/checkout@v4
+        with:
+          repository: gestrich/AIDevTools
+          ref: main
+          path: aidevtools
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Swift 6.2
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+
+      - name: Mark workspace as safe directory
+        run: git config --global --add safe.directory ${{ github.workspace }}
+
+      - name: Build AIDevTools CLI
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift build -c release --product ai-dev-tools-kit
+
+      - name: Create PRRadar config
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift run -c release ai-dev-tools-kit prradar config add ci \
+            --repo-path ${{ github.workspace }} \
+            --rules-dir ${{ github.workspace }}/code-review-rules \
+            --github-account ci \
+            --data-path /tmp/prradar-ci-data
+
+      - name: Run review pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd aidevtools/AIDevToolsKit
+
+          ARGS="${{ github.event.inputs.pr_number }} \
+            --config ci \
+            --data-path /tmp/prradar-ci-data \
+            --diff-source github-api \
+            --mode ${{ github.event.inputs.mode }}"
+
+          if [ "${{ github.event.inputs.post_comments }}" = "true" ]; then
+            ARGS="$ARGS --no-dry-run"
+          fi
+
+          swift run -c release ai-dev-tools-kit prradar run $ARGS

@@ -1,0 +1,120 @@
+name: Claude Chain
+
+# Runs a Claude Chain task in two ways:
+#   1. Manually via workflow_dispatch — specify which project to run.
+#   2. Automatically when a Claude Chain PR is merged — picks up the next task.
+#      The merged PR's branch name encodes the project name, so no manual input is needed.
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Project name (folder under claude-chain/)'
+        required: true
+      base_branch:
+        description: 'Base branch for PR'
+        required: false
+        default: 'main'
+  pull_request:
+    types: [closed]
+    paths:
+      - 'claude-chain/**'
+
+permissions:
+  contents: write       # Push new branches with Claude's changes
+  pull-requests: write  # Create draft PRs
+  issues: write         # Add labels and assignees to PRs
+  actions: read
+
+# Required secrets:
+#   ANTHROPIC_API_KEY — Claude Chain uses the Claude CLI to execute tasks.
+#                       This key is passed to the Claude subprocess.
+#
+# No additional secrets needed. GITHUB_TOKEN is provided automatically by GitHub Actions.
+#
+# Required repo setting:
+#   Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
+#   must be enabled, otherwise PR creation will fail with a 403 error.
+#
+# Project structure in your repo:
+#   claude-chain/
+#     <project-name>/
+#       spec.md            — Task list (markdown checkboxes)
+#       configuration.yml  — Optional: assignee, maxOpenPRs, base_branch
+
+jobs:
+  run-claude-chain:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    name: Run Claude Chain Task
+    runs-on: macos-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout AIDevTools
+        uses: actions/checkout@v4
+        with:
+          repository: gestrich/AIDevTools
+          ref: main
+          path: aidevtools
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Swift 6.2
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global --add safe.directory ${{ github.workspace }}
+
+      - name: Set up git credentials
+        run: |
+          echo "machine github.com login x-access-token password ${{ secrets.GITHUB_TOKEN }}" >> ~/.netrc
+          echo "machine api.github.com login x-access-token password ${{ secrets.GITHUB_TOKEN }}" >> ~/.netrc
+          chmod 600 ~/.netrc
+
+      - name: Build AIDevTools CLI
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift build -c release --product ai-dev-tools-kit
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      # Prevent the aidevtools checkout from being committed as a git submodule
+      - name: Exclude aidevtools checkout from git tracking
+        run: echo "aidevtools/" >> ${{ github.workspace }}/.gitignore
+
+      # When triggered by a merged PR, extract the project name from the branch name.
+      # Claude Chain branches follow the pattern: claude-chain-<project>-<8_hex_chars>
+      - name: Resolve project and branch
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            PROJECT=$(echo "$BRANCH" | sed 's/^claude-chain-//' | sed 's/-[0-9a-f]\{8\}$//')
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          else
+            PROJECT="${{ github.event.inputs.project_name }}"
+            BASE_BRANCH="${{ github.event.inputs.base_branch }}"
+          fi
+          echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          echo "base_branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "Resolved: project=$PROJECT base_branch=$BASE_BRANCH"
+
+      - name: Run Claude Chain task
+        run: |
+          cd aidevtools/AIDevToolsKit
+          swift run -c release ai-dev-tools-kit claude-chain run-task \
+            --project "${{ steps.resolve.outputs.project }}" \
+            --repo-path ${{ github.workspace }} \
+            --base-branch "${{ steps.resolve.outputs.base_branch }}"
