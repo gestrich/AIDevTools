@@ -1,5 +1,6 @@
 import AIOutputSDK
 import AnthropicSDK
+import ArgumentParser
 import ClaudeCLISDK
 import CodexCLISDK
 import CredentialService
@@ -29,4 +30,20 @@ func makeEvalRegistry(debug: Bool = false) -> EvalProviderRegistry {
         EvalProviderEntry(client: ClaudeProvider()),
         EvalProviderEntry(client: CodexProvider()),
     ])
+}
+
+func resolveClient(named providerName: String?, from registry: ProviderRegistry) throws -> any AIClient {
+    if let providerName {
+        guard let client = registry.client(named: providerName) else {
+            print("Unknown provider '\(providerName)'. Available: \(registry.providerNames.joined(separator: ", "))")
+            throw ExitCode.failure
+        }
+        return client
+    } else {
+        guard let client = registry.defaultClient else {
+            print("No providers registered.")
+            throw ExitCode.failure
+        }
+        return client
+    }
 }

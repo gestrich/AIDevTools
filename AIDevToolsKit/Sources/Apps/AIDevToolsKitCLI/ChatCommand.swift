@@ -7,11 +7,15 @@ import ProviderRegistryService
 struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "chat",
-        abstract: "Chat with an AI provider"
+        abstract: "Chat with an AI provider",
+        subcommands: [ChatListSessionsCommand.self]
     )
 
     @Option(name: .long, help: "Provider to use for chat (default: first registered)")
     var provider: String?
+
+    @Option(name: .long, help: "Session ID to resume")
+    var sessionId: String?
 
     @Option(name: .long, help: "System prompt to configure the AI's behavior")
     var systemPrompt: String?
@@ -30,22 +34,7 @@ struct ChatCommand: AsyncParsableCommand {
 
     func run() async throws {
         let registry = makeProviderRegistry()
-
-        let client: any AIClient
-        if let provider {
-            guard let named = registry.client(named: provider) else {
-                print("Unknown provider '\(provider)'. Available: \(registry.providerNames.joined(separator: ", "))")
-                throw ExitCode.failure
-            }
-            client = named
-        } else {
-            guard let defaultClient = registry.defaultClient else {
-                print("No providers registered.")
-                throw ExitCode.failure
-            }
-            client = defaultClient
-        }
-
+        let client = try resolveClient(named: provider, from: registry)
         let useCase = SendChatMessageUseCase(client: client)
         let dir = workingDir ?? FileManager.default.currentDirectoryPath
 
@@ -56,22 +45,32 @@ struct ChatCommand: AsyncParsableCommand {
         }
     }
 
+    private func resolveInitialSessionId(client: any AIClient, workingDirectory: String, verbose: Bool) async -> String? {
+        if let explicitSessionId = sessionId {
+            if verbose { print("Resuming session: \(explicitSessionId)") }
+            return explicitSessionId
+        } else if resume {
+            let sessions = await client.listSessions(workingDirectory: workingDirectory)
+            if let id = sessions.first?.id {
+                if verbose { print("Resuming session: \(id)") }
+                return id
+            }
+        }
+        return nil
+    }
+
     private func sendMessage(
         _ text: String,
         workingDirectory: String,
         useCase: SendChatMessageUseCase,
         client: any AIClient
     ) async throws {
-        var sessionId: String?
-        if resume {
-            let sessions = await client.listSessions(workingDirectory: workingDirectory)
-            sessionId = sessions.first?.id
-        }
+        let activeSessionId = await resolveInitialSessionId(client: client, workingDirectory: workingDirectory, verbose: false)
 
         let options = SendChatMessageUseCase.Options(
             message: text,
             workingDirectory: workingDirectory,
-            sessionId: sessionId,
+            sessionId: activeSessionId,
             mcpConfigPath: mcpConfig,
             systemPrompt: systemPrompt
         )
@@ -101,15 +100,7 @@ struct ChatCommand: AsyncParsableCommand {
         print("\(client.displayName) Chat (type 'exit' or Ctrl-D to quit)")
         print("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}")
 
-        var sessionId: String?
-
-        if resume {
-            let sessions = await client.listSessions(workingDirectory: workingDirectory)
-            sessionId = sessions.first?.id
-            if let sessionId {
-                print("Resuming session: \(sessionId)")
-            }
-        }
+        var activeSessionId = await resolveInitialSessionId(client: client, workingDirectory: workingDirectory, verbose: true)
 
         while true {
             print("\nYou: ", terminator: "")
@@ -127,7 +118,7 @@ struct ChatCommand: AsyncParsableCommand {
             let options = SendChatMessageUseCase.Options(
                 message: input,
                 workingDirectory: workingDirectory,
-                sessionId: sessionId,
+                sessionId: activeSessionId,
                 mcpConfigPath: mcpConfig,
                 systemPrompt: systemPrompt
             )
@@ -147,7 +138,7 @@ struct ChatCommand: AsyncParsableCommand {
                         print()
                     }
                 }
-                sessionId = result.sessionId ?? sessionId
+                activeSessionId = result.sessionId ?? activeSessionId
             } catch {
                 print("\nError: \(error.localizedDescription)")
             }
