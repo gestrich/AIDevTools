@@ -29,7 +29,7 @@ For each task below:
   <!-- review: Added `runStep(_ step: ArchitecturePlannerStep)` to the model — the CLI's `update --step <name>` can run any specific step out of order, but the model only had `runNextStep()` and `runAllSteps()`; all other operations were already in parity. -->
 - [x] Check `AIDevToolsKitMac/Models/ClaudeChainModel.swift` and corresponding `ClaudeChainCLI/` commands for parity
   <!-- review: CLI `setup` can create a new chain project (spec.md + supporting files) but the Mac app had a placeholder "not yet implemented" sheet. Added `CreateChainProjectUseCase` to `ClaudeChainFeature`, added `createProject(name:baseBranch:)` to `ClaudeChainModel`, and implemented `CreateChainSheet` with a form that calls it. All other operations (list chains, get detail, execute task) were already in parity. -->
-- [ ] Check `AIDevToolsKitMac/Models/ChatModel.swift` and corresponding `ChatCommand.swift` for parity
+- [x] Check `AIDevToolsKitMac/Models/ChatModel.swift` and corresponding `ChatCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/CredentialModel.swift` and corresponding `CredentialsCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/EvalRunnerModel.swift` and corresponding `RunEvalsCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/MarkdownPlannerModel.swift` and corresponding `MarkdownPlanner*Command.swift` files for parity
