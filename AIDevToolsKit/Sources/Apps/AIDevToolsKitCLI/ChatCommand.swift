@@ -8,7 +8,7 @@ struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "chat",
         abstract: "Chat with an AI provider",
-        subcommands: [ChatListSessionsCommand.self]
+        subcommands: [ChatListSessionsCommand.self, ChatShowSessionCommand.self]
     )
 
     @Option(name: .long, help: "Provider to use for chat (default: first registered)")
