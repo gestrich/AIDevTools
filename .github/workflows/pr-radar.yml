@@ -68,6 +68,9 @@ jobs:
           cd aidevtools/AIDevToolsKit
           swift build -c release --product ai-dev-tools-kit
 
+      - name: Install Python dependencies for AI evaluation
+        run: pip3 install -r ${{ github.workspace }}/aidevtools/PRRadarLibrary/claude-agent/requirements.txt
+
       - name: Create PRRadar config
         run: |
           cd aidevtools/AIDevToolsKit
@@ -75,6 +78,7 @@ jobs:
             --repo-path ${{ github.workspace }} \
             --rules-dir ${{ github.workspace }}/code-review-rules \
             --github-account ci \
+            --agent-script-path ${{ github.workspace }}/aidevtools/PRRadarLibrary/claude-agent/claude_agent.py \
             --data-path /tmp/prradar-ci-data
 
       - name: Run review pipeline
