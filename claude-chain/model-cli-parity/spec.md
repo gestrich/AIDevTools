@@ -30,7 +30,8 @@ For each task below:
 - [x] Check `AIDevToolsKitMac/Models/ClaudeChainModel.swift` and corresponding `ClaudeChainCLI/` commands for parity
   <!-- review: CLI `setup` can create a new chain project (spec.md + supporting files) but the Mac app had a placeholder "not yet implemented" sheet. Added `CreateChainProjectUseCase` to `ClaudeChainFeature`, added `createProject(name:baseBranch:)` to `ClaudeChainModel`, and implemented `CreateChainSheet` with a form that calls it. All other operations (list chains, get detail, execute task) were already in parity. -->
 - [ ] Check `AIDevToolsKitMac/Models/ChatModel.swift` and corresponding `ChatCommand.swift` for parity
-- [ ] Check `AIDevToolsKitMac/Models/CredentialModel.swift` and corresponding `CredentialsCommand.swift` for parity
+- [x] Check `AIDevToolsKitMac/Models/CredentialModel.swift` and corresponding `CredentialsCommand.swift` for parity
+  <!-- review: The CLI `list` command only showed account names (via `ListCredentialAccountsUseCase`) while the model uses `ListCredentialStatusesUseCase` to expose gitHubAuth type and hasAnthropicKey status for all accounts. Updated `ListCredentialsCommand` to use `ListCredentialStatusesUseCase` and display `[github: token/app/none, anthropic: set/not set]` alongside each account name. Also fixed two pre-existing quality issues in the same file: replaced force unwrap `githubToken!` with `if let githubToken` binding, and replaced `try?` in `maskedLoad` with `do/catch` to avoid swallowing keychain errors. -->
 - [ ] Check `AIDevToolsKitMac/Models/EvalRunnerModel.swift` and corresponding `RunEvalsCommand.swift` for parity
 - [ ] Check `AIDevToolsKitMac/Models/MarkdownPlannerModel.swift` and corresponding `MarkdownPlanner*Command.swift` files for parity
 - [ ] Check `AIDevToolsKitMac/Models/ProviderModel.swift` and corresponding CLI commands for parity

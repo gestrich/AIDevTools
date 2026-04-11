@@ -68,8 +68,8 @@ struct CredentialsCommand: AsyncParsableCommand {
                 throw ValidationError("Cannot use --github-token together with --app-id/--installation-id/--private-key-path. Choose one authentication method.")
             }
 
-            if hasToken {
-                return .token(githubToken!)
+            if let githubToken {
+                return .token(githubToken)
             }
 
             if hasAppFields {
@@ -98,18 +98,25 @@ struct CredentialsCommand: AsyncParsableCommand {
         )
 
         func run() async throws {
-            let useCase = ListCredentialAccountsUseCase(settingsService: SecureSettingsService())
-            let accounts = try useCase.execute()
+            let useCase = ListCredentialStatusesUseCase(settingsService: SecureSettingsService())
+            let statuses = try useCase.execute()
 
-            if accounts.isEmpty {
+            if statuses.isEmpty {
                 print("No credential accounts found.")
                 print("Use 'ai-dev-tools-kit credentials add <account>' to create one.")
                 return
             }
 
             print("Credential accounts:\n")
-            for account in accounts {
-                print("  \(account)")
+            for status in statuses {
+                let githubLabel: String
+                switch status.gitHubAuth {
+                case .token: githubLabel = "token"
+                case .app: githubLabel = "app"
+                case .none: githubLabel = "none"
+                }
+                let anthropicLabel = status.hasAnthropicKey ? "set" : "not set"
+                print("  \(status.account)  [github: \(githubLabel), anthropic: \(anthropicLabel)]")
             }
         }
     }
@@ -177,8 +184,11 @@ struct CredentialsCommand: AsyncParsableCommand {
         }
 
         private func maskedLoad(_ load: () throws -> String) -> String {
-            guard let value = try? load() else { return "not set" }
-            return masked(value)
+            do {
+                return masked(try load())
+            } catch {
+                return "not set"
+            }
         }
     }
 }
