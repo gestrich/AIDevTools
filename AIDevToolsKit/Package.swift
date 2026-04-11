@@ -69,7 +69,6 @@ var targets: [Target] = [
         dependencies: [
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
             "AIOutputSDK",
-            .target(name: "AnthropicSDK", condition: .when(platforms: [.macOS])),
             .target(name: "AppIPCSDK", condition: .when(platforms: [.macOS])),
             .target(name: "ArchitecturePlannerFeature", condition: .when(platforms: [.macOS])),
             .target(name: "ArchitecturePlannerService", condition: .when(platforms: [.macOS])),
@@ -480,7 +479,6 @@ var targets: [Target] = [
         name: "ClaudeChainCLI",
         dependencies: [
             "AIOutputSDK",
-            .target(name: "AnthropicSDK", condition: .when(platforms: [.macOS])),
             "ClaudeChainSDK",
             "ClaudeChainService",
             "ClaudeChainFeature",

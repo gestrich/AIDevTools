@@ -1,7 +1,4 @@
 import AIOutputSDK
-#if canImport(Darwin)
-import AnthropicSDK
-#endif
 import ClaudeCLISDK
 import CodexCLISDK
 import CredentialService
@@ -10,14 +7,7 @@ import Foundation
 import ProviderRegistryService
 
 func makeProviderRegistry(credentialResolver: CredentialResolver) -> ProviderRegistry {
-    let dataRoot = AppPreferences().dataPath() ?? AppPreferences.defaultDataPath
-    var providers: [any AIClient] = [ClaudeProvider(), CodexProvider()]
-#if canImport(Darwin)
-    let sessionsDirectory = dataRoot.appending(path: ServicePath.anthropicSessions.relativePath)
-    if let key = credentialResolver.getAnthropicKey(), !key.isEmpty {
-        providers.append(AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key), sessionsDirectory: sessionsDirectory))
-    }
-#endif
+    let providers: [any AIClient] = [ClaudeProvider(), CodexProvider()]
     return ProviderRegistry(providers: providers)
 }
 
