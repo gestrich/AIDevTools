@@ -1,3 +1,4 @@
+#if canImport(Darwin)
 import AIOutputSDK
 import Foundation
 import PlanService
@@ -22,3 +23,4 @@ public struct WatchPlanUseCase: StreamingUseCase {
         }
     }
 }
+#endif
