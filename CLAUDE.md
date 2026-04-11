@@ -10,6 +10,7 @@
 * ai-dev-tools-build-quality: When cleaning up compiler warnings, TODO/FIXME comments, dead code, or debug artifacts
 * ai-dev-tools-code-organization: When reviewing or fixing Swift file and type organization
 * ai-dev-tools-code-quality: When reviewing or fixing code quality issues (force unwraps, raw strings, fallback values, duplicated logic, etc.)
+* ai-dev-tools-composition-root: When adding new shared services, wiring providers or credentials, reviewing how dependency construction works, or any question about how the Mac app or CLI commands get their services
 * ai-dev-tools-debug: When the user describes a problem, reports an error, posts a screenshot showing an issue, or is debugging PRRadar behavior (pipeline output, rule evaluation, Mac app issues)
 * ai-dev-tools-enforce: After making code changes, when asked to enforce standards, apply architecture guidelines, analyze for violations, or review what would need to change. Also use as a verification step at the end of every plan — after the final phase completes, run enforce on all files changed during the plan before considering the work done.
 * ai-dev-tools-logging: When reading logs, debugging via logs, or adding logging to new features
