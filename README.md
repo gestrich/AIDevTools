@@ -51,6 +51,6 @@ See [Skill Evaluator documentation](docs/features/evals/evals.md) for details.
 
 ### Worktrees
 
-Create and manage git worktrees — additional working directories for the same repository checked out to different branches. Used internally by ClaudeChain and Sweep to run tasks in isolation without disturbing the main working tree.
+Create and manage git worktrees — additional working directories for the same repository checked out to different branches. Used internally by ClaudeChain to run tasks in isolation without disturbing the main working tree.
 
 See [Worktrees documentation](docs/features/worktrees/worktrees.md) for details.
