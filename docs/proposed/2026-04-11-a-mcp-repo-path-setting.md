@@ -84,9 +84,10 @@ Create `@MainActor @Observable final class MCPModel`:
 
 `MCPModel` lives in the Apps layer. It has no network calls and no async work.
 
-## - [ ] Phase 3: Wire `MCPModel` into `CompositionRoot`
+## - [x] Phase 3: Wire `MCPModel` into `CompositionRoot`
 
-**Skills to read**: `ai-dev-tools-composition-root`
+**Skills used**: `ai-dev-tools-composition-root`
+**Principles applied**: Added `mcpModel: MCPModel` to `CompositionRoot`, constructed it in `create()` with the existing `settingsModel` and called `writeMCPConfigIfNeeded()` at startup. Injected into the SwiftUI environment via `AIDevToolsKitMacEntryView`. Used `.onChange(of: settingsModel.aiDevToolsRepoPath)` in the view body to re-trigger config writing when the user updates the repo path setting.
 
 In `CompositionRoot`:
 - Add `let mcpModel: MCPModel` property
