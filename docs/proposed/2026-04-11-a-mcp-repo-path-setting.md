@@ -119,7 +119,10 @@ In `ContextualChatPanel`:
 
 Keep the view logic minimal — `MCPStatus` carries all the data, the view just renders it.
 
-## - [ ] Phase 5: Create chat feature doc
+## - [x] Phase 5: Create chat feature doc
+
+**Skills used**: none
+**Principles applied**: Created `docs/features/chat/chat.md` covering all four required topics (chat capabilities, MCP integration and configuration, staleness indicator, provider selection). Added a link from the README AI Chat section to the new doc.
 
 Create `docs/features/chat/chat.md` covering:
 - What the chat feature does (AI chat with streaming responses, session history, image attachments)
