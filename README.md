@@ -49,10 +49,6 @@ Run structured test cases against AI providers to measure how well they handle c
 
 See [Skill Evaluator documentation](docs/features/evals/evals.md) for details.
 
-### Sweep
-
-Apply a Claude Code task across a set of files in a repository, collecting the changes into a single PR. Useful for large-scale refactors or consistent transformations across many files.
-
 ### Worktrees
 
 Create and manage git worktrees — additional working directories for the same repository checked out to different branches. Used internally by ClaudeChain and Sweep to run tasks in isolation without disturbing the main working tree.
