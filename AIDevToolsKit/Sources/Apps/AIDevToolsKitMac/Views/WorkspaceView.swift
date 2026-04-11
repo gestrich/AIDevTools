@@ -10,7 +10,7 @@ struct WorkspaceView: View {
     let evalProviderRegistry: EvalProviderRegistry
 
     @State private var chatSidePanelVisible = false
-    @State private var experimentalSettings = ExperimentalSettings()
+    @AppStorage("experimental.architecturePlanner") private var isArchitecturePlannerEnabled = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedWorkspaceTab") private var selectedTab: String = "claudeChain"
     @State private var deepLinkWatcher = DeepLinkWatcher()
@@ -70,7 +70,7 @@ struct WorkspaceView: View {
     @ViewBuilder
     private func tabContent(for repo: RepositoryConfiguration) -> some View {
         TabView(selection: $selectedTab) {
-            if experimentalSettings.isArchitecturePlannerEnabled {
+            if isArchitecturePlannerEnabled {
                 ArchitecturePlannerView(repository: repo)
                     .tabItem { Label("Architecture", systemImage: "building.columns") }
                     .tag("architecture")
