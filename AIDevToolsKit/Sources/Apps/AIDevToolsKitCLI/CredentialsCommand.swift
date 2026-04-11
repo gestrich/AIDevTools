@@ -68,8 +68,8 @@ struct CredentialsCommand: AsyncParsableCommand {
                 throw ValidationError("Cannot use --github-token together with --app-id/--installation-id/--private-key-path. Choose one authentication method.")
             }
 
-            if hasToken {
-                return .token(githubToken!)
+            if let githubToken {
+                return .token(githubToken)
             }
 
             if hasAppFields {
@@ -98,18 +98,25 @@ struct CredentialsCommand: AsyncParsableCommand {
         )
 
         func run() async throws {
-            let useCase = ListCredentialAccountsUseCase(settingsService: SecureSettingsService())
-            let accounts = try useCase.execute()
+            let useCase = ListCredentialStatusesUseCase(settingsService: SecureSettingsService())
+            let statuses = try useCase.execute()
 
-            if accounts.isEmpty {
+            if statuses.isEmpty {
                 print("No credential accounts found.")
                 print("Use 'ai-dev-tools-kit credentials add <account>' to create one.")
                 return
             }
 
             print("Credential accounts:\n")
-            for account in accounts {
-                print("  \(account)")
+            for status in statuses {
+                let githubLabel: String
+                switch status.gitHubAuth {
+                case .token: githubLabel = "token"
+                case .app: githubLabel = "app"
+                case .none: githubLabel = "none"
+                }
+                let anthropicLabel = status.hasAnthropicKey ? "set" : "not set"
+                print("  \(status.account)  [github: \(githubLabel), anthropic: \(anthropicLabel)]")
             }
         }
     }
@@ -141,7 +148,7 @@ struct CredentialsCommand: AsyncParsableCommand {
     struct ShowCredentialCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
-            abstract: "Show masked credential status for an account"
+            abstract: "Show credential status for an account"
         )
 
         @Argument(help: "Credential account name")
@@ -156,29 +163,19 @@ struct CredentialsCommand: AsyncParsableCommand {
                 throw ValidationError("Credential account '\(account)' not found.")
             }
 
+            let loadUseCase = LoadCredentialStatusUseCase(settingsService: settingsService)
+            let status = loadUseCase.execute(account: account)
+
             print("Account: \(account)\n")
 
-            switch settingsService.loadGitHubAuth(account: account) {
-            case .token(let token):
-                print("  GitHub auth:       Token (\(masked(token)))")
-            case .app(let appId, _, _):
-                print("  GitHub auth:       App (ID: \(masked(appId)))")
-            case nil:
-                print("  GitHub auth:       not set")
+            let githubLabel: String
+            switch status.gitHubAuth {
+            case .token: githubLabel = "token"
+            case .app: githubLabel = "app"
+            case .none: githubLabel = "not set"
             }
-
-            let anthropicMasked = maskedLoad { try settingsService.loadAnthropicKey(account: account) }
-            print("  Anthropic API key: \(anthropicMasked)")
-        }
-
-        private func masked(_ value: String) -> String {
-            guard value.count > 8 else { return "****" }
-            return "\(value.prefix(4))...\(value.suffix(4))"
-        }
-
-        private func maskedLoad(_ load: () throws -> String) -> String {
-            guard let value = try? load() else { return "not set" }
-            return masked(value)
+            print("  GitHub auth:       \(githubLabel)")
+            print("  Anthropic API key: \(status.hasAnthropicKey ? "set" : "not set")")
         }
     }
 }
