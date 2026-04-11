@@ -21,7 +21,7 @@ See [AI Chat documentation](docs/features/chat/chat.md) for setup and usage.
 
 ### AI Evaluator
 
-Run structured test cases against AI providers (Claude Code and Codex) to measure how well they handle coding tasks. Define assertions — required text, file changes, command traces, and rubric-based quality checks — then inspect results with per-case grading details and saved artifacts. Compare providers side-by-side across suites of test cases.
+Run structured test cases against AI providers to measure how well they handle coding tasks. Define assertions — required text, file changes, command traces, and rubric-based quality checks — then inspect results with per-case grading details and saved artifacts. Compare providers side-by-side across suites of test cases.
 
 See [AI Evaluator documentation](docs/features/evals/evals.md) for details.
 
