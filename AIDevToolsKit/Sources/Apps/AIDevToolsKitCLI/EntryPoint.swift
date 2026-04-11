@@ -1,5 +1,6 @@
 import ArgumentParser
 import ClaudeChainCLI
+import DataPathsService
 import EnvironmentSDK
 import Foundation
 import Logging
@@ -14,6 +15,20 @@ struct AIDevToolsKit: AsyncParsableCommand {
         abstract: "Developer tools for AI-assisted workflows",
         subcommands: subcommandTypes
     )
+
+    static func main() async {
+        writeMCPConfig()
+        do {
+            var command = try parseAsRoot()
+            if var asyncCommand = command as? any AsyncParsableCommand {
+                try await asyncCommand.run()
+            } else {
+                try command.run()
+            }
+        } catch {
+            exit(withError: error)
+        }
+    }
 
     private static var subcommandTypes: [any ParsableCommand.Type] {
         var commands: [any ParsableCommand.Type] = [
@@ -41,6 +56,33 @@ struct AIDevToolsKit: AsyncParsableCommand {
                 setenv(key, value, 0)
             }
         }
+    }
+
+    private static func writeMCPConfig() {
+        let arg0 = ProcessInfo.processInfo.arguments[0]
+        let executableURL: URL
+        if arg0.hasPrefix("/") {
+            executableURL = URL(fileURLWithPath: arg0).standardizedFileURL
+        } else {
+            let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            executableURL = URL(fileURLWithPath: arg0, relativeTo: cwd).standardizedFileURL
+        }
+        let config = """
+        {
+          "mcpServers": {
+            "ai-dev-tools-kit": {
+              "command": "\(executableURL.path)",
+              "args": ["mcp"]
+            }
+          }
+        }
+        """
+        let fileURL = DataPathsService.mcpConfigFileURL
+        try? FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try? config.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
 

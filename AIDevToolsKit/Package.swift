@@ -274,7 +274,8 @@ var targets: [Target] = [
     .target(
         name: "EvalService",
         dependencies: ["AIOutputSDK", "RepositorySDK", "SkillScannerSDK"],
-        path: "Sources/Services/EvalService"
+        path: "Sources/Services/EvalService",
+        exclude: ["Models/GradingModels.review.md"]
     ),
     .target(
         name: "GitHubService",
@@ -371,7 +372,8 @@ var targets: [Target] = [
         dependencies: [
             "SkillScannerSDK",
         ],
-        path: "Sources/Services/SkillService"
+        path: "Sources/Services/SkillService",
+        exclude: ["Models/Skill.review.md"]
     ),
 
     // SDKs Layer
@@ -544,7 +546,8 @@ var targets: [Target] = [
     .target(
         name: "ClaudeChainFeature",
         dependencies: ["AIOutputSDK", "ClaudeChainSDK", "ClaudeChainService", "CredentialService", "GitHubService", "GitSDK", "OctokitSDK", "PipelineSDK", "PipelineService", "PRRadarCLIService", "PRRadarModelsService", "SweepFeature", "UseCaseSDK"],
-        path: "Sources/Features/ClaudeChainFeature"
+        path: "Sources/Features/ClaudeChainFeature",
+        exclude: ["usecases/FinalizeStagedTaskUseCase.review.md"]
     ),
 
     // Test Targets (alphabetical)

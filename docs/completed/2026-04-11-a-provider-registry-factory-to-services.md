@@ -13,8 +13,8 @@ The goal is a `SharedCompositionRoot` in the Services layer that builds the serv
 
 ```
 SharedCompositionRoot (Services)
-├── Mac CompositionRoot  →  + @Observable models, MCP config writing
-└── CLI CompositionRoot  →  + nothing yet (maybe CLI-specific config later)
+├── Mac CompositionRoot  →  + @Observable models
+└── CLI CompositionRoot  →  + MCP config writing (self-registers using own executable path)
 ```
 
 **What belongs in `SharedCompositionRoot`:**
@@ -25,8 +25,8 @@ SharedCompositionRoot (Services)
 - `EvalProviderRegistry` (ClaudeProvider + CodexProvider)
 
 **What stays platform-specific:**
-- Mac: `ProviderModel` (`@Observable` wrapper around `ProviderRegistry`), `SettingsModel`, `gitClientFactory`, MCP config writing
-- CLI: nothing extra yet
+- Mac: `ProviderModel` (`@Observable` wrapper around `ProviderRegistry`), `SettingsModel`, `gitClientFactory`
+- CLI: MCP config writing — the CLI writes `mcp-config.json` on every invocation using `Bundle.main.executableURL`, so the config always points to the binary that was just built
 
 ## Phases
 
