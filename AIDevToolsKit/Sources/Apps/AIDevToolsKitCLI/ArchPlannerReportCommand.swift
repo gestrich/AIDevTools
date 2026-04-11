@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -32,3 +33,4 @@ struct ArchPlannerReportCommand: AsyncParsableCommand {
         print(result.report)
     }
 }
+#endif

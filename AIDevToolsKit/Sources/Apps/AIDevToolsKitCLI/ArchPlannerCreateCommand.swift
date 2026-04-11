@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -35,3 +36,4 @@ struct ArchPlannerCreateCommand: AsyncParsableCommand {
         print("Created planning job: \(result.jobId)")
     }
 }
+#endif

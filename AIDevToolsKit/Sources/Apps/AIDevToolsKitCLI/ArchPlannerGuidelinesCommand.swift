@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -149,3 +150,4 @@ struct GuidelinesSeedCommand: AsyncParsableCommand {
         }
     }
 }
+#endif

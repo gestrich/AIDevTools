@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -49,3 +50,4 @@ struct ArchPlannerScoreCommand: AsyncParsableCommand {
         print("Mappings: \(result.mappingsCreated)")
     }
 }
+#endif

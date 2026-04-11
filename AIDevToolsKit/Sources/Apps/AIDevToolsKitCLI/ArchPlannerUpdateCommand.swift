@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import AIOutputSDK
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
@@ -226,3 +227,4 @@ struct ArchPlannerUpdateCommand: AsyncParsableCommand {
         }
     }
 }
+#endif

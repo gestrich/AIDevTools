@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -62,3 +63,4 @@ struct ArchPlannerExecuteCommand: AsyncParsableCommand {
         print("Executed \(result.phasesExecuted) phases, \(result.decisionsRecorded) decisions recorded")
     }
 }
+#endif

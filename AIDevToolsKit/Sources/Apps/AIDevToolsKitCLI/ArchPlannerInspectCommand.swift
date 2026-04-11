@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerFeature
 import ArchitecturePlannerService
 import ArgumentParser
@@ -75,3 +76,4 @@ struct ArchPlannerInspectCommand: AsyncParsableCommand {
         print("\(job.jobId)  \(job.repoName)  \(currentStep)  \(job.createdAt.formatted())")
     }
 }
+#endif

@@ -12,8 +12,18 @@ struct AIDevToolsKit: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "ai-dev-tools-kit",
         abstract: "Developer tools for AI-assisted workflows",
-        subcommands: [ArchPlannerCommand.self, ChatCommand.self, ClaudeChainCLI.self, ClearArtifactsCommand.self, ConfigCommand.self, CredentialsCommand.self, ListCasesCommand.self, LogsCommand.self, PlanCommand.self, MCPCommand.self, PRRadarCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self, SweepCommand.self, WorktreeCommand.self]
+        subcommands: subcommandTypes
     )
+
+    private static var subcommandTypes: [any ParsableCommand.Type] {
+        var commands: [any ParsableCommand.Type] = [
+            ChatCommand.self, ClaudeChainCLI.self, ClearArtifactsCommand.self, ConfigCommand.self, CredentialsCommand.self, ListCasesCommand.self, LogsCommand.self, PlanCommand.self, MCPCommand.self, PRRadarCommand.self, ReposCommand.self, RunEvalsCommand.self, ShowOutputCommand.self, SkillsCommand.self, SweepCommand.self, WorktreeCommand.self,
+        ]
+        #if canImport(SwiftData)
+        commands.insert(ArchPlannerCommand.self, at: 0)
+        #endif
+        return commands
+    }
 
     @Option(name: .long, help: "Log level: trace, debug, info, notice, warning, error, critical")
     var logLevel: Logger.Level = .info

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArgumentParser
 import Foundation
 
@@ -21,3 +22,4 @@ struct ArchPlannerCommand: AsyncParsableCommand {
     @Option(help: "Data directory path (overrides app settings)")
     var dataPath: String?
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import ArchitecturePlannerService
 import DataPathsService
 import Foundation
@@ -18,3 +19,4 @@ extension DataPathsService {
         return try ArchitecturePlannerStore(directoryURL: archDir)
     }
 }
+#endif
