@@ -4,6 +4,12 @@ The AI Evaluator runs structured test cases against AI providers (Claude Code an
 
 Available in the **Evaluator** tab of the Mac app and via `ai-dev-tools-kit run-evals --help` in the CLI.
 
+## Motivation
+
+This feature was inspired by OpenAI's [Eval Skills](https://developers.openai.com/blog/eval-skills/) blog post, which argues that agent skill improvement requires structured evaluation rather than subjective assessment. Instead of asking "does this feel better?", evals let you ask concrete questions like: Did the agent invoke the skill? Did it run the expected commands? Did it produce the right output?
+
+The key insight is that reproducible measurement converts subjective impressions into actionable data — define success upfront, start with lightweight deterministic checks, layer in model-based grading for qualitative requirements, and grow coverage from real failures.
+
 ## Eval Cases
 
 Each eval case is a JSON file describing a task to run and how to grade the result. Cases are grouped into **suites** by directory.
@@ -108,3 +114,148 @@ After a run, each case produces:
 - A **summary** across all cases in the suite showing pass rates per provider
 
 Results are stored per repository and can be browsed in the Mac app or inspected via CLI.
+
+## CLI Usage
+
+```bash
+# Run evals with Codex
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider codex
+
+# Run evals with Claude
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider claude
+
+# Run both providers
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider both
+
+# Filter by suite or case ID
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider claude --suite designkit-migration
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider claude --case-id button-basic
+
+# Keep trace logs
+swift run ai-dev-tools run-evals --eval-dir /path/to/evals --provider claude --keep-traces
+```
+
+## Adding New Eval Cases
+
+### 1. Create an Eval File
+
+Add a new file in `Tests/EvalIntegrationTests/`:
+
+```swift
+import Testing
+import EvalService
+
+enum MySkillEvals {
+    static let cases: [EvalCase] = [
+        EvalCase(
+            id: "basic-transform",
+            suite: "my-skill",
+            skillHint: "explicit",
+            shouldTrigger: true,
+            task: "Transform this code using my-skill conventions",
+            input: """
+            // code to transform
+            """,
+            mustInclude: ["expected pattern"],
+            mustNotInclude: ["old pattern"]
+        ),
+    ]
+}
+
+@Suite("My Skill Evals", .tags(.integration))
+struct MySkillEvalTests {
+    @Test(arguments: MySkillEvals.cases)
+    func evalCase(_ eval: EvalCase) async throws {
+        try await runEval(eval)
+    }
+}
+```
+
+Each `EvalCase` in the `arguments` array appears as an individual test in the test navigator.
+
+### 2. Add Negative Tests (Expected Failures)
+
+Test that the skill does NOT activate for out-of-scope tasks:
+
+```swift
+enum MySkillEvals {
+    static let negativeCases: [EvalCase] = [
+        EvalCase(
+            id: "out-of-scope",
+            suite: "my-skill",
+            skillHint: "explicit",
+            shouldTrigger: false,
+            task: "Do something the skill can't do",
+            input: "unrelated code",
+            mustNotInclude: ["skill-specific pattern"]
+        ),
+    ]
+}
+
+@Suite("My Skill Evals — Negative", .tags(.integration))
+struct MySkillNegativeEvalTests {
+    @Test(arguments: MySkillEvals.negativeCases)
+    func evalCaseExpectingFailure(_ eval: EvalCase) async throws {
+        try await runEvalExpectingFailure(eval)
+    }
+}
+```
+
+`runEvalExpectingFailure` asserts that the case does NOT pass — use it when you expect the AI to produce output that violates your assertions.
+
+### 3. Choose Your Assertions
+
+**Start simple** — `mustInclude` + `mustNotInclude` cover most cases:
+
+```swift
+// The output should contain the new API and NOT contain the old API
+mustInclude: ["NewAPI.call()"],
+mustNotInclude: ["OldAPI.call()"]
+```
+
+**Add tool event checks** for efficiency and safety:
+
+```swift
+deterministic: DeterministicChecks(
+    traceCommandNotContains: ["rm -rf"],  // Safety: no destructive commands
+    maxCommands: 15,                       // Efficiency: don't waste tokens
+    maxRepeatedCommands: 3                 // No thrashing
+)
+```
+
+**Add rubric grading** for subjective quality:
+
+```swift
+rubric: RubricConfig(
+    prompt: """
+    Grade the following code transformation result.
+    Input: {{input}}
+    Result: {{result}}
+    Check: Does it follow SwiftUI best practices?
+    """,
+    requireOverallPass: true,
+    minScore: 7,
+    requiredCheckIds: ["follows-conventions", "no-deprecated-apis"]
+)
+```
+
+## Test Organization
+
+| Target | Speed | What It Tests |
+|--------|-------|---------------|
+| `EvalServiceTests` | Fast | Grading logic, prompt building, rubric parsing |
+| `EvalSDKTests` | Fast | Output parsers for Claude/Codex CLI output |
+| `EvalFeatureTests` | Fast | Use case orchestration with mock adapters |
+| `EvalIntegrationTests` | Slow | End-to-end with real provider CLIs |
+
+The `GradingValidationTests` in `EvalFeatureTests` systematically prove every grading capability catches both success and failure using mock adapters — run these to verify the grading framework itself is correct.
+
+To run tests:
+
+```bash
+# Fast — uses mock adapters
+swift test --skip EvalIntegrationTests
+
+# Slow — calls real Claude/Codex CLIs
+swift test --filter EvalIntegrationTests
+```
