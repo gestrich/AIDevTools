@@ -62,6 +62,6 @@ public struct MessageBuilder {
         result: String,
         isError: Bool = false
     ) -> MessageParameter.Message.Content.ContentObject {
-        .toolResult(toolId, result, isError, nil)
+        .toolResult(toolId, result, isError: isError, cacheControl: nil)
     }
 }
