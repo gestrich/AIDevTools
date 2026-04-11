@@ -31,10 +31,14 @@ public struct SharedCompositionRoot {
         return SharedCompositionRoot(
             credentialResolver: credentialResolver,
             dataPathsService: dataPathsService,
-            evalProviderRegistry: buildEvalProviderRegistry(),
+            evalProviderRegistry: buildEvalProviderRegistry(from: providerRegistry),
             providerRegistry: providerRegistry,
             settingsService: settingsService
         )
+    }
+
+    public static func buildEvalProviderRegistry(from providerRegistry: ProviderRegistry) -> EvalProviderRegistry {
+        EvalProviderRegistry.from(providerRegistry)
     }
 
     public static func buildProviderRegistry(credentialResolver: CredentialResolver, sessionsDirectory: URL) -> ProviderRegistry {
@@ -52,10 +56,4 @@ public struct SharedCompositionRoot {
         return ProviderRegistry(providers: providers)
     }
 
-    public static func buildEvalProviderRegistry() -> EvalProviderRegistry {
-        EvalProviderRegistry(entries: [
-            EvalProviderEntry(client: ClaudeProvider()),
-            EvalProviderEntry(client: CodexProvider()),
-        ])
-    }
 }

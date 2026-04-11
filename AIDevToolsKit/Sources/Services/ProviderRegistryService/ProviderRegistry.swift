@@ -39,6 +39,14 @@ public struct EvalProviderRegistry: Sendable {
         self.entries = entries
     }
 
+    public static func from(_ registry: ProviderRegistry) -> EvalProviderRegistry {
+        let entries = registry.providers.compactMap { client -> EvalProviderEntry? in
+            guard let evalClient = client as? any AIClient & EvalCapable else { return nil }
+            return EvalProviderEntry(client: evalClient)
+        }
+        return EvalProviderRegistry(entries: entries)
+    }
+
     public var defaultEntry: EvalProviderEntry? {
         entries.first
     }

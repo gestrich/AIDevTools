@@ -75,7 +75,8 @@ struct RunEvalsCommand: AsyncParsableCommand {
             throw ValidationError("Must specify either --cases-dir or --repo")
         }
 
-        let registry = SharedCompositionRoot.buildEvalProviderRegistry()
+        let root = try CLICompositionRoot.create()
+        let registry = root.evalProviderRegistry
         let providerFilter: [String]? = provider == "all" ? nil : provider.split(separator: ",").map(String.init)
 
         let summaries = try await RunEvalsUseCase(registry: registry).run(
