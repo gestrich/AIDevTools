@@ -148,7 +148,7 @@ struct CredentialsCommand: AsyncParsableCommand {
     struct ShowCredentialCommand: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "show",
-            abstract: "Show masked credential status for an account"
+            abstract: "Show credential status for an account"
         )
 
         @Argument(help: "Credential account name")
@@ -163,32 +163,19 @@ struct CredentialsCommand: AsyncParsableCommand {
                 throw ValidationError("Credential account '\(account)' not found.")
             }
 
+            let loadUseCase = LoadCredentialStatusUseCase(settingsService: settingsService)
+            let status = loadUseCase.execute(account: account)
+
             print("Account: \(account)\n")
 
-            switch settingsService.loadGitHubAuth(account: account) {
-            case .token(let token):
-                print("  GitHub auth:       Token (\(masked(token)))")
-            case .app(let appId, _, _):
-                print("  GitHub auth:       App (ID: \(masked(appId)))")
-            case nil:
-                print("  GitHub auth:       not set")
+            let githubLabel: String
+            switch status.gitHubAuth {
+            case .token: githubLabel = "token"
+            case .app: githubLabel = "app"
+            case .none: githubLabel = "not set"
             }
-
-            let anthropicMasked = maskedLoad { try settingsService.loadAnthropicKey(account: account) }
-            print("  Anthropic API key: \(anthropicMasked)")
-        }
-
-        private func masked(_ value: String) -> String {
-            guard value.count > 8 else { return "****" }
-            return "\(value.prefix(4))...\(value.suffix(4))"
-        }
-
-        private func maskedLoad(_ load: () throws -> String) -> String {
-            do {
-                return masked(try load())
-            } catch {
-                return "not set"
-            }
+            print("  GitHub auth:       \(githubLabel)")
+            print("  Anthropic API key: \(status.hasAnthropicKey ? "set" : "not set")")
         }
     }
 }
