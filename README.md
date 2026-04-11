@@ -25,12 +25,6 @@ Describe what you want to build in plain language and get a phased implementatio
 
 See [AI Planning documentation](docs/features/plans/plans.md) for details.
 
-### Architecture Planner
-
-Walk a feature description through a 10-step AI pipeline that extracts requirements, maps them to your codebase's architecture, scores guideline conformance, simulates execution decisions, and produces a report with followup items. Guidelines are seeded from architecture docs and bundled Swift architecture guidelines, and can be customized per repository.
-
-See [Architecture Planner guide](docs/guides/architecture-planner.md) for details.
-
 ### ClaudeChain
 
 Automate sequences of Claude Code tasks across GitHub pull requests. Define tasks in a `spec.md` file; ClaudeChain picks the next unchecked task, creates a branch, runs Claude Code to complete it, and opens a PR. When the PR is merged, the chain advances to the next task automatically. Supports both sequential spec-based chains and batch sweep processing over files.
