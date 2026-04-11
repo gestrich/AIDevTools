@@ -128,6 +128,12 @@ private struct LogEntryRow: View {
                 Text(entry.message)
                     .font(.body)
                     .lineLimit(3)
+                if let metadata = entry.metadata, !metadata.isEmpty {
+                    Text(metadata.sorted(by: { $0.key < $1.key }).map { "\($0.key): \($0.value)" }.joined(separator: " · "))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

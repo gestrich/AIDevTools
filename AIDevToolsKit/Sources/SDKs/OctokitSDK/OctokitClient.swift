@@ -2,12 +2,13 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Logging
 @preconcurrency import OctoKit
 
 public enum OctokitClientError: Error, Sendable, LocalizedError {
     case authenticationFailed
     case notFound(String)
-    case rateLimitExceeded
+    case rateLimitExceeded(String)
     case requestFailed(String)
     case invalidResponse
 
@@ -17,8 +18,9 @@ public enum OctokitClientError: Error, Sendable, LocalizedError {
             return "GitHub authentication failed. Check your token is valid."
         case .notFound(let detail):
             return "GitHub resource not found: \(detail)"
-        case .rateLimitExceeded:
-            return "GitHub API rate limit exceeded or access forbidden. Check your token permissions."
+        case .rateLimitExceeded(let detail):
+            let base = "GitHub API rate limit exceeded or access forbidden. Check your token permissions."
+            return detail.isEmpty ? base : "\(base) GitHub says: \(detail)"
         case .requestFailed(let detail):
             return "GitHub API request failed: \(detail)"
         case .invalidResponse:
@@ -287,6 +289,7 @@ private enum GitHubPath {
 public struct OctokitClient: Sendable {
     private let token: String
     private let apiEndpoint: String?
+    private let logger = Logger(label: "OctokitClient")
 
     public init(token: String) {
         self.token = token
@@ -313,6 +316,30 @@ public struct OctokitClient: Sendable {
 
     private var baseURL: String {
         apiEndpoint ?? "https://api.github.com"
+    }
+
+    private func githubErrorMessage(from data: Data) -> String {
+        struct GitHubErrorBody: Decodable {
+            let message: String?
+        }
+        if let body = try? JSONDecoder().decode(GitHubErrorBody.self, from: data),
+           let message = body.message {
+            return message
+        }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    private func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let method = request.httpMethod ?? "GET"
+        let urlString = request.url?.absoluteString ?? ""
+        let display = urlString.hasPrefix(baseURL) ? String(urlString.dropFirst(baseURL.count)) : urlString
+        logger.trace("GitHub API \(method) \(display)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OctokitClientError.invalidResponse
+        }
+        logger.trace("GitHub API \(method) \(display) → \(httpResponse.statusCode)")
+        return (data, httpResponse)
     }
 
     private func makeRequest(
@@ -387,10 +414,7 @@ public struct OctokitClient: Sendable {
             accept: "application/vnd.github.v3+json"
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -402,14 +426,8 @@ public struct OctokitClient: Sendable {
             
             // Convert to OctoKit's model (see PullRequestFile.toOctokitFile() for details)
             return try customFiles.map { try $0.toOctokitFile() }
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Pull request \(number) files not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number) files not found")
         }
     }
 
@@ -432,10 +450,7 @@ public struct OctokitClient: Sendable {
                 ]
             )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw OctokitClientError.invalidResponse
-            }
+            let (data, httpResponse) = try await perform(request)
 
             switch httpResponse.statusCode {
             case 200:
@@ -462,14 +477,8 @@ public struct OctokitClient: Sendable {
                     return allResults
                 }
                 page += 1
-            case 401:
-                throw OctokitClientError.authenticationFailed
-            case 404:
-                throw OctokitClientError.notFound("Pull request \(number) review comments not found")
-            case 403:
-                throw OctokitClientError.rateLimitExceeded
             default:
-                throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+                try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number) review comments not found")
             }
         }
     }
@@ -483,24 +492,15 @@ public struct OctokitClient: Sendable {
             path: GitHubPath.pullRequest(owner, repository, number: number),
             accept: "application/vnd.github.v3.diff"
         )
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
         switch httpResponse.statusCode {
         case 200:
             guard let diff = String(data: data, encoding: .utf8) else {
                 throw OctokitClientError.invalidResponse
             }
             return diff
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Pull request \(number) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number) not found")
         }
     }
 
@@ -518,10 +518,7 @@ public struct OctokitClient: Sendable {
             queryItems: [URLQueryItem(name: "ref", value: ref)]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -529,14 +526,8 @@ public struct OctokitClient: Sendable {
                 throw OctokitClientError.invalidResponse
             }
             return content
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("File \(path) at ref \(ref) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "File \(path) at ref \(ref) not found")
         }
     }
 
@@ -552,10 +543,7 @@ public struct OctokitClient: Sendable {
             queryItems: [URLQueryItem(name: "ref", value: ref)]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -565,14 +553,8 @@ public struct OctokitClient: Sendable {
             }
             let entries = try JSONDecoder().decode([Entry].self, from: data)
             return entries.filter { $0.type == "dir" }.map(\.name)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Directory \(path) at ref \(ref) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Directory \(path) at ref \(ref) not found")
         }
     }
 
@@ -589,33 +571,21 @@ public struct OctokitClient: Sendable {
             accept: "application/vnd.github.v3+json"
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             let decoder = JSONDecoder()
             let compareResponse = try decoder.decode(CompareResponse.self, from: data)
             return CompareResult(mergeBaseCommitSHA: compareResponse.mergeBaseCommit.sha)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Compare \(strippedBase)...\(strippedHead) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Compare \(strippedBase)...\(strippedHead) not found")
         }
     }
 
     public func getBranchHead(owner: String, repository: String, branch: String) async throws -> BranchHead {
         let request = makeRequest(path: GitHubPath.branch(owner, repository, branch: branch))
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
         switch httpResponse.statusCode {
         case 200:
             let branchResponse = try JSONDecoder().decode(BranchResponse.self, from: data)
@@ -623,14 +593,8 @@ public struct OctokitClient: Sendable {
                 commitSHA: branchResponse.commit.sha,
                 treeSHA: branchResponse.commit.commit.tree.sha
             )
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Branch \(branch) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Branch \(branch) not found")
         }
     }
 
@@ -645,10 +609,7 @@ public struct OctokitClient: Sendable {
             accept: "application/vnd.github.v3+json",
             queryItems: [URLQueryItem(name: "ref", value: ref)]
         )
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
         switch httpResponse.statusCode {
         case 200:
             let metadata = try JSONDecoder().decode(ContentsMetadata.self, from: data)
@@ -662,14 +623,8 @@ public struct OctokitClient: Sendable {
                 throw OctokitClientError.invalidResponse
             }
             return (sha: metadata.sha, content: content)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("File \(path) at ref \(ref) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "File \(path) at ref \(ref) not found")
         }
     }
 
@@ -685,24 +640,15 @@ public struct OctokitClient: Sendable {
             queryItems: [URLQueryItem(name: "ref", value: ref)]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             let decoder = JSONDecoder()
             let metadata = try decoder.decode(ContentsMetadata.self, from: data)
             return metadata.sha
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("File \(path) at ref \(ref) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "File \(path) at ref \(ref) not found")
         }
     }
 
@@ -711,22 +657,13 @@ public struct OctokitClient: Sendable {
             path: GitHubPath.gitTree(owner, repository, treeSHA: treeSHA),
             queryItems: [URLQueryItem(name: "recursive", value: "1")]
         )
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
         switch httpResponse.statusCode {
         case 200:
             let treeResponse = try JSONDecoder().decode(GitTreeResponse.self, from: data)
             return treeResponse.tree
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound("Git tree \(treeSHA) not found")
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Git tree \(treeSHA) not found")
         }
     }
 
@@ -916,10 +853,7 @@ public struct OctokitClient: Sendable {
             ]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -935,12 +869,8 @@ public struct OctokitClient: Sendable {
                 throw OctokitClientError.invalidResponse
             }
             return bodyHTML
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data)
         }
     }
 
@@ -973,10 +903,7 @@ public struct OctokitClient: Sendable {
             ]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -992,12 +919,8 @@ public struct OctokitClient: Sendable {
                 throw OctokitClientError.invalidResponse
             }
             return updatedAt
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            try throwForStatus(httpResponse, data: data)
         }
     }
 
@@ -1050,10 +973,7 @@ public struct OctokitClient: Sendable {
                 ]
             )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw OctokitClientError.invalidResponse
-            }
+            let (data, httpResponse) = try await perform(request)
 
             switch httpResponse.statusCode {
             case 200:
@@ -1088,12 +1008,8 @@ public struct OctokitClient: Sendable {
                 } else {
                     return resolvedIDs
                 }
-            case 401:
-                throw OctokitClientError.authenticationFailed
-            case 403:
-                throw OctokitClientError.rateLimitExceeded
             default:
-                throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+                try throwForStatus(httpResponse, data: data)
             }
         }
     }
@@ -1127,10 +1043,7 @@ public struct OctokitClient: Sendable {
             ]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 201:
@@ -1170,23 +1083,13 @@ public struct OctokitClient: Sendable {
             payload: ["state": state]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Pull request \(number)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number)")
         }
     }
 
@@ -1202,25 +1105,15 @@ public struct OctokitClient: Sendable {
             payload: ["merge_method": mergeMethod]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Pull request \(number)")
         case 405:
             throw OctokitClientError.requestFailed("Pull request \(number) is not mergeable")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number)")
         }
     }
 
@@ -1236,23 +1129,13 @@ public struct OctokitClient: Sendable {
             payload: ["assignees": assignees]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 201:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Issue \(issueNumber)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Issue \(issueNumber)")
         }
     }
 
@@ -1268,23 +1151,13 @@ public struct OctokitClient: Sendable {
             payload: ["labels": labels]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Issue \(issueNumber)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Issue \(issueNumber)")
         }
     }
 
@@ -1305,24 +1178,14 @@ public struct OctokitClient: Sendable {
             ]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 201, 422:
             // 422 means label already exists — treat as success
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Repository \(owner)/\(repository)")
         }
     }
 
@@ -1338,23 +1201,13 @@ public struct OctokitClient: Sendable {
             payload: ["reviewers": reviewers]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 201:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Pull request \(number)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Pull request \(number)")
         }
     }
 
@@ -1368,10 +1221,7 @@ public struct OctokitClient: Sendable {
             queryItems: [URLQueryItem(name: "per_page", value: "100")]
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -1380,15 +1230,8 @@ public struct OctokitClient: Sendable {
             }
             let entries = try JSONDecoder().decode([BranchEntry].self, from: data)
             return entries.map(\.name)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Repository \(owner)/\(repository)")
         }
     }
 
@@ -1409,26 +1252,16 @@ public struct OctokitClient: Sendable {
             payload: payload
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 204:
             return
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Workflow \(workflowId)")
         case 422:
             let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
             throw OctokitClientError.requestFailed("Unprocessable: \(errorBody)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Workflow \(workflowId)")
         }
     }
 
@@ -1447,10 +1280,7 @@ public struct OctokitClient: Sendable {
             queryItems: queryItems
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -1487,15 +1317,8 @@ public struct OctokitClient: Sendable {
             }
             guard let workflow else { return runs }
             return runs.filter { $0.headBranch == workflow || $0.status == workflow }
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Repository \(owner)/\(repository)")
         }
     }
 
@@ -1514,10 +1337,7 @@ public struct OctokitClient: Sendable {
             queryItems: queryItems
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
@@ -1532,15 +1352,8 @@ public struct OctokitClient: Sendable {
             let prs = try JSONDecoder().decode([PREntry].self, from: data)
             guard let first = prs.first else { return nil }
             return CreatedPullRequest(number: first.number, htmlURL: first.htmlUrl)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
-        case 404:
-            throw OctokitClientError.notFound("Repository \(owner)/\(repository)")
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: "Repository \(owner)/\(repository)")
         }
     }
 
@@ -1550,20 +1363,31 @@ public struct OctokitClient: Sendable {
         var request = makeRequest(path: path)
         request.httpMethod = "DELETE"
 
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 204, 404:
             return
+        default:
+            try throwForStatus(httpResponse, data: data)
+        }
+    }
+
+    private func throwForStatus(
+        _ httpResponse: HTTPURLResponse,
+        data: Data,
+        notFoundMessage: String = "Resource not found"
+    ) throws -> Never {
+        switch httpResponse.statusCode {
         case 401:
             throw OctokitClientError.authenticationFailed
         case 403:
-            throw OctokitClientError.rateLimitExceeded
+            throw OctokitClientError.rateLimitExceeded(githubErrorMessage(from: data))
+        case 404:
+            throw OctokitClientError.notFound(notFoundMessage)
         default:
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode)")
+            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
+            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
         }
     }
 
@@ -1577,25 +1401,15 @@ public struct OctokitClient: Sendable {
     ) async throws -> T {
         let request = makeRequest(path: path, accept: accept, queryItems: queryItems)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .formatted(Time.rfc3339DateFormatter)
             return try decoder.decode(T.self, from: data)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound(path)
-        case 403:
-            throw OctokitClientError.rateLimitExceeded
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: path)
         }
     }
 
@@ -1606,23 +1420,15 @@ public struct OctokitClient: Sendable {
     ) async throws -> T {
         let request = try makeMutationRequest(path: path, method: "POST", accept: accept, payload: payload)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200, 201:
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .formatted(Time.rfc3339DateFormatter)
             return try decoder.decode(T.self, from: data)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound(path)
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: path)
         }
     }
 
@@ -1633,23 +1439,15 @@ public struct OctokitClient: Sendable {
     ) async throws -> T {
         let request = try makeMutationRequest(path: path, method: "PATCH", accept: accept, payload: payload)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OctokitClientError.invalidResponse
-        }
+        let (data, httpResponse) = try await perform(request)
 
         switch httpResponse.statusCode {
         case 200:
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .formatted(Time.rfc3339DateFormatter)
             return try decoder.decode(T.self, from: data)
-        case 401:
-            throw OctokitClientError.authenticationFailed
-        case 404:
-            throw OctokitClientError.notFound(path)
         default:
-            let errorBody = String(data: data, encoding: .utf8) ?? "unknown"
-            throw OctokitClientError.requestFailed("HTTP \(httpResponse.statusCode): \(errorBody)")
+            try throwForStatus(httpResponse, data: data, notFoundMessage: path)
         }
     }
 

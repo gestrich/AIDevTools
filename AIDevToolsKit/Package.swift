@@ -476,6 +476,7 @@ var targets: [Target] = [
     .target(
         name: "OctokitSDK",
         dependencies: [
+            .product(name: "Logging", package: "swift-log"),
             .product(name: "OctoKit", package: "octokit.swift"),
         ],
         path: "Sources/SDKs/OctokitSDK"
