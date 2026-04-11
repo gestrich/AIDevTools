@@ -9,8 +9,6 @@ AIDevTools ships as two interfaces backed by the same shared logic:
 - **Mac App** — A native macOS application with a multi-tab interface, live output panels, and persistent history.
 - **CLI (`ai-dev-tools-kit`)** — A command-line tool covering the same features, suitable for scripting and CI pipelines.
 
-A second dedicated CLI, **`claude-chain`**, handles the ClaudeChain automated PR workflow.
-
 ## Features
 
 ### AI Chat
