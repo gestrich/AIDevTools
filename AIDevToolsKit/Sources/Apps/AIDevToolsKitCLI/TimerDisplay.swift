@@ -124,7 +124,7 @@ final class TimerDisplay: @unchecked Sendable {
 
     private func terminalSize() -> (width: Int, height: Int) {
         var ws = winsize()
-        if ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0, ws.ws_row > 0, ws.ws_col > 0 {
+        if ioctl(STDOUT_FILENO, numericCast(TIOCGWINSZ), &ws) == 0, ws.ws_row > 0, ws.ws_col > 0 {
             return (Int(ws.ws_col), Int(ws.ws_row))
         }
         return (80, 24)
