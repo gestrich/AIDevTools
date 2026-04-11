@@ -4,6 +4,9 @@ import ClaudeChainSDK
 import ClaudeChainService
 import ClaudeCLISDK
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import GitHubService
 
 public struct ParseEventCommand: AsyncParsableCommand {

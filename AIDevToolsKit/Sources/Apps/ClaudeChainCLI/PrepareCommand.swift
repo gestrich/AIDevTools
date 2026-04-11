@@ -5,6 +5,9 @@ import ClaudeChainService
 import ClaudeCLISDK
 import CredentialService
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import GitSDK
 
 public struct PrepareCommand: AsyncParsableCommand {

@@ -1,6 +1,9 @@
 import ClaudeChainService
 import ClaudeChainSDK
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public class PRService {
     private let repo: String

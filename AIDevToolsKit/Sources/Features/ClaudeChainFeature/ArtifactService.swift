@@ -1,5 +1,8 @@
 import ClaudeChainService
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public struct ProjectArtifact {
     public let artifactId: Int

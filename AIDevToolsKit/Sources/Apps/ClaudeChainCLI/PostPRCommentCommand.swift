@@ -2,6 +2,9 @@ import ArgumentParser
 import ClaudeChainSDK
 import ClaudeChainService
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public struct PostPRCommentCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
