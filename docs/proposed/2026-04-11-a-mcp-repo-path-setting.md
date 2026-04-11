@@ -96,7 +96,10 @@ In `CompositionRoot`:
 
 When `SettingsModel.aiDevToolsRepoPath` changes (user picks a new path in settings), call `mcpModel.writeMCPConfigIfNeeded()` again. Wire this via `.onChange` at the app entry point or by having `MCPModel` observe `SettingsModel` reactively via `withObservationTracking`.
 
-## - [ ] Phase 4: MCP status UI in `ContextualChatPanel`
+## - [x] Phase 4: MCP status UI in `ContextualChatPanel`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Kept the view thin — `MCPStatus` carries all data, the view only renders it. Added `@Environment(MCPModel.self)` to read status, a `@ViewBuilder mcpStatusBanner` computed property that switches on `mcpModel.status` to show amber banners for `.notConfigured`/`.binaryMissing` and an info popover for stale `.ready` binaries (> 3 days). `rebuildChatModel()` now passes `mcpConfigPath` only when status is `.ready`, otherwise passes `nil`.
 
 **Skills to read**: `ai-dev-tools-architecture` (views stay thin)
 

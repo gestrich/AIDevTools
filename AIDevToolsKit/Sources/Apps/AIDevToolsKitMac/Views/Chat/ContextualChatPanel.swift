@@ -7,15 +7,17 @@ import SwiftUI
 /// Full-height chat panel for the inspector sidebar.
 ///
 /// Owns a `ChatModel` built from the context's system prompt.
-/// The MCP config is written once at app startup (CompositionRoot) and referenced here by path.
+/// MCP config is written by `MCPModel` on startup and on repo path change.
 struct ContextualChatPanel: View {
     let context: any ViewChatContext
 
+    @Environment(MCPModel.self) private var mcpModel
     @Environment(ProviderModel.self) private var providerModel
     @State private var selectedProviderName: String = ""
     @State private var chatModel: ChatModel?
     @State private var messageText: String = ""
     @State private var pastedImages: [ImageAttachment] = []
+    @State private var showingMCPPopover: Bool = false
     @State private var showingQueueViewer: Bool = false
     @State private var showingSessionPicker: Bool = false
     @State private var showingSettings: Bool = false
@@ -23,6 +25,7 @@ struct ContextualChatPanel: View {
     var body: some View {
         VStack(spacing: 0) {
             headerBar
+            mcpStatusBanner
             if let model = chatModel {
                 Divider()
                 ChatMessagesView()
@@ -110,6 +113,51 @@ struct ContextualChatPanel: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    // MARK: - MCP Status
+
+    @ViewBuilder
+    private var mcpStatusBanner: some View {
+        switch mcpModel.status {
+        case .notConfigured:
+            mcpAmberBanner("MCP unavailable — set AIDevTools Repo Path in Settings")
+        case .binaryMissing:
+            mcpAmberBanner("MCP binary not found. Build the app in Xcode or run `swift build --target AIDevToolsKitCLI` in the repo.")
+        case .ready:
+            if let days = mcpModel.status.daysStale, days > 3 {
+                HStack {
+                    Spacer()
+                    Button { showingMCPPopover = true } label: {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingMCPPopover) {
+                        Text("MCP binary last built \(days) days ago. Run `swift build` to update.")
+                            .padding()
+                    }
+                    .padding(.trailing, 12)
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+    }
+
+    private func mcpAmberBanner(_ message: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(Color.orange.opacity(0.1))
     }
 
     // MARK: - Message Input
@@ -246,9 +294,16 @@ struct ContextualChatPanel: View {
         let settings = ChatSettings()
         settings.resumeLastSession = false
 
+        let mcpConfigPath: String?
+        if case .ready = mcpModel.status {
+            mcpConfigPath = DataPathsService.mcpConfigFileURL.path
+        } else {
+            mcpConfigPath = nil
+        }
+
         chatModel = ChatModel(configuration: ChatModelConfiguration(
             client: client,
-            mcpConfigPath: DataPathsService.mcpConfigFileURL.path,
+            mcpConfigPath: mcpConfigPath,
             settings: settings,
             systemPrompt: context.chatSystemPrompt,
             workingDirectory: context.chatWorkingDirectory
