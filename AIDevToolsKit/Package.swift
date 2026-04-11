@@ -57,6 +57,8 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.0"),
     .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
+    // Fork adds swift-nio as explicit dep to fix Linux build (NIOFoundationCompat not importable).
+    // Switch back to jamesrochabrun/SwiftAnthropic once merged: https://github.com/jamesrochabrun/SwiftAnthropic/pull/56
     .package(url: "https://github.com/gestrich/SwiftAnthropic", branch: "main"),
     .package(url: "https://github.com/gestrich/SwiftCLI", branch: "main"),
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
