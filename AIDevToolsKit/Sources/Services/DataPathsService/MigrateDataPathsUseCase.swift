@@ -1,9 +1,18 @@
 import Foundation
 import UseCaseSDK
+#if canImport(os)
 import os
+#endif
 
 public struct MigrateDataPathsUseCase: UseCase {
+    #if canImport(os)
     private static let logger = Logger(subsystem: "com.aidevtools", category: "Migration")
+    #else
+    private struct NoOpLogger {
+        func info(_ message: String) {}
+    }
+    private static let logger = NoOpLogger()
+    #endif
 
     private let dataPathsService: DataPathsService
     private let oldArchPlannerRoot: URL
