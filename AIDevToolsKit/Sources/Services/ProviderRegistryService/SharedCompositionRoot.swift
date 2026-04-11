@@ -27,7 +27,13 @@ public struct SharedCompositionRoot {
         try MigrateDataPathsUseCase(dataPathsService: dataPathsService).run()
         let settingsService = try SettingsService(dataPathsService: dataPathsService)
         let sessionsDirectory = try dataPathsService.path(for: .anthropicSessions)
-        let providerRegistry = buildProviderRegistry(credentialResolver: credentialResolver, sessionsDirectory: sessionsDirectory)
+        let prefs = AppPreferences()
+        let providerRegistry = buildProviderRegistry(
+            anthropicAPIKey: credentialResolver.getAnthropicKey(),
+            sessionsDirectory: sessionsDirectory,
+            includeCodex: prefs.isCodexEnabled(),
+            includeAnthropicAPI: prefs.isAnthropicAPIEnabled()
+        )
         return SharedCompositionRoot(
             credentialResolver: credentialResolver,
             dataPathsService: dataPathsService,
