@@ -13,7 +13,7 @@ AIDevTools ships as two interfaces backed by the same shared logic:
 
 ### AI Chat
 
-Chat with AI providers using a unified interface. Select from available providers — Anthropic API, Claude Code CLI, or Codex — with streaming responses, persistent session history, and image attachment support.
+Chat with AI providers using a unified interface, with streaming responses, persistent session history, and image attachment support.
 
 The embedded chat connects to an **MCP server** (`ai-dev-tools-kit mcp`) that gives the AI live access to the running app — so you can ask questions like "what's in the currently open plan?" Tools include querying UI state, selecting plans, navigating tabs, and reloading data, backed by a Unix domain socket IPC channel to the Mac app.
 
