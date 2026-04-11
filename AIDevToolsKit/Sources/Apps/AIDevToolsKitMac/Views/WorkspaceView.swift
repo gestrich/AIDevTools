@@ -10,7 +10,7 @@ struct WorkspaceView: View {
     let evalProviderRegistry: EvalProviderRegistry
 
     @State private var chatSidePanelVisible = false
-    @AppStorage("experimental.architecturePlanner") private var isArchitecturePlannerEnabled = false
+    @AppStorage(ExperimentalSettings.architecturePlannerKey) private var isArchitecturePlannerEnabled = false
     @AppStorage("selectedRepositoryID") private var storedRepoID: String = ""
     @AppStorage("selectedWorkspaceTab") private var selectedTab: String = "claudeChain"
     @State private var deepLinkWatcher = DeepLinkWatcher()
