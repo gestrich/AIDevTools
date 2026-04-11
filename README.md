@@ -49,11 +49,11 @@ Review pull requests against configurable markdown rule files. The pipeline fetc
 
 See [PRRadar documentation](docs/features/pr-radar/pr-radar.md) for setup and usage.
 
-### Skill Browser
+### Skill Evaluator
 
-Browse, preview, and manage Claude Code skills (`.agents/skills/`) available in the current repository.
+Browse, preview, and manage skills (`.agents/skills/`) available in the current repository.
 
-See [Skill Browser documentation](docs/features/skills/skills.md) for details.
+See [Skill Evaluator documentation](docs/features/skills/skills.md) for details.
 
 ### Sweep
 
