@@ -48,7 +48,10 @@ Add a "AIDevTools Repo Path" row to the existing settings UI (wherever `dataPath
 - A "Choose…" button opens an `NSOpenPanel` (directory picker)
 - A "Clear" button sets it back to nil
 
-## - [ ] Phase 2: Add `MCPStatus` and `MCPModel`
+## - [x] Phase 2: Add `MCPStatus` and `MCPModel`
+
+**Skills used**: `ai-dev-tools-composition-root`
+**Principles applied**: Created `MCPStatus` enum and `MCPModel` in the Apps layer. `status` is a computed property resolving two binary candidates (Xcode sibling and Swift build from repo path) and picking the most recently modified. `writeMCPConfigIfNeeded()` writes JSON in the same format as the CLI's fallback writer.
 
 **Skills to read**: `ai-dev-tools-composition-root`
 
