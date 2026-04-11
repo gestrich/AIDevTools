@@ -1,3 +1,4 @@
+#if canImport(Darwin)
 import Foundation
 import Synchronization
 
@@ -66,3 +67,4 @@ public struct LogFileWatcher: Sendable {
         }
     }
 }
+#endif
