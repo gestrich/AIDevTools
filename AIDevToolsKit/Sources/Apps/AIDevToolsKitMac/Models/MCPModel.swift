@@ -1,17 +1,6 @@
 import DataPathsService
 import Foundation
 
-enum MCPStatus {
-    case binaryMissing
-    case notConfigured
-    case ready(binaryURL: URL, builtAt: Date)
-
-    var daysStale: Int? {
-        guard case .ready(_, let builtAt) = self else { return nil }
-        return Calendar.current.dateComponents([.day], from: builtAt, to: .now).day
-    }
-}
-
 @MainActor @Observable
 final class MCPModel {
 
@@ -85,5 +74,16 @@ final class MCPModel {
             withIntermediateDirectories: true
         )
         try? config.write(to: fileURL, atomically: true, encoding: .utf8)
+    }
+}
+
+enum MCPStatus {
+    case binaryMissing
+    case notConfigured
+    case ready(binaryURL: URL, builtAt: Date)
+
+    var daysStale: Int? {
+        guard case .ready(_, let builtAt) = self else { return nil }
+        return Calendar.current.dateComponents([.day], from: builtAt, to: .now).day
     }
 }

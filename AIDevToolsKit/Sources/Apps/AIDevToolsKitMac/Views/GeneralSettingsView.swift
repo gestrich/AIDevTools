@@ -2,43 +2,10 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @Environment(SettingsModel.self) private var settingsModel
-    @State private var chatSettings = ChatSettings()
 
     var body: some View {
         Form {
-            Section("Chat Settings") {
-                Toggle("Enable Streaming", isOn: Binding(
-                    get: { chatSettings.enableStreaming },
-                    set: { chatSettings.enableStreaming = $0 }
-                ))
-
-                Toggle("Resume Last Session", isOn: Binding(
-                    get: { chatSettings.resumeLastSession },
-                    set: { chatSettings.resumeLastSession = $0 }
-                ))
-
-                Toggle("Verbose Mode", isOn: Binding(
-                    get: { chatSettings.verboseMode },
-                    set: { chatSettings.verboseMode = $0 }
-                ))
-
-                HStack {
-                    Text("Max Thinking Tokens")
-                    Spacer()
-                    TextField("Tokens", value: Binding(
-                        get: { chatSettings.maxThinkingTokens },
-                        set: { chatSettings.maxThinkingTokens = max($0, 1024) }
-                    ), format: .number)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 100)
-                }
-
-                Text("Settings for chat mode. These apply to all providers.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Data Storage") {
+            Section {
                 LabeledContent("Data Directory") {
                     HStack {
                         Text(settingsModel.dataPath.path(percentEncoded: false))
@@ -63,44 +30,8 @@ struct GeneralSettingsView: View {
                 Text("Directory where repository configurations and eval output are stored.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-
-                LabeledContent("AIDevTools Repo Path") {
-                    HStack {
-                        if let repoPath = settingsModel.aiDevToolsRepoPath {
-                            Text(repoPath.path(percentEncoded: false))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                        } else {
-                            Text("Not set")
-                                .foregroundStyle(.tertiary)
-                        }
-                        Button("Choose…") {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            if let repoPath = settingsModel.aiDevToolsRepoPath {
-                                panel.directoryURL = repoPath
-                            }
-                            if panel.runModal() == .OK, let url = panel.url {
-                                settingsModel.updateAIDevToolsRepoPath(url)
-                            }
-                        }
-                        if settingsModel.aiDevToolsRepoPath != nil {
-                            Button("Clear") {
-                                settingsModel.updateAIDevToolsRepoPath(nil)
-                            }
-                        }
-                    }
-                }
-
-                if let repoPath = settingsModel.aiDevToolsRepoPath {
-                    let binaryPath = MCPModel.swiftBuildBinaryURL(repoPath: repoPath)
-                    Text("Binary: \(binaryPath.path(percentEncoded: false))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            } header: {
+                Text("Data Storage")
             }
         }
         .formStyle(.grouped)

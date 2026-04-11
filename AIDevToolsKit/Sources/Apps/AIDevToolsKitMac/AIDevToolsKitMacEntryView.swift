@@ -95,6 +95,7 @@ public struct AIDevToolsSettingsView: View {
     @State private var appModel: AppModel
     @State private var credentialModel = CredentialModel()
     @State private var logsModel = LogsModel()
+    @State private var mcpModel: MCPModel
     @State private var settingsModel: SettingsModel
     @State private var workspaceModel: WorkspaceModel
 
@@ -103,6 +104,7 @@ public struct AIDevToolsSettingsView: View {
             fatalError("Failed to initialize app services. Check data directory permissions.")
         }
         _appModel = State(initialValue: AppModel(providerModel: root.providerModel))
+        _mcpModel = State(initialValue: root.mcpModel)
         _settingsModel = State(initialValue: root.settingsModel)
         let store = root.settingsService.repositoryStore
         _workspaceModel = State(initialValue: WorkspaceModel(
@@ -128,6 +130,7 @@ public struct AIDevToolsSettingsView: View {
             .environment(appModel.providerModel)
             .environment(credentialModel)
             .environment(logsModel)
+            .environment(mcpModel)
             .environment(settingsModel)
             .environment(workspaceModel)
             .task { workspaceModel.load() }

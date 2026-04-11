@@ -14,6 +14,10 @@ struct SettingsView: View {
                 GeneralSettingsView()
             }
 
+            Tab("Chat", systemImage: "bubble.left.and.bubble.right") {
+                ChatSettingsView()
+            }
+
             Tab("Credentials", systemImage: "key") {
                 CredentialManagementView()
             }

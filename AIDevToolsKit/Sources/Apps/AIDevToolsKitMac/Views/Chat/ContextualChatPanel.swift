@@ -20,7 +20,6 @@ struct ContextualChatPanel: View {
     @State private var showingMCPPopover: Bool = false
     @State private var showingQueueViewer: Bool = false
     @State private var showingSessionPicker: Bool = false
-    @State private var showingSettings: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,12 +46,6 @@ struct ContextualChatPanel: View {
         .sheet(isPresented: $showingQueueViewer) {
             if let model = chatModel {
                 ChatQueueViewerSheet()
-                    .environment(model)
-            }
-        }
-        .sheet(isPresented: $showingSettings) {
-            if let model = chatModel {
-                ChatSettingsView()
                     .environment(model)
             }
         }
@@ -93,14 +86,6 @@ struct ContextualChatPanel: View {
                         .environment(model)
                 }
             }
-
-            Button(action: { showingSettings = true }) {
-                Image(systemName: "gear")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help("Chat settings")
 
             Button(action: { chatModel?.startNewConversation() }) {
                 Image(systemName: "square.and.pencil")
