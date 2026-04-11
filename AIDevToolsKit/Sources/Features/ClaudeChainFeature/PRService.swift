@@ -4,18 +4,20 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Logging
 
 public class PRService {
     private let repo: String
+    private let logger = Logger(label: "PRService")
 
     public init(repo: String) {
         self.repo = repo
     }
-    
+
     // MARK: - Public API methods
-    
+
     public func getProjectPrs(projectName: String, state: String = "all", label: String = "claudechain") -> [GitHubPullRequest] {
-        print("Fetching PRs for project '\(projectName)' with state='\(state)' and label='\(label)'")
+        logger.debug("Fetching PRs for project '\(projectName)' with state='\(state)' and label='\(label)'")
         
         // Fetch PRs with the label using GitHub API
         do {
@@ -33,14 +35,14 @@ public class PRService {
                 return parsed.projectName == projectName
             }
             
-            print("Found \(projectPrs.count) PR(s) for project '\(projectName)' (out of \(allPrs.count) total)")
+            logger.debug("Found \(projectPrs.count) PR(s) for project '\(projectName)' (out of \(allPrs.count) total)")
             return projectPrs
         } catch {
-            print("Warning: Failed to list PRs: \(error)")
+            logger.warning("Failed to list PRs: \(error)")
             return []
         }
     }
-    
+
     public func getOpenPrsForProject(project: String, label: String = "claudechain") -> [GitHubPullRequest] {
         return getProjectPrs(projectName: project, state: "open", label: label)
     }
@@ -62,7 +64,7 @@ public class PRService {
         do {
             return try Self.fetchPullRequests(repo: repo, state: state, label: label, limit: limit)
         } catch {
-            print("Warning: Failed to list all PRs: \(error)")
+            logger.warning("Failed to list all PRs: \(error)")
             return []
         }
     }

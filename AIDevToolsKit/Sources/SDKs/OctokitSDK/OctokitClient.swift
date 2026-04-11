@@ -2,9 +2,6 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 @preconcurrency import OctoKit
 
 public enum OctokitClientError: Error, Sendable, LocalizedError {

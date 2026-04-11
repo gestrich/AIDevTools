@@ -72,7 +72,7 @@ struct FinalizeStagedCommand: AsyncParsableCommand {
             )
             let repository = ProjectRepository(repo: "")
             // Swallowing intentionally: missing/invalid config falls back to defaults so the task can still run.
-        let config = (try? repository.loadLocalConfiguration(project: chainProject))
+            let config = (try? repository.loadLocalConfiguration(project: chainProject))
                 ?? ProjectConfiguration.default(project: chainProject)
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }

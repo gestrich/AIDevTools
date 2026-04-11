@@ -2,9 +2,6 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 
 public struct ImageDownloadService: Sendable {
     private let session: URLSession

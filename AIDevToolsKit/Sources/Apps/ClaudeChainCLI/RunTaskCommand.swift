@@ -80,7 +80,7 @@ struct RunTaskCommand: AsyncParsableCommand {
             let domainProject = Project(name: project, basePath: chainProject.basePath)
             let repository = ProjectRepository(repo: "")
             // Swallowing intentionally: missing/invalid config falls back to defaults so the task can still run.
-        let config = (try? repository.loadLocalConfiguration(project: domainProject))
+            let config = (try? repository.loadLocalConfiguration(project: domainProject))
                 ?? ProjectConfiguration.default(project: domainProject)
             resolvedBaseBranch = config.getBaseBranch(defaultBaseBranch: Constants.defaultBaseBranch)
         }
