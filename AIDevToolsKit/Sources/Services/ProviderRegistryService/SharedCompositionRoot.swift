@@ -41,9 +41,12 @@ public struct SharedCompositionRoot {
         buildProviderRegistry(anthropicAPIKey: credentialResolver.getAnthropicKey(), sessionsDirectory: sessionsDirectory)
     }
 
-    public static func buildProviderRegistry(anthropicAPIKey: String?, sessionsDirectory: URL) -> ProviderRegistry {
-        var providers: [any AIClient] = [ClaudeProvider(), CodexProvider()]
-        if let key = anthropicAPIKey, !key.isEmpty {
+    public static func buildProviderRegistry(anthropicAPIKey: String?, sessionsDirectory: URL, includeCodex: Bool = true, includeAnthropicAPI: Bool = true) -> ProviderRegistry {
+        var providers: [any AIClient] = [ClaudeProvider()]
+        if includeCodex {
+            providers.append(CodexProvider())
+        }
+        if includeAnthropicAPI, let key = anthropicAPIKey, !key.isEmpty {
             providers.append(AnthropicProvider(apiClient: AnthropicAPIClient(apiKey: key), sessionsDirectory: sessionsDirectory))
         }
         return ProviderRegistry(providers: providers)

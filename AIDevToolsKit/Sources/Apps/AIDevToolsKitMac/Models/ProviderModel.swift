@@ -1,4 +1,5 @@
 import CredentialService
+import DataPathsService
 import Foundation
 import ProviderRegistryService
 
@@ -30,6 +31,12 @@ final class ProviderModel {
     }
 
     private static func buildRegistry(anthropicAPIKey: String?, sessionsDirectory: URL) -> ProviderRegistry {
-        SharedCompositionRoot.buildProviderRegistry(anthropicAPIKey: anthropicAPIKey, sessionsDirectory: sessionsDirectory)
+        let prefs = AppPreferences()
+        return SharedCompositionRoot.buildProviderRegistry(
+            anthropicAPIKey: anthropicAPIKey,
+            sessionsDirectory: sessionsDirectory,
+            includeCodex: prefs.isCodexEnabled(),
+            includeAnthropicAPI: prefs.isAnthropicAPIEnabled()
+        )
     }
 }

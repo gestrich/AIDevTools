@@ -13,6 +13,26 @@ struct ExperimentalSettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
+            Section("AI Providers") {
+                Toggle("Anthropic API", isOn: Binding(
+                    get: { experimentalSettings.isAnthropicAPIEnabled },
+                    set: { experimentalSettings.isAnthropicAPIEnabled = $0 }
+                ))
+
+                Text("Enables direct Anthropic API access in the chat provider list. Requires an Anthropic API key in credentials.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle("Codex", isOn: Binding(
+                    get: { experimentalSettings.isCodexEnabled },
+                    set: { experimentalSettings.isCodexEnabled = $0 }
+                ))
+
+                Text("Enables the Codex provider in the chat provider list.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Features") {
                 Toggle("Architecture Planner", isOn: Binding(
                     get: { experimentalSettings.isArchitecturePlannerEnabled },
