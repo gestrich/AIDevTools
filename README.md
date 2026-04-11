@@ -15,6 +15,8 @@ AIDevTools ships as two interfaces backed by the same shared logic:
 
 Chat with AI providers using a unified interface. Select from available providers — Anthropic API, Claude Code CLI, or Codex — with streaming responses, persistent session history, and image attachment support.
 
+The app also exposes an **MCP server** (`ai-dev-tools-kit mcp`) so external chat clients can interact with it directly. Tools include querying live UI state, selecting plans, navigating tabs, and reloading data — backed by a Unix domain socket IPC channel to the Mac app.
+
 ### AI Evaluator
 
 Run structured test cases against AI providers (Claude Code and Codex) to measure how well they handle coding tasks. Define assertions — required text, file changes, command traces, and rubric-based quality checks — then inspect results with per-case grading details and saved artifacts. Compare providers side-by-side across suites of test cases.
