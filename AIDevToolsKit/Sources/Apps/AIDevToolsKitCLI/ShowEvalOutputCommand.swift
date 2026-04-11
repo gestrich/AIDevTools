@@ -8,9 +8,9 @@ import ProviderRegistryService
 import RepositorySDK
 import SettingsService
 
-struct ShowOutputCommand: ParsableCommand {
+struct ShowEvalOutputCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "show-output",
+        commandName: "show-eval-output",
         abstract: "Display formatted output from a completed eval run"
     )
 
