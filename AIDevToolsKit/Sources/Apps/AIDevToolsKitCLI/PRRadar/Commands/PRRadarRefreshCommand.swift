@@ -22,7 +22,7 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
         let prRadarConfig = try resolvePRRadarConfig(repoName: config)
         let prFilter = try filterOptions.buildFilter(config: prRadarConfig)
 
-        let useCase = FetchPRListUseCase(config: prRadarConfig)
+        let useCase = FetchPRsUseCase(config: prRadarConfig)
 
         if !json {
             print("Fetching recent PRs from GitHub...")

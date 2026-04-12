@@ -1,7 +1,7 @@
 import PRRadarConfigService
 import PRRadarModelsService
 
-public struct DiscoverPRsUseCase {
+public struct CachedPRsUseCase {
 
     private let config: PRRadarRepoConfig
 

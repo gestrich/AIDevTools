@@ -23,10 +23,7 @@ final class AllPRsModel {
 
     init(config: PRRadarRepoConfig) {
         self.config = config
-        Task {
-            await load()
-            await refresh(filter: config.makeFilter())
-        }
+        Task { await load() }
     }
 
     // MARK: - PR Discovery
@@ -39,7 +36,7 @@ final class AllPRsModel {
     /// Reads PR metadata from the cache on a background thread, then updates state on the main actor.
     @discardableResult
     private func discoverAndMerge(filter: PRFilter? = nil) async -> [PRModel] {
-        let metadata = await DiscoverPRsUseCase(config: config).execute(filter: filter)
+        let metadata = await CachedPRsUseCase(config: config).execute(filter: filter)
         let prior = currentPRModels
         let models = buildPRModels(from: metadata, reusingExisting: prior)
         state = .ready(models)
@@ -68,7 +65,7 @@ final class AllPRsModel {
         self.state = .refreshing(prior ?? [])
         refreshAllState = .running(logs: "Fetching PR list from GitHub...\n", current: 0, total: 0)
 
-        let useCase = FetchPRListUseCase(config: config)
+        let useCase = FetchPRsUseCase(config: config)
 
         var updatedMetadata: [PRMetadata]?
         do {
@@ -227,7 +224,7 @@ final class AllPRsModel {
         changesTask = Task { [weak self] in
             for await prNumber in service.changes() {
                 guard let self else { break }
-                let updated = await DiscoverPRsUseCase(config: self.config).executeSingle(prNumber: prNumber)
+                let updated = await CachedPRsUseCase(config: self.config).executeSingle(prNumber: prNumber)
                 guard let updated else { continue }
                 if let model = self.currentPRModels?.first(where: { $0.prNumber == prNumber }) {
                     model.updateMetadata(updated)
@@ -245,6 +242,14 @@ final class AllPRsModel {
         case .refreshing(let models): return models
         case .failed(_, let prior): return prior
         default: return nil
+        }
+    }
+
+    var isLoading: Bool {
+        switch state {
+        case .loading: return true
+        case .refreshing(let models): return models.isEmpty
+        default: return false
         }
     }
 
@@ -330,7 +335,7 @@ final class AllPRsModel {
 
         var progressText: String? {
             if case .running(_, let current, let total) = self {
-                return total > 0 ? "\(current)/\(total)" : "Fetching…"
+                return total > 0 ? "\(current)/\(total)" : nil
             }
             return nil
         }

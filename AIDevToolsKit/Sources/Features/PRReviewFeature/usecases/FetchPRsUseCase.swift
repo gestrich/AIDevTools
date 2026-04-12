@@ -7,9 +7,9 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-private let logger = Logger(label: "FetchPRListUseCase")
+private let logger = Logger(label: "FetchPRsUseCase")
 
-public struct FetchPRListUseCase: StreamingUseCase {
+public struct FetchPRsUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
 
