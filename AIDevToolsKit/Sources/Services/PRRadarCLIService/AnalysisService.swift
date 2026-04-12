@@ -189,8 +189,7 @@ public struct AnalysisService: Sendable {
         }
 
         let violations = result.value.violations.map { v in
-            let aiFilePath = v.filePath
-            let filePath = (aiFilePath?.isEmpty == false) ? aiFilePath! : task.focusArea.filePath
+            let filePath = v.filePath.flatMap { $0.isEmpty ? nil : $0 } ?? task.focusArea.filePath
             let lineNumber = v.lineNumber ?? task.focusArea.startLine
             return Violation(
                 score: v.score ?? 1,

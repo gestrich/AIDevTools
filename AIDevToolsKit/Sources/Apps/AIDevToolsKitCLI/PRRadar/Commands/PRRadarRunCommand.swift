@@ -98,7 +98,8 @@ struct PRRadarRunCommand: AsyncParsableCommand {
                 jsonOutput[phase.rawValue] = files
             }
             let data = try JSONSerialization.data(withJSONObject: jsonOutput, options: [.prettyPrinted, .sortedKeys])
-            print(String(data: data, encoding: .utf8)!)
+            guard let json = String(data: data, encoding: .utf8) else { return }
+            print(json)
         } else {
             print("\nPipeline complete:")
             for phase in PRRadarPhase.allCases {

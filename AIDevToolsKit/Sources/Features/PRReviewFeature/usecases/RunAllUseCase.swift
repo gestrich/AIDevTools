@@ -6,11 +6,6 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-public struct RunAllOutput: Sendable {
-    public let analyzedCount: Int
-    public let failedCount: Int
-}
-
 public struct RunAllUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
@@ -105,4 +100,11 @@ public struct RunAllUseCase: StreamingUseCase {
             }
         }
     }
+}
+
+// MARK: - Supporting Types
+
+public struct RunAllOutput: Sendable {
+    public let analyzedCount: Int
+    public let failedCount: Int
 }

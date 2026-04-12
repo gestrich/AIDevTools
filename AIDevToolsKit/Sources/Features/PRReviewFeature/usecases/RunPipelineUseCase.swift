@@ -6,16 +6,6 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-public struct RunPipelineOutput: Sendable {
-    public let files: [PRRadarPhase: [String]]
-    public let report: ReportPhaseOutput?
-
-    public init(files: [PRRadarPhase: [String]], report: ReportPhaseOutput? = nil) {
-        self.files = files
-        self.report = report
-    }
-}
-
 public struct RunPipelineUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
@@ -182,5 +172,17 @@ public struct RunPipelineUseCase: StreamingUseCase {
                 }
             }
         }
+    }
+}
+
+// MARK: - Supporting Types
+
+public struct RunPipelineOutput: Sendable {
+    public let files: [PRRadarPhase: [String]]
+    public let report: ReportPhaseOutput?
+
+    public init(files: [PRRadarPhase: [String]], report: ReportPhaseOutput? = nil) {
+        self.files = files
+        self.report = report
     }
 }
