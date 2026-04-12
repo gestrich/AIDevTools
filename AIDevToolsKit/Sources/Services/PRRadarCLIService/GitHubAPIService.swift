@@ -1,9 +1,12 @@
 import Foundation
 import GitHubService
+import Logging
 @preconcurrency import OctoKit
 import OctokitSDK
 import PRRadarConfigService
 import PRRadarModelsService
+
+private let logger = Logger(label: "GitHubAPIService")
 
 public struct GitHubAPIService: Sendable {
     private let octokitClient: OctokitClient
@@ -105,6 +108,7 @@ public struct GitHubAPIService: Sendable {
         let baseBranch = filter.baseBranch?.isEmpty == false ? filter.baseBranch : nil
 
         while true {
+            logger.trace("listPullRequests: fetching page \(page)", metadata: ["repo": "\(owner)/\(repo)"])
             let prs = try await octokitClient.listPullRequests(
                 owner: owner,
                 repository: repo,
@@ -117,6 +121,7 @@ public struct GitHubAPIService: Sendable {
             )
 
             if prs.isEmpty {
+                logger.trace("listPullRequests: empty page, stopping", metadata: ["repo": "\(owner)/\(repo)", "page": "\(page)"])
                 break
             }
 
@@ -142,6 +147,7 @@ public struct GitHubAPIService: Sendable {
                 }
 
                 if hitOldPRs {
+                    logger.trace("listPullRequests: early-stop on page \(page)", metadata: ["repo": "\(owner)/\(repo)", "collected": "\(allPRs.count)"])
                     break
                 }
             } else {
@@ -160,6 +166,7 @@ public struct GitHubAPIService: Sendable {
         }
 
         var result = Array(allPRs.prefix(limit))
+        logger.trace("listPullRequests: done", metadata: ["repo": "\(owner)/\(repo)", "pages": "\(page)", "total": "\(result.count)"])
 
         if let state = filter.state {
             result = result.filter {

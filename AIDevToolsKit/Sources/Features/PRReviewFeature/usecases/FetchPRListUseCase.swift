@@ -1,10 +1,13 @@
 import CredentialService
 import Foundation
 import GitHubService
+import Logging
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
+
+private let logger = Logger(label: "FetchPRListUseCase")
 
 public struct FetchPRListUseCase: StreamingUseCase {
 
@@ -30,8 +33,21 @@ public struct FetchPRListUseCase: StreamingUseCase {
 
                     continuation.yield(.log(text: "Fetching PRs from GitHub...\n"))
 
+                    let startTime = Date()
+                    logger.trace("execute: start", metadata: ["repo": "\(config.name)"])
+
                     let service = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
                     let fetchedPRs = try await service.updatePRs(filter: filter)
+
+                    let elapsed = Date().timeIntervalSince(startTime)
+                    logger.trace(
+                        "execute: completed",
+                        metadata: [
+                            "repo": "\(config.name)",
+                            "fetched": "\(fetchedPRs.count)",
+                            "elapsed": "\(String(format: "%.2f", elapsed))s",
+                        ]
+                    )
 
                     try await service.updateRepository()
 

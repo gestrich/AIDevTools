@@ -315,8 +315,8 @@ final class AllPRsModel {
         }
 
         var progressText: String? {
-            if case .running(_, let current, let total) = self, total > 0 {
-                return "\(current)/\(total)"
+            if case .running(_, let current, let total) = self {
+                return total > 0 ? "\(current)/\(total)" : "Fetching…"
             }
             return nil
         }

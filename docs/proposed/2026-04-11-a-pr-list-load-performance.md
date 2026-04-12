@@ -54,7 +54,10 @@ count, comment count) populate shortly afterward as background tasks complete.
 `buildPRModels(from:reusingExisting:)` call in `refresh()`. Apply the same pattern there —
 don't block the list update on badge loading.
 
-## - [ ] Phase 2: Clarify the post-list-load spinner (the ~5s "what is it doing?" pause)
+## - [x] Phase 2: Clarify the post-list-load spinner (the ~5s "what is it doing?" pause)
+
+**Skills used**: `ai-dev-tools-debug`, `ai-dev-tools-logging`
+**Principles applied**: Added trace logging (`Logger(label: "FetchPRListUseCase")`) measuring end-to-end duration and fetched PR count. Added trace logging to `GitHubAPIService.listPullRequests` logging each page fetch, early-stop trigger, and final page/total summary — confirming the date-filter early-stop is wired end-to-end. Updated `RefreshAllState.progressText` to return `"Fetching…"` when `total == 0` so the toolbar button shows a human-readable label during the GitHub API phase instead of a bare spinner.
 
 **Skills to read**: `ai-dev-tools-debug`, `ai-dev-tools-logging`
 
