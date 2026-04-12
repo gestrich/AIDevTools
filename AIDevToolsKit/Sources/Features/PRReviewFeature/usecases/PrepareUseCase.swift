@@ -1,4 +1,4 @@
-import ClaudeCLISDK
+import AIOutputSDK
 import CredentialService
 import Foundation
 import GitHubService
@@ -22,9 +22,11 @@ public struct PrepareOutput: Sendable {
 public struct PrepareUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
+    private let aiClient: any AIClient
 
-    public init(config: PRRadarRepoConfig) {
+    public init(config: PRRadarRepoConfig, aiClient: any AIClient) {
         self.config = config
+        self.aiClient = aiClient
     }
 
     public func execute(prNumber: Int, rulesDir: String, commitHash: String? = nil, historyProvider: GitHistoryProvider? = nil) -> AsyncThrowingStream<PhaseProgress<PrepareOutput>, Error> {
@@ -86,7 +88,7 @@ public struct PrepareUseCase: StreamingUseCase {
                     } else {
                         continuation.yield(.log(text: "Generating focus areas...\n"))
 
-                        let focusGenerator = FocusGeneratorService(aiClient: ClaudeProvider())
+                        let focusGenerator = FocusGeneratorService(aiClient: aiClient)
 
                         let focusResults = try await focusGenerator.generateAllFocusAreas(
                             hunks: prDiff.toGitDiff().hunks,

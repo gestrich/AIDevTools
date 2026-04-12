@@ -1,4 +1,5 @@
 import ArgumentParser
+import ClaudeCLISDK
 import Foundation
 import PRRadarConfigService
 import PRReviewFeature
@@ -22,7 +23,7 @@ struct PRRadarPrepareCommand: AsyncParsableCommand {
 
     func run() async throws {
         let config = try resolvePRRadarConfigFromOptions(options)
-        let useCase = PrepareUseCase(config: config)
+        let useCase = PrepareUseCase(config: config, aiClient: ClaudeProvider())
         if !options.json {
             print("Preparing evaluation tasks for PR #\(options.prNumber)...")
         }

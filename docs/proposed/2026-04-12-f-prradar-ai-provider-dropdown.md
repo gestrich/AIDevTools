@@ -86,9 +86,10 @@ Read `AnalysisService.swift` and `FocusGeneratorService.swift` in full before ch
 - Replace `ClaudeAgentRequest` + `agentClient.stream()` in `FocusGeneratorService` with `aiClient.run()`
 - Update imports: remove `ClaudeAgentSDK`, add `AIOutputSDK`
 
-## - [ ] Phase 2: Migrate use cases to accept AIClient
+## - [x] Phase 2: Migrate use cases to accept AIClient
 
-**Skills to read**: `swift-architecture`
+**Skills used**: `swift-architecture`
+**Principles applied**: Added `aiClient: any AIClient` as a stored property to both `AnalyzeSingleTaskUseCase` and `PrepareUseCase`, replacing the inline `ClaudeProvider()` construction. Updated imports from `ClaudeCLISDK` to `AIOutputSDK` in both use cases. Updated all call sites in the Feature layer (`AnalyzeUseCase`, `RunPipelineUseCase`) and Apps layer (`PRModel`, `PRRadarPrepareCommand`) to pass `ClaudeProvider()` as a placeholder — Phase 3 will replace these with the user-selected provider from `ProviderRegistry`.
 
 Read `AnalyzeSingleTaskUseCase.swift` and `PrepareUseCase.swift` in full before changing.
 

@@ -1,3 +1,4 @@
+import ClaudeCLISDK
 import Foundation
 import PRRadarCLIService
 import PRRadarConfigService
@@ -65,7 +66,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                     // Phase 2: Prepare
                     continuation.yield(.running(phase: .prepare))
                     continuation.yield(.log(text: "\n=== Phase 2: Preparing evaluation tasks ===\n"))
-                    let rulesUseCase = PrepareUseCase(config: config)
+                    let rulesUseCase = PrepareUseCase(config: config, aiClient: ClaudeProvider())
                     var prepareOutput: PrepareOutput?
                     for try await progress in rulesUseCase.execute(prNumber: prNumber, rulesDir: rulesDir, commitHash: commitHash) {
                         switch progress {

@@ -1,3 +1,4 @@
+import ClaudeCLISDK
 import CredentialService
 import Foundation
 import GitHubService
@@ -233,7 +234,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
                 branchToRestore = try await checkoutPRCommit(prNumber: prNumber, continuation: continuation)
             }
 
-            let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config)
+            let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config, aiClient: ClaudeProvider())
             let startTime = Date()
 
             let prDiff = PhaseOutputParser.loadPRDiff(config: config, prNumber: prNumber, commitHash: commitHash)

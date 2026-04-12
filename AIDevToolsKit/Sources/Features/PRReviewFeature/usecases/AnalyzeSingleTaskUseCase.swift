@@ -1,4 +1,4 @@
-import ClaudeCLISDK
+import AIOutputSDK
 import CredentialService
 import Foundation
 import GitHubService
@@ -10,9 +10,11 @@ import UseCaseSDK
 public struct AnalyzeSingleTaskUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
+    private let aiClient: any AIClient
 
-    public init(config: PRRadarRepoConfig) {
+    public init(config: PRRadarRepoConfig, aiClient: any AIClient) {
         self.config = config
+        self.aiClient = aiClient
     }
 
     /// Execute a single analysis task.
@@ -66,7 +68,7 @@ public struct AnalyzeSingleTaskUseCase: StreamingUseCase {
                         result = outcome
                         try EvaluationOutputWriter.write(output, to: evalsDir)
                     } else {
-                        let analysisService = AnalysisService(aiClient: ClaudeProvider())
+                        let analysisService = AnalysisService(aiClient: aiClient)
 
                         result = try await analysisService.analyzeTask(
                             task,

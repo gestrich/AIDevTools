@@ -1,3 +1,4 @@
+import ClaudeCLISDK
 import Foundation
 import Logging
 import PRRadarCLIService
@@ -724,7 +725,7 @@ final class PRModel: Identifiable, Hashable {
         startPhase(.prepare)
         prepareAccumulator = nil
 
-        let useCase = PrepareUseCase(config: config)
+        let useCase = PrepareUseCase(config: config, aiClient: ClaudeProvider())
 
         do {
             for try await progress in useCase.execute(prNumber: prNumber, rulesDirs: config.allResolvedRulesDirs, commitHash: currentCommitHash) {
@@ -881,7 +882,7 @@ final class PRModel: Identifiable, Hashable {
         evaluations[task.taskId]?.accumulator = nil
         inProgressAnalysis = detail?.analysis ?? PRReviewResult(streaming: preparation?.tasks ?? [])
 
-        let useCase = AnalyzeSingleTaskUseCase(config: config)
+        let useCase = AnalyzeSingleTaskUseCase(config: config, aiClient: ClaudeProvider())
 
         do {
             for try await event in useCase.execute(task: task, prNumber: prNumber, commitHash: currentCommitHash) {
