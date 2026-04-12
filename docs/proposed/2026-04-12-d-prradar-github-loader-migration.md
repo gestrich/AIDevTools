@@ -82,7 +82,10 @@ Replace `AllPRsModel`'s GitHub data loading with `GitHubPRLoaderUseCase`. All PR
 
 **Key constraint:** `FetchPRsUseCase` is not deleted. It may still be used by other callers. Only `AllPRsModel`'s usage is migrated.
 
-## - [ ] Phase 2: Migrate PRRadar CLI Refresh Commands
+## - [x] Phase 2: Migrate PRRadar CLI Refresh Commands
+
+**Skills used**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
+**Principles applied**: Replaced `FetchPRsUseCase` in `PRRadarRefreshCommand` with `GitHubPRLoaderUseCase.execute(filter:)`, printing streaming progress for each event and collecting `finalPRs` for JSON output (updated by `.prUpdated` as enrichment arrives). Replaced `FetchPRUseCase` in `PRRadarRefreshPRCommand` with `GitHubPRLoaderUseCase.execute(prNumber:)`, printing per-PR enrichment progress; the old full-sync output (files written, comment counts) is dropped since that's now the `sync` command's responsibility. Both commands construct the use case directly from `PRRadarRepoConfig` (same pattern as `AllPRsModel`); credentials flow via the config object, consistent with all other PRRadar CLI commands.
 
 **Skills to read**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
 **Prior plan to read**: `docs/completed/2026-04-12-c-unified-github-pr-loader.md` — see Phase 2 for the full event enum and Phase 5 for CLI parity expectations

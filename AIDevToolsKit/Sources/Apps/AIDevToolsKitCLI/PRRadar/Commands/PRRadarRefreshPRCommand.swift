@@ -6,48 +6,37 @@ import PRReviewFeature
 struct PRRadarRefreshPRCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "refresh-pr",
-        abstract: "Re-fetch PR data from GitHub (diff, comments, metadata)"
+        abstract: "Re-fetch PR metadata from GitHub (comments, reviews, check runs)"
     )
 
     @OptionGroup var options: PRRadarCLIOptions
 
     func run() async throws {
         let config = try resolvePRRadarConfigFromOptions(options)
-        let useCase = FetchPRUseCase(config: config)
+        let useCase = GitHubPRLoaderUseCase(config: config)
 
         print("Refreshing PR #\(options.prNumber)...")
 
-        var result: SyncSnapshot?
+        var fetchError: String?
 
-        for try await progress in useCase.execute(prNumber: options.prNumber, force: true) {
-            switch progress {
-            case .running:
+        for await event in useCase.execute(prNumber: options.prNumber) {
+            switch event {
+            case .prFetchStarted(let prNumber):
+                print("Enriching PR #\(prNumber)...")
+            case .prUpdated(let metadata):
+                print("  #\(metadata.number) \(metadata.title)")
+            case .prFetchFailed(let prNumber, let error):
+                printPRRadarError("Failed PR #\(prNumber): \(error)")
+                fetchError = error
+            case .completed:
+                print("Done.")
+            default:
                 break
-            case .progress:
-                break
-            case .log(let text):
-                print(text, terminator: "")
-            case .prepareOutput: break
-            case .prepareToolUse: break
-            case .taskEvent: break
-            case .completed(let output):
-                result = output
-            case .failed(let error, let logs):
-                if !logs.isEmpty {
-                    printPRRadarError(logs)
-                }
-                throw PRRadarCLIError.phaseFailed("Refresh PR failed: \(error)")
             }
         }
 
-        guard let output = result else {
-            throw PRRadarCLIError.phaseFailed("Refresh PR produced no output")
+        if let error = fetchError {
+            throw PRRadarCLIError.phaseFailed("Refresh PR failed: \(error)")
         }
-
-        print("\nRefresh complete:")
-        print("  Files written: \(output.files.count)")
-        print("  Issue comments: \(output.commentCount)")
-        print("  Reviews: \(output.reviewCount)")
-        print("  Inline review comments: \(output.reviewCommentCount)")
     }
 }
