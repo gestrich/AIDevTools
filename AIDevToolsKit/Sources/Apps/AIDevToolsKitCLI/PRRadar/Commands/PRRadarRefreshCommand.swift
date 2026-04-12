@@ -52,7 +52,7 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
                         ] as [String: Any]
                     }
                     let data = try JSONSerialization.data(withJSONObject: encoded, options: [.prettyPrinted, .sortedKeys])
-                    print(String(data: data, encoding: .utf8)!)
+                    print(String(data: data, encoding: .utf8) ?? "")
                 } else {
                     print("\nFetched \(prs.count) PRs:")
                     for pr in prs {

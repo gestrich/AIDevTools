@@ -179,7 +179,10 @@ refresh(number:)     → SyncPRUseCase → cachedPRs() → applyMetadata() → l
 applyMetadata()      → PRModel.make(from:reusingExisting:config:)
 ```
 
-## - [ ] Phase 4: Validation
+## - [x] Phase 4: Validation
+
+**Skills used**: `ai-dev-tools-enforce`
+**Principles applied**: Build clean; all tests pass (SkillScanner failures are pre-existing environment issues unrelated to this refactor); all old names confirmed absent from project source; `AllPRsModel` reviewed top-to-bottom — each method sits in exactly one layer section; enforce fixed 3 issues across the changed files (force unwrap in `PRRadarRefreshCommand`, unhandled error in `deletePRData` call in `PRRadarContentView`, and silent error swallow in `loadRuleSets`).
 
 **Skills to read**: `ai-dev-tools-enforce`
 

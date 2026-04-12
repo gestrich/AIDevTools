@@ -651,6 +651,7 @@ struct PRRadarContentView: View {
             let loaded = try await LoadRulesUseCase(config: config).execute()
             return loaded.map { RuleSetGroup(rulePath: $0.rulePath, rules: $0.rules) }
         } catch {
+            logger.error("Failed to load rule sets", metadata: ["error": "\(error.localizedDescription)"])
             return []
         }
     }
@@ -679,7 +680,11 @@ struct PRRadarContentView: View {
                     isDeletingPR = true
                     Task {
                         defer { isDeletingPR = false }
-                        try? await allPRsModel?.deletePRData(for: pr)
+                        do {
+                            try await allPRsModel?.deletePRData(for: pr)
+                        } catch {
+                            searchError = error.localizedDescription
+                        }
                     }
                 }
                 .keyboardShortcut(.defaultAction)
