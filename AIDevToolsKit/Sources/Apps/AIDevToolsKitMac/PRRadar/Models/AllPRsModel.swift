@@ -23,24 +23,18 @@ final class AllPRsModel {
 
     init(config: PRRadarRepoConfig) {
         self.config = config
-        Task { await loadCached() }
     }
 
     // MARK: - Cache Load
 
     func loadCached() async {
         state = .loading
+        if let gitHubConfig = try? config.makeGitHubRepoConfig() {
+            loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? []
+        }
         let models = applyMetadata(await cachedPRs(filter: config.makeFilter()))
         logger.info("loadCached: loaded \(models.count) models", metadata: ["repo": "\(config.name)"])
         loadSummariesInBackground(for: models)
-        Task {
-            if let gitHubConfig = try? config.makeGitHubRepoConfig() {
-                // Swallowing intentionally: author list is best-effort for the filter dropdown;
-                // a failure leaves the dropdown empty rather than blocking the PR list from loading.
-                loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? []
-                logger.info("loadCached: loadedAuthors count = \(loadedAuthors.count)", metadata: ["repo": "\(config.name)"])
-            }
-        }
     }
 
     // MARK: - GitHub Refresh
@@ -90,14 +84,13 @@ final class AllPRsModel {
             refreshAllState = .completed(logs: "Failed: \(error.localizedDescription)\n")
             return
         }
+        loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? loadedAuthors
+
         let useCase = GitHubPRLoaderUseCase(config: gitHubConfig)
         var fetchedTotal = 0
         var enrichedCount = 0
 
-        // Strip authorLogin before fetching: all PR authors must be loaded into the model so
-        // the author dropdown stays fully populated regardless of the active display filter.
-        let fetchFilter = filter.withoutAuthorLogin()
-        for await event in useCase.execute(filter: fetchFilter) {
+        for await event in useCase.execute(filter: filter) {
             switch event {
             case .listLoadStarted:
                 break
@@ -135,7 +128,6 @@ final class AllPRsModel {
                     model.updateMetadata(metadata)
                     Task { await model.loadSummary() }
                 }
-                addAuthorIfNeeded(metadata.author)
 
             case .prFetchFailed(let prNumber, let error):
                 fetchingPRNumbers.remove(prNumber)
@@ -145,10 +137,7 @@ final class AllPRsModel {
 
             case .completed:
                 refreshAllState = .completed(logs: refreshAllLogs + "\nRefresh complete.\n")
-                // Swallowing intentionally: author list is best-effort; a failure leaves the
-                // dropdown with whatever was loaded at startup rather than crashing.
                 loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? loadedAuthors
-                logger.info("refresh: reloaded loadedAuthors count = \(loadedAuthors.count)", metadata: ["repo": "\(config.name)"])
             }
         }
     }
@@ -250,6 +239,11 @@ final class AllPRsModel {
             .sorted { $0.displayLabel.localizedCaseInsensitiveCompare($1.displayLabel) == .orderedAscending }
     }
 
+    func authorDisplayName(for author: PRMetadata.Author) -> String {
+        if !author.name.isEmpty { return author.name }
+        return loadedAuthors.first(where: { $0.login == author.login })?.name ?? author.login
+    }
+
     func filteredPRs(_ models: [PRModel], filter: PRFilter = PRFilter()) -> [PRModel] {
         var result = models.filter { filter.matches($0.metadata) }
         if showOnlyWithPendingComments {
@@ -275,12 +269,6 @@ final class AllPRsModel {
         case .refreshing(let models): return models.isEmpty
         default: return false
         }
-    }
-
-    private func addAuthorIfNeeded(_ author: PRMetadata.Author) {
-        guard !author.login.isEmpty,
-              !loadedAuthors.contains(where: { $0.login == author.login }) else { return }
-        loadedAuthors.append(AuthorCacheEntry(login: author.login, name: author.name, avatarURL: author.avatarURL))
     }
 
     private var refreshAllLogs: String {

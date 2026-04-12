@@ -6,6 +6,8 @@ struct PRListRow: View {
 
     let prModel: PRModel
 
+    @Environment(\.allPRsModel) private var allPRsModel
+
     private var pr: PRMetadata { prModel.metadata }
 
     var body: some View {
@@ -59,7 +61,7 @@ struct PRListRow: View {
             if !pr.author.login.isEmpty {
                 HStack(spacing: 4) {
                     GitHubAvatarView(author: pr.author, size: 14)
-                    Text(pr.author.name.isEmpty ? pr.author.login : pr.author.name)
+                    Text(allPRsModel?.authorDisplayName(for: pr.author) ?? (pr.author.name.isEmpty ? pr.author.login : pr.author.name))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

@@ -47,6 +47,7 @@ struct PRRadarContentView: View {
             detailView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .environment(\.allPRsModel, allPRsModel)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             if isActive {
@@ -792,4 +793,8 @@ struct PRRadarContentView: View {
         }
         return error
     }
+}
+
+extension EnvironmentValues {
+    @Entry var allPRsModel: AllPRsModel? = nil
 }

@@ -2,6 +2,9 @@ import CLISDK
 import ConcurrencySDK
 import EnvironmentSDK
 import Foundation
+import Logging
+
+private let logger = Logger(label: "ClaudeAgentClient")
 
 /// The resolved environment needed to run the Claude Agent subprocess.
 ///
@@ -198,6 +201,16 @@ public struct ClaudeAgentClient: Sendable {
             Task {
                 do {
                     guard FileManager.default.fileExists(atPath: pythonEnvironment.agentScriptPath) else {
+                        let venvPython = "\(pythonEnvironment.agentScriptDirectory)/.venv/bin/python3"
+                        logger.error(
+                            "stream: agent script not found",
+                            metadata: [
+                                "scriptPath": "\(pythonEnvironment.agentScriptPath)",
+                                "pythonCommand": "\(pythonEnvironment.pythonCommand)",
+                                "venvExists": "\(FileManager.default.fileExists(atPath: venvPython))",
+                                "scriptDirExists": "\(FileManager.default.fileExists(atPath: pythonEnvironment.agentScriptDirectory))",
+                            ]
+                        )
                         throw ClaudeAgentError.scriptNotFound(pythonEnvironment.agentScriptPath)
                     }
 

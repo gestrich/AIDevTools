@@ -45,8 +45,12 @@ public struct GitHubPRLoaderUseCase {
                     return
                 }
 
+                let cachedAuthorEntries = (try? await service.loadAllAuthors()) ?? []
+                let nameMap = Dictionary(uniqueKeysWithValues: cachedAuthorEntries.map { ($0.login, $0.name) })
+
                 let cachedGHPRs = await service.readAllCachedPRs()
                 let cachedPRs: [PRMetadata] = cachedGHPRs
+                    .map { $0.withAuthorNames(from: nameMap) }
                     .compactMap { try? $0.toPRMetadata() }
                     .sorted { $0.number > $1.number }
                 let filteredCached = cachedPRs.filter { filter.matches($0) }
@@ -69,17 +73,30 @@ public struct GitHubPRLoaderUseCase {
                     return
                 }
 
-                // Swallowing intentionally: a PR that fails to parse is omitted from the list
-                // rather than aborting the entire fetch.
-                let fetchedPRs = fetchedGHPRs
+                // Re-read from cache after the API write: the cache is the source of truth.
+                // This ensures .fetched reflects the full filtered cache (not just the batch
+                // returned by the API), so no previously-cached PRs disappear due to API
+                // pagination limits.
+                let postFetchCached = await service.readAllCachedPRs()
+                let fetchedPRs = postFetchCached
+                    .map { $0.withAuthorNames(from: nameMap) }
                     .compactMap { try? $0.toPRMetadata() }
                     .filter { filter.matches($0) }
                     .sorted { $0.number > $1.number }
 
                 continuation.yield(.fetched(fetchedPRs))
 
+                // Enrichment targets are the PRs returned by the API (not the full cache):
+                // these are the ones that may have changed and need review/check data refreshed.
+                // isUnchanged compares the pre-fetch cache state against the fresh API updatedAt.
+                let enrichmentTargets = fetchedGHPRs
+                    .map { $0.withAuthorNames(from: nameMap) }
+                    .compactMap { try? $0.toPRMetadata() }
+                    .filter { filter.matches($0) }
+                    .sorted { $0.number > $1.number }
+
                 var rateLimited = false
-                for pr in fetchedPRs {
+                for pr in enrichmentTargets {
                     if rateLimited { break }
 
                     // If the PR hasn't changed since the last disk-cached version, read enrichment

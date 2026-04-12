@@ -6,6 +6,7 @@ import SwiftUI
 struct ReviewDetailView: View {
 
     @Environment(PRModel.self) private var prModel
+    @Environment(\.allPRsModel) private var allPRsModel
     @State private var selectedNavPhase: NavigationPhase = .summary
     @State private var showEffectiveDiff = false
     @State private var showEvaluationOutput = false
@@ -81,7 +82,7 @@ struct ReviewDetailView: View {
                 if !pr.author.login.isEmpty {
                     HStack(spacing: 6) {
                         GitHubAvatarView(author: pr.author, size: 22)
-                        Text(pr.author.name.isEmpty ? pr.author.login : pr.author.name)
+                        Text(allPRsModel?.authorDisplayName(for: pr.author) ?? (pr.author.name.isEmpty ? pr.author.login : pr.author.name))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
