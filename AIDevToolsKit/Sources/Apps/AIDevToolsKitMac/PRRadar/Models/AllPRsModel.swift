@@ -39,6 +39,8 @@ final class AllPRsModel {
     func loadCached() async {
         state = .loading
         if let gitHubConfig = try? config.makeGitHubRepoConfig() {
+            // Swallowing intentionally: author metadata is cosmetic; a failure leaves
+            // login names displayed instead of full names, which is acceptable degradation.
             loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? []
         }
         let models = applyMetadata(await cachedPRs(filter: config.makeFilter()))
@@ -146,6 +148,8 @@ final class AllPRsModel {
 
             case .completed:
                 refreshAllState = .completed(logs: refreshAllLogs + "\nRefresh complete.\n")
+                // Swallowing intentionally: author metadata is cosmetic; retaining stale
+                // data on failure is acceptable degradation.
                 loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? loadedAuthors
             }
         }

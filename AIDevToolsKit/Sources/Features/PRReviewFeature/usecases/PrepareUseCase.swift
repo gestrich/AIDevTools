@@ -7,18 +7,6 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-public struct PrepareOutput: Sendable {
-    public let focusAreas: [FocusArea]
-    public let rules: [ReviewRule]
-    public let tasks: [RuleRequest]
-
-    public init(focusAreas: [FocusArea], rules: [ReviewRule], tasks: [RuleRequest]) {
-        self.focusAreas = focusAreas
-        self.rules = rules
-        self.tasks = tasks
-    }
-}
-
 public struct PrepareUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
@@ -269,7 +257,7 @@ public struct PrepareUseCase: StreamingUseCase {
         )
 
         guard !focusFiles.isEmpty || !rulesFiles.isEmpty else {
-            throw NSError(domain: "PrepareUseCase", code: 1, userInfo: [NSLocalizedDescriptionKey: "No prepare output found"])
+            throw PrepareUseCaseError.noOutputFound
         }
 
         var rules: [ReviewRule] = []
@@ -285,5 +273,30 @@ public struct PrepareUseCase: StreamingUseCase {
         )
 
         return PrepareOutput(focusAreas: allFocusAreas, rules: rules, tasks: tasks)
+    }
+}
+
+// MARK: - Supporting Types
+
+public struct PrepareOutput: Sendable {
+    public let focusAreas: [FocusArea]
+    public let rules: [ReviewRule]
+    public let tasks: [RuleRequest]
+
+    public init(focusAreas: [FocusArea], rules: [ReviewRule], tasks: [RuleRequest]) {
+        self.focusAreas = focusAreas
+        self.rules = rules
+        self.tasks = tasks
+    }
+}
+
+enum PrepareUseCaseError: Error, LocalizedError {
+    case noOutputFound
+
+    var errorDescription: String? {
+        switch self {
+        case .noOutputFound:
+            return "No prepare output found. Run the prepare phase first."
+        }
     }
 }

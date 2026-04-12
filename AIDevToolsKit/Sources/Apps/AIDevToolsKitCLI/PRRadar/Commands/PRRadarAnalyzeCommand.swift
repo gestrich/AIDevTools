@@ -105,7 +105,10 @@ struct PRRadarAnalyzeCommand: AsyncParsableCommand {
 
         if options.json {
             let data = try JSONEncoder.prRadarPrettyEncoder.encode(output.summary)
-            print(String(data: data, encoding: .utf8)!)
+            guard let json = String(data: data, encoding: .utf8) else {
+                throw PRRadarCLIError.phaseFailed("Failed to encode output as UTF-8")
+            }
+            print(json)
         } else {
             print("\nAnalysis complete:")
             let newCount = output.summary.totalTasks - output.cachedCount

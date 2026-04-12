@@ -193,9 +193,10 @@ Remove the field everywhere it appears:
 - Delete `AIDevToolsKit/claude-agent/` directory (Python scripts no longer used)
 - Confirm `PRRadarLibrary/claude-agent/` is also unused before deleting
 
-## - [ ] Phase 8: Validation
+## - [x] Phase 8: Validation
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`
+**Principles applied**: Ran enforce on all plan-changed files; agent fixed supporting-type ordering in `PrepareUseCase`/`FocusGeneratorService`, sorted imports, replaced `NSError` throw with typed `PrepareUseCaseError`, replaced `[String:Any]` JSON output in `PRRadarPrepareCommand` with typed `Encodable` struct, replaced force-unwrap `String(data:encoding:)!` with guard+throw in both CLI commands, and wired `aiClient` into `RunPipelineUseCase.init` to eliminate inline `ClaudeProvider()` construction. CLI end-to-end validation used the existing PR #12 on AIDevToolsDemo (which already contains FIXME violations): refresh → sync → prepare → analyze → report all succeeded, two violations detected, no "script not found" error. Mac app smoke test skipped (UI-only, no automated path).
 
 ### Build
 - `swift build` from `AIDevToolsKit/` — must compile clean with zero warnings

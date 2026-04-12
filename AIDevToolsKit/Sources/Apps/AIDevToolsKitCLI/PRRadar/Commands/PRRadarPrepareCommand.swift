@@ -65,13 +65,16 @@ struct PRRadarPrepareCommand: AsyncParsableCommand {
         }
 
         if options.json {
-            let jsonOutput: [String: Any] = [
-                "focus_areas": output.focusAreas.count,
-                "rules": output.rules.count,
-                "tasks": output.tasks.count,
-            ]
-            let data = try JSONSerialization.data(withJSONObject: jsonOutput, options: [.prettyPrinted, .sortedKeys])
-            print(String(data: data, encoding: .utf8)!)
+            let jsonOutput = PrepareJSONOutput(
+                focusAreas: output.focusAreas.count,
+                rules: output.rules.count,
+                tasks: output.tasks.count
+            )
+            let data = try JSONEncoder.prRadarPrettyEncoder.encode(jsonOutput)
+            guard let json = String(data: data, encoding: .utf8) else {
+                throw PRRadarCLIError.phaseFailed("Failed to encode output as UTF-8")
+            }
+            print(json)
         } else {
             print("\nPrepare complete:")
             print("  Focus areas: \(output.focusAreas.count)")
@@ -93,5 +96,17 @@ struct PRRadarPrepareCommand: AsyncParsableCommand {
                 }
             }
         }
+    }
+}
+
+private struct PrepareJSONOutput: Encodable {
+    let focusAreas: Int
+    let rules: Int
+    let tasks: Int
+
+    enum CodingKeys: String, CodingKey {
+        case focusAreas = "focus_areas"
+        case rules
+        case tasks
     }
 }

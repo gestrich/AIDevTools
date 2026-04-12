@@ -1,25 +1,6 @@
-import Foundation
 import AIOutputSDK
+import Foundation
 import PRRadarModelsService
-
-// MARK: - Result Model
-
-/// Result of focus area generation for a single focus type.
-public struct FocusGenerationResult: Sendable {
-    public let prNumber: Int
-    public let focusAreas: [FocusArea]
-    public let totalHunksProcessed: Int
-    public let generationCostUsd: Double
-
-    public init(prNumber: Int, focusAreas: [FocusArea], totalHunksProcessed: Int, generationCostUsd: Double) {
-        self.prNumber = prNumber
-        self.focusAreas = focusAreas
-        self.totalHunksProcessed = totalHunksProcessed
-        self.generationCostUsd = generationCostUsd
-    }
-}
-
-// MARK: - Service
 
 /// Generates focus areas (reviewable units of code) from diff hunks.
 ///
@@ -311,7 +292,24 @@ public struct FocusGeneratorService: Sendable {
     }
 }
 
-// MARK: - Private types
+// MARK: - Supporting Types
+
+/// Result of focus area generation for a single focus type.
+public struct FocusGenerationResult: Sendable {
+    public let prNumber: Int
+    public let focusAreas: [FocusArea]
+    public let totalHunksProcessed: Int
+    public let generationCostUsd: Double
+
+    public init(prNumber: Int, focusAreas: [FocusArea], totalHunksProcessed: Int, generationCostUsd: Double) {
+        self.prNumber = prNumber
+        self.focusAreas = focusAreas
+        self.totalHunksProcessed = totalHunksProcessed
+        self.generationCostUsd = generationCostUsd
+    }
+}
+
+// MARK: - Private Types
 
 private struct MethodsResponse: Decodable, Sendable {
     let methods: [MethodItem]

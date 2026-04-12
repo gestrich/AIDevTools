@@ -1,3 +1,4 @@
+import AIOutputSDK
 import ClaudeCLISDK
 import Foundation
 import PRRadarCLIService
@@ -18,9 +19,11 @@ public struct RunPipelineOutput: Sendable {
 public struct RunPipelineUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
+    private let aiClient: any AIClient
 
-    public init(config: PRRadarRepoConfig) {
+    public init(config: PRRadarRepoConfig, aiClient: any AIClient = ClaudeProvider()) {
         self.config = config
+        self.aiClient = aiClient
     }
 
     public func execute(
@@ -66,7 +69,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                     // Phase 2: Prepare
                     continuation.yield(.running(phase: .prepare))
                     continuation.yield(.log(text: "\n=== Phase 2: Preparing evaluation tasks ===\n"))
-                    let rulesUseCase = PrepareUseCase(config: config, aiClient: ClaudeProvider())
+                    let rulesUseCase = PrepareUseCase(config: config, aiClient: aiClient)
                     var prepareOutput: PrepareOutput?
                     for try await progress in rulesUseCase.execute(prNumber: prNumber, rulesDir: rulesDir, commitHash: commitHash) {
                         switch progress {
@@ -97,7 +100,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                     // Phase 3: Analyze
                     continuation.yield(.running(phase: .analyze))
                     continuation.yield(.log(text: "\n=== Phase 3: Analyzing code ===\n"))
-                    let evalUseCase = AnalyzeUseCase(config: config, aiClient: ClaudeProvider())
+                    let evalUseCase = AnalyzeUseCase(config: config, aiClient: aiClient)
                     var evalCompleted = false
                     let analyzeRequest = PRReviewRequest(prNumber: prNumber, commitHash: commitHash, analysisMode: analysisMode, tasks: prepareOutput.tasks)
                     for try await progress in evalUseCase.execute(request: analyzeRequest) {

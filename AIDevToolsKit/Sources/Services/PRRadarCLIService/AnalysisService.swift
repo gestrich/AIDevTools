@@ -1,5 +1,5 @@
-import Foundation
 import AIOutputSDK
+import Foundation
 import PRRadarConfigService
 import PRRadarModelsService
 
@@ -325,7 +325,7 @@ public struct AnalysisService: Sendable {
     }
 }
 
-// MARK: - Private types
+// MARK: - Private Types
 
 private struct ViolationsResponse: Decodable, Sendable {
     let violations: [ViolationItem]

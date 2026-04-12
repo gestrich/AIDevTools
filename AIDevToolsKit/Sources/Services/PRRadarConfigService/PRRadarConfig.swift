@@ -56,7 +56,7 @@ public struct PRRadarRepoConfig: Sendable {
             rulePaths: settings.rulePaths,
             githubAccount: info.credentialAccount,
             diffSource: settings.diffSource,
-            defaultBaseBranch: info.pullRequest?.baseBranch ?? "main",
+            defaultBaseBranch: info.pullRequest?.baseBranch ?? PullRequestConfig.defaultBaseBranch,
             dataRootURL: dataRootURL,
             explicitToken: explicitToken
         )
