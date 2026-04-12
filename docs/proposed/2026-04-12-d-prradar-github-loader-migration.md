@@ -114,7 +114,10 @@ Migrate `PRRadarRefreshCommand` and `PRRadarRefreshPRCommand` to stream from `Gi
 - Print the same per-PR progress events as above
 - Note: this command may also trigger a sync/pipeline step after the metadata refresh — preserve that behavior; only the metadata-fetch portion is migrated
 
-## - [ ] Phase 3: Add Check Run & Review Indicators to PRRadar Mac UI
+## - [x] Phase 3: Add Check Run & Review Indicators to PRRadar Mac UI
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added `reviewStatusBadge` and `buildStatusBadge` to `PRListRow` mirroring `PullRequestsRowView` exactly — derivation logic stays private to the row view; qualified `PRRadarModelsService.PRState` to resolve ambiguity introduced by adding `ClaudeChainService` import. Added `reviewAndChecksSection` to `SummaryPhaseView` showing approvals, change requests, pending reviewers, and per-check-run status/conclusion; shows "Loading..." when `reviews` or `checkRuns` is `nil`.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

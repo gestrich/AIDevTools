@@ -12,6 +12,7 @@ struct SummaryPhaseView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 prInfoSection
+                reviewAndChecksSection
                 if !postedComments.isEmpty {
                     commentsSection
                 }
@@ -73,6 +74,119 @@ struct SummaryPhaseView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Review & Checks Section
+
+    @ViewBuilder
+    private var reviewAndChecksSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            reviewsSubsection
+            Divider()
+            checksSubsection
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    @ViewBuilder
+    private var reviewsSubsection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Reviews")
+                .font(.headline)
+
+            if let reviews = metadata.reviews {
+                if reviews.isEmpty {
+                    Text("No reviews")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                } else {
+                    let approved = reviews.filter { $0.state == .approved }.compactMap { $0.author?.login }
+                    let changesRequested = reviews.filter { $0.state == .changesRequested }.compactMap { $0.author?.login }
+                    let pending = reviews.filter { $0.state == .pending }.compactMap { $0.author?.login }
+                    if !approved.isEmpty {
+                        reviewerRow(label: "Approved", logins: approved, color: .green, icon: "checkmark.circle.fill")
+                    }
+                    if !changesRequested.isEmpty {
+                        reviewerRow(label: "Changes requested", logins: changesRequested, color: .red, icon: "xmark.circle.fill")
+                    }
+                    if !pending.isEmpty {
+                        reviewerRow(label: "Pending review", logins: pending, color: .secondary, icon: "clock.fill")
+                    }
+                }
+            } else {
+                Text("Loading...")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+            }
+        }
+    }
+
+    private func reviewerRow(label: String, logins: [String], color: Color, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.caption)
+            Text("\(label): \(logins.map { "@\($0)" }.joined(separator: ", "))")
+                .font(.subheadline)
+        }
+    }
+
+    @ViewBuilder
+    private var checksSubsection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Checks")
+                .font(.headline)
+
+            if let checkRuns = metadata.checkRuns {
+                if checkRuns.isEmpty {
+                    Text("No check runs")
+                        .foregroundStyle(.secondary)
+                        .font(.subheadline)
+                } else {
+                    ForEach(checkRuns, id: \.name) { run in
+                        checkRunRow(run)
+                    }
+                }
+            } else {
+                Text("Loading...")
+                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+            }
+        }
+    }
+
+    private func checkRunRow(_ run: GitHubCheckRun) -> some View {
+        HStack(spacing: 6) {
+            checkRunIcon(run)
+            Text(run.name)
+                .font(.subheadline)
+            Spacer()
+            Text(checkRunStatusText(run))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func checkRunIcon(_ run: GitHubCheckRun) -> some View {
+        let (name, color): (String, Color) = {
+            if run.isPassing { return ("checkmark.circle.fill", .green) }
+            if run.isFailing { return ("xmark.circle.fill", .red) }
+            if run.status != .completed { return ("clock.fill", .orange) }
+            return ("circle", .secondary)
+        }()
+        return Image(systemName: name)
+            .foregroundStyle(color)
+            .font(.caption)
+    }
+
+    private func checkRunStatusText(_ run: GitHubCheckRun) -> String {
+        if let conclusion = run.conclusion {
+            return conclusion.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return run.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     // MARK: - Helpers
