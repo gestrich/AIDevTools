@@ -48,8 +48,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                         case .progress: break
                         case .log(let text):
                             continuation.yield(.log(text: text))
-                        case .prepareOutput: break
-                        case .prepareToolUse: break
+                        case .prepareStreamEvent: break
                         case .taskEvent: break
                         case .completed(let output):
                             syncSnapshot = output
@@ -78,10 +77,8 @@ public struct RunPipelineUseCase: StreamingUseCase {
                         case .progress: break
                         case .log(let text):
                             continuation.yield(.log(text: text))
-                        case .prepareOutput(let text):
-                            continuation.yield(.prepareOutput(text: text))
-                        case .prepareToolUse(let name):
-                            continuation.yield(.prepareToolUse(name: name))
+                        case .prepareStreamEvent(let event):
+                            continuation.yield(.prepareStreamEvent(event))
                         case .taskEvent: break
                         case .completed(let output):
                             prepareOutput = output
@@ -109,8 +106,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                         case .progress: break
                         case .log(let text):
                             continuation.yield(.log(text: text))
-                        case .prepareOutput: break
-                        case .prepareToolUse: break
+                        case .prepareStreamEvent: break
                         case .taskEvent(let task, let event):
                             continuation.yield(.taskEvent(task: task, event: event))
                         case .completed:
@@ -138,8 +134,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                         case .progress: break
                         case .log(let text):
                             continuation.yield(.log(text: text))
-                        case .prepareOutput: break
-                        case .prepareToolUse: break
+                        case .prepareStreamEvent: break
                         case .taskEvent: break
                         case .completed(let output):
                             reportOutput = output
@@ -160,8 +155,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                             case .progress: break
                             case .log(let text):
                                 continuation.yield(.log(text: text))
-                            case .prepareOutput: break
-                            case .prepareToolUse: break
+                            case .prepareStreamEvent: break
                             case .taskEvent: break
                             case .completed: break
                             case .failed(let error, _):

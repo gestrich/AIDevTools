@@ -75,10 +75,8 @@ public struct RunAllUseCase: StreamingUseCase {
                             case .progress: break
                             case .log(let text):
                                 continuation.yield(.log(text: text))
-                            case .prepareOutput(let text):
-                                continuation.yield(.prepareOutput(text: text))
-                            case .prepareToolUse(let name):
-                                continuation.yield(.prepareToolUse(name: name))
+                            case .prepareStreamEvent(let event):
+                                continuation.yield(.prepareStreamEvent(event))
                             case .taskEvent(let task, let event):
                                 continuation.yield(.taskEvent(task: task, event: event))
                             case .completed:

@@ -41,13 +41,14 @@ struct PRRadarPrepareCommand: AsyncParsableCommand {
                 break
             case .log(let text):
                 if !options.json { print(text, terminator: "") }
-            case .prepareOutput(let text):
-                if !options.json && !quiet {
-                    printPRRadarAIOutput(text, verbose: verbose)
-                }
-            case .prepareToolUse(let name):
-                if !options.json && !quiet && verbose {
-                    printPRRadarAIToolUse(name)
+            case .prepareStreamEvent(let event):
+                switch event {
+                case .textDelta(let text):
+                    if !options.json && !quiet { printPRRadarAIOutput(text, verbose: verbose) }
+                case .toolUse(let name, _):
+                    if !options.json && !quiet && verbose { printPRRadarAIToolUse(name) }
+                default:
+                    break
                 }
             case .taskEvent: break
             case .completed(let output):

@@ -84,14 +84,7 @@ public struct PrepareUseCase: StreamingUseCase {
                             requestedTypes: [.file],
                             transcriptDir: focusDir,
                             onStreamEvent: { event in
-                                switch event {
-                                case .textDelta(let text):
-                                    continuation.yield(.prepareOutput(text: text))
-                                case .toolUse(let name, _):
-                                    continuation.yield(.prepareToolUse(name: name))
-                                default:
-                                    break
-                                }
+                                continuation.yield(.prepareStreamEvent(event))
                             }
                         )
                         try FileManager.default.createDirectory(atPath: focusDir, withIntermediateDirectories: true)

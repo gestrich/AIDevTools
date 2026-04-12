@@ -68,23 +68,25 @@ struct PRRadarRunAllCommand: AsyncParsableCommand {
                 break
             case .log(let text):
                 print(text, terminator: "")
-            case .prepareOutput(let text):
-                if !quiet {
-                    printPRRadarAIOutput(text, verbose: verbose)
-                }
-            case .prepareToolUse(let name):
-                if !quiet && verbose {
-                    printPRRadarAIToolUse(name)
+            case .prepareStreamEvent(let event):
+                switch event {
+                case .textDelta(let text):
+                    if !quiet { printPRRadarAIOutput(text, verbose: verbose) }
+                case .toolUse(let name, _):
+                    if !quiet && verbose { printPRRadarAIToolUse(name) }
+                default:
+                    break
                 }
             case .taskEvent(_, let event):
                 switch event {
-                case .output(let text):
-                    if !quiet {
-                        printPRRadarAIOutput(text, verbose: verbose)
-                    }
-                case .toolUse(let name):
-                    if !quiet && verbose {
-                        printPRRadarAIToolUse(name)
+                case .streamEvent(let event):
+                    switch event {
+                    case .textDelta(let text):
+                        if !quiet { printPRRadarAIOutput(text, verbose: verbose) }
+                    case .toolUse(let name, _):
+                        if !quiet && verbose { printPRRadarAIToolUse(name) }
+                    default:
+                        break
                     }
                 case .prompt, .completed:
                     break

@@ -42,8 +42,7 @@ struct PRRadarCommentCommand: AsyncParsableCommand {
                 break
             case .log(let text):
                 print(text, terminator: "")
-            case .prepareOutput: break
-            case .prepareToolUse: break
+            case .prepareStreamEvent: break
             case .taskEvent: break
             case .completed(let output):
                 result = output

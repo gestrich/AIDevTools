@@ -85,9 +85,10 @@ Replace the separate `onAIText`/`onAIToolUse` callbacks in both services with a 
 - Forward every event via `onStreamEvent?(event)` before internal handling
 - Keep internal accumulator append for `.toolUse` and `.metrics`
 
-## - [ ] Phase 2: Update PhaseProgress and TaskProgress
+## - [x] Phase 2: Update PhaseProgress and TaskProgress
 
-**Skills to read**: (none extra)
+**Skills used**: none
+**Principles applied**: Replaced `.prepareOutput`/`.prepareToolUse` with `.prepareStreamEvent(AIStreamEvent)` in `PhaseProgress` and `.output`/`.toolUse` with `.streamEvent(AIStreamEvent)` in `TaskProgress`. Added `import AIOutputSDK` to both model files. Updated all downstream callers (use cases, PRModel, CLI commands) with the minimal changes needed to keep the build green — pass-through cases forward the raw event directly, logic cases (PRModel `runPrepare`/`handleTaskEvent`) switch on the event internally to drive `streamAccumulator` and `LiveTranscriptAccumulator`.
 
 Replace the derived text/tool-use cases with single raw-event cases.
 

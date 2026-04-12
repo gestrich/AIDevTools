@@ -388,8 +388,7 @@ final class PRModel: Identifiable, Hashable {
                         break
                     case .log(let text):
                         appendLog(text, to: .diff)
-                    case .prepareOutput: break
-                    case .prepareToolUse: break
+                    case .prepareStreamEvent: break
                     case .taskEvent: break
                     case .completed(let snapshot):
                         reloadDetail(commitHash: snapshot.commitHash)
@@ -548,8 +547,7 @@ final class PRModel: Identifiable, Hashable {
                     break
                 case .log(let text):
                     appendCommentLog(text)
-                case .prepareOutput: break
-                case .prepareToolUse: break
+                case .prepareStreamEvent: break
                 case .taskEvent: break
                 case .completed(let output):
                     comments = output
@@ -753,21 +751,20 @@ final class PRModel: Identifiable, Hashable {
                     break
                 case .log(let text):
                     appendLog(text, to: .prepare)
-                case .prepareOutput(let text):
-                    if prepareAccumulator == nil {
-                        prepareAccumulator = LiveTranscriptAccumulator(
-                            identifier: "prepare",
-                            prompt: "",
-                            startedAt: Date()
-                        )
+                case .prepareStreamEvent(let event):
+                    let blocks = streamAccumulator.apply(event)
+                    prepareStreamModel?.updateCurrentStreamingBlocks(blocks)
+                    switch event {
+                    case .textDelta(let text):
+                        if prepareAccumulator == nil {
+                            prepareAccumulator = LiveTranscriptAccumulator(identifier: "prepare", prompt: "", startedAt: Date())
+                        }
+                        prepareAccumulator?.textChunks += text
+                    case .toolUse(let name, _):
+                        prepareAccumulator?.flushTextAndAppendToolUse(name)
+                    default:
+                        break
                     }
-                    prepareAccumulator?.textChunks += text
-                    let blocks = streamAccumulator.apply(.textDelta(text))
-                    prepareStreamModel?.updateCurrentStreamingBlocks(blocks)
-                case .prepareToolUse(let name):
-                    prepareAccumulator?.flushTextAndAppendToolUse(name)
-                    let blocks = streamAccumulator.apply(.toolUse(name: name, detail: ""))
-                    prepareStreamModel?.updateCurrentStreamingBlocks(blocks)
                 case .taskEvent: break
                 case .completed:
                     prepareAccumulator = nil
@@ -815,8 +812,7 @@ final class PRModel: Identifiable, Hashable {
                     break
                 case .log(let text):
                     appendLog(text, to: .analyze)
-                case .prepareOutput: break
-                case .prepareToolUse: break
+                case .prepareStreamEvent: break
                 case .taskEvent(let task, let event):
                     handleTaskEvent(task, event)
                     switch event {
@@ -825,11 +821,8 @@ final class PRModel: Identifiable, Hashable {
                         analyzeStreamModel?.finalizeCurrentStreamingMessage()
                         analyzeStreamModel?.appendStatusMessage("Evaluating \((task.focusArea.filePath as NSString).lastPathComponent) \u{2014} \(task.rule.name)")
                         analyzeStreamModel?.beginStreamingMessage()
-                    case .output(let text):
-                        let blocks = streamAccumulator.apply(.textDelta(text))
-                        analyzeStreamModel?.updateCurrentStreamingBlocks(blocks)
-                    case .toolUse(let name):
-                        let blocks = streamAccumulator.apply(.toolUse(name: name, detail: ""))
+                    case .streamEvent(let event):
+                        let blocks = streamAccumulator.apply(event)
                         analyzeStreamModel?.updateCurrentStreamingBlocks(blocks)
                     case .completed:
                         analyzeStreamModel?.finalizeCurrentStreamingMessage()
@@ -872,8 +865,7 @@ final class PRModel: Identifiable, Hashable {
                     break
                 case .log(let text):
                     appendLog(text, to: .analyze)
-                case .prepareOutput: break
-                case .prepareToolUse: break
+                case .prepareStreamEvent: break
                 case .taskEvent(let task, let event):
                     handleTaskEvent(task, event)
                 case .completed:
@@ -903,10 +895,15 @@ final class PRModel: Identifiable, Hashable {
                 rule: task.rule,
                 startedAt: Date()
             )
-        case .output(let text):
-            evaluations[task.taskId]?.accumulator?.textChunks += text
-        case .toolUse(let name):
-            evaluations[task.taskId]?.accumulator?.flushTextAndAppendToolUse(name)
+        case .streamEvent(let event):
+            switch event {
+            case .textDelta(let text):
+                evaluations[task.taskId]?.accumulator?.textChunks += text
+            case .toolUse(let name, _):
+                evaluations[task.taskId]?.accumulator?.flushTextAndAppendToolUse(name)
+            default:
+                break
+            }
         case .completed(let result):
             logger.info("Evaluation task completed", metadata: ["taskId": "\(task.taskId)", "rule": "\(task.rule.name)"])
             evaluations[task.taskId]?.outcome = result
@@ -966,8 +963,7 @@ final class PRModel: Identifiable, Hashable {
                     break
                 case .log(let text):
                     appendLog(text, to: .report)
-                case .prepareOutput: break
-                case .prepareToolUse: break
+                case .prepareStreamEvent: break
                 case .taskEvent: break
                 case .completed:
                     completePhase(.report)

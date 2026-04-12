@@ -78,14 +78,7 @@ public struct AnalyzeSingleTaskUseCase: StreamingUseCase {
                                 continuation.yield(.prompt(text: text))
                             },
                             onStreamEvent: { event in
-                                switch event {
-                                case .textDelta(let text):
-                                    continuation.yield(.output(text: text))
-                                case .toolUse(let name, _):
-                                    continuation.yield(.toolUse(name: name))
-                                default:
-                                    break
-                                }
+                                continuation.yield(.streamEvent(event))
                             }
                         )
                     }
