@@ -1,7 +1,7 @@
 import Foundation
 import GitHubService
-import OctokitSDK
 import GitSDK
+import OctokitSDK
 import PRRadarConfigService
 import PRRadarModelsService
 
@@ -30,7 +30,7 @@ public struct PRAcquisitionService: Sendable {
     /// Fetch comments from GitHub, resolve author names, and write to the shared GitHub cache.
     public func refreshComments(
         prNumber: Int,
-        authorCache: AuthorCacheService
+        config: GitHubRepoConfig
     ) async throws -> GitHubPullRequestComments {
         var comments: GitHubPullRequestComments
         do {
@@ -39,8 +39,8 @@ public struct PRAcquisitionService: Sendable {
             throw AcquisitionError.fetchCommentsFailed(underlying: error)
         }
 
-        // Author name resolution moved to LoadAuthorsUseCase (Phase 3)
-        _ = authorCache
+        let logins = collectCommentAuthorLogins(comments: comments)
+        try? await LoadAuthorsUseCase(config: config).execute(logins: logins)
 
         if !comments.reviewComments.isEmpty {
             let resolvedIDs = try await gitHub.fetchResolvedReviewCommentIDs(number: prNumber)
@@ -56,7 +56,7 @@ public struct PRAcquisitionService: Sendable {
     public func acquire(
         prNumber: Int,
         outputDir: String,
-        authorCache: AuthorCacheService
+        config: GitHubRepoConfig
     ) async throws -> AcquisitionResult {
         let repository: GitHubRepository
         var pullRequest: GitHubPullRequest
@@ -83,10 +83,12 @@ public struct PRAcquisitionService: Sendable {
 
         let comments = try await refreshComments(
             prNumber: prNumber,
-            authorCache: authorCache
+            config: config
         )
 
-        // Author name resolution moved to LoadAuthorsUseCase (Phase 3)
+        var prLogins = collectCommentAuthorLogins(comments: comments)
+        if let login = pullRequest.author?.login { prLogins.insert(login) }
+        try? await LoadAuthorsUseCase(config: config).execute(logins: prLogins)
 
         guard let fullCommitHash = pullRequest.headRefOid,
               let baseRefName = pullRequest.baseRefName else {

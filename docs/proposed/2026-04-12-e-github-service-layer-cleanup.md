@@ -71,7 +71,10 @@ public func makeGitHubRepoConfig() throws -> GitHubRepoConfig
 
 **`Package.swift` changes:** `GitHubService` target needs no new dependencies. `PRReviewFeature` drops the use case file; it already imports `GitHubService` so the type is still found.
 
-## - [ ] Phase 3: Author caching + `CacheRecord<T>` + `LoadAuthorsUseCase` in `GitHubService`
+## - [x] Phase 3: Author caching + `CacheRecord<T>` + `LoadAuthorsUseCase` in `GitHubService`
+
+**Skills used**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
+**Principles applied**: Created `CacheRecord<T>` as a generic TTL wrapper. Moved `AuthorCacheEntry`/`AuthorCache` from `PRRadarModelsService` to `GitHubService`, removing `fetchedAt` from `AuthorCacheEntry` (TTL now lives in `CacheRecord`). Added `readAuthors`/`writeAuthors` to `GitHubPRCacheService`, and `lookupAuthor`/`updateAuthor`/`loadAllAuthors` to `GitHubPRService` (not on the protocol — `LoadAuthorsUseCase` constructs `GitHubPRService` directly). Added `getUser(login:)` to `GitHubAPIServiceProtocol`/`GitHubAPIService` via `octokitClient.getUser`. `LoadAuthorsUseCase` is the sole entry point for all author data — `PRAcquisitionService` methods now take `config: GitHubRepoConfig` instead of `authorCache: AuthorCacheService`. `AllPRsModel` loads authors via `executeAll()` in `loadCached()` and holds them in `loadedAuthors`; `availableAuthors` is computed from that. `GitHubPRLoaderUseCase` calls `updateAuthorCache(for:)` after each PR enrichment. Deleted `AuthorCacheService` from `PRRadarConfigService` and `AuthorCache`/`AuthorCacheEntry` from `PRRadarModelsService`.
 
 **Skills to read**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
 

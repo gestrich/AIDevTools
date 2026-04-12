@@ -16,6 +16,7 @@ final class AllPRsModel {
     private(set) var refreshAllState: RefreshAllState = .idle
     private(set) var analyzeAllState: AnalyzeAllState = .idle
     private(set) var fetchingPRNumbers: Set<Int> = []
+    private(set) var loadedAuthors: [AuthorCacheEntry] = []
     var showOnlyWithPendingComments: Bool = false
 
     let config: PRRadarRepoConfig
@@ -31,6 +32,11 @@ final class AllPRsModel {
         state = .loading
         let models = applyMetadata(await cachedPRs(filter: config.makeFilter()))
         loadSummariesInBackground(for: models)
+        Task {
+            if let gitHubConfig = try? config.makeGitHubRepoConfig() {
+                loadedAuthors = (try? await LoadAuthorsUseCase(config: gitHubConfig).executeAll()) ?? []
+            }
+        }
     }
 
     // MARK: - GitHub Refresh
@@ -227,13 +233,13 @@ final class AllPRsModel {
 
     var availableAuthors: [AuthorOption] {
         guard let models = currentPRModels else { return [] }
-        let cache = (try? config.requireGitHubCacheURL()).map { AuthorCacheService(rootURL: $0).load() }
+        let authorsByLogin = Dictionary(uniqueKeysWithValues: loadedAuthors.map { ($0.login, $0) })
         var seen = Set<String>()
         var result: [AuthorOption] = []
         for model in models {
             let login = model.metadata.author.login
             guard !login.isEmpty, seen.insert(login).inserted else { continue }
-            let entry = cache?.entries[login]
+            let entry = authorsByLogin[login]
             result.append(AuthorOption(
                 login: login,
                 name: entry?.name ?? model.metadata.author.name ?? "",

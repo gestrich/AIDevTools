@@ -140,6 +140,18 @@ actor GitHubPRCacheService {
         try data.write(to: workflowRunsURL(workflow: workflow, branch: branch, limit: limit))
     }
 
+    // MARK: - Author Cache
+
+    func readAuthors() throws -> AuthorCache? {
+        try readFile(at: authorsURL())
+    }
+
+    func writeAuthors(_ cache: AuthorCache) throws {
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let data = try JSONEncoder.prettyPrinted.encode(cache)
+        try data.write(to: authorsURL())
+    }
+
     // MARK: - File Blob
 
     func readBlob(blobSHA: String) throws -> String? {
@@ -245,6 +257,10 @@ actor GitHubPRCacheService {
     private func workflowRunsURL(workflow: String, branch: String?, limit: Int) -> URL {
         let branchKey = branch.map { "-\(sanitise($0))" } ?? ""
         return workflowsDirectory().appendingPathComponent("\(sanitise(workflow))\(branchKey)-\(limit).json")
+    }
+
+    private func authorsURL() -> URL {
+        rootURL.appendingPathComponent("author-cache.json")
     }
 
     private func blobsDirectory() -> URL {

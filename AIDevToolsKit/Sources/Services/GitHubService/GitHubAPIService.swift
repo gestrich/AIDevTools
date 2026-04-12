@@ -186,6 +186,15 @@ public struct GitHubAPIService: Sendable {
         try await octokitClient.pullRequestUpdatedAt(owner: owner, repository: repo, number: number)
     }
 
+    public func getUser(login: String) async throws -> GitHubAuthor {
+        let user = try await octokitClient.getUser(login: login)
+        return GitHubAuthor(
+            login: user.login ?? login,
+            name: user.name,
+            avatarURL: user.avatarURL
+        )
+    }
+
     public func getRepository() async throws -> GitHubRepository {
         let info = try await octokitClient.repositoryInfo(owner: owner, name: self.repo)
         return GitHubRepository(

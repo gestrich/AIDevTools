@@ -254,6 +254,27 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         return entries
     }
 
+    // MARK: - Author Cache
+
+    private static let authorCacheTTL: TimeInterval = 7 * 24 * 60 * 60
+
+    public func lookupAuthor(login: String) async throws -> AuthorCacheEntry? {
+        let authorCache = (try await cache.readAuthors()) ?? AuthorCache()
+        return authorCache.entries[login]?.valueIfFresh(ttl: Self.authorCacheTTL)
+    }
+
+    public func updateAuthor(login: String, name: String, avatarURL: String? = nil) async throws {
+        var authorCache = (try await cache.readAuthors()) ?? AuthorCache()
+        let entry = AuthorCacheEntry(login: login, name: name, avatarURL: avatarURL)
+        authorCache.entries[login] = CacheRecord(value: entry)
+        try await cache.writeAuthors(authorCache)
+    }
+
+    public func loadAllAuthors() async throws -> [AuthorCacheEntry] {
+        let authorCache = (try await cache.readAuthors()) ?? AuthorCache()
+        return authorCache.entries.values.map { $0.value }
+    }
+
     public func listDirectoryNames(path: String, ref: String) async throws -> [String] {
         let ttl: TimeInterval = 300
         if let cached = try await cache.readDirectoryNames(path: path, ref: ref, ttl: ttl) {

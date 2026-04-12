@@ -91,6 +91,7 @@ public struct GitHubPRLoaderUseCase {
                     continuation.yield(.prFetchStarted(prNumber: pr.number))
                     do {
                         let enriched = try await enrichPR(pr, using: service, useCache: isUnchanged)
+                        try? await updateAuthorCache(for: enriched)
                         continuation.yield(.prUpdated(enriched))
                     } catch {
                         let msg = error.localizedDescription
@@ -131,6 +132,18 @@ public struct GitHubPRLoaderUseCase {
                 continuation.finish()
             }
         }
+    }
+
+    private func updateAuthorCache(for pr: PRMetadata) async throws {
+        var logins = Set<String>()
+        if !pr.author.login.isEmpty { logins.insert(pr.author.login) }
+        if let comments = pr.githubComments {
+            comments.comments.compactMap { $0.author?.login }.forEach { logins.insert($0) }
+            comments.reviews.compactMap { $0.author?.login }.forEach { logins.insert($0) }
+            comments.reviewComments.compactMap { $0.author?.login }.forEach { logins.insert($0) }
+        }
+        guard !logins.isEmpty else { return }
+        _ = try await LoadAuthorsUseCase(config: config).execute(logins: logins)
     }
 
     private func makeService() async throws -> GitHubPRService {

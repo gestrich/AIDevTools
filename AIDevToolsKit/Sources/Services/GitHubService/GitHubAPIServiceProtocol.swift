@@ -16,6 +16,7 @@ public protocol GitHubAPIServiceProtocol: Sendable {
     func getPullRequest(number: Int) async throws -> GitHubPullRequest
     func getPullRequestComments(number: Int) async throws -> GitHubPullRequestComments
     func getRepository() async throws -> GitHubRepository
+    func getUser(login: String) async throws -> GitHubAuthor
     func isMergeable(prNumber: Int) async throws -> Bool?
     func listBranches() async throws -> [String]
     func listDirectoryNames(path: String, ref: String) async throws -> [String]

@@ -112,14 +112,14 @@ public struct FetchPRUseCase: StreamingUseCase {
                         historyProvider: historyProvider,
                         gitHubPRService: gitHubPRService
                     )
-                    let authorCache = AuthorCacheService(rootURL: cacheURL)
+                    let gitHubRepoConfig = try config.makeGitHubRepoConfig()
 
                     continuation.yield(.log(text: "Fetching PR #\(prNumber) from GitHub...\n"))
 
                     let result = try await acquisition.acquire(
                         prNumber: prNumber,
                         outputDir: config.resolvedOutputDir,
-                        authorCache: authorCache
+                        config: gitHubRepoConfig
                     )
 
                     try Task.checkCancellation()

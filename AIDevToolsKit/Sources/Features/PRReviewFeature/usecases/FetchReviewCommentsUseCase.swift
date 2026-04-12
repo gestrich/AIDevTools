@@ -41,7 +41,7 @@ public struct FetchReviewCommentsUseCase: UseCase {
             )
             _ = try await acquisition.refreshComments(
                 prNumber: prNumber,
-                authorCache: AuthorCacheService(rootURL: cacheURL)
+                config: try config.makeGitHubRepoConfig()
             )
         }
 
