@@ -23,8 +23,7 @@ public struct FocusGeneratorService: Sendable {
         _ hunk: Hunk,
         hunkIndex: Int,
         transcriptDir: String? = nil,
-        onAIText: ((String) -> Void)? = nil,
-        onAIToolUse: ((String) -> Void)? = nil
+        onStreamEvent: ((AIStreamEvent) -> Void)? = nil
     ) async throws -> (focusAreas: [FocusArea], costUsd: Double) {
         let annotatedContent = hunk.getAnnotatedContent()
 
@@ -44,13 +43,12 @@ public struct FocusGeneratorService: Sendable {
             jsonSchema: Self.focusGenerationSchemaString,
             options: options,
             onOutput: { text in
-                onAIText?(text)
                 accumulator.append(OutputEntry(type: .text, content: text))
             },
             onStreamEvent: { event in
+                onStreamEvent?(event)
                 switch event {
                 case .toolUse(let name, _):
-                    onAIToolUse?(name)
                     accumulator.append(OutputEntry(type: .toolUse, label: name))
                 case .metrics(let duration, let cost, _):
                     accumulator.setMetrics(
@@ -158,16 +156,14 @@ public struct FocusGeneratorService: Sendable {
     ///   - prNumber: PR number being analyzed
     ///   - requestedTypes: Focus types to generate. Defaults to `[.file]`.
     ///   - transcriptDir: Directory to save AI transcripts. Pass `nil` to skip saving.
-    ///   - onAIText: Callback for forwarding AI text output in real-time.
-    ///   - onAIToolUse: Callback for forwarding AI tool use events in real-time.
+    ///   - onStreamEvent: Callback for forwarding raw AI stream events in real-time.
     /// - Returns: `FocusGenerationResult` per type requested
     public func generateAllFocusAreas(
         hunks: [Hunk],
         prNumber: Int,
         requestedTypes: Set<FocusType> = [.file],
         transcriptDir: String? = nil,
-        onAIText: ((String) -> Void)? = nil,
-        onAIToolUse: ((String) -> Void)? = nil
+        onStreamEvent: ((AIStreamEvent) -> Void)? = nil
     ) async throws -> [FocusType: FocusGenerationResult] {
         var results: [FocusType: FocusGenerationResult] = [:]
 
@@ -180,8 +176,7 @@ public struct FocusGeneratorService: Sendable {
                     hunk,
                     hunkIndex: i,
                     transcriptDir: transcriptDir,
-                    onAIText: onAIText,
-                    onAIToolUse: onAIToolUse
+                    onStreamEvent: onStreamEvent
                 )
                 methodAreas.append(contentsOf: areas)
                 totalCost += cost

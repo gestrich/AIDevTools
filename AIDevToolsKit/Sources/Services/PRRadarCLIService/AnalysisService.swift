@@ -121,8 +121,7 @@ public struct AnalysisService: Sendable {
         repoPath: String,
         transcriptDir: String? = nil,
         onPrompt: ((String, RuleRequest) -> Void)? = nil,
-        onAIText: ((String, RuleRequest) -> Void)? = nil,
-        onAIToolUse: ((String, RuleRequest) -> Void)? = nil
+        onStreamEvent: ((AIStreamEvent) -> Void)? = nil
     ) async throws -> RuleOutcome {
         let model = task.rule.model ?? Self.defaultModel
         let focusedContent = task.focusArea.getFocusedContent()
@@ -155,13 +154,12 @@ public struct AnalysisService: Sendable {
             jsonSchema: Self.evaluationOutputSchemaString,
             options: options,
             onOutput: { text in
-                onAIText?(text, task)
                 accumulator.append(OutputEntry(type: .text, content: text))
             },
             onStreamEvent: { event in
+                onStreamEvent?(event)
                 switch event {
                 case .toolUse(let name, _):
-                    onAIToolUse?(name, task)
                     accumulator.append(OutputEntry(type: .toolUse, label: name))
                 case .metrics(let duration, let cost, _):
                     accumulator.setMetrics(
@@ -226,8 +224,7 @@ public struct AnalysisService: Sendable {
         onStart: ((Int, Int, RuleRequest) -> Void)? = nil,
         onResult: ((Int, Int, RuleOutcome) -> Void)? = nil,
         onPrompt: ((String, RuleRequest) -> Void)? = nil,
-        onAIText: ((String, RuleRequest) -> Void)? = nil,
-        onAIToolUse: ((String, RuleRequest) -> Void)? = nil
+        onStreamEvent: ((AIStreamEvent) -> Void)? = nil
     ) async throws -> [RuleOutcome] {
         try FileManager.default.createDirectory(atPath: evalsDir, withIntermediateDirectories: true)
 
@@ -299,8 +296,7 @@ public struct AnalysisService: Sendable {
                         repoPath: repoPath,
                         transcriptDir: evalsDir,
                         onPrompt: onPrompt,
-                        onAIText: onAIText,
-                        onAIToolUse: onAIToolUse
+                        onStreamEvent: onStreamEvent
                     )
 
                     let data = try encoder.encode(result)
