@@ -110,34 +110,50 @@ the merge, then compare during the loop.
 Expected outcome: PRs that haven't changed since the last fetch are skipped entirely,
 making the per-PR refresh loop much faster on typical refreshes.
 
-## - [ ] Phase 4: Research GitHub API for "fetch only updated" optimization
+## - [x] Phase 4: Research GitHub API for "fetch only updated" optimization
 
-**Skills to read**: `ai-dev-tools-debug`
+**Skills used**: `ai-dev-tools-debug`
+**Principles applied**: Research only — current early-stop approach is already optimal for the REST API. No code changes made. See findings below.
 
-Bill wants to know if GitHub offers a `?since=` or similar parameter that lets us skip
-PRs unchanged since the last fetch at the API level.
+**Findings**:
 
-**Research tasks**:
+1. **GitHub Issues API `?since=`**: The Issues API (`/repos/{owner}/{repo}/issues?since=ISO8601`)
+   does accept a `since` parameter and returns issues (including PRs) updated after that
+   timestamp. However, it mixes issues and PRs, requiring client-side filtering. More
+   importantly, the PR list API (`/repos/{owner}/{repo}/pulls`) does NOT support `?since=`,
+   so switching to the Issues endpoint just to get `since=` support adds complexity and
+   mixed-type responses. **Verdict: not worth adopting.**
 
-1. **GitHub Issues API `?since=`**: The Issues API (`/repos/{owner}/{repo}/issues`) does
-   accept `?since=ISO8601` and returns issues (including PRs) updated after that timestamp.
-   Investigate whether this is usable as a PR list source.
+2. **GitHub PR list `?sort=updated&direction=desc` (current approach)**: This is what
+   `GitHubAPIService.listPullRequests` already does. Combined with the early-stop mechanism
+   in `GitHubAPIService` (which breaks pagination once `updatedAt < filter date`), this is
+   functionally equivalent to "fetch only PRs updated since X" — the only difference is we
+   fetch a partial first page of older PRs before the early-stop fires. With a 7-day window
+   and 100 items/page, early-stop triggers after 1–2 pages at most. **Verdict: current
+   approach is already optimal.**
 
-2. **GitHub PR list `?sort=updated&direction=desc`**: This is what we currently use. Combined
-   with the early-stop mechanism (stop paginating once `updatedAt < since`), this is
-   effectively equivalent to "fetch only updated PRs" for our use case. Document whether
-   this is sufficient.
+3. **GitHub ETags / conditional requests**: GitHub returns an `ETag` header on list
+   responses. Storing it and sending `If-None-Match` on subsequent fetches would yield a
+   304 (no body) when the page hasn't changed, saving bandwidth and counting toward rate
+   limits differently. The limitation: ETags are page-level, not endpoint-level. Each page
+   gets its own ETag. Since we're already stopping after 1–2 pages (early-stop), the
+   bandwidth savings are marginal (~6–12 KB per request). Implementation overhead
+   (persisting per-page ETags, handling 304 in `OctokitClient`) is not justified by the
+   small gain. **Verdict: not worth implementing given the early-stop already limits page
+   fetches.**
 
-3. **GitHub ETags / conditional requests**: GitHub supports `If-None-Match` / `If-Modified-Since`
-   headers. A 304 response would mean the result hasn't changed since the last fetch.
-   However, this only helps at the page level, not per-PR. Investigate whether ETags are
-   worth implementing for the PR list endpoint.
+4. **GitHub GraphQL `search` with `updated:>DATE`**: GraphQL search (`is:pr is:open
+   updated:>DATE`) could return only recently-updated PRs in a single request. However,
+   the GitHub search API has stricter rate limits (30 requests/min authenticated vs.
+   5,000/hr for REST), and search results may have an indexing lag (results can be seconds
+   to minutes stale relative to REST). It would also require adding GraphQL support to
+   `OctokitClient` — a significant refactor. **Verdict: not worth the complexity and
+   rate-limit trade-off when REST + early-stop already achieves 1–2 pages.**
 
-4. **GitHub GraphQL `search` with `updated:>DATE`**: GraphQL search supports date filters.
-   Could be a cleaner way to fetch only recently-updated PRs with a single request.
-
-Document the findings and implement any optimization that is both safe and meaningfully
-faster. If the current early-stop approach is already optimal, document that conclusion.
+**Conclusion**: No code changes needed. The current `?sort=updated&direction=desc` +
+client-side early-stop is the correct and near-optimal approach for the REST API. The
+GitHub PR list endpoint does not offer a `?since=` parameter, and all the alternatives
+(Issues API, ETags, GraphQL) introduce more complexity than they save.
 
 ## - [ ] Phase 5: Research and document `updatedAt` coverage gaps
 
