@@ -4,6 +4,7 @@ import CryptoKit
 import Crypto
 #endif
 import Foundation
+import GitHubService
 import GitSDK
 import PRRadarConfigService
 import PRRadarModelsService

@@ -2,10 +2,8 @@ import CLISDK
 import CredentialService
 import DataPathsService
 import Foundation
-import GitHubService
 import GitSDK
 import OctokitSDK
-import PRRadarConfigService
 import RepositorySDK
 
 public struct GitHubServiceFactory: Sendable {
@@ -99,7 +97,7 @@ public struct GitHubServiceFactory: Sendable {
 
     public static func resolveToken(githubAccount: String, explicitToken: String? = nil) async throws -> String {
         if let explicitToken { return explicitToken }
-        let resolver = CredentialResolver.createPlatform(githubAccount: githubAccount)
+        let resolver = CredentialResolver(settingsService: SecureSettingsService(), githubAccount: githubAccount)
         guard let auth = resolver.getGitHubAuth() else {
             throw GitHubServiceError.missingToken
         }

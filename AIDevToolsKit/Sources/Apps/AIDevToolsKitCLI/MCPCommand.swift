@@ -7,6 +7,7 @@ import CredentialFeature
 import ClaudeCLISDK
 import DataPathsService
 import Foundation
+import GitHubService
 import MCP
 import PlanFeature
 import PlanService

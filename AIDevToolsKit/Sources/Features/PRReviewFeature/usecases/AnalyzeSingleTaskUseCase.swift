@@ -3,6 +3,7 @@ import ClaudeAgentSDK
 import CredentialService
 import EnvironmentSDK
 import Foundation
+import GitHubService
 import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService

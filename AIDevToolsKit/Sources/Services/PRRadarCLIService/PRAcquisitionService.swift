@@ -39,11 +39,8 @@ public struct PRAcquisitionService: Sendable {
             throw AcquisitionError.fetchCommentsFailed(underlying: error)
         }
 
-        let logins = collectCommentAuthorLogins(comments: comments)
-        if !logins.isEmpty {
-            let nameMap = try await gitHub.resolveAuthorNames(logins: logins, cache: authorCache)
-            comments = comments.withAuthorNames(from: nameMap)
-        }
+        // Author name resolution moved to LoadAuthorsUseCase (Phase 3)
+        _ = authorCache
 
         if !comments.reviewComments.isEmpty {
             let resolvedIDs = try await gitHub.fetchResolvedReviewCommentIDs(number: prNumber)
@@ -89,11 +86,7 @@ public struct PRAcquisitionService: Sendable {
             authorCache: authorCache
         )
 
-        if let prLogin = pullRequest.author?.login {
-            let nameMap = try await gitHub.resolveAuthorNames(logins: [prLogin], cache: authorCache)
-            pullRequest = pullRequest.withAuthorNames(from: nameMap)
-            try await gitHubPRService.writePR(pullRequest, number: prNumber)
-        }
+        // Author name resolution moved to LoadAuthorsUseCase (Phase 3)
 
         guard let fullCommitHash = pullRequest.headRefOid,
               let baseRefName = pullRequest.baseRefName else {

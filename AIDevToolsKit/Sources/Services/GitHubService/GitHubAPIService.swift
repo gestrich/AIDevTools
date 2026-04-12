@@ -1,9 +1,7 @@
 import Foundation
-import GitHubService
 import Logging
 @preconcurrency import OctoKit
 import OctokitSDK
-import PRRadarConfigService
 import PRRadarModelsService
 
 private let logger = Logger(label: "GitHubAPIService")
@@ -293,30 +291,6 @@ public struct GitHubAPIService: Sendable {
 
     public func getFileSHA(path: String, ref: String) async throws -> String {
         try await octokitClient.getFileSHA(owner: owner, repository: repo, path: path, ref: ref)
-    }
-
-    // MARK: - Author Name Resolution
-
-    public func resolveAuthorNames(logins: Set<String>, cache: AuthorCacheService) async throws -> [String: String] {
-        var result: [String: String] = [:]
-
-        for login in logins {
-            if let cached = cache.lookup(login: login) {
-                result[login] = cached.name
-                continue
-            }
-
-            do {
-                let user = try await octokitClient.getUser(login: login)
-                let displayName = user.name ?? login
-                try cache.update(login: login, name: displayName, avatarURL: user.avatarURL)
-                result[login] = displayName
-            } catch {
-                result[login] = login
-            }
-        }
-
-        return result
     }
 
     // MARK: - Review and CI Operations

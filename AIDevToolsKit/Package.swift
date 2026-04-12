@@ -281,9 +281,14 @@ var targets: [Target] = [
     .target(
         name: "GitHubService",
         dependencies: [
+            .product(name: "CLISDK", package: "SwiftCLI"),
+            "CredentialService",
+            "DataPathsService",
+            "GitSDK",
             .product(name: "Logging", package: "swift-log"),
             "OctokitSDK",
             "PRRadarModelsService",
+            "RepositorySDK",
         ],
         path: "Sources/Services/GitHubService"
     ),

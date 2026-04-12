@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 import PRRadarModelsService
 
 public struct CommentService: Sendable {

@@ -1,4 +1,5 @@
 import CredentialService
+import GitHubService
 import PRRadarCLIService
 import PRRadarConfigService
 import UseCaseSDK
