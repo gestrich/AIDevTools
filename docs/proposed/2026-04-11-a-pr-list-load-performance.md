@@ -79,7 +79,10 @@ PR list. This is the ~5-second pause.
 3. If timing is still poor after the date filter fix, document the minimum latency (one
    GitHub API round-trip) and note it cannot be eliminated without a cache-first approach.
 
-## - [ ] Phase 3: Eliminate per-PR staleness-check API calls using list metadata
+## - [x] Phase 3: Eliminate per-PR staleness-check API calls using list metadata
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Added pre-merge `updatedAt` snapshot in `AllPRsModel.refresh()` before `buildPRModels()` overwrites the metadata. After the merge, compared each PR's freshly-fetched `updatedAt` against the cached value; skipped `refreshPRData()` entirely for unchanged PRs. New PRs (not in the pre-merge map) and PRs with changed or absent `updatedAt` still trigger a full refresh. Trace log added per logging conventions.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

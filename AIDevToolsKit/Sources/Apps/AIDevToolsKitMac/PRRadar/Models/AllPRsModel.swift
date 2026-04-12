@@ -104,6 +104,13 @@ final class AllPRsModel {
             return
         }
 
+        var premergeUpdatedAt: [Int: String] = [:]
+        for pr in prior ?? [] {
+            if let updatedAt = pr.metadata.updatedAt {
+                premergeUpdatedAt[pr.metadata.number] = updatedAt
+            }
+        }
+
         let mergedModels = buildPRModels(from: metadata, reusingExisting: prior)
         self.state = .ready(mergedModels)
         loadSummariesInBackground(for: mergedModels)
@@ -115,6 +122,13 @@ final class AllPRsModel {
 
         for (index, pr) in prsToRefresh.enumerated() {
             let current = index + 1
+            if let cachedAt = premergeUpdatedAt[pr.metadata.number],
+               cachedAt == pr.metadata.updatedAt {
+                logger.trace("PR unchanged, skipping refresh", metadata: ["pr": "\(pr.metadata.number)", "repo": "\(config.name)"])
+                appendRefreshLog("[\(current)/\(total)] PR \(pr.metadata.displayNumber): unchanged\n")
+                refreshAllState = .running(logs: refreshAllLogs, current: current, total: total)
+                continue
+            }
             appendRefreshLog("[\(current)/\(total)] PR \(pr.metadata.displayNumber): \(pr.metadata.title)\n")
             refreshAllState = .running(logs: refreshAllLogs, current: current, total: total)
             await pr.refreshPRData()
