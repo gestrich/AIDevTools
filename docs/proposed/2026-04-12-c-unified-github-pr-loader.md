@@ -59,7 +59,10 @@ public var headRefNamePrefix: String?
 
 Update `PRFilter.matches(_:)` to filter out PRs whose `headRefName` does not start with the prefix when set. This is needed for Claude Chain's branch-prefix filtering when it adopts this architecture later.
 
-## - [ ] Phase 2: Build `GitHubPRLoaderUseCase`
+## - [x] Phase 2: Build `GitHubPRLoaderUseCase`
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Implemented as a `StreamingUseCase` struct emitting non-throwing `AsyncStream<Event>` so partial results always reach observers; errors surface as `.listFetchFailed`/`.prFetchFailed` events. Per-PR enrichment loop runs sequentially to respect GitHub rate limits. "Skip unchanged" logic compares `updatedAt` against disk cache before enriching. Extracted `makeService()` helper to avoid duplicating credential/service setup between the two `execute` overloads.
 
 **Skills to read**: `ai-dev-tools-architecture`
 
