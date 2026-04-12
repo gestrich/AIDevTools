@@ -1,5 +1,4 @@
 import Foundation
-import GitHubService
 import Logging
 import PRRadarCLIService
 import PRRadarConfigService
@@ -15,11 +14,10 @@ final class AllPRsModel {
     private(set) var state: State = .uninitialized
     private(set) var refreshAllState: RefreshAllState = .idle
     private(set) var analyzeAllState: AnalyzeAllState = .idle
+    private(set) var fetchingPRNumbers: Set<Int> = []
     var showOnlyWithPendingComments: Bool = false
 
     let config: PRRadarRepoConfig
-    private var gitHubPRService: (any GitHubPRServiceProtocol)?
-    private var changesTask: Task<Void, Never>?
 
     init(config: PRRadarRepoConfig) {
         self.config = config
@@ -37,17 +35,35 @@ final class AllPRsModel {
     // MARK: - GitHub Refresh
 
     func refresh(number: Int) async throws -> PRModel? {
-        let useCase = FetchPRUseCase(config: config)
-        for try await progress in useCase.execute(prNumber: number, force: true) {
-            switch progress {
-            case .failed(let error, _):
-                throw RefreshError.failed(error)
-            default: break
+        fetchingPRNumbers.insert(number)
+        defer { fetchingPRNumbers.remove(number) }
+
+        let useCase = GitHubPRLoaderUseCase(config: config)
+        var fetchError: String?
+
+        for await event in useCase.execute(prNumber: number) {
+            switch event {
+            case .prFetchStarted:
+                break
+            case .prUpdated(let metadata):
+                if let model = currentPRModels?.first(where: { $0.prNumber == metadata.number }) {
+                    model.updateMetadata(metadata)
+                    await model.loadSummary()
+                }
+            case .prFetchFailed(_, let error):
+                fetchError = error
+            case .completed:
+                break
+            default:
+                break
             }
         }
-        let models = applyMetadata(await cachedPRs(filter: config.makeFilter()))
-        loadSummariesInBackground(for: models)
-        return models.first(where: { $0.metadata.number == number })
+
+        if let error = fetchError {
+            throw RefreshError.failed(error)
+        }
+
+        return currentPRModels?.first(where: { $0.metadata.number == number })
     }
 
     func refresh(filter: PRFilter) async {
@@ -55,72 +71,59 @@ final class AllPRsModel {
         self.state = .refreshing(prior ?? [])
         refreshAllState = .running(logs: "Fetching PR list from GitHub...\n", current: 0, total: 0)
 
-        let useCase = FetchPRsUseCase(config: config)
+        let useCase = GitHubPRLoaderUseCase(config: config)
+        var fetchedTotal = 0
+        var enrichedCount = 0
 
-        var updatedMetadata: [PRMetadata]?
-        do {
-            for try await progress in useCase.execute(filter: filter) {
-                switch progress {
-                case .running, .progress:
-                    break
-                case .log(let text):
-                    appendRefreshLog(text)
-                case .prepareOutput: break
-                case .prepareToolUse: break
-                case .taskEvent: break
-                case .completed(let result):
-                    updatedMetadata = result.prList
-                    startObservingChanges(service: result.gitHubPRService)
-                case .failed(let error, _):
-                    logger.error("refresh() use case failed", metadata: ["error": "\(error)", "repo": "\(config.name)"])
-                    self.state = .failed(error, prior: prior)
-                    refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(error)\n")
-                    return
+        for await event in useCase.execute(filter: filter) {
+            switch event {
+            case .listLoadStarted:
+                break
+
+            case .cached(let metadata):
+                let models = applyMetadata(metadata)
+                loadSummariesInBackground(for: models)
+
+            case .listFetchStarted:
+                break
+
+            case .fetched(let metadata):
+                fetchedTotal = metadata.count
+                appendRefreshLog("Found \(fetchedTotal) PRs\n")
+                refreshAllState = .running(logs: refreshAllLogs, current: 0, total: fetchedTotal)
+                let models = applyMetadata(metadata)
+                loadSummariesInBackground(for: models)
+
+            case .listFetchFailed(let message):
+                logger.error("refresh() list fetch failed", metadata: ["error": "\(message)", "repo": "\(config.name)"])
+                self.state = .failed(message, prior: prior)
+                refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(message)\n")
+                return
+
+            case .prFetchStarted(let prNumber):
+                fetchingPRNumbers.insert(prNumber)
+                appendRefreshLog("PR #\(prNumber): fetching...\n")
+
+            case .prUpdated(let metadata):
+                fetchingPRNumbers.remove(metadata.number)
+                enrichedCount += 1
+                appendRefreshLog("[\(enrichedCount)/\(fetchedTotal)] PR #\(metadata.number): \(metadata.title)\n")
+                refreshAllState = .running(logs: refreshAllLogs, current: enrichedCount, total: fetchedTotal)
+                if let model = currentPRModels?.first(where: { $0.prNumber == metadata.number }) {
+                    model.updateMetadata(metadata)
+                    Task { await model.loadSummary() }
                 }
-            }
-        } catch {
-            logger.error("refresh() threw", metadata: ["error": "\(error.localizedDescription)", "repo": "\(config.name)"])
-            self.state = .failed(error.localizedDescription, prior: prior)
-            refreshAllState = .completed(logs: refreshAllLogs + "Failed: \(error.localizedDescription)\n")
-            return
-        }
 
-        guard let metadata = updatedMetadata else {
-            logger.warning("refresh() no metadata after use case completed", metadata: ["repo": "\(config.name)"])
-            refreshAllState = .completed(logs: refreshAllLogs + "No PRs found.\n")
-            return
-        }
+            case .prFetchFailed(let prNumber, let error):
+                fetchingPRNumbers.remove(prNumber)
+                enrichedCount += 1
+                logger.error("refresh() PR enrichment failed", metadata: ["pr": "\(prNumber)", "error": "\(error)", "repo": "\(config.name)"])
+                refreshAllState = .running(logs: refreshAllLogs, current: enrichedCount, total: fetchedTotal)
 
-        var premergeUpdatedAt: [Int: String] = [:]
-        for pr in prior ?? [] {
-            if let updatedAt = pr.metadata.updatedAt {
-                premergeUpdatedAt[pr.metadata.number] = updatedAt
+            case .completed:
+                refreshAllState = .completed(logs: refreshAllLogs + "\nRefresh complete.\n")
             }
         }
-
-        let mergedModels = applyMetadata(metadata)
-        loadSummariesInBackground(for: mergedModels)
-
-        let prsToRefresh = filteredPRs(mergedModels, filter: filter)
-        let total = prsToRefresh.count
-        appendRefreshLog("Found \(metadata.count) PRs, refreshing \(total)...\n")
-        refreshAllState = .running(logs: refreshAllLogs, current: 0, total: total)
-
-        for (index, pr) in prsToRefresh.enumerated() {
-            let current = index + 1
-            if let cachedAt = premergeUpdatedAt[pr.metadata.number],
-               cachedAt == pr.metadata.updatedAt {
-                logger.trace("PR unchanged, skipping refresh", metadata: ["pr": "\(pr.metadata.number)", "repo": "\(config.name)"])
-                appendRefreshLog("[\(current)/\(total)] PR \(pr.metadata.displayNumber): unchanged\n")
-                refreshAllState = .running(logs: refreshAllLogs, current: current, total: total)
-                continue
-            }
-            appendRefreshLog("[\(current)/\(total)] PR \(pr.metadata.displayNumber): \(pr.metadata.title)\n")
-            refreshAllState = .running(logs: refreshAllLogs, current: current, total: total)
-            await pr.refreshPRData()
-        }
-
-        refreshAllState = .completed(logs: refreshAllLogs + "\nRefresh complete.\n")
     }
 
     func dismissRefreshAllState() {
@@ -234,24 +237,6 @@ final class AllPRsModel {
             result = result.filter { $0.hasPendingComments }
         }
         return result
-    }
-
-    // MARK: - Change Observation
-
-    private func startObservingChanges(service: any GitHubPRServiceProtocol) {
-        changesTask?.cancel()
-        gitHubPRService = service
-        changesTask = Task { [weak self] in
-            for await prNumber in service.changes() {
-                guard let self else { break }
-                let updated = await CachedPRsUseCase(config: self.config).executeSingle(prNumber: prNumber)
-                guard let updated else { continue }
-                if let model = self.currentPRModels?.first(where: { $0.prNumber == prNumber }) {
-                    model.updateMetadata(updated)
-                    await model.loadSummary()
-                }
-            }
-        }
     }
 
     // MARK: - Helpers

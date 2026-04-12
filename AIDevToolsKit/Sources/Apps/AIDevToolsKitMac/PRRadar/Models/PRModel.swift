@@ -68,7 +68,6 @@ final class PRModel: Identifiable, Hashable {
         }
     }
     var report: ReportPhaseOutput? { detail?.report }
-    var postedComments: GitHubPullRequestComments? { detail?.postedComments }
     var imageURLMap: [String: String] { detail?.imageURLMap ?? [:] }
     var imageBaseDir: String? { detail?.imageBaseDir }
     var savedOutputs: [PRRadarPhase: [EvaluationOutput]] { detail?.savedOutputs ?? [:] }
@@ -120,13 +119,7 @@ final class PRModel: Identifiable, Hashable {
             return
         }
 
-        let postedComments: GitHubPullRequestComments? = try? PhaseOutputParser.parsePhaseOutput(
-            config: config,
-            prNumber: prNumber,
-            phase: .metadata,
-            filename: PRRadarPhasePaths.ghCommentsFilename
-        )
-        let postedCount = postedComments?.reviewComments.count ?? 0
+        let postedCount = metadata.githubComments?.reviewComments.count ?? 0
         analysisState = .loaded(
             violationCount: summary.violationsFound,
             evaluatedAt: summary.evaluatedAt,
@@ -324,7 +317,7 @@ final class PRModel: Identifiable, Hashable {
         }
 
         if let summary = newDetail.analysisSummary {
-            let postedCount = newDetail.postedComments?.reviewComments.count ?? 0
+            let postedCount = metadata.githubComments?.reviewComments.count ?? 0
             analysisState = .loaded(
                 violationCount: summary.violationsFound,
                 evaluatedAt: summary.evaluatedAt,
