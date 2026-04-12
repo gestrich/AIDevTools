@@ -35,8 +35,19 @@ struct ReviewDetailView: View {
 
                 Divider()
 
-                phaseOutputView
+                if let streamModel = prModel.prepareStreamModel ?? prModel.analyzeStreamModel {
+                    HSplitView {
+                        diffOutputView
+                            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+                        ChatMessagesView()
+                            .environment(streamModel)
+                            .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    phaseOutputView
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             case .report:
                 PhaseInputView(
                     prModel: prModel,

@@ -129,7 +129,10 @@ Read `AnalyzeSingleTaskUseCase.swift` and `PrepareUseCase.swift` in full before 
 - `StreamAccumulator.swift` — `apply(_ event: AIStreamEvent) -> [AIContentBlock]`
 - `ChatModel.swift` — `beginStreamingMessage()`, `updateCurrentStreamingBlocks(_:)`, `finalizeCurrentStreamingMessage()`
 
-## - [ ] Phase 4: Add provider picker and streaming output view to PR Radar UI
+## - [x] Phase 4: Add provider picker and streaming output view to PR Radar UI
+
+**Skills used**: none
+**Principles applied**: Added provider `Picker` to `PRRadarContentView` toolbar bound to `AllPRsModel.selectedProviderName` (initialized from `providerRegistry.defaultClient?.name` on model creation). Added `HSplitView` in `ReviewDetailView`'s diff case: when `prModel.prepareStreamModel ?? prModel.analyzeStreamModel` is non-nil, the diff view appears on the left and `ChatMessagesView` on the right — collapses back to single-pane when no stream model is active. Both changes match the `ContextualChatPanel` and `ClaudeChainView` patterns exactly.
 
 **Skills to read**: (none extra — match Chat and Claude Chain patterns exactly)
 

@@ -127,6 +127,19 @@ struct PRRadarContentView: View {
                 .popover(isPresented: $showDeleteConfirmation, arrowEdge: .bottom) {
                     deleteConfirmationPopover
                 }
+
+                if let model = allPRsModel {
+                    Picker("", selection: Bindable(model).selectedProviderName) {
+                        ForEach(providerModel.providerRegistry.providers, id: \.name) { provider in
+                            Text(provider.displayName).tag(provider.name)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 120)
+                    .accessibilityIdentifier("providerPicker")
+                    .help("Select AI provider")
+                }
             }
             }
         }
@@ -161,6 +174,7 @@ struct PRRadarContentView: View {
                 return
             }
             let model = AllPRsModel(config: config, providerRegistry: providerModel.providerRegistry)
+            model.selectedProviderName = providerModel.providerRegistry.defaultClient?.name ?? ""
             allPRsModel = model
             await model.refresh(filter: buildFilter())
         }
