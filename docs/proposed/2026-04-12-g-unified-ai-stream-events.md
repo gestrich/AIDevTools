@@ -102,7 +102,10 @@ Replace the derived text/tool-use cases with single raw-event cases.
 
 These are public types used across Features and Apps — changing them causes compile errors that guide the remaining phases.
 
-## - [ ] Phase 3: Update use cases to yield raw stream events
+## - [x] Phase 3: Update use cases to yield raw stream events
+
+**Skills used**: none
+**Principles applied**: All Phase 3 changes were already applied during Phase 2's implementation — `PrepareUseCase` and `AnalyzeSingleTaskUseCase` already use `onStreamEvent` with the new progress cases, and `RunAllUseCase`/`RunPipelineUseCase` already switch on `.prepareStreamEvent`. Build confirmed clean.
 
 **Skills to read**: (none extra)
 
