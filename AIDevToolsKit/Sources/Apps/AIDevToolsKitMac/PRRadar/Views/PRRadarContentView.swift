@@ -9,6 +9,7 @@ struct PRRadarContentView: View {
 
     private let logger = Logger(label: "PRRadarContentView")
 
+    let isActive: Bool
     let repository: RepositoryConfiguration
 
     @Environment(WorkspaceModel.self) private var workspaceModel
@@ -48,6 +49,7 @@ struct PRRadarContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
+            if isActive {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     Task { await selectedPR?.refreshPRData() }
@@ -122,6 +124,7 @@ struct PRRadarContentView: View {
                 .popover(isPresented: $showDeleteConfirmation, arrowEdge: .bottom) {
                     deleteConfirmationPopover
                 }
+            }
             }
         }
         .sheet(isPresented: $showAnalyzeAllProgress) {

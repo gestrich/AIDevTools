@@ -3,6 +3,8 @@ import SwiftUI
 import WorktreeFeature
 
 struct WorktreesView: View {
+    let isActive: Bool
+
     @Environment(WorktreeModel.self) private var model
     @Environment(WorkspaceModel.self) private var workspaceModel
     @State private var showingAddSheet = false
@@ -34,11 +36,13 @@ struct WorktreesView: View {
             }
         }
         .toolbar {
-            ToolbarItem {
-                Button(action: { showingAddSheet = true }) {
-                    Label("Add Worktree", systemImage: "plus")
+            if isActive {
+                ToolbarItem {
+                    Button(action: { showingAddSheet = true }) {
+                        Label("Add Worktree", systemImage: "plus")
+                    }
+                    .disabled(workspaceModel.selectedRepository == nil)
                 }
-                .disabled(workspaceModel.selectedRepository == nil)
             }
         }
         .sheet(isPresented: $showingAddSheet) {

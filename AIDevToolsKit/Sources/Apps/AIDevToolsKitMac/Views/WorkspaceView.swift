@@ -74,35 +74,43 @@ struct WorkspaceView: View {
                 ArchitecturePlannerView(repository: repo)
                     .tabItem { Label("Architecture", systemImage: "building.columns") }
                     .tag("architecture")
+                    .id("architecture")
             }
 
             ClaudeChainView(repository: repo)
                 .tabItem { Label("Chains", systemImage: "link") }
                 .tag("claudeChain")
+                .id("claudeChain")
 
             EvalsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
                 .tabItem { Label("Evals", systemImage: "checkmark.shield") }
                 .tag("evals")
+                .id("evals")
 
             PlansContainer(repository: repo)
                 .tabItem { Label("Plans", systemImage: "doc.text") }
                 .tag("plans")
+                .id("plans")
 
-            PullRequestsContentView(repository: repo)
+            PullRequestsContentView(isActive: selectedTab == "pullRequests", repository: repo)
                 .tabItem { Label("Pull Requests", systemImage: "arrow.triangle.pull") }
                 .tag("pullRequests")
+                .id("pullRequests")
 
-            PRRadarContentView(repository: repo)
+            PRRadarContentView(isActive: selectedTab == "prradar", repository: repo)
                 .tabItem { Label("PR Radar", systemImage: "eye") }
                 .tag("prradar")
+                .id("prradar")
 
             SkillsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
                 .tabItem { Label("Skills", systemImage: "star") }
                 .tag("skills")
+                .id("skills")
 
-            WorktreesView()
+            WorktreesView(isActive: selectedTab == "worktrees")
                 .tabItem { Label("Worktrees", systemImage: "square.split.2x1") }
                 .tag("worktrees")
+                .id("worktrees")
         }
     }
 }

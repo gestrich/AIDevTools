@@ -4,6 +4,7 @@ import SwiftUI
 
 struct PullRequestsContentView: View {
 
+    let isActive: Bool
     let repository: RepositoryConfiguration
 
     @Environment(WorkspaceModel.self) private var workspaceModel
@@ -24,18 +25,20 @@ struct PullRequestsContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    if let number = selectedPRNumber {
-                        Task { await model?.refresh(number: number) }
-                    } else {
-                        Task { await model?.load() }
+            if isActive {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        if let number = selectedPRNumber {
+                            Task { await model?.refresh(number: number) }
+                        } else {
+                            Task { await model?.load() }
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
+                    .help(selectedPRNumber != nil ? "Refresh selected PR" : "Reload all PRs")
+                    .disabled(model == nil)
                 }
-                .help(selectedPRNumber != nil ? "Refresh selected PR" : "Reload all PRs")
-                .disabled(model == nil)
             }
         }
         .task(id: repository.id) {
