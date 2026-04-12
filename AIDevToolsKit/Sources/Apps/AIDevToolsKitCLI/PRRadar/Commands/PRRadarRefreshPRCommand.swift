@@ -1,7 +1,7 @@
 import ArgumentParser
 import Foundation
+import GitHubService
 import PRRadarConfigService
-import PRReviewFeature
 
 struct PRRadarRefreshPRCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -12,8 +12,8 @@ struct PRRadarRefreshPRCommand: AsyncParsableCommand {
     @OptionGroup var options: PRRadarCLIOptions
 
     func run() async throws {
-        let config = try resolvePRRadarConfigFromOptions(options)
-        let useCase = GitHubPRLoaderUseCase(config: config)
+        let prRadarConfig = try resolvePRRadarConfigFromOptions(options)
+        let useCase = GitHubPRLoaderUseCase(config: try prRadarConfig.makeGitHubRepoConfig())
 
         print("Refreshing PR #\(options.prNumber)...")
 

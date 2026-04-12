@@ -1,15 +1,11 @@
 import CredentialService
 import Foundation
-import GitHubService
 import Logging
-import PRRadarCLIService
-import PRRadarConfigService
 import PRRadarModelsService
-import UseCaseSDK
 
 private let logger = Logger(label: "GitHubPRLoaderUseCase")
 
-public struct GitHubPRLoaderUseCase: StreamingUseCase {
+public struct GitHubPRLoaderUseCase {
 
     public enum Event: Sendable {
         // List-level events
@@ -28,9 +24,9 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
         case completed
     }
 
-    private let config: PRRadarRepoConfig
+    private let config: GitHubRepoConfig
 
-    public init(config: PRRadarRepoConfig) {
+    public init(config: GitHubRepoConfig) {
         self.config = config
     }
 
@@ -39,20 +35,9 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
             Task {
                 continuation.yield(.listLoadStarted)
 
-                let cachedPRs = await PRDiscoveryService.discoverPRs(config: config)
-                let filteredCached = cachedPRs.filter { filter.matches($0) }.sorted { $0.number > $1.number }
-                continuation.yield(.cached(filteredCached))
-
-                let cachedByNumber: [Int: PRMetadata] = Dictionary(
-                    uniqueKeysWithValues: cachedPRs.map { ($0.number, $0) }
-                )
-
-                continuation.yield(.listFetchStarted)
-
                 let service: GitHubPRService
-                let authorCache: AuthorCacheService
                 do {
-                    (service, authorCache) = try await makeService()
+                    service = try await makeService()
                 } catch {
                     logger.error("execute(filter:): service setup failed: \(error)")
                     continuation.yield(.listFetchFailed(error.localizedDescription))
@@ -60,6 +45,19 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
                     continuation.finish()
                     return
                 }
+
+                let cachedGHPRs = await service.readAllCachedPRs()
+                let cachedPRs: [PRMetadata] = cachedGHPRs
+                    .compactMap { try? $0.toPRMetadata() }
+                    .sorted { $0.number > $1.number }
+                let filteredCached = cachedPRs.filter { filter.matches($0) }
+                continuation.yield(.cached(filteredCached))
+
+                let cachedByNumber: [Int: PRMetadata] = Dictionary(
+                    uniqueKeysWithValues: cachedPRs.map { ($0.number, $0) }
+                )
+
+                continuation.yield(.listFetchStarted)
 
                 let fetchedGHPRs: [GitHubPullRequest]
                 do {
@@ -92,7 +90,7 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
 
                     continuation.yield(.prFetchStarted(prNumber: pr.number))
                     do {
-                        let enriched = try await enrichPR(pr, using: service, authorCache: authorCache, useCache: isUnchanged)
+                        let enriched = try await enrichPR(pr, using: service, useCache: isUnchanged)
                         continuation.yield(.prUpdated(enriched))
                     } catch {
                         let msg = error.localizedDescription
@@ -119,10 +117,10 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
                 continuation.yield(.prFetchStarted(prNumber: prNumber))
 
                 do {
-                    let (service, authorCache) = try await makeService()
+                    let service = try await makeService()
                     let ghPR = try await service.pullRequest(number: prNumber, useCache: false)
                     let base = try ghPR.toPRMetadata()
-                    let enriched = try await enrichPR(base, using: service, authorCache: authorCache, useCache: false)
+                    let enriched = try await enrichPR(base, using: service, useCache: false)
                     continuation.yield(.prUpdated(enriched))
                 } catch {
                     logger.error("execute(prNumber:): failed for PR #\(prNumber): \(error)")
@@ -135,23 +133,18 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
         }
     }
 
-    private func makeService() async throws -> (GitHubPRService, AuthorCacheService) {
-        let cacheURL = try config.requireGitHubCacheURL()
-        guard let account = config.githubAccount, !account.isEmpty else {
-            throw CredentialError.notConfigured(account: config.name)
-        }
+    private func makeService() async throws -> GitHubPRService {
         let gitHub = try await GitHubServiceFactory.createGitHubAPI(
             repoPath: config.repoPath,
-            githubAccount: account,
-            explicitToken: config.explicitToken
+            githubAccount: config.account,
+            explicitToken: config.token
         )
-        return (GitHubPRService(rootURL: cacheURL, apiClient: gitHub), AuthorCacheService(rootURL: cacheURL))
+        return GitHubPRService(rootURL: config.cacheURL, apiClient: gitHub)
     }
 
     private func enrichPR(
         _ pr: PRMetadata,
         using service: GitHubPRService,
-        authorCache: AuthorCacheService,
         useCache: Bool
     ) async throws -> PRMetadata {
         // service.comments() already fetches reviews internally (getPullRequestComments calls
@@ -168,24 +161,6 @@ public struct GitHubPRLoaderUseCase: StreamingUseCase {
         enriched.checkRuns = checkRuns
         enriched.isMergeable = isMergeable
 
-        // Populate per-repo author cache from data already fetched — no extra API calls.
-        updateAuthorCache(authorCache, from: enriched)
-
         return enriched
-    }
-
-    private func updateAuthorCache(_ cache: AuthorCacheService, from pr: PRMetadata) {
-        var authors: [(login: String, name: String?, avatarURL: String?)] = []
-        authors.append((pr.author.login, pr.author.name, pr.author.avatarURL))
-        if let reviews = pr.reviews {
-            for review in reviews {
-                if let author = review.author {
-                    authors.append((author.login, author.name, author.avatarURL))
-                }
-            }
-        }
-        for author in authors where !author.login.isEmpty {
-            try? cache.update(login: author.login, name: author.name ?? author.login, avatarURL: author.avatarURL)
-        }
     }
 }

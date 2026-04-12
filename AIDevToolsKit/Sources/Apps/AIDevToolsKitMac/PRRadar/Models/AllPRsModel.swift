@@ -1,4 +1,5 @@
 import Foundation
+import GitHubService
 import Logging
 import PRRadarCLIService
 import PRRadarConfigService
@@ -38,7 +39,7 @@ final class AllPRsModel {
         fetchingPRNumbers.insert(number)
         defer { fetchingPRNumbers.remove(number) }
 
-        let useCase = GitHubPRLoaderUseCase(config: config)
+        let useCase = GitHubPRLoaderUseCase(config: try config.makeGitHubRepoConfig())
         var fetchError: String?
 
         for await event in useCase.execute(prNumber: number) {
@@ -71,7 +72,15 @@ final class AllPRsModel {
         self.state = .refreshing(prior ?? [])
         refreshAllState = .running(logs: "Fetching PR list from GitHub...\n", current: 0, total: 0)
 
-        let useCase = GitHubPRLoaderUseCase(config: config)
+        let gitHubConfig: GitHubRepoConfig
+        do {
+            gitHubConfig = try config.makeGitHubRepoConfig()
+        } catch {
+            self.state = .failed(error.localizedDescription, prior: prior)
+            refreshAllState = .completed(logs: "Failed: \(error.localizedDescription)\n")
+            return
+        }
+        let useCase = GitHubPRLoaderUseCase(config: gitHubConfig)
         var fetchedTotal = 0
         var enrichedCount = 0
 

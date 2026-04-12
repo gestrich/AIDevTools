@@ -39,7 +39,10 @@ Move the following 4 files from `Sources/Services/PRRadarCLIService/` to `Source
 
 **`Package.swift` changes:** No new dependencies for `GitHubService`. `PRRadarCLIService` no longer owns these 4 files but already imports `GitHubService`.
 
-## - [ ] Phase 2: Move `GitHubPRLoaderUseCase` from `PRReviewFeature` → `GitHubService`
+## - [x] Phase 2: Move `GitHubPRLoaderUseCase` from `PRReviewFeature` → `GitHubService`
+
+**Skills used**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
+**Principles applied**: Introduced `GitHubRepoConfig` in `GitHubService` with non-optional `account` field so credential validation happens at conversion time. Added `makeGitHubRepoConfig() throws` to `PRRadarRepoConfig` and a `noGitHubAccount` case to `PRRadarRepoConfigError`. Added `GitHubService` as a direct dep of `PRRadarConfigService` in `Package.swift`. Replaced `PRDiscoveryService.discoverPRs(config:)` with a new `readAllCachedPRs()` method on `GitHubPRCacheService`/`GitHubPRService` (scanning the cache directory directly, matching prior logic). Dropped `AuthorCacheService` from the use case — author cache updates will be restored via `LoadAuthorsUseCase` in Phase 3. Removed `StreamingUseCase` conformance since `UseCaseSDK` is not a dep of `GitHubService` and no caller uses the protocol type. Dropped `import PRReviewFeature` from `PullRequestsModel`, `PRRadarRefreshCommand`, and `PRRadarRefreshPRCommand` since they now get `GitHubPRLoaderUseCase` from `GitHubService` directly.
 
 **Skills to read**: `ai-dev-tools-architecture`, `ai-dev-tools-composition-root`
 

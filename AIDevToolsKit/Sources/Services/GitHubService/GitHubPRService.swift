@@ -117,6 +117,10 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         changeStream
     }
 
+    public func readAllCachedPRs() async -> [GitHubPullRequest] {
+        await cache.readAllCachedPRs()
+    }
+
     // MARK: - Write Operations
 
     public func closePullRequest(number: Int) async throws {

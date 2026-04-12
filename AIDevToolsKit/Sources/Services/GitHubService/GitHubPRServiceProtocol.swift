@@ -5,6 +5,7 @@ import PRRadarModelsService
 public protocol GitHubPRServiceProtocol: Sendable {
     func branchHead(branch: String, ttl: TimeInterval) async throws -> BranchHead
     func changes() -> AsyncStream<Int>
+    func readAllCachedPRs() async -> [GitHubPullRequest]
     func checkRuns(number: Int, useCache: Bool) async throws -> [GitHubCheckRun]
     func closePullRequest(number: Int) async throws
     func comments(number: Int, useCache: Bool) async throws -> GitHubPullRequestComments

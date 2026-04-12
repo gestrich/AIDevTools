@@ -1,8 +1,8 @@
 import ArgumentParser
 import Foundation
+import GitHubService
 import PRRadarConfigService
 import PRRadarModelsService
-import PRReviewFeature
 
 private struct PRListOutput: Encodable {
     let author: String
@@ -30,8 +30,9 @@ struct PRRadarRefreshCommand: AsyncParsableCommand {
     func run() async throws {
         let prRadarConfig = try resolvePRRadarConfig(repoName: config)
         let prFilter = try filterOptions.buildFilter(config: prRadarConfig)
+        let gitHubConfig = try prRadarConfig.makeGitHubRepoConfig()
 
-        let useCase = GitHubPRLoaderUseCase(config: prRadarConfig)
+        let useCase = GitHubPRLoaderUseCase(config: gitHubConfig)
         var finalPRs: [PRMetadata] = []
 
         for await event in useCase.execute(filter: prFilter) {

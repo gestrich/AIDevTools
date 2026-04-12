@@ -1,7 +1,7 @@
 import Foundation
+import GitHubService
 import PRRadarConfigService
 import PRRadarModelsService
-import PRReviewFeature
 
 @Observable
 @MainActor
@@ -28,7 +28,14 @@ final class PullRequestsModel {
 
     func load() async {
         state = .loading
-        let useCase = GitHubPRLoaderUseCase(config: config)
+        let gitHubConfig: GitHubRepoConfig
+        do {
+            gitHubConfig = try config.makeGitHubRepoConfig()
+        } catch {
+            state = .failed(error.localizedDescription, prior: nil)
+            return
+        }
+        let useCase = GitHubPRLoaderUseCase(config: gitHubConfig)
         for await event in useCase.execute(filter: config.makeFilter()) {
             handle(event)
         }
@@ -37,7 +44,8 @@ final class PullRequestsModel {
     // MARK: - Per-PR Refresh
 
     func refresh(number: Int) async {
-        let useCase = GitHubPRLoaderUseCase(config: config)
+        guard let gitHubConfig = try? config.makeGitHubRepoConfig() else { return }
+        let useCase = GitHubPRLoaderUseCase(config: gitHubConfig)
         for await event in useCase.execute(prNumber: number) {
             handle(event)
         }

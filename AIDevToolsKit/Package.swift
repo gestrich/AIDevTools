@@ -346,6 +346,7 @@ var targets: [Target] = [
         dependencies: [
             "DataPathsService",
             "EnvironmentSDK",
+            "GitHubService",
             "KeychainSDK",
             "PRRadarModelsService",
             "RepositorySDK",

@@ -54,6 +54,20 @@ actor GitHubPRCacheService {
         try writePRFile(reviews, to: reviewsURL(number: number), prNumber: number)
     }
 
+    func readAllCachedPRs() -> [GitHubPullRequest] {
+        let fileManager = FileManager.default
+        let path = rootURL.path(percentEncoded: false)
+        guard fileManager.fileExists(atPath: path),
+              let contents = try? fileManager.contentsOfDirectory(atPath: path)
+        else { return [] }
+        return contents.compactMap { dirName -> GitHubPullRequest? in
+            guard Int(dirName) != nil else { return nil }
+            let url = rootURL.appendingPathComponent("\(dirName)/gh-pr.json")
+            guard let data = fileManager.contents(atPath: url.path(percentEncoded: false)) else { return nil }
+            return try? JSONDecoder().decode(GitHubPullRequest.self, from: data)
+        }
+    }
+
     // MARK: - Index
 
     func readIndex(key: String) throws -> [Int]? {

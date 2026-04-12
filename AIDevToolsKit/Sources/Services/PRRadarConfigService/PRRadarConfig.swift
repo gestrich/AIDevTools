@@ -1,6 +1,7 @@
 import DataPathsService
 import EnvironmentSDK
 import Foundation
+import GitHubService
 import PRRadarModelsService
 import RepositorySDK
 
@@ -118,6 +119,20 @@ public struct PRRadarRepoConfig: Sendable {
             throw PRRadarRepoConfigError.noDataRoot
         }
         return url
+    }
+
+    public func makeGitHubRepoConfig() throws -> GitHubRepoConfig {
+        let cacheURL = try requireGitHubCacheURL()
+        guard let account = githubAccount, !account.isEmpty else {
+            throw PRRadarRepoConfigError.noGitHubAccount(repoName: name)
+        }
+        return GitHubRepoConfig(
+            account: account,
+            cacheURL: cacheURL,
+            name: name,
+            repoPath: repoPath,
+            token: explicitToken
+        )
     }
 
     public func makeFilter(
