@@ -33,9 +33,6 @@ struct PRRadarConfigAddCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Default base branch (default: main)")
     var defaultBaseBranch: String = "main"
 
-    @Option(name: .long, help: "Path to the claude_agent.py script (required for AI evaluation mode)")
-    var agentScriptPath: String = ""
-
     @Option(name: .long, help: "Data directory path (overrides app settings)")
     var dataPath: String?
 
@@ -48,8 +45,7 @@ struct PRRadarConfigAddCommand: AsyncParsableCommand {
         let rulePath = RulePath(name: ruleDirName, path: rulesDir, isDefault: true)
         let prradarSettings = PRRadarRepoSettings(
             rulePaths: [rulePath],
-            diffSource: .githubAPI,
-            agentScriptPath: agentScriptPath
+            diffSource: .githubAPI
         )
         var repo = RepositoryConfiguration(path: repoURL, name: name)
         if !githubAccount.isEmpty {

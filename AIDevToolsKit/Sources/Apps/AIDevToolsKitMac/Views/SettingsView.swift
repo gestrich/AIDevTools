@@ -76,8 +76,7 @@ struct SettingsView: View {
                 workspaceModel.updatePRRadarSettings(
                     for: config.id,
                     rulePaths: settings.rulePaths,
-                    diffSource: settings.diffSource,
-                    agentScriptPath: settings.agentScriptPath
+                    diffSource: settings.diffSource
                 )
             } onCancel: {
                 isAddingNew = false

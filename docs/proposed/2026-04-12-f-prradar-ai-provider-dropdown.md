@@ -154,7 +154,10 @@ Read `AnalyzeSingleTaskUseCase.swift` and `PrepareUseCase.swift` in full before 
 - Show the streaming view during the active phase; keep or collapse it after completion — match whatever Claude Chain does
 - `ChatMessagesView` is already in `AIDevToolsKitMac` and needs no new dependency
 
-## - [ ] Phase 5: Remove agentScriptPath from config layer
+## - [x] Phase 5: Remove agentScriptPath from config layer
+
+**Skills used**: none
+**Principles applied**: Removed `agentScriptPath` from `PRRadarRepoSettings`, `PRRadarRepoConfig` (struct field, init, and `make(from:)` factory), `WorkspaceModel` (`prradarConfig()` and `updatePRRadarSettings()`), `ConfigurationEditSheet` (state var, init, and UI field), `SettingsView` (call site), `RepositoriesSettingsView` (detail row), and two CLI files (`PRRadarCLISupport.swift`, `PRRadarConfigCommand.swift`). Also fixed a preview in `PRListRow.swift` that used the old init signature.
 
 Remove the field everywhere it appears:
 

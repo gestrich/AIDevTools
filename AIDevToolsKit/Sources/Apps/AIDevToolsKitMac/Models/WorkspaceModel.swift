@@ -175,15 +175,14 @@ final class WorkspaceModel {
             from: repo,
             settings: settings,
             outputDir: outputDir,
-            agentScriptPath: settings.agentScriptPath,
             dataRootURL: dataPathsService.rootPath
         )
     }
 
-    func updatePRRadarSettings(for repoID: UUID, rulePaths: [RulePath], diffSource: DiffSource, agentScriptPath: String) {
+    func updatePRRadarSettings(for repoID: UUID, rulePaths: [RulePath], diffSource: DiffSource) {
         do {
             guard var repo = try repositoryStore.find(byID: repoID) else { return }
-            repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource, agentScriptPath: agentScriptPath)
+            repo.prradar = PRRadarRepoSettings(rulePaths: rulePaths, diffSource: diffSource)
             try updateRepository.run(repo)
         } catch {
             state = .error(error)

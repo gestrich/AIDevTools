@@ -11,7 +11,6 @@ public struct PRRadarRepoConfig: Sendable {
     public let repoPath: String
     public let outputDir: String
     public let rulePaths: [RulePath]
-    public let agentScriptPath: String
     public let githubAccount: String?
     public let diffSource: DiffSource
     public let defaultBaseBranch: String
@@ -24,7 +23,6 @@ public struct PRRadarRepoConfig: Sendable {
         repoPath: String,
         outputDir: String,
         rulePaths: [RulePath] = [],
-        agentScriptPath: String,
         githubAccount: String?,
         diffSource: DiffSource = .git,
         defaultBaseBranch: String,
@@ -36,7 +34,6 @@ public struct PRRadarRepoConfig: Sendable {
         self.repoPath = repoPath
         self.outputDir = outputDir
         self.rulePaths = rulePaths
-        self.agentScriptPath = agentScriptPath
         self.githubAccount = githubAccount
         self.diffSource = diffSource
         self.defaultBaseBranch = defaultBaseBranch
@@ -48,7 +45,6 @@ public struct PRRadarRepoConfig: Sendable {
         from info: RepositoryConfiguration,
         settings: PRRadarRepoSettings,
         outputDir: String,
-        agentScriptPath: String,
         dataRootURL: URL? = nil,
         explicitToken: String? = nil
     ) -> PRRadarRepoConfig {
@@ -58,7 +54,6 @@ public struct PRRadarRepoConfig: Sendable {
             repoPath: info.path.path(percentEncoded: false),
             outputDir: outputDir,
             rulePaths: settings.rulePaths,
-            agentScriptPath: agentScriptPath,
             githubAccount: info.credentialAccount,
             diffSource: settings.diffSource,
             defaultBaseBranch: info.pullRequest?.baseBranch ?? "main",

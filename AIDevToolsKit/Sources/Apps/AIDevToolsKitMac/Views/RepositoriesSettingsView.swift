@@ -162,7 +162,6 @@ private struct ConfigurationDetailView: View {
                 Section("PR Radar") {
                     detailRow("Rule Paths", value: prradar.rulePaths.map { "\($0.name):\($0.path)" }.joined(separator: ", "))
                     detailRow("Diff Source", value: prradar.diffSource.displayName)
-                    detailRow("Agent Script Path", value: prradar.agentScriptPath)
                 }
             }
 

@@ -22,7 +22,6 @@ struct ConfigurationEditSheet: View {
     @State private var prNotesText: String
     @State private var prradarRulePathsText: String
     @State private var prradarDiffSource: DiffSource
-    @State private var prradarAgentScriptPathText: String
     let isNew: Bool
     let onSave: (RepositoryConfiguration, String?, String?, String?) -> Void
     let onSavePRRadarSettings: ((PRRadarRepoSettings) -> Void)?
@@ -65,7 +64,6 @@ struct ConfigurationEditSheet: View {
         let settings = prradarSettings
         _prradarRulePathsText = State(initialValue: (settings?.rulePaths ?? []).map { "\($0.name):\($0.path)" }.joined(separator: "\n"))
         _prradarDiffSource = State(initialValue: settings?.diffSource ?? .git)
-        _prradarAgentScriptPathText = State(initialValue: settings?.agentScriptPath ?? "")
     }
 
     var body: some View {
@@ -145,7 +143,6 @@ struct ConfigurationEditSheet: View {
                         .pickerStyle(.menu)
                         .labelsHidden()
                     }
-                    pathField(label: "Agent Script Path", text: $prradarAgentScriptPathText, placeholder: "Optional — path to claude_agent.py")
                 }
 
                 Section("Pull Requests") {
@@ -227,8 +224,7 @@ struct ConfigurationEditSheet: View {
             let rulePaths = parsePRRadarRulePaths(prradarRulePathsText)
             let settings = PRRadarRepoSettings(
                 rulePaths: rulePaths,
-                diffSource: prradarDiffSource,
-                agentScriptPath: prradarAgentScriptPathText
+                diffSource: prradarDiffSource
             )
             onSavePRRadarSettings(settings)
         }
