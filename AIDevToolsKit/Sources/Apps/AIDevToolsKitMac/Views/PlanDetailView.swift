@@ -264,32 +264,45 @@ struct PlanDetailView: View {
                 addTaskPopover
             }
 
-            HStack(spacing: 4) {
-                executeButton(label: "All", nextOnly: false)
-                executeButton(label: "Next", nextOnly: true)
+            VStack(spacing: 2) {
+                HStack(spacing: 0) {
+                    Button(action: startExecution) {
+                        Image(systemName: "play.fill")
+                            .padding(.vertical, 5)
+                            .padding(.horizontal, 10)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Rectangle()
+                        .fill(.white.opacity(0.3))
+                        .frame(width: 1, height: 16)
+
+                    Menu {
+                        Button("Next") { executeNextOnly = true }
+                        Button("All") { executeNextOnly = false }
+                    } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .padding(.vertical, 5)
+                            .padding(.horizontal, 8)
+                    }
+                    .menuIndicator(.hidden)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .buttonStyle(.plain)
+                }
+                .foregroundStyle(.white)
+                .background(isBusy ? Color(NSColor.disabledControlTextColor) : .accentColor)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Text(executeNextOnly ? "Next" : "All")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             .disabled(isBusy)
         }
         .padding()
-    }
-
-    private func executeButton(label: String, nextOnly: Bool) -> some View {
-        Button {
-            executeNextOnly = nextOnly
-            startExecution()
-        } label: {
-            VStack(spacing: 2) {
-                Image(systemName: "play.fill")
-                Text(label)
-                    .font(.caption2)
-            }
-            .padding(.vertical, 5)
-            .padding(.horizontal, 10)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.white)
-        .background(isBusy ? Color(NSColor.disabledControlTextColor) : .accentColor)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     @ViewBuilder
