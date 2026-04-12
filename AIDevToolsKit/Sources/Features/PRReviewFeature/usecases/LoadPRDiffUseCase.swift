@@ -16,7 +16,7 @@ public struct LoadPRDiffUseCase: UseCase {
         if let hash = commitHash {
             resolvedCommit = hash
         } else {
-            resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+            resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
         }
         return PhaseOutputParser.loadPRDiff(config: config, prNumber: prNumber, commitHash: resolvedCommit)
     }

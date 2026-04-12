@@ -103,7 +103,7 @@ final class PRModel: Identifiable, Hashable {
     // MARK: - Summary Loading (lightweight, for list badges)
 
     func loadSummary() async {
-        let commitHash = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+        let commitHash = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
 
         let analysisSummary: PRReviewSummary? = try? PhaseOutputParser.parsePhaseOutput(
             config: config,
@@ -374,7 +374,7 @@ final class PRModel: Identifiable, Hashable {
             phaseStates[.diff] = .running(logs: "Fetching diff for PR #\(prNumber)...\n")
         }
 
-        let useCase = SyncPRUseCase(config: config)
+        let useCase = FetchPRUseCase(config: config)
 
         let task = Task {
             do {

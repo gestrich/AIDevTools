@@ -34,12 +34,14 @@ final class AllPRsModel {
         loadSummariesInBackground(for: models)
     }
 
+    // MARK: - GitHub Refresh
+
     func refresh(number: Int) async throws -> PRModel? {
-        let useCase = SyncPRUseCase(config: config)
+        let useCase = FetchPRUseCase(config: config)
         for try await progress in useCase.execute(prNumber: number, force: true) {
             switch progress {
             case .failed(let error, _):
-                throw SyncError.failed(error)
+                throw RefreshError.failed(error)
             default: break
             }
         }
@@ -47,8 +49,6 @@ final class AllPRsModel {
         loadSummariesInBackground(for: models)
         return models.first(where: { $0.metadata.number == number })
     }
-
-    // MARK: - GitHub Refresh
 
     func refresh(filter: PRFilter) async {
         let prior = currentPRModels
@@ -289,7 +289,7 @@ final class AllPRsModel {
         return ""
     }
 
-    enum SyncError: LocalizedError {
+    enum RefreshError: LocalizedError {
         case failed(String)
 
         var errorDescription: String? {

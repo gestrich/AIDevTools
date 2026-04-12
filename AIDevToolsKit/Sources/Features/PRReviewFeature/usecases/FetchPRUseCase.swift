@@ -6,7 +6,7 @@ import PRRadarConfigService
 import PRRadarModelsService
 import UseCaseSDK
 
-public struct SyncPRUseCase: StreamingUseCase {
+public struct FetchPRUseCase: StreamingUseCase {
 
     private let config: PRRadarRepoConfig
 

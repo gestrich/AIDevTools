@@ -35,7 +35,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
                     if let hash = commitHash {
                         resolvedCommit = hash
                     } else {
-                        resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+                        resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
                     }
 
                     let allTasks = tasks.sorted().filter { analysisMode.matches($0) }
@@ -143,7 +143,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
                     if let hash = commitHash {
                         resolvedCommit = hash
                     } else {
-                        resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+                        resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
                     }
 
                     let allTasks = tasks.sorted()
@@ -378,7 +378,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
         if let hash = commitHash {
             resolvedCommit = hash
         } else {
-            resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+            resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
         }
 
         let summary: PRReviewSummary = try PhaseOutputParser.parsePhaseOutput(

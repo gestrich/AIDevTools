@@ -32,7 +32,7 @@ public struct GenerateReportUseCase: StreamingUseCase {
                     if let hash = commitHash {
                         resolvedCommit = hash
                     } else {
-                        resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+                        resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
                     }
                     let scoreThreshold = Int(minScore ?? "5") ?? 5
 
@@ -97,7 +97,7 @@ public struct GenerateReportUseCase: StreamingUseCase {
         if let hash = commitHash {
             resolvedCommit = hash
         } else {
-            resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+            resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
         }
 
         let report: ReviewReport = try PhaseOutputParser.parsePhaseOutput(

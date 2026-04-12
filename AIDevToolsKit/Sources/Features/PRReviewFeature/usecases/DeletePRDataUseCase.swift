@@ -18,7 +18,7 @@ public struct DeletePRDataUseCase: UseCase {
             try FileManager.default.removeItem(atPath: prDir)
         }
 
-        let syncUseCase = SyncPRUseCase(config: config)
+        let syncUseCase = FetchPRUseCase(config: config)
         for try await progress in syncUseCase.execute(prNumber: prNumber) {
             switch progress {
             case .failed(let error, _):

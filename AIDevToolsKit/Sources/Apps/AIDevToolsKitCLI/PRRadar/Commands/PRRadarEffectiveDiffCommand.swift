@@ -19,7 +19,7 @@ struct PRRadarEffectiveDiffCommand: AsyncParsableCommand {
         if let hash = options.commit {
             commitHash = hash
         } else {
-            commitHash = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: options.prNumber)
+            commitHash = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: options.prNumber)
         }
 
         guard let diff = PhaseOutputParser.loadEffectiveDiff(config: config, prNumber: options.prNumber, commitHash: commitHash) else {

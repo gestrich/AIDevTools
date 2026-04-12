@@ -36,7 +36,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                 do {
                     // Phase 1: Sync
                     continuation.yield(.log(text: "=== Phase 1: Syncing PR data ===\n"))
-                    let diffUseCase = SyncPRUseCase(config: config)
+                    let diffUseCase = FetchPRUseCase(config: config)
                     var syncSnapshot: SyncSnapshot?
                     for try await progress in diffUseCase.execute(prNumber: prNumber) {
                         switch progress {

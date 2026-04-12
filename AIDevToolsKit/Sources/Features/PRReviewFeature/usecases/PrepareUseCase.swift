@@ -45,10 +45,10 @@ public struct PrepareUseCase: StreamingUseCase {
                     if let hash = commitHash {
                         resolvedCommit = hash
                     } else {
-                        resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+                        resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
                     }
 
-                    let diffSnapshot = await SyncPRUseCase.parseOutput(config: config, prNumber: prNumber, commitHash: resolvedCommit)
+                    let diffSnapshot = await FetchPRUseCase.parseOutput(config: config, prNumber: prNumber, commitHash: resolvedCommit)
                     guard let prDiff = diffSnapshot.prDiff else {
                         continuation.yield(.failed(error: "No diff data found. Run sync phase first.", logs: ""))
                         continuation.finish()
@@ -254,7 +254,7 @@ public struct PrepareUseCase: StreamingUseCase {
         if let hash = commitHash {
             resolvedCommit = hash
         } else {
-            resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+            resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
         }
 
         let focusFiles = PhaseOutputParser.listPhaseFiles(

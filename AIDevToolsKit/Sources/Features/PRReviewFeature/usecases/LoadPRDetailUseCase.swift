@@ -17,12 +17,12 @@ public struct LoadPRDetailUseCase: UseCase {
         if let hash = commitHash {
             resolvedCommit = hash
         } else {
-            resolvedCommit = await SyncPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
+            resolvedCommit = await FetchPRUseCase.resolveCommitHash(config: config, prNumber: prNumber)
         }
         let ghPR = await PRDiscoveryService.loadGitHubPR(config: config, prNumber: prNumber)
 
         let syncSnapshot: SyncSnapshot? = await {
-            let snapshot = await SyncPRUseCase.parseOutput(config: config, prNumber: prNumber, commitHash: resolvedCommit)
+            let snapshot = await FetchPRUseCase.parseOutput(config: config, prNumber: prNumber, commitHash: resolvedCommit)
             if snapshot.prDiff != nil {
                 return snapshot
             }

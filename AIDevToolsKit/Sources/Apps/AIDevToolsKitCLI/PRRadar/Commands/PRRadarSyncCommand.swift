@@ -17,7 +17,7 @@ struct PRRadarSyncCommand: AsyncParsableCommand {
 
     func run() async throws {
         let config = try resolvePRRadarConfigFromOptions(options)
-        let useCase = SyncPRUseCase(config: config)
+        let useCase = FetchPRUseCase(config: config)
 
         if !options.json {
             print("Syncing PR #\(options.prNumber)...")

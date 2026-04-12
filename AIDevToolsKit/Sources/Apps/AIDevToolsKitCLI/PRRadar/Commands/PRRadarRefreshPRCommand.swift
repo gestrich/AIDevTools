@@ -13,7 +13,7 @@ struct PRRadarRefreshPRCommand: AsyncParsableCommand {
 
     func run() async throws {
         let config = try resolvePRRadarConfigFromOptions(options)
-        let useCase = SyncPRUseCase(config: config)
+        let useCase = FetchPRUseCase(config: config)
 
         print("Refreshing PR #\(options.prNumber)...")
 
