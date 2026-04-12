@@ -155,7 +155,10 @@ final class PullRequestsModel {
 - `fetchingPRNumbers` drives per-row spinners — added on `.prFetchStarted`, removed on `.prUpdated` / `.prFetchFailed`
 - No `PRModel`, no summaries, no phase state — just `PRMetadata` and load state
 
-## - [ ] Phase 4: Build "Pull Requests" tab UI
+## - [x] Phase 4: Build "Pull Requests" tab UI
+
+**Skills used**: `ai-dev-tools-architecture`
+**Principles applied**: Three new files in `Sources/Apps/AIDevToolsKitMac/PullRequests/Views/`: `PullRequestsRowView` takes `PRMetadata` + `isFetching: Bool` directly (no `PRModel`); review and build status are derived inline via private enums rather than promoted to public types since no other callsite needs them; `PullRequestsDetailView` renders reviews and check runs from `metadata.reviews`/`metadata.checkRuns`; `PullRequestsContentView` initializes `PullRequestsModel` in `.task(id: repository.id)` mirroring `PRRadarContentView`'s pattern, reusing `workspaceModel.prradarConfig(for:)` for credentials. Tab added to `WorkspaceView` between "Plans" and "PR Radar" (alphabetical order). No PRRadar or Claude Chain imports anywhere in the new views.
 
 **Skills to read**: `ai-dev-tools-architecture`
 

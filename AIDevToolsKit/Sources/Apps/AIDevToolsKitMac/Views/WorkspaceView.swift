@@ -88,6 +88,10 @@ struct WorkspaceView: View {
                 .tabItem { Label("Plans", systemImage: "doc.text") }
                 .tag("plans")
 
+            PullRequestsContentView(repository: repo)
+                .tabItem { Label("Pull Requests", systemImage: "arrow.triangle.pull") }
+                .tag("pullRequests")
+
             PRRadarContentView(repository: repo)
                 .tabItem { Label("PR Radar", systemImage: "eye") }
                 .tag("prradar")
