@@ -97,7 +97,7 @@ public struct RunPipelineUseCase: StreamingUseCase {
                     // Phase 3: Analyze
                     continuation.yield(.running(phase: .analyze))
                     continuation.yield(.log(text: "\n=== Phase 3: Analyzing code ===\n"))
-                    let evalUseCase = AnalyzeUseCase(config: config)
+                    let evalUseCase = AnalyzeUseCase(config: config, aiClient: ClaudeProvider())
                     var evalCompleted = false
                     let analyzeRequest = PRReviewRequest(prNumber: prNumber, commitHash: commitHash, analysisMode: analysisMode, tasks: prepareOutput.tasks)
                     for try await progress in evalUseCase.execute(request: analyzeRequest) {

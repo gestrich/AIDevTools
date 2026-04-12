@@ -1,3 +1,4 @@
+import AIOutputSDK
 import ClaudeCLISDK
 import Foundation
 import Logging
@@ -33,10 +34,14 @@ final class PRModel: Identifiable, Hashable {
     private(set) var evaluations: [String: TaskEvaluation] = [:]
     private(set) var reviewComments: [ReviewComment] = []
     private var prepareAccumulator: LiveTranscriptAccumulator?
+    private(set) var analyzeStreamModel: ChatModel?
+    private(set) var prepareStreamModel: ChatModel?
     private(set) var operationMode: OperationMode = .idle
     var currentViolationIndex: Int = -1
     var pendingViolationNavigation: ViolationNavigation?
     private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private let streamAccumulator = StreamAccumulator()
+    @ObservationIgnored private var activeClient: any AIClient = ClaudeProvider()
 
     enum ViolationNavigation: Equatable {
         case first
@@ -256,8 +261,10 @@ final class PRModel: Identifiable, Hashable {
         commentPostingState = .idle
         submittingCommentIds = []
         submittedCommentIds = []
+        analyzeStreamModel = nil
         evaluations = [:]
         prepareAccumulator = nil
+        prepareStreamModel = nil
         operationMode = .idle
         refreshTask?.cancel()
         refreshTask = nil
@@ -466,14 +473,15 @@ final class PRModel: Identifiable, Hashable {
         switch phase {
         case .metadata: break
         case .diff: await runSync()
-        case .prepare: await runPrepare()
-        case .analyze: await runAnalyze()
+        case .prepare: await runPrepare(aiClient: activeClient)
+        case .analyze: await runAnalyze(aiClient: activeClient)
         case .report: await runReport()
         }
     }
 
     @discardableResult
-    func runAnalysis(ruleFilePaths: [String]? = nil) async -> Bool {
+    func runAnalysis(aiClient: (any AIClient)? = nil, ruleFilePaths: [String]? = nil) async -> Bool {
+        if let aiClient { activeClient = aiClient }
         logger.info("Analysis started", metadata: ["prNumber": "\(prNumber)", "ruleFilePaths": "\(ruleFilePaths ?? [])"])
         loadDetail()
         operationMode = .analyzing
@@ -485,7 +493,7 @@ final class PRModel: Identifiable, Hashable {
             if phase == .analyze, let ruleFilePaths {
                 let filter = RuleFilter(ruleFilePaths: ruleFilePaths)
                 startPhase(.analyze)
-                await runFilteredAnalysis(filter: filter)
+                await runFilteredAnalysis(filter: filter, aiClient: activeClient)
                 completePhase(.analyze)
                 continue
             }
@@ -721,11 +729,20 @@ final class PRModel: Identifiable, Hashable {
         phaseStates[phase] = .failed(error: error, logs: logs)
     }
 
-    private func runPrepare() async {
+    private func runPrepare(aiClient: any AIClient) async {
         startPhase(.prepare)
         prepareAccumulator = nil
+        streamAccumulator.reset()
+        let chatSettings = ChatSettings()
+        chatSettings.resumeLastSession = false
+        prepareStreamModel = ChatModel(configuration: ChatModelConfiguration(
+            client: aiClient,
+            settings: chatSettings,
+            workingDirectory: config.repoPath
+        ))
+        prepareStreamModel?.beginStreamingMessage()
 
-        let useCase = PrepareUseCase(config: config, aiClient: ClaudeProvider())
+        let useCase = PrepareUseCase(config: config, aiClient: aiClient)
 
         do {
             for try await progress in useCase.execute(prNumber: prNumber, rulesDirs: config.allResolvedRulesDirs, commitHash: currentCommitHash) {
@@ -745,32 +762,48 @@ final class PRModel: Identifiable, Hashable {
                         )
                     }
                     prepareAccumulator?.textChunks += text
+                    let blocks = streamAccumulator.apply(.textDelta(text))
+                    prepareStreamModel?.updateCurrentStreamingBlocks(blocks)
                 case .prepareToolUse(let name):
                     prepareAccumulator?.flushTextAndAppendToolUse(name)
+                    let blocks = streamAccumulator.apply(.toolUse(name: name, detail: ""))
+                    prepareStreamModel?.updateCurrentStreamingBlocks(blocks)
                 case .taskEvent: break
                 case .completed:
                     prepareAccumulator = nil
+                    prepareStreamModel?.finalizeCurrentStreamingMessage()
                     logger.info("Prepare phase completed", metadata: ["tasks": "\(preparation?.tasks.count ?? 0)"])
                     reloadDetail()
                     completePhase(.prepare)
                 case .failed(let error, let logs):
                     prepareAccumulator = nil
+                    prepareStreamModel?.finalizeCurrentStreamingMessage()
+                    prepareStreamModel = nil
                     failPhase(.prepare, error: error, logs: logs)
                 }
             }
         } catch {
             prepareAccumulator = nil
+            prepareStreamModel?.finalizeCurrentStreamingMessage()
+            prepareStreamModel = nil
             failPhase(.prepare, error: error.localizedDescription, logs: "")
         }
     }
 
-    private func runAnalyze() async {
+    private func runAnalyze(aiClient: any AIClient) async {
         let tasks = preparation?.tasks ?? []
         logger.info("Analyze phase started", metadata: ["taskCount": "\(tasks.count)"])
         startPhase(.analyze, logs: "Running evaluations...\n")
         for key in evaluations.keys { evaluations[key]?.accumulator = nil }
         inProgressAnalysis = PRReviewResult(streaming: tasks)
-        let useCase = AnalyzeUseCase(config: config)
+        let chatSettings = ChatSettings()
+        chatSettings.resumeLastSession = false
+        analyzeStreamModel = ChatModel(configuration: ChatModelConfiguration(
+            client: aiClient,
+            settings: chatSettings,
+            workingDirectory: config.repoPath
+        ))
+        let useCase = AnalyzeUseCase(config: config, aiClient: aiClient)
         let request = PRReviewRequest(prNumber: prNumber, commitHash: currentCommitHash, tasks: tasks)
 
         do {
@@ -786,27 +819,47 @@ final class PRModel: Identifiable, Hashable {
                 case .prepareToolUse: break
                 case .taskEvent(let task, let event):
                     handleTaskEvent(task, event)
+                    switch event {
+                    case .prompt:
+                        streamAccumulator.reset()
+                        analyzeStreamModel?.finalizeCurrentStreamingMessage()
+                        analyzeStreamModel?.appendStatusMessage("Evaluating \((task.focusArea.filePath as NSString).lastPathComponent) \u{2014} \(task.rule.name)")
+                        analyzeStreamModel?.beginStreamingMessage()
+                    case .output(let text):
+                        let blocks = streamAccumulator.apply(.textDelta(text))
+                        analyzeStreamModel?.updateCurrentStreamingBlocks(blocks)
+                    case .toolUse(let name):
+                        let blocks = streamAccumulator.apply(.toolUse(name: name, detail: ""))
+                        analyzeStreamModel?.updateCurrentStreamingBlocks(blocks)
+                    case .completed:
+                        analyzeStreamModel?.finalizeCurrentStreamingMessage()
+                    }
                 case .completed:
+                    analyzeStreamModel?.finalizeCurrentStreamingMessage()
                     inProgressAnalysis = nil
                     for key in evaluations.keys { evaluations[key]?.accumulator = nil }
                     completePhase(.analyze)
                 case .failed(let error, let logs):
+                    analyzeStreamModel?.finalizeCurrentStreamingMessage()
+                    analyzeStreamModel = nil
                     for key in evaluations.keys { evaluations[key]?.accumulator = nil }
                     failPhase(.analyze, error: error, logs: logs)
                 }
             }
         } catch {
+            analyzeStreamModel?.finalizeCurrentStreamingMessage()
+            analyzeStreamModel = nil
             for key in evaluations.keys { evaluations[key]?.accumulator = nil }
             let logs = runningLogs(for: .analyze)
             failPhase(.analyze, error: error.localizedDescription, logs: logs)
         }
     }
 
-    private func runFilteredAnalysis(filter: RuleFilter, analysisMode: AnalysisMode = .all) async {
+    private func runFilteredAnalysis(filter: RuleFilter, analysisMode: AnalysisMode = .all, aiClient: any AIClient) async {
         inProgressAnalysis = detail?.analysis ?? PRReviewResult(streaming: preparation?.tasks ?? [])
         for key in evaluations.keys { evaluations[key]?.accumulator = nil }
 
-        let useCase = AnalyzeUseCase(config: config)
+        let useCase = AnalyzeUseCase(config: config, aiClient: aiClient)
         let tasks = preparation?.tasks ?? []
         let request = PRReviewRequest(prNumber: prNumber, filter: filter, commitHash: currentCommitHash, analysisMode: analysisMode, tasks: tasks)
 
@@ -867,22 +920,23 @@ final class PRModel: Identifiable, Hashable {
         let matchingTasks = tasks.filter { filter.matches($0) && analysisMode.matches($0) }
         guard !matchingTasks.isEmpty else { return }
 
+        let client = activeClient
         if matchingTasks.count == 1, let task = matchingTasks.first {
             Task {
-                await runSingleAnalysis(task: task)
+                await runSingleAnalysis(task: task, aiClient: client)
             }
         } else {
             Task {
-                await runFilteredAnalysis(filter: filter, analysisMode: analysisMode)
+                await runFilteredAnalysis(filter: filter, analysisMode: analysisMode, aiClient: client)
             }
         }
     }
 
-    private func runSingleAnalysis(task: RuleRequest) async {
+    private func runSingleAnalysis(task: RuleRequest, aiClient: any AIClient) async {
         evaluations[task.taskId]?.accumulator = nil
         inProgressAnalysis = detail?.analysis ?? PRReviewResult(streaming: preparation?.tasks ?? [])
 
-        let useCase = AnalyzeSingleTaskUseCase(config: config, aiClient: ClaudeProvider())
+        let useCase = AnalyzeSingleTaskUseCase(config: config, aiClient: aiClient)
 
         do {
             for try await event in useCase.execute(task: task, prNumber: prNumber, commitHash: currentCommitHash) {

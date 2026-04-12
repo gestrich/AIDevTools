@@ -1,4 +1,4 @@
-import ClaudeCLISDK
+import AIOutputSDK
 import CredentialService
 import Foundation
 import GitHubService
@@ -9,9 +9,11 @@ import UseCaseSDK
 
 public struct AnalyzeUseCase: StreamingUseCase {
 
+    private let aiClient: any AIClient
     private let config: PRRadarRepoConfig
 
-    public init(config: PRRadarRepoConfig) {
+    public init(config: PRRadarRepoConfig, aiClient: any AIClient) {
+        self.aiClient = aiClient
         self.config = config
     }
 
@@ -234,7 +236,7 @@ public struct AnalyzeUseCase: StreamingUseCase {
                 branchToRestore = try await checkoutPRCommit(prNumber: prNumber, continuation: continuation)
             }
 
-            let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config, aiClient: ClaudeProvider())
+            let singleTaskUseCase = AnalyzeSingleTaskUseCase(config: config, aiClient: aiClient)
             let startTime = Date()
 
             let prDiff = PhaseOutputParser.loadPRDiff(config: config, prNumber: prNumber, commitHash: commitHash)

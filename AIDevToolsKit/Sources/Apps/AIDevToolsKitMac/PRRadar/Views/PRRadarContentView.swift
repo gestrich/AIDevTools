@@ -2,6 +2,7 @@ import Logging
 import PRRadarConfigService
 import PRRadarModelsService
 import PRReviewFeature
+import ProviderRegistryService
 import RepositorySDK
 import SwiftUI
 
@@ -12,6 +13,7 @@ struct PRRadarContentView: View {
     let isActive: Bool
     let repository: RepositoryConfiguration
 
+    @Environment(ProviderModel.self) private var providerModel
     @Environment(WorkspaceModel.self) private var workspaceModel
     @State private var allPRsModel: AllPRsModel?
     @State private var selectedPR: PRModel?
@@ -158,7 +160,7 @@ struct PRRadarContentView: View {
                 allPRsModel = nil
                 return
             }
-            let model = AllPRsModel(config: config)
+            let model = AllPRsModel(config: config, providerRegistry: providerModel.providerRegistry)
             allPRsModel = model
             await model.refresh(filter: buildFilter())
         }

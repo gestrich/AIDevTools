@@ -101,7 +101,10 @@ Read `AnalyzeSingleTaskUseCase.swift` and `PrepareUseCase.swift` in full before 
 - Pass `aiClient` into `FocusGeneratorService(aiClient: aiClient)`
 - Update imports in both files
 
-## - [ ] Phase 3: Wire provider selection and streaming state into AllPRsModel and PRModel
+## - [x] Phase 3: Wire provider selection and streaming state into AllPRsModel and PRModel
+
+**Skills used**: `ai-dev-tools-composition-root`
+**Principles applied**: Added `providerRegistry: ProviderRegistry` to `AllPRsModel.init()` (injected from `PRRadarContentView` via `@Environment(ProviderModel.self)`). Added `selectedProviderName` and `aiClient` computed property to `AllPRsModel`. Stored `activeClient: any AIClient` in `PRModel` (defaulting to `ClaudeProvider()`) so UI call sites that omit the client continue to work without importing `ClaudeCLISDK`; `runAnalysis(aiClient:)` sets it when provided. Used optional `(any AIClient)?` for the public `runAnalysis` signature to avoid requiring callers to import `ClaudeCLISDK`. Added `prepareStreamModel`, `analyzeStreamModel`, and `streamAccumulator` to `PRModel`, following the `ClaudeChainModel` pattern; text chunks from use case events are synthesized into `AIStreamEvent` values before passing through `StreamAccumulator`. Updated `AnalyzeUseCase` to accept and thread `aiClient` through to `AnalyzeSingleTaskUseCase`; updated all CLI call sites to pass `ClaudeProvider()`.
 
 **Skills to read**: `ai-dev-tools-composition-root`
 

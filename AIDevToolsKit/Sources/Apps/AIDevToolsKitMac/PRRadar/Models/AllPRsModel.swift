@@ -1,3 +1,4 @@
+import AIOutputSDK
 import Foundation
 import GitHubService
 import Logging
@@ -5,6 +6,7 @@ import PRRadarCLIService
 import PRRadarConfigService
 import PRRadarModelsService
 import PRReviewFeature
+import ProviderRegistryService
 
 private let logger = Logger(label: "AllPRsModel")
 
@@ -18,11 +20,18 @@ final class AllPRsModel {
     private(set) var fetchingPRNumbers: Set<Int> = []
     private(set) var loadedAuthors: [AuthorCacheEntry] = []
     var showOnlyWithPendingComments: Bool = false
+    var selectedProviderName: String = ""
 
     let config: PRRadarRepoConfig
+    private let providerRegistry: ProviderRegistry
 
-    init(config: PRRadarRepoConfig) {
+    var aiClient: (any AIClient)? {
+        providerRegistry.client(named: selectedProviderName) ?? providerRegistry.defaultClient
+    }
+
+    init(config: PRRadarRepoConfig, providerRegistry: ProviderRegistry) {
         self.config = config
+        self.providerRegistry = providerRegistry
     }
 
     // MARK: - Cache Load
@@ -177,7 +186,7 @@ final class AllPRsModel {
                 )
             }
 
-            if await pr.runAnalysis(ruleFilePaths: ruleFilePaths) {
+            if await pr.runAnalysis(aiClient: aiClient, ruleFilePaths: ruleFilePaths) {
                 analyzedCount += 1
             } else {
                 failedCount += 1

@@ -1,4 +1,5 @@
 import ArgumentParser
+import ClaudeCLISDK
 import Foundation
 import PRRadarConfigService
 import PRRadarModelsService
@@ -41,7 +42,7 @@ struct PRRadarAnalyzeCommand: AsyncParsableCommand {
 
         let prepareOutput = try await PrepareUseCase.parseOutput(config: config, prNumber: options.prNumber, commitHash: options.commit)
 
-        let useCase = AnalyzeUseCase(config: config)
+        let useCase = AnalyzeUseCase(config: config, aiClient: ClaudeProvider())
         let request = PRReviewRequest(
             prNumber: options.prNumber,
             filter: filter.isEmpty ? nil : filter,
