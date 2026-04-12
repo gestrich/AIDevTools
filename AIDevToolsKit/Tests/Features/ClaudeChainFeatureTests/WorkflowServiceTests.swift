@@ -123,7 +123,7 @@ private final class FailingGitHubPRService: GitHubPRServiceProtocol {
     func readCachedIndex(key: String) async throws -> [Int]? { throw Unimplemented() }
     func repository(useCache: Bool) async throws -> GitHubRepository { throw Unimplemented() }
     func reviews(number: Int, useCache: Bool) async throws -> [GitHubReview] { throw Unimplemented() }
-    func updateAllPRs(filter: PRFilter) async throws -> [PRRadarModelsService.GitHubPullRequest] { throw Unimplemented() }
+    func updatePRs(filter: PRFilter) async throws -> [PRRadarModelsService.GitHubPullRequest] { throw Unimplemented() }
     func updatePR(number: Int) async throws { throw Unimplemented() }
     func updatePRs(numbers: [Int]) async throws { throw Unimplemented() }
     func updateRepository() async throws { throw Unimplemented() }

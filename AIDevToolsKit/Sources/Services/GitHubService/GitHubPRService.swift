@@ -62,8 +62,8 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
         return prs
     }
 
-    public func updateAllPRs(filter: PRFilter) async throws -> [GitHubPullRequest] {
-        try await listPullRequests(limit: .max, filter: filter)
+    public func updatePRs(filter: PRFilter) async throws -> [GitHubPullRequest] {
+        try await listPullRequests(limit: 300, filter: filter)
     }
 
     public func updateRepository() async throws {
@@ -121,7 +121,7 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
 
     public func closePullRequest(number: Int) async throws {
         try await apiClient.closePullRequest(number: number)
-        _ = try await updateAllPRs(filter: PRFilter())
+        _ = try await updatePRs(filter: PRFilter())
     }
 
     public func createLabel(name: String, color: String, description: String) async throws {
@@ -162,7 +162,7 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
                 logger.warning("createPullRequest: requestReviewers failed (non-fatal): \(error)")
             }
         }
-        _ = try? await updateAllPRs(filter: PRFilter())
+        _ = try? await updatePRs(filter: PRFilter())
         return created
     }
 
@@ -172,7 +172,7 @@ public struct GitHubPRService: GitHubPRServiceProtocol {
 
     public func mergePullRequest(number: Int, mergeMethod: String) async throws {
         try await apiClient.mergePullRequest(number: number, mergeMethod: mergeMethod)
-        _ = try await updateAllPRs(filter: PRFilter())
+        _ = try await updatePRs(filter: PRFilter())
     }
 
     public func postIssueComment(prNumber: Int, body: String) async throws {

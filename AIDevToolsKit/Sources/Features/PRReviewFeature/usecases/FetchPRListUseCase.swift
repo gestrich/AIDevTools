@@ -31,7 +31,7 @@ public struct FetchPRListUseCase: StreamingUseCase {
                     continuation.yield(.log(text: "Fetching PRs from GitHub...\n"))
 
                     let service = GitHubPRService(rootURL: cacheURL, apiClient: gitHub)
-                    let fetchedPRs = try await service.updateAllPRs(filter: PRFilter(state: .open))
+                    let fetchedPRs = try await service.updatePRs(filter: filter)
 
                     try await service.updateRepository()
 

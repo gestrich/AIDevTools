@@ -27,7 +27,7 @@ public protocol GitHubPRServiceProtocol: Sendable {
     func repository(useCache: Bool) async throws -> GitHubRepository
     func reviews(number: Int, useCache: Bool) async throws -> [GitHubReview]
     func triggerWorkflowDispatch(workflowId: String, ref: String, inputs: [String: String]) async throws
-    func updateAllPRs(filter: PRFilter) async throws -> [GitHubPullRequest]
+    func updatePRs(filter: PRFilter) async throws -> [GitHubPullRequest]
     func updatePR(number: Int) async throws
     func updatePRs(numbers: [Int]) async throws
     func updateRepository() async throws
