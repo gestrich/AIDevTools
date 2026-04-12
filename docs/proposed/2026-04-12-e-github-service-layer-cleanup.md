@@ -149,9 +149,10 @@ On repo load, call `LoadAuthorsUseCase(config:).executeAll()` and hold the resul
 
 Run `ai-dev-tools-enforce` on all Swift files modified across Phases 1–3.
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
 
-**Skills to read**: `ai-dev-tools-enforce`
+**Skills used**: `ai-dev-tools-enforce`
+**Principles applied**: Fixed three pre-existing test compilation failures introduced in Phases 1–2: added `readAllCachedPRs()` stub to `FailingGitHubPRService` in `WorkflowServiceTests.swift` (method added to protocol in Phase 2 but test double not updated); added `import GitHubService` to `GitHistoryProviderTests.swift` and `@testable import GitHubService` to `GitHubAppTokenServiceTests.swift` (both types moved to `GitHubService` in Phase 1 but test imports not updated); added `"GitHubService"` to `PRRadarModelsServiceTests` dependencies in `Package.swift`. Static checks: `GitHubAPIService`, `OctokitMapping`, `GitHubServiceFactory` confirmed in `GitHubService` only; no `AuthorCacheService` usage in `PRAcquisitionService`, `AllPRsModel`, or `PullRequestsModel`. Note: `GitHubPRLoaderUseCase` imports `PRRadarModelsService` for shared types (`PRMetadata`, `PRFilter`, `GitHubPullRequest`) — this is correct since `GitHubService` already declares `PRRadarModelsService` as a package dependency; the plan's intent was to remove `PRReviewFeature`/`PRRadarCLIService` imports, which are absent. `SkillScannerTests` failures are pre-existing environment contamination from `~/.claude/commands` files, unrelated to this plan. Items 6–7 (double-run cache verification and TTL expiry test) require live GitHub network access and manual verification.
 
 1. `swift build` — must be clean after each phase.
 2. `swift test` — all existing tests pass.

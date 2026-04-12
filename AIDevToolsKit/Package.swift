@@ -722,6 +722,7 @@ var targets: [Target] = [
         dependencies: [
             "ClaudeAgentSDK",
             "EnvironmentSDK",
+            "GitHubService",
             "KeychainSDK",
             "PRRadarCLIService",
             "PRRadarConfigService",

@@ -120,6 +120,7 @@ private final class FailingGitHubPRService: GitHubPRServiceProtocol {
     func postIssueComment(prNumber: Int, body: String) async throws { throw Unimplemented() }
     func pullRequest(number: Int, useCache: Bool) async throws -> PRRadarModelsService.GitHubPullRequest { throw Unimplemented() }
     func pullRequestByHeadBranch(branch: String) async throws -> CreatedPullRequest? { throw Unimplemented() }
+    func readAllCachedPRs() async -> [PRRadarModelsService.GitHubPullRequest] { [] }
     func readCachedIndex(key: String) async throws -> [Int]? { throw Unimplemented() }
     func repository(useCache: Bool) async throws -> GitHubRepository { throw Unimplemented() }
     func reviews(number: Int, useCache: Bool) async throws -> [GitHubReview] { throw Unimplemented() }

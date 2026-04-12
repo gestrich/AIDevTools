@@ -1,5 +1,6 @@
 import CLISDK
 import Foundation
+import GitHubService
 import GitSDK
 import OctokitSDK
 import RepositorySDK

@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+@testable import GitHubService
 @testable import PRRadarCLIService
 
 @Suite("GitHubAppTokenService")
