@@ -133,10 +133,10 @@ public struct PRRadarRepoConfig: Sendable {
             resolvedBase = defaultBaseBranch
         }
         return PRFilter(
-            dateFilter: dateFilter,
-            state: state ?? .open,
+            authorLogin: authorLogin,
             baseBranch: resolvedBase,
-            authorLogin: authorLogin
+            dateFilter: dateFilter,
+            state: state ?? .open
         )
     }
 }

@@ -163,7 +163,7 @@ struct PRFilterTests {
     @Test("PRFilter stores baseBranch")
     func baseBranchFilter() {
         // Arrange
-        let filter = PRFilter(state: .open, baseBranch: "main")
+        let filter = PRFilter(baseBranch: "main", state: .open)
 
         // Assert
         #expect(filter.baseBranch == "main")
@@ -202,10 +202,10 @@ struct PRFilterTests {
     func composesAllFields() {
         // Arrange
         let filter = PRFilter(
-            dateFilter: .createdSince(referenceDate),
-            state: .open,
+            authorLogin: "dev-user",
             baseBranch: "develop",
-            authorLogin: "dev-user"
+            dateFilter: .createdSince(referenceDate),
+            state: .open
         )
 
         // Assert

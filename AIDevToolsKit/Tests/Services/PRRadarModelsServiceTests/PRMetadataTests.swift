@@ -5,87 +5,153 @@ import Testing
 @Suite("PRMetadata")
 struct PRMetadataTests {
 
-    // MARK: - JSON Decoding
+    // MARK: - toPRMetadata conversion
 
-    @Test("decodes all fields including baseRefName")
-    func decodesAllFields() throws {
+    @Test("converts required fields from GitHubPullRequest")
+    func toPRMetadataRequiredFields() throws {
         // Arrange
-        let json = """
-        {
-            "number": 42,
-            "title": "Add feature",
-            "body": "Description here",
-            "author": { "login": "octocat", "name": "Octo Cat" },
-            "state": "OPEN",
-            "headRefName": "feature/foo",
-            "baseRefName": "main",
-            "createdAt": "2025-01-15T00:00:00Z",
-            "updatedAt": "2025-01-16T00:00:00Z",
-            "url": "https://github.com/owner/repo/pull/42"
-        }
-        """.data(using: .utf8)!
-
-        // Act
-        let metadata = try JSONDecoder().decode(PRMetadata.self, from: json)
-
-        // Assert
-        #expect(metadata.number == 42)
-        #expect(metadata.title == "Add feature")
-        #expect(metadata.body == "Description here")
-        #expect(metadata.author.login == "octocat")
-        #expect(metadata.author.name == "Octo Cat")
-        #expect(metadata.state == "OPEN")
-        #expect(metadata.headRefName == "feature/foo")
-        #expect(metadata.baseRefName == "main")
-        #expect(metadata.createdAt == "2025-01-15T00:00:00Z")
-        #expect(metadata.updatedAt == "2025-01-16T00:00:00Z")
-        #expect(metadata.url == "https://github.com/owner/repo/pull/42")
-    }
-
-    @Test("round-trips through JSON encode/decode")
-    func roundTrips() throws {
-        // Arrange
-        let original = PRMetadata(
-            number: 7,
-            title: "Fix bug",
-            author: PRMetadata.Author(login: "dev", name: "Dev User"),
-            state: "CLOSED",
-            headRefName: "fix/bug",
-            baseRefName: "develop",
-            createdAt: "2025-02-01T10:00:00Z"
+        let pr = GitHubPullRequest(
+            number: 10,
+            title: "Feature",
+            state: "open",
+            baseRefName: "main",
+            headRefName: "feature/x",
+            createdAt: "2025-03-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev", name: "Dev")
         )
 
         // Act
-        let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(PRMetadata.self, from: data)
+        let metadata = try pr.toPRMetadata()
 
         // Assert
-        #expect(decoded.number == original.number)
-        #expect(decoded.title == original.title)
-        #expect(decoded.baseRefName == original.baseRefName)
-        #expect(decoded.headRefName == original.headRefName)
-        #expect(decoded.author.login == original.author.login)
+        #expect(metadata.number == 10)
+        #expect(metadata.title == "Feature")
+        #expect(metadata.baseRefName == "main")
+        #expect(metadata.headRefName == "feature/x")
+        #expect(metadata.createdAt == "2025-03-01T00:00:00Z")
+        #expect(metadata.author.login == "dev")
+        #expect(metadata.author.name == "Dev")
     }
 
-    @Test("missing baseRefName fails to decode")
-    func missingBaseRefNameFailsDecode() {
+    @Test("new enrichment fields default to nil after toPRMetadata")
+    func toPRMetadataEnrichmentFieldsNil() throws {
         // Arrange
-        let json = """
-        {
-            "number": 1,
-            "title": "No base",
-            "author": { "login": "a", "name": "A" },
-            "state": "OPEN",
-            "headRefName": "feature/x",
-            "createdAt": "2025-01-01T00:00:00Z"
-        }
-        """.data(using: .utf8)!
+        let pr = GitHubPullRequest(
+            number: 1,
+            title: "PR",
+            baseRefName: "main",
+            headRefName: "feat",
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
+        )
+
+        // Act
+        let metadata = try pr.toPRMetadata()
+
+        // Assert
+        #expect(metadata.githubComments == nil)
+        #expect(metadata.reviews == nil)
+        #expect(metadata.checkRuns == nil)
+        #expect(metadata.isMergeable == nil)
+    }
+
+    @Test("maps open state to OPEN")
+    func toPRMetadataOpenState() throws {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 1,
+            title: "PR",
+            state: "open",
+            baseRefName: "main",
+            headRefName: "feat",
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
+        )
+
+        // Act
+        let metadata = try pr.toPRMetadata()
+
+        // Assert
+        #expect(metadata.state == "OPEN")
+    }
+
+    @Test("maps draft PR to DRAFT state")
+    func toPRMetadataDraftState() throws {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 2,
+            title: "Draft PR",
+            state: "open",
+            isDraft: true,
+            baseRefName: "main",
+            headRefName: "feat",
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
+        )
+
+        // Act
+        let metadata = try pr.toPRMetadata()
+
+        // Assert
+        #expect(metadata.state == "DRAFT")
+    }
+
+    @Test("maps closed PR with mergedAt to MERGED state")
+    func toPRMetadataMergedState() throws {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 3,
+            title: "Merged PR",
+            state: "closed",
+            baseRefName: "main",
+            headRefName: "feat",
+            createdAt: "2025-01-01T00:00:00Z",
+            mergedAt: "2025-02-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
+        )
+
+        // Act
+        let metadata = try pr.toPRMetadata()
+
+        // Assert
+        #expect(metadata.state == "MERGED")
+    }
+
+    @Test("missing baseRefName throws")
+    func toPRMetadataThrowsWithoutBaseRefName() {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 10,
+            title: "Feature",
+            headRefName: "feature/x",
+            createdAt: "2025-03-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev", name: "Dev")
+        )
 
         // Act & Assert
-        #expect(throws: DecodingError.self) {
-            try JSONDecoder().decode(PRMetadata.self, from: json)
+        #expect(throws: PRMetadataConversionError.self) {
+            try pr.toPRMetadata()
         }
     }
+
+    @Test("missing author login throws")
+    func toPRMetadataThrowsWithoutAuthorLogin() {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 10,
+            title: "Feature",
+            baseRefName: "main",
+            headRefName: "feature/x",
+            createdAt: "2025-03-01T00:00:00Z"
+        )
+
+        // Act & Assert
+        #expect(throws: PRMetadataConversionError.self) {
+            try pr.toPRMetadata()
+        }
+    }
+
+    // MARK: - PRMetadata properties
 
     @Test("id is derived from number")
     func idFromNumber() {
@@ -121,7 +187,7 @@ struct PRMetadataTests {
         #expect(metadata.displayNumber == "#123")
     }
 
-    @Test("fallback sets empty baseRefName")
+    @Test("fallback sets empty fields and nil enrichment")
     func fallbackMetadata() {
         // Act
         let metadata = PRMetadata.fallback(number: 5)
@@ -131,63 +197,65 @@ struct PRMetadataTests {
         #expect(metadata.baseRefName == "")
         #expect(metadata.headRefName == "")
         #expect(metadata.author.login == "")
+        #expect(metadata.githubComments == nil)
+        #expect(metadata.reviews == nil)
+        #expect(metadata.checkRuns == nil)
+        #expect(metadata.isMergeable == nil)
     }
 
-    // MARK: - toPRMetadata conversion
+    // MARK: - PRFilter headRefNamePrefix
 
-    @Test("GitHubPullRequest converts to PRMetadata with baseRefName")
-    func toPRMetadataIncludesBaseRefName() throws {
+    @Test("headRefNamePrefix matches PRs with matching prefix")
+    func filterMatchesHeadRefNamePrefix() throws {
         // Arrange
         let pr = GitHubPullRequest(
-            number: 10,
-            title: "Feature",
-            state: "open",
+            number: 1,
+            title: "Claude PR",
             baseRefName: "main",
-            headRefName: "feature/x",
-            createdAt: "2025-03-01T00:00:00Z",
-            author: GitHubAuthor(login: "dev", name: "Dev")
+            headRefName: "claude/chain-abc",
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
         )
-
-        // Act
         let metadata = try pr.toPRMetadata()
+        let filter = PRFilter(headRefNamePrefix: "claude/")
 
         // Assert
-        #expect(metadata.baseRefName == "main")
-        #expect(metadata.headRefName == "feature/x")
-        #expect(metadata.author.login == "dev")
+        #expect(filter.matches(metadata))
     }
 
-    @Test("GitHubPullRequest without baseRefName throws")
-    func toPRMetadataThrowsWithoutBaseRefName() {
+    @Test("headRefNamePrefix excludes PRs without matching prefix")
+    func filterExcludesNonMatchingHeadRefNamePrefix() throws {
         // Arrange
         let pr = GitHubPullRequest(
-            number: 10,
-            title: "Feature",
-            headRefName: "feature/x",
-            createdAt: "2025-03-01T00:00:00Z",
-            author: GitHubAuthor(login: "dev", name: "Dev")
-        )
-
-        // Act & Assert
-        #expect(throws: PRMetadataConversionError.self) {
-            try pr.toPRMetadata()
-        }
-    }
-
-    @Test("GitHubPullRequest without author login throws")
-    func toPRMetadataThrowsWithoutAuthorLogin() {
-        // Arrange
-        let pr = GitHubPullRequest(
-            number: 10,
-            title: "Feature",
+            number: 2,
+            title: "Feature PR",
             baseRefName: "main",
             headRefName: "feature/x",
-            createdAt: "2025-03-01T00:00:00Z"
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
         )
+        let metadata = try pr.toPRMetadata()
+        let filter = PRFilter(headRefNamePrefix: "claude/")
 
-        // Act & Assert
-        #expect(throws: PRMetadataConversionError.self) {
-            try pr.toPRMetadata()
-        }
+        // Assert
+        #expect(!filter.matches(metadata))
+    }
+
+    @Test("nil headRefNamePrefix matches all PRs")
+    func filterNilHeadRefNamePrefixMatchesAll() throws {
+        // Arrange
+        let pr = GitHubPullRequest(
+            number: 3,
+            title: "Any PR",
+            baseRefName: "main",
+            headRefName: "anything/here",
+            createdAt: "2025-01-01T00:00:00Z",
+            author: GitHubAuthor(login: "dev")
+        )
+        let metadata = try pr.toPRMetadata()
+        let filter = PRFilter(headRefNamePrefix: nil)
+
+        // Assert
+        #expect(filter.matches(metadata))
     }
 }

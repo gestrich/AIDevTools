@@ -16,16 +16,24 @@ public enum PRDateField {
 // MARK: - PR Filtering
 
 public struct PRFilter: Sendable {
-    public var dateFilter: PRDateFilter?
-    public var state: PRState?
-    public var baseBranch: String?
     public var authorLogin: String?
+    public var baseBranch: String?
+    public var dateFilter: PRDateFilter?
+    public var headRefNamePrefix: String?
+    public var state: PRState?
 
-    public init(dateFilter: PRDateFilter? = nil, state: PRState? = nil, baseBranch: String? = nil, authorLogin: String? = nil) {
-        self.dateFilter = dateFilter
-        self.state = state
-        self.baseBranch = baseBranch
+    public init(
+        authorLogin: String? = nil,
+        baseBranch: String? = nil,
+        dateFilter: PRDateFilter? = nil,
+        headRefNamePrefix: String? = nil,
+        state: PRState? = nil
+    ) {
         self.authorLogin = authorLogin
+        self.baseBranch = baseBranch
+        self.dateFilter = dateFilter
+        self.headRefNamePrefix = headRefNamePrefix
+        self.state = state
     }
 
     public func matches(_ metadata: PRMetadata) -> Bool {
@@ -37,6 +45,9 @@ public struct PRFilter: Sendable {
         }
         if let authorLogin, !authorLogin.isEmpty {
             if metadata.author.login != authorLogin { return false }
+        }
+        if let headRefNamePrefix, !headRefNamePrefix.isEmpty {
+            if !metadata.headRefName.hasPrefix(headRefNamePrefix) { return false }
         }
         if let dateFilter {
             let since = dateFilter.date
@@ -170,7 +181,7 @@ public enum PRState: String, Codable, Sendable, CaseIterable {
     }
 }
 
-public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
+public struct PRMetadata: Sendable, Identifiable, Hashable {
     public var id: Int { number }
 
     public let number: Int
@@ -186,6 +197,10 @@ public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
     public let mergedAt: String?
     public let closedAt: String?
     public let url: String?
+    public var githubComments: GitHubPullRequestComments?
+    public var reviews: [GitHubReview]?
+    public var checkRuns: [GitHubCheckRun]?
+    public var isMergeable: Bool?
 
     public init(
         number: Int,
@@ -199,7 +214,11 @@ public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
         updatedAt: String? = nil,
         mergedAt: String? = nil,
         closedAt: String? = nil,
-        url: String? = nil
+        url: String? = nil,
+        githubComments: GitHubPullRequestComments? = nil,
+        reviews: [GitHubReview]? = nil,
+        checkRuns: [GitHubCheckRun]? = nil,
+        isMergeable: Bool? = nil
     ) {
         self.number = number
         self.title = title
@@ -213,6 +232,10 @@ public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
         self.mergedAt = mergedAt
         self.closedAt = closedAt
         self.url = url
+        self.githubComments = githubComments
+        self.reviews = reviews
+        self.checkRuns = checkRuns
+        self.isMergeable = isMergeable
     }
 
     public static func fallback(number: Int) -> PRMetadata {
@@ -227,7 +250,7 @@ public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
         )
     }
 
-    public struct Author: Codable, Sendable, Hashable {
+    public struct Author: Sendable, Hashable {
         public let login: String
         public let name: String
 
@@ -235,6 +258,18 @@ public struct PRMetadata: Codable, Sendable, Identifiable, Hashable {
             self.login = login
             self.name = name
         }
+    }
+}
+
+extension PRMetadata: Equatable {
+    public static func == (lhs: PRMetadata, rhs: PRMetadata) -> Bool {
+        lhs.number == rhs.number
+    }
+}
+
+extension PRMetadata {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(number)
     }
 }
 
