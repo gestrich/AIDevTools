@@ -479,7 +479,7 @@ extension GitHubAuthor {
         guard let resolved = nameMap[login], name == nil || name?.isEmpty == true else {
             return self
         }
-        return GitHubAuthor(login: login, id: id, name: resolved)
+        return GitHubAuthor(login: login, id: id, name: resolved, avatarURL: avatarURL)
     }
 }
 
