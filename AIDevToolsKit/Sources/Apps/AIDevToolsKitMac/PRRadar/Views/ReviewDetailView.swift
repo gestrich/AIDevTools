@@ -92,7 +92,7 @@ struct ReviewDetailView: View {
 
                 if !pr.author.login.isEmpty {
                     HStack(spacing: 6) {
-                        GitHubAvatarView(author: pr.author, size: 22)
+                        GitHubAvatarView(author: pr.author, size: 33)
                         Text(allPRsModel?.authorDisplayName(for: pr.author) ?? (pr.author.name.isEmpty ? pr.author.login : pr.author.name))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
