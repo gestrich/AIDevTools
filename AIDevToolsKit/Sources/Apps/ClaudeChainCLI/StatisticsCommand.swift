@@ -36,8 +36,8 @@ public struct StatisticsCommand: ParsableCommand {
     @Flag(name: .long, help: "Show assignee leaderboard statistics (default: hidden)")
     public var showAssigneeStats: Bool = false
     
-    @Flag(name: .long, help: "Hide fully completed projects from Slack output (default: shown)")
-    public var hideCompleted: Bool = false
+    @Flag(name: .long, help: "Hide fully completed projects from Slack output (default: true)")
+    public var hideCompleted: Bool = true
     
     @Option(name: .long, help: "GitHub Actions run URL for 'See details' footer")
     public var runUrl: String?

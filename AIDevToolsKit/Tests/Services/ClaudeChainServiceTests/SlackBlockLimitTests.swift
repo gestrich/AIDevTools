@@ -19,24 +19,21 @@ final class SlackBlockLimitTests: XCTestCase {
     
     // MARK: - Completed Projects Default Tests
     
-    func testCompletedProjectIncludedByDefault() {
-        // By default, completed projects should be included
-        
+    func testCompletedProjectExcludedByDefault() {
+        // By default, completed projects should be excluded
+
         // Arrange
         let report = StatisticsReport(repo: "owner/repo")
         report.addProject(makeProject(name: "done-project", total: 5, completed: 5))
         report.addProject(makeProject(name: "active-project", total: 5, completed: 2))
-        
-        // Act
-        let projects = Array(report.projectStats.values)
-        let completedProjects = projects.filter { $0.completedTasks == $0.totalTasks && $0.totalTasks > 0 }
-        let activeProjects = projects.filter { $0.completedTasks < $0.totalTasks }
-        
+
+        // Act - default formatForSlackBlocks hides completed projects
+        let result = report.formatForSlackBlocks()
+        let blocksText = "\(result["blocks"] ?? "")"
+
         // Assert
-        XCTAssertEqual(completedProjects.count, 1)
-        XCTAssertEqual(activeProjects.count, 1)
-        XCTAssertEqual(completedProjects.first?.projectName, "done-project")
-        XCTAssertEqual(activeProjects.first?.projectName, "active-project")
+        XCTAssertTrue(blocksText.contains("active-project"))
+        XCTAssertFalse(blocksText.contains("done-project"))
     }
     
     func testCompletedProjectExcludedWhenFilterApplied() {

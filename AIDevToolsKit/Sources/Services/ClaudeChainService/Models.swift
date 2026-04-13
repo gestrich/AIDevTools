@@ -781,7 +781,7 @@ public class StatisticsReport {
     public func formatForSlackBlocks(
         showAssigneeStats: Bool = false,
         runUrl: String? = nil,
-        hideCompletedProjects: Bool = false
+        hideCompletedProjects: Bool = true
     ) -> [String: Any] {
         let formatter = SlackBlockKitFormatter(repo: repo ?? "")
         var blocks: [[String: Any]] = []
