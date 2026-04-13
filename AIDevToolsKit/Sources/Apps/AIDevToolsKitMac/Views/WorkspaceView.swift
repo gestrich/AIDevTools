@@ -75,11 +75,6 @@ struct WorkspaceView: View {
                 .tag("claudeChain")
                 .id("claudeChain")
 
-            EvalsContainer(repository: repo, evalProviderRegistry: evalProviderRegistry)
-                .tabItem { Label("Evals", systemImage: "checkmark.shield") }
-                .tag("evals")
-                .id("evals")
-
             PlansContainer(repository: repo)
                 .tabItem { Label("Plans", systemImage: "doc.text") }
                 .tag("plans")
