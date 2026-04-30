@@ -28,7 +28,7 @@ struct GitWorkingDirectoryMonitorTests {
 
         try await Task.sleep(nanoseconds: 300_000_000)
 
-        try runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
+        try await runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
 
         let changes = try await awaitChange(waiter)
 
@@ -71,7 +71,7 @@ struct GitWorkingDirectoryMonitorTests {
             .path
         try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
 
-        try runGit(arguments: ["init"], workingDirectory: path)
+        try await runGit(arguments: ["init"], workingDirectory: path)
         _ = try await gitClient.config(key: "user.email", value: "tests@example.com", workingDirectory: path)
         _ = try await gitClient.config(key: "user.name", value: "Test User", workingDirectory: path)
 
@@ -121,7 +121,7 @@ struct GitWorkingDirectoryMonitorTests {
         }
     }
 
-    private func runGit(arguments: [String], workingDirectory: String) throws {
+    private func runGit(arguments: [String], workingDirectory: String) async throws {
         let process = Process()
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -129,8 +129,15 @@ struct GitWorkingDirectoryMonitorTests {
         process.standardError = Pipe()
         process.standardOutput = Pipe()
 
+        let terminationSignal = AsyncStream<Void> { continuation in
+            process.terminationHandler = { _ in
+                continuation.yield()
+                continuation.finish()
+            }
+        }
+
         try process.run()
-        process.waitUntilExit()
+        for await _ in terminationSignal { break }
 
         if process.terminationStatus != 0 {
             throw TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)")

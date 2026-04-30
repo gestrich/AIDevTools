@@ -64,8 +64,14 @@ private func gitRediff(_ oldText: String, _ newText: String, _ oldLabel: String,
     let pipe = Pipe()
     process.standardOutput = pipe
     process.standardError = Pipe()
+    let terminationSignal = AsyncStream<Void> { continuation in
+        process.terminationHandler = { _ in
+            continuation.yield()
+            continuation.finish()
+        }
+    }
     try process.run()
-    process.waitUntilExit()
+    for await _ in terminationSignal { break }
 
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     var raw = String(data: data, encoding: .utf8) ?? ""

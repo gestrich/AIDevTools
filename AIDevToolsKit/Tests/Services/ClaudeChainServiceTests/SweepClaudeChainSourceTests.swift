@@ -32,28 +32,30 @@ private func writeCursor(_ path: String?, to taskDir: URL) throws {
     try json.write(to: taskDir.appendingPathComponent("state.json"), atomically: true, encoding: .utf8)
 }
 
-private func gitCommitAll(message: String, in dir: URL) {
+private func gitCommitAll(message: String, in dir: URL) async {
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/bin/sh")
     p.arguments = ["-c", "git add -A && git commit -m '\(message)'"]
     p.currentDirectoryURL = dir
+    let signal = AsyncStream<Void> { c in p.terminationHandler = { _ in c.yield(); c.finish() } }
     try? p.run()
-    p.waitUntilExit()
+    for await _ in signal { break }
 }
 
-private func initGitRepo(at dir: URL) {
-    let sh: (String) -> Void = { cmd in
+private func initGitRepo(at dir: URL) async {
+    let sh: (String) async -> Void = { cmd in
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         p.arguments = ["-c", cmd]
         p.currentDirectoryURL = dir
+        let signal = AsyncStream<Void> { c in p.terminationHandler = { _ in c.yield(); c.finish() } }
         try? p.run()
-        p.waitUntilExit()
+        for await _ in signal { break }
     }
-    sh("git init")
-    sh("git config user.email test@test.com")
-    sh("git config user.name Test")
-    sh("git add -A && git commit -m 'Initial commit'")
+    await sh("git init")
+    await sh("git config user.email test@test.com")
+    await sh("git config user.name Test")
+    await sh("git add -A && git commit -m 'Initial commit'")
 }
 
 private func makeSubDir(_ relativePath: String, in repoDir: URL) throws {
@@ -195,7 +197,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
         let taskDir = try makeTaskDir(in: repoDir, scanLimit: 2, changeLimit: 2)
         try makeSourceFile("Sources/A/One.swift", in: repoDir)
         try makeSourceFile("Sources/A/Two.swift", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source = SweepClaudeChainSource(taskName: "test-task", taskDirectory: taskDir, repoPath: repoDir)
         let task = try await source.nextTask()
@@ -213,7 +215,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
         let taskDir = try makeTaskDir(in: repoDir, scanLimit: 1, changeLimit: 1)
         try makeSourceFile("Sources/A/One.swift", in: repoDir)
         try makeSourceFile("Sources/A/Two.swift", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source = SweepClaudeChainSource(taskName: "test-task", taskDirectory: taskDir, repoPath: repoDir)
 
@@ -237,7 +239,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
         let taskDir = try makeTaskDir(in: repoDir, taskName: taskName, scanLimit: 2, changeLimit: 2)
         try makeSourceFile("Sources/A/One.swift", in: repoDir)
         try makeSourceFile("Sources/A/Two.swift", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         // Run the full sweep to completion so sweep commits exist.
         let source1 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
@@ -263,7 +265,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
         let taskDir = try makeTaskDir(in: repoDir, taskName: taskName, scanLimit: 2, changeLimit: 2)
         try makeSourceFile("Sources/A/One.swift", in: repoDir)
         try makeSourceFile("Sources/A/Two.swift", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         // Run the full sweep to completion.
         let source1 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
@@ -276,7 +278,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
 
         // Commit a change to One.swift — makes it stale.
         try "// modified".write(to: repoDir.appendingPathComponent("Sources/A/One.swift"), atomically: true, encoding: .utf8)
-        gitCommitAll(message: "Modify One.swift", in: repoDir)
+        await gitCommitAll(message: "Modify One.swift", in: repoDir)
 
         // Second run: wrap-around should find One.swift as stale.
         let source2 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
@@ -292,7 +294,7 @@ struct SweepClaudeChainSourceNextTaskGitTests {
         let taskName = "test-skip"
         let taskDir = try makeTaskDir(in: repoDir, taskName: taskName, scanLimit: 2, changeLimit: 2)
         try makeSourceFile("Sources/A/One.swift", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         // Batch 1: process One.swift; finalizeBatch() writes a cursor commit.
         let source1 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
@@ -393,7 +395,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         defer { try? FileManager.default.removeItem(at: repoDir) }
         let taskDir = try makeTaskDir(in: repoDir, scanLimit: 2, changeLimit: 2, filePattern: "Sources/*/")
         try makeSubDir("Sources/A", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source = SweepClaudeChainSource(taskName: "test-task", taskDirectory: taskDir, repoPath: repoDir)
         let task = try await source.nextTask()
@@ -409,7 +411,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         let taskDir = try makeTaskDir(in: repoDir, scanLimit: 3, changeLimit: 3, filePattern: "Sources/*/")
         try makeSubDir("Sources/A", in: repoDir)
         try makeSubDir("Sources/B", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source = SweepClaudeChainSource(taskName: "test-task", taskDirectory: taskDir, repoPath: repoDir)
 
@@ -432,7 +434,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         let taskDir = try makeTaskDir(in: repoDir, scanLimit: 1, changeLimit: 1, filePattern: "Sources/*/")
         try makeSubDir("Sources/A", in: repoDir)
         try makeSubDir("Sources/B", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source = SweepClaudeChainSource(taskName: "test-task", taskDirectory: taskDir, repoPath: repoDir)
 
@@ -454,7 +456,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         let taskName = "test-dir-skip"
         let taskDir = try makeTaskDir(in: repoDir, taskName: taskName, scanLimit: 2, changeLimit: 2, filePattern: "Sources/*/")
         try makeSubDir("Sources/A", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source1 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
         let firstTask = try await source1.nextTask()
@@ -484,7 +486,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         let taskName = "test-dir-changed"
         let taskDir = try makeTaskDir(in: repoDir, taskName: taskName, scanLimit: 2, changeLimit: 2, filePattern: "Sources/*/")
         try makeSubDir("Sources/A", in: repoDir)
-        initGitRepo(at: repoDir)
+        await initGitRepo(at: repoDir)
 
         let source1 = SweepClaudeChainSource(taskName: taskName, taskDirectory: taskDir, repoPath: repoDir)
         let firstTask = try await source1.nextTask()
@@ -493,7 +495,7 @@ struct SweepClaudeChainSourceDirectoryNextTaskTests {
         #expect(done == nil)
 
         try makeSourceFile("Sources/A/NewFile.swift", in: repoDir)
-        gitCommitAll(message: "Add new file", in: repoDir)
+        await gitCommitAll(message: "Add new file", in: repoDir)
 
         try #"{"cursor":null,"lastRunDate":null}"#.write(
             to: taskDir.appendingPathComponent("state.json"),
