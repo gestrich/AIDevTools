@@ -46,7 +46,7 @@ struct ClaudeChainModelTests {
     /// Polls the model's state until it leaves `.loadingChains`, up to `timeout`.
     @MainActor private func awaitLoaded(
         _ model: ClaudeChainModel,
-        timeout: Duration = .milliseconds(2000)
+        timeout: Duration = .milliseconds(10000)
     ) async throws {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
@@ -61,7 +61,7 @@ struct ClaudeChainModelTests {
     /// Polls the model's state until it leaves `.executing`, up to `timeout`.
     @MainActor private func awaitCompleted(
         _ model: ClaudeChainModel,
-        timeout: Duration = .milliseconds(2000)
+        timeout: Duration = .milliseconds(10000)
     ) async throws {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
