@@ -28,20 +28,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y libcurl4-openssl-dev libxml2-dev
 
-      - name: Test (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Test
         run: |
           echo "::stop-commands::test-fence"
           swift test --package-path AIDevToolsKit
-          echo "::test-fence::"
-
-      - name: Test (macOS)
-        if: matrix.os == 'macos-latest'
-        # macOS-only test targets (SystemTests, AIDevToolsKitMacTests, etc.)
-        # still deadlock under parallel execution due to blocking
-        # Process().waitUntilExit() calls in the external SwiftCLI package.
-        # Linux parallel works because those targets are excluded.
-        run: |
-          echo "::stop-commands::test-fence"
-          swift test --package-path AIDevToolsKit --no-parallel
           echo "::test-fence::"
