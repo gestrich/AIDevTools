@@ -112,7 +112,8 @@ final class ClaudeChainModel {
         )
     }
 
-    func loadChains(for repoPath: URL, githubCredentialProfileId: String?) {
+    @discardableResult
+    func loadChains(for repoPath: URL, githubCredentialProfileId: String?) -> Task<Void, Never> {
         if currentRepoPath?.path != repoPath.path {
             chainDetailErrors = [:]
             chainDetailNetworkFetched = []
@@ -124,7 +125,7 @@ final class ClaudeChainModel {
         currentRepoPath = repoPath
         currentGithubProfileId = githubCredentialProfileId
         state = .loadingChains
-        Task {
+        return Task {
             do {
                 let stream = await useCases.loadChains.stream(
                     repoPath: repoPath,
@@ -184,18 +185,19 @@ final class ClaudeChainModel {
         loadChainDetail(project: project)
     }
 
+    @discardableResult
     func executeChain(
         project: ChainProject,
         repoPath: URL,
         taskIndex: Int? = nil,
         stagingOnly: Bool = false,
         useWorktree: Bool = false
-    ) {
+    ) -> Task<Void, Never> {
         state = .executing(progress: ExecutionProgress(phases: useCases.executeChain.phases(for: project)))
         executionChatModel = makeChatModel(workingDirectory: repoPath.path())
         streamAccumulator.reset()
 
-        Task {
+        return Task {
             do {
                 let result = try await useCases.executeChain.run(
                     options: .init(
