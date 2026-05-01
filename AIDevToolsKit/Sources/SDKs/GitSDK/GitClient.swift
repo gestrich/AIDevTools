@@ -4,16 +4,27 @@ import CLISDK
 public struct GitClient: Sendable {
 
     private let client: CLIClient
-    private let environment: [String: String]?
+    private let environment: [String: String]
 
     public init(client: CLIClient = CLIClient(printOutput: false), environment: [String: String]? = nil) {
         self.client = client
-        self.environment = environment
+        self.environment = Self.makeEnvironment(customEnvironment: environment)
     }
 
     public init(printOutput: Bool, environment: [String: String]? = nil) {
         self.client = CLIClient(printOutput: printOutput)
-        self.environment = environment
+        self.environment = Self.makeEnvironment(customEnvironment: environment)
+    }
+
+    // Merge caller-supplied env on top of defaults that prevent interactive auth hangs.
+    // GIT_TERMINAL_PROMPT=0 disables credential prompts; without it, Homebrew git 2.54.0
+    // may attempt SSH/DNS resolution that blocks for ~22 minutes on CI.
+    private static func makeEnvironment(customEnvironment: [String: String]?) -> [String: String] {
+        var env: [String: String] = ["GIT_TERMINAL_PROMPT": "0"]
+        if let customEnvironment {
+            env.merge(customEnvironment) { _, new in new }
+        }
+        return env
     }
 
     @discardableResult
