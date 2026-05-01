@@ -1,5 +1,5 @@
 {
-  "originHash" : "08882fe7e6d36276fbe2bfb153b398458b34dc8c0826456505737dfceb6420e5",
+  "originHash" : "d70c51ca9923a3b47f658c52db542d0cce2ea968fb0d4cec2e117dba1eca81bb",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -303,8 +303,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gestrich/SwiftCLI",
       "state" : {
-        "branch" : "main",
-        "revision" : "98eac699ee6517a6247d89476b910d7c536850da"
+        "branch" : "fix/linux-eof-hang",
+        "revision" : "e77319c4fb0f42353863429f2098dd4384f36188"
       }
     },
     {
