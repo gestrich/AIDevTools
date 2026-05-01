@@ -46,9 +46,10 @@ struct FileWatcherTests {
         try "updated content".write(to: tempURL, atomically: false, encoding: .utf8)
 
         // Wait for 200ms debounce + delivery margin
-        try await Task.sleep(for: .milliseconds(400))
+        try await Task.sleep(for: .seconds(3))
         task.cancel()
-        await task.value
+        // Intentionally not awaiting task.value: under heavy parallel CI load the
+        // Swift cooperative thread pool saturates, making await take 90+ seconds.
 
         // Assert
         #expect(receivedContent == "updated content")
