@@ -3,7 +3,7 @@ import GitSDK
 import LocalDiffService
 import Testing
 
-// System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and Process().waitUntilExit().
+// System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and async Process helpers.
 // FSEvents are not reliable in CI sandbox environments and blocking process calls exhaust
 // Swift's cooperative thread pool. Fixed: now uses async terminationHandler.
 @Suite("GitWorkingDirectoryMonitor")

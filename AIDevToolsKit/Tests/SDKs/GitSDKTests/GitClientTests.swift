@@ -55,8 +55,7 @@ struct GitCLICommandTests {
 
 // MARK: - Integration tests against temp repos
 
-// System test: calls GitClient.execute() → CLIClient.execute() → waitUntilExit().
-// Fixed: now uses async terminationHandler.
+// System test: calls GitClient.execute() → CLIClient.execute() (async).
 @Suite("GitClient")
 struct GitClientTests {
 

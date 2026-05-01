@@ -85,7 +85,7 @@ private func cleanup(_ path: String) {
 
 // MARK: - ListWorktreesUseCase
 
-// System test: calls makeCommittedRepo() which uses GitClient.execute() → CLIClient.execute() → waitUntilExit().
+// System test: calls makeCommittedRepo() which uses GitClient.execute() → CLIClient.execute() (async).
 // Fixed: now uses async terminationHandler.
 @Suite("ListWorktreesUseCase")
 struct ListWorktreesUseCaseTests {
@@ -155,7 +155,7 @@ struct ListWorktreesUseCaseTests {
 
 // MARK: - AddWorktreeUseCase
 
-// System test: calls makeCommittedRepo() which uses GitClient.execute() → CLIClient.execute() → waitUntilExit().
+// System test: calls makeCommittedRepo() which uses GitClient.execute() → CLIClient.execute() (async).
 // Fixed: now uses async terminationHandler.
 @Suite("AddWorktreeUseCase")
 struct AddWorktreeUseCaseTests {
@@ -181,7 +181,7 @@ struct AddWorktreeUseCaseTests {
 
 // MARK: - RemoveWorktreeUseCase
 
-// System test: calls makeCommittedRepo() and client.execute() directly → CLIClient.execute() → waitUntilExit().
+// System test: calls makeCommittedRepo() and client.execute() directly → CLIClient.execute() (async).
 // Fixed: now uses async terminationHandler.
 @Suite("RemoveWorktreeUseCase")
 struct RemoveWorktreeUseCaseTests {

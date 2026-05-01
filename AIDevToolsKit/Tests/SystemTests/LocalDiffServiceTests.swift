@@ -3,8 +3,7 @@ import GitSDK
 import LocalDiffService
 import Testing
 
-// System test: calls Process().waitUntilExit() in makeRepository(), which blocks Swift's
-// cooperative thread pool. Previously caused deadlocks under parallel execution.
+// System test: calls async Process helpers in makeRepository().
 // Fixed: now uses async terminationHandler.
 @Suite("LocalDiffService")
 struct LocalDiffServiceTests {

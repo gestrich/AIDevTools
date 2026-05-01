@@ -5,7 +5,7 @@ import ClaudeChainService
 import Foundation
 import Testing
 
-// System test: initGitRepo() calls Process().waitUntilExit() multiple times per test setup.
+// System test: initGitRepo() calls async Process helpers multiple times per test setup.
 // Fixed: now uses async terminationHandler.
 @Suite("RunSpecChainTaskUseCase", .serialized)
 struct RunSpecChainTaskUseCaseTests {

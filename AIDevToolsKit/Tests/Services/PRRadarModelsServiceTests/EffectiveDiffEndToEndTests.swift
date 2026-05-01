@@ -76,8 +76,7 @@ private func getChangedLines(_ diff: GitDiff) -> [String] {
 
 // MARK: - End-to-End Tests
 
-// System test: each test calls gitRediff() which runs Process().waitUntilExit(), blocking the
-// Swift cooperative thread pool. Fixed: now uses async terminationHandler.
+// System test: each test calls gitRediff() which runs async Process helpers.
 @Suite
 struct EffectiveDiffEndToEndTests {
 

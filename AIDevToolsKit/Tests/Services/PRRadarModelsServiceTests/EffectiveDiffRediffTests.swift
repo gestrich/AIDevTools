@@ -195,7 +195,7 @@ private func gitRediff(_ oldText: String, _ newText: String, _ oldLabel: String,
 
 // MARK: - Tests: rediff (via git diff --no-index)
 
-// System test: calls gitRediff() which runs Process().waitUntilExit(). Fixed: now uses async terminationHandler.
+// System test: calls gitRediff() which runs async Process helpers.
 @Suite
 struct RediffRegionsTests {
 
@@ -333,7 +333,7 @@ struct RediffRegionsTests {
 
 // MARK: - Tests: computeEffectiveDiffForCandidate
 
-// System test: passes gitRediff() as a closure, which calls Process().waitUntilExit(). Fixed: now uses async terminationHandler.
+// System test: passes gitRediff() as a closure, which runs async Process helpers.
 @Suite
 struct ComputeEffectiveDiffForCandidateTests {
 

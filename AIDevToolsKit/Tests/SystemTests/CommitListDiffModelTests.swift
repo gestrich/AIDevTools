@@ -4,7 +4,7 @@ import LocalDiffService
 import Testing
 @testable import AIDevToolsKitMac
 
-// System test: @MainActor suite that calls Process().waitUntilExit() in makeRepository().
+// System test: @MainActor suite that calls async Process helpers in makeRepository().
 // Blocking the cooperative thread pool from a @MainActor context can stall Swift Testing's
 // scheduler when many such tests run in parallel. Fixed: now uses async terminationHandler.
 @MainActor
