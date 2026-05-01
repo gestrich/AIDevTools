@@ -111,10 +111,16 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
     private func nextPendingStep(from codeSteps: [CodeChangeStep]) async throws -> CodeChangeStep? {
         let pendingSteps = codeSteps.filter { !$0.isCompleted }
         guard !pendingSteps.isEmpty else { return nil }
-        // Skip the remote branch check entirely when origin isn't configured — git ls-remote
-        // with an unconfigured remote name can attempt SSH/DNS resolution and hang on some
-        // CI environments (Homebrew git treating "origin" as a hostname).
-        guard (try? await git.remoteGetURL(name: "origin", workingDirectory: repoPath.path)) != nil else {
+        // Skip the remote branch check entirely when origin isn't configured — git subprocesses
+        // with an unconfigured remote name can attempt SSH/DNS resolution and hang ~22 minutes
+        // on CI (Homebrew git 2.54.0 treats the remote name as a hostname). Use a pure file
+        // read of .git/config instead of any git subprocess to avoid the hang.
+        let originConfigured: Bool = {
+            let configPath = "\(repoPath.path)/.git/config"
+            guard let config = try? String(contentsOfFile: configPath, encoding: .utf8) else { return false }
+            return config.contains(#"[remote "origin"]"#)
+        }()
+        guard originConfigured else {
             return pendingSteps.first
         }
         let projectPattern = "claude-chain-\(project.name)-*"
