@@ -109,12 +109,13 @@ public actor MarkdownClaudeChainSource: ClaudeChainSource {
     }
 
     private func nextPendingStep(from codeSteps: [CodeChangeStep]) async throws -> CodeChangeStep? {
+        let pendingSteps = codeSteps.filter { !$0.isCompleted }
+        guard !pendingSteps.isEmpty else { return nil }
         let projectPattern = "claude-chain-\(project.name)-*"
         let existingBranches = Set(
             (try? await git.listRemoteBranches(matching: projectPattern, workingDirectory: repoPath.path)) ?? []
         )
-        return codeSteps.first(where: { step in
-            guard !step.isCompleted else { return false }
+        return pendingSteps.first(where: { step in
             let branch = "claude-chain-\(project.name)-\(generateTaskHash(step.description))"
             return !existingBranches.contains(branch)
         })
