@@ -117,24 +117,23 @@ struct RunSpecChainTaskUseCaseTests {
         var preparedTotal: Int?
         let useCase = RunSpecChainTaskUseCase(client: StubAIClient())
 
-        // Act — git ls-remote would hang for 20+ min in a non-git dir, so we init a repo.
-        // finalize (push) fails as expected since there is no remote configured.
-        do {
-            _ = try await withCWD(tmpDir.path) {
-                try await useCase.run(
-                    options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
-                    onProgress: { progress in
-                        progressEvents.append(progressLabel(progress))
-                        if case .preparedTask(let desc, let idx, let total) = progress {
-                            preparedDescription = desc
-                            preparedIndex = idx
-                            preparedTotal = total
-                        }
+        // Act — stagingOnly stops before git push (which can hang on CI when Homebrew git
+        // treats "origin" as a DNS hostname) and before the GitHub API capacity check
+        // (which blocks the cooperative thread via semaphore.wait() on CI).
+        // "finalizing" is still emitted before the stagingOnly early-return, satisfying
+        // any assertions that need to see the finalize phase started.
+        _ = try await withCWD(tmpDir.path) {
+            try await useCase.run(
+                options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main", stagingOnly: true),
+                onProgress: { progress in
+                    progressEvents.append(progressLabel(progress))
+                    if case .preparedTask(let desc, let idx, let total) = progress {
+                        preparedDescription = desc
+                        preparedIndex = idx
+                        preparedTotal = total
                     }
-                )
-            }
-        } catch {
-            // Expected: finalize/push fails since no remote is configured
+                }
+            )
         }
 
         // Assert
@@ -160,18 +159,17 @@ struct RunSpecChainTaskUseCaseTests {
         var progressEvents: [String] = []
         let useCase = RunSpecChainTaskUseCase(client: StubAIClient())
 
-        // Act — run in tmpDir (a git repo) so checkout succeeds
-        do {
-            _ = try await withCWD(tmpDir.path) {
-                try await useCase.run(
-                    options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main"),
-                    onProgress: { progress in
-                        progressEvents.append(progressLabel(progress))
-                    }
-                )
-            }
-        } catch {
-            // Expected: finalize phase fails (no remote for push / no gh CLI auth)
+        // Act — stagingOnly skips git push and the GitHub API capacity check (both can hang
+        // on CI: Homebrew git may do a DNS lookup for "origin", and the capacity check
+        // blocks the cooperative thread via semaphore.wait()). "finalizing" is still emitted
+        // before the stagingOnly early-return, so the assertion below still holds.
+        _ = try await withCWD(tmpDir.path) {
+            try await useCase.run(
+                options: .init(repoPath: tmpDir, projectName: "test-project", baseBranch: "main", stagingOnly: true),
+                onProgress: { progress in
+                    progressEvents.append(progressLabel(progress))
+                }
+            )
         }
 
         // Assert — verify progress through prepare, scripts, and AI
