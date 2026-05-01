@@ -204,16 +204,20 @@ public struct RunSpecChainTaskUseCase: UseCase {
         let repoDir = options.repoPath.path
         logger.debug("prepare: baseBranch=\(baseBranch) repoDir=\(repoDir)")
 
-        // Best-effort fetch so spec.md reflects the latest remote state; continue on failure
+        // Best-effort fetch so spec.md reflects the latest remote state; continue on failure.
+        // Guard behind a remote-URL check: git fetch with an unconfigured remote name can
+        // attempt SSH/DNS resolution and hang ~22 minutes on CI (Homebrew git 2.54.0 treats
+        // the remote name as a hostname when it can't look it up in .git/config).
         logger.debug("prepare: fetching origin/\(baseBranch)")
-        if (try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)) != nil {
+        if (try? await git.remoteGetURL(name: "origin", workingDirectory: repoDir)) != nil,
+           (try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)) != nil {
             logger.debug("prepare: fetch complete, checking out FETCH_HEAD")
             try? await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
             // Hard reset to discard any staged changes (e.g. from a stale branch) so the
             // new feature branch starts from a clean index.
             try? await git.reset(hard: true, ref: "FETCH_HEAD", workingDirectory: repoDir)
         } else {
-            logger.debug("prepare: fetch failed, continuing with local spec.md")
+            logger.debug("prepare: skipping fetch (no origin remote configured or fetch failed)")
         }
 
         guard let task = try await source.nextTask() else {
