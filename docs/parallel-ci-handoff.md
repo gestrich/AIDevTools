@@ -76,6 +76,26 @@ This is the current state of the code. Check the CI run for its result.
 
 ---
 
+## Monitoring CI Runs with a Local Cron
+
+**This is important.** CI runs can hang silently for up to 22 minutes before timing out at 30 minutes. If you push a fix and walk away, you may not notice the hang until the run is already cancelled and the evidence is gone.
+
+As soon as you push a commit and trigger a CI run, **create a local cron that checks the run status every 15 minutes**. Claude Code supports `CronCreate` for this. Use it to schedule a repeating check that:
+
+1. Fetches the latest run status with `gh run list --repo <your-fork>/AIDevTools --limit 3`
+2. If any run is still `in_progress`, reports the elapsed time and which jobs are still running
+3. If a run completed, reports whether it succeeded or was cancelled/failed, and what to try next
+
+Example prompt to pass to `CronCreate`:
+
+> Check the CI status of my AIDevTools fork. Run `gh run list --repo <your-fork>/AIDevTools --limit 3` and report the status of any in-progress or recently completed runs. If a macOS run is in_progress past 20 minutes, flag it as a likely hang and suggest checking the job logs with `gh run view <run-id> --repo <your-fork>/AIDevTools --log`.
+
+Set the interval to **15 minutes**. Keep the cron running until you have a confirmed green run on both platforms. Then delete it.
+
+The reason this matters: a hanging run looks identical to a slow run for the first 20 minutes. Without periodic check-ins you will not know whether to wait or push a new attempt. The 30-minute CI timeout means you lose 30 minutes per bad attempt — the cron keeps you informed so you can iterate faster.
+
+---
+
 ## How to Work on This Using a Fork
 
 1. **Fork `gestrich/AIDevTools`** on GitHub.
