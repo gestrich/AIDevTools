@@ -109,6 +109,7 @@ struct RunSpecChainTaskUseCaseTests {
             - [ ] Pending task B
             """)
         defer { cleanup(tmpDir) }
+        await initGitRepo(at: tmpDir)
 
         var progressEvents: [String] = []
         var preparedDescription: String?
@@ -116,7 +117,8 @@ struct RunSpecChainTaskUseCaseTests {
         var preparedTotal: Int?
         let useCase = RunSpecChainTaskUseCase(client: StubAIClient())
 
-        // Act — run in tmpDir (not a git repo) so git checkout -b fails
+        // Act — git ls-remote would hang for 20+ min in a non-git dir, so we init a repo.
+        // finalize (push) fails as expected since there is no remote configured.
         do {
             _ = try await withCWD(tmpDir.path) {
                 try await useCase.run(
@@ -132,7 +134,7 @@ struct RunSpecChainTaskUseCaseTests {
                 )
             }
         } catch {
-            // Expected: git checkout -b fails since tmpDir has no git repo
+            // Expected: finalize/push fails since no remote is configured
         }
 
         // Assert
