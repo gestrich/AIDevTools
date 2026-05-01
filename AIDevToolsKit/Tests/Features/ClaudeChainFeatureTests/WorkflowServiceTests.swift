@@ -11,9 +11,9 @@ struct WorkflowServiceTests {
     // MARK: - batchTriggerClaudeChainWorkflows
 
     @Test("empty project list returns empty arrays")
-    func batchTriggerEmptyList() {
+    func batchTriggerEmptyList() async {
         let service = WorkflowService(githubService: FailingGitHubPRService())
-        let (successful, failed) = service.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await service.batchTriggerClaudeChainWorkflows(
             projects: [],
             baseBranch: "main",
             checkoutRef: "main"
@@ -23,9 +23,9 @@ struct WorkflowServiceTests {
     }
 
     @Test("single failing project goes to failed list")
-    func batchTriggerSingleProject() {
+    func batchTriggerSingleProject() async {
         let service = WorkflowService(githubService: FailingGitHubPRService())
-        let (successful, failed) = service.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await service.batchTriggerClaudeChainWorkflows(
             projects: ["project1"],
             baseBranch: "main",
             checkoutRef: "main"
@@ -35,10 +35,10 @@ struct WorkflowServiceTests {
     }
 
     @Test("multiple failing projects all go to failed list")
-    func batchTriggerMultipleProjects() {
+    func batchTriggerMultipleProjects() async {
         let service = WorkflowService(githubService: FailingGitHubPRService())
         let projects = ["project1", "project2", "project3"]
-        let (successful, failed) = service.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await service.batchTriggerClaudeChainWorkflows(
             projects: projects,
             baseBranch: "main",
             checkoutRef: "main"
@@ -48,10 +48,10 @@ struct WorkflowServiceTests {
     }
 
     @Test("successful.count + failed.count equals input count")
-    func batchTriggerCountInvariant() {
+    func batchTriggerCountInvariant() async {
         let service = WorkflowService(githubService: FailingGitHubPRService())
         let projects = ["p1", "p2", "p3", "p4"]
-        let (successful, failed) = service.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await service.batchTriggerClaudeChainWorkflows(
             projects: projects,
             baseBranch: "main",
             checkoutRef: "main"
@@ -62,10 +62,10 @@ struct WorkflowServiceTests {
     // MARK: - triggerClaudeChainWorkflow
 
     @Test("trigger wraps service error in GitHubAPIError")
-    func triggerWrapsErrorInGitHubAPIError() throws {
+    func triggerWrapsErrorInGitHubAPIError() async throws {
         let service = WorkflowService(githubService: FailingGitHubPRService())
-        #expect(throws: GitHubAPIError.self) {
-            try service.triggerClaudeChainWorkflow(
+        await #expect(throws: GitHubAPIError.self) {
+            try await service.triggerClaudeChainWorkflow(
                 projectName: "test-project",
                 baseBranch: "main",
                 checkoutRef: "main"
@@ -74,10 +74,10 @@ struct WorkflowServiceTests {
     }
 
     @Test("GitHubAPIError message names the project")
-    func triggerErrorMessageNamesProject() throws {
+    func triggerErrorMessageNamesProject() async throws {
         let service = WorkflowService(githubService: FailingGitHubPRService())
-        let error = try #require(throws: GitHubAPIError.self) {
-            try service.triggerClaudeChainWorkflow(
+        let error = try await #require(throws: GitHubAPIError.self) {
+            try await service.triggerClaudeChainWorkflow(
                 projectName: "my-refactor",
                 baseBranch: "main",
                 checkoutRef: "main"
@@ -87,11 +87,11 @@ struct WorkflowServiceTests {
     }
 
     @Test("trigger uses default workflow file name")
-    func triggerUsesDefaultWorkflowFileName() throws {
+    func triggerUsesDefaultWorkflowFileName() async throws {
         let githubService = RecordingGitHubPRService()
         let service = WorkflowService(githubService: githubService)
 
-        try service.triggerClaudeChainWorkflow(
+        try await service.triggerClaudeChainWorkflow(
             projectName: "test-project",
             baseBranch: "main",
             checkoutRef: "HEAD"
@@ -103,11 +103,11 @@ struct WorkflowServiceTests {
     }
 
     @Test("batch trigger forwards custom workflow file name")
-    func batchTriggerForwardsCustomWorkflowFileName() {
+    func batchTriggerForwardsCustomWorkflowFileName() async {
         let githubService = RecordingGitHubPRService()
         let service = WorkflowService(githubService: githubService)
 
-        let (successful, failed) = service.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await service.batchTriggerClaudeChainWorkflows(
             projects: ["project1", "project2"],
             baseBranch: "release",
             checkoutRef: "HEAD",

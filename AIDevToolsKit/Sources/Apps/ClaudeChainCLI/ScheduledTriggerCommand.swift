@@ -105,7 +105,7 @@ public struct ScheduledTriggerCommand: AsyncParsableCommand {
 
             for _ in 0..<triggersForProject {
                 do {
-                    try workflowService.triggerClaudeChainWorkflow(
+                    try await workflowService.triggerClaudeChainWorkflow(
                         projectName: project.name,
                         baseBranch: project.baseBranch,
                         checkoutRef: "HEAD",

@@ -3,10 +3,10 @@ import GitSDK
 import LocalDiffService
 import Testing
 
-// System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and Process().waitUntilExit().
+// System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and async Process helpers.
 // FSEvents are not reliable in CI sandbox environments and blocking process calls exhaust
-// Swift's cooperative thread pool. Disabled in CI; run locally without the CI env var set.
-@Suite("GitWorkingDirectoryMonitor", .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
+// Swift's cooperative thread pool. Fixed: now uses async terminationHandler.
+@Suite("GitWorkingDirectoryMonitor")
 struct GitWorkingDirectoryMonitorTests {
     private let gitClient = GitClient()
 
@@ -24,11 +24,11 @@ struct GitWorkingDirectoryMonitorTests {
             pollIntervalNanoseconds: 50_000_000
         )
         let stream = monitor.changes(repoPath: repo)
-        let waiter = firstChange(in: stream)
+        let waiter = firstChange(in: stream, containing: .history)
 
         try await Task.sleep(nanoseconds: 300_000_000)
 
-        try runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
+        try await runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
 
         let changes = try await awaitChange(waiter)
 
@@ -49,7 +49,7 @@ struct GitWorkingDirectoryMonitorTests {
             pollIntervalNanoseconds: 50_000_000
         )
         let stream = monitor.changes(repoPath: repo)
-        let waiter = firstChange(in: stream)
+        let waiter = firstChange(in: stream, containing: .index)
 
         try await Task.sleep(nanoseconds: 300_000_000)
 
@@ -71,7 +71,7 @@ struct GitWorkingDirectoryMonitorTests {
             .path
         try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
 
-        try runGit(arguments: ["init"], workingDirectory: path)
+        try await runGit(arguments: ["init"], workingDirectory: path)
         _ = try await gitClient.config(key: "user.email", value: "tests@example.com", workingDirectory: path)
         _ = try await gitClient.config(key: "user.name", value: "Test User", workingDirectory: path)
 
@@ -83,13 +83,25 @@ struct GitWorkingDirectoryMonitorTests {
         try content.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
-    private func firstChange(in stream: AsyncStream<Set<GitWorkingDirectoryChange>>) -> Task<Set<GitWorkingDirectoryChange>, Error> {
+    private func firstChange(
+        in stream: AsyncStream<Set<GitWorkingDirectoryChange>>,
+        containing expected: GitWorkingDirectoryChange? = nil
+    ) -> Task<Set<GitWorkingDirectoryChange>, Error> {
         Task {
+            var accumulated: Set<GitWorkingDirectoryChange> = []
             var iterator = stream.makeAsyncIterator()
-            guard let changes = await iterator.next() else {
+            while let changes = await iterator.next() {
+                accumulated.formUnion(changes)
+                if let expected {
+                    if accumulated.contains(expected) { return accumulated }
+                } else {
+                    return accumulated
+                }
+            }
+            guard !accumulated.isEmpty else {
                 throw TestFailure("Monitor stream ended before emitting a change.")
             }
-            return changes
+            return accumulated
         }
     }
 
@@ -109,7 +121,7 @@ struct GitWorkingDirectoryMonitorTests {
         }
     }
 
-    private func runGit(arguments: [String], workingDirectory: String) throws {
+    private func runGit(arguments: [String], workingDirectory: String) async throws {
         let process = Process()
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -117,8 +129,15 @@ struct GitWorkingDirectoryMonitorTests {
         process.standardError = Pipe()
         process.standardOutput = Pipe()
 
+        let terminationSignal = AsyncStream<Void> { continuation in
+            process.terminationHandler = { _ in
+                continuation.yield()
+                continuation.finish()
+            }
+        }
+
         try process.run()
-        process.waitUntilExit()
+        for await _ in terminationSignal { break }
 
         if process.terminationStatus != 0 {
             throw TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)")

@@ -26,8 +26,14 @@ private func gitRediff(_ oldText: String, _ newText: String, _ oldLabel: String,
     let pipe = Pipe()
     process.standardOutput = pipe
     process.standardError = Pipe()
+    let terminationSignal = AsyncStream<Void> { continuation in
+        process.terminationHandler = { _ in
+            continuation.yield()
+            continuation.finish()
+        }
+    }
     try process.run()
-    process.waitUntilExit()
+    for await _ in terminationSignal { break }
 
     let data = pipe.fileHandleForReading.readDataToEndOfFile()
     var raw = String(data: data, encoding: .utf8) ?? ""
@@ -70,9 +76,8 @@ private func getChangedLines(_ diff: GitDiff) -> [String] {
 
 // MARK: - End-to-End Tests
 
-// System test: each test calls gitRediff() which runs Process().waitUntilExit(), blocking the
-// Swift cooperative thread pool. Parallel execution on CI exhausts the pool. Disabled in CI.
-@Suite(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
+// System test: each test calls gitRediff() which runs async Process helpers.
+@Suite
 struct EffectiveDiffEndToEndTests {
 
     // Fixture 1: Pure move, no changes

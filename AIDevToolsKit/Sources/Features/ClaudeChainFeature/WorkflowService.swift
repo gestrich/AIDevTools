@@ -17,27 +17,18 @@ public struct WorkflowService {
         baseBranch: String,
         checkoutRef: String,
         workflowFileName: String = "claude-chain.yml"
-    ) throws {
-        var triggerError: Error?
-        let semaphore = DispatchSemaphore(value: 0)
-        Task {
-            do {
-                try await githubService.triggerWorkflowDispatch(
-                    workflowId: workflowFileName,
-                    ref: checkoutRef,
-                    inputs: [
-                        ClaudeChainConstants.workflowProjectNameKey: projectName,
-                        ClaudeChainConstants.workflowBaseBranchKey: baseBranch,
-                        "checkout_ref": checkoutRef,
-                    ]
-                )
-            } catch let e {
-                triggerError = e
-            }
-            semaphore.signal()
-        }
-        semaphore.wait()
-        if let error = triggerError {
+    ) async throws {
+        do {
+            try await githubService.triggerWorkflowDispatch(
+                workflowId: workflowFileName,
+                ref: checkoutRef,
+                inputs: [
+                    ClaudeChainConstants.workflowProjectNameKey: projectName,
+                    ClaudeChainConstants.workflowBaseBranchKey: baseBranch,
+                    "checkout_ref": checkoutRef,
+                ]
+            )
+        } catch {
             throw GitHubAPIError("Failed to trigger workflow for project '\(projectName)': \(error)")
         }
     }
@@ -47,13 +38,13 @@ public struct WorkflowService {
         baseBranch: String,
         checkoutRef: String,
         workflowFileName: String = "claude-chain.yml"
-    ) -> ([String], [String]) {
+    ) async -> ([String], [String]) {
         var successful: [String] = []
         var failed: [String] = []
 
         for project in projects {
             do {
-                try triggerClaudeChainWorkflow(
+                try await triggerClaudeChainWorkflow(
                     projectName: project,
                     baseBranch: baseBranch,
                     checkoutRef: checkoutRef,

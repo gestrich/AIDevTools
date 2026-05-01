@@ -28,30 +28,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y libcurl4-openssl-dev libxml2-dev
 
-      - name: Test (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        # stop-commands prevents tests that emit ::error:: / ::notice:: strings
-        # (e.g. GitHub Actions output formatting tests) from creating spurious
-        # annotations in the check run UI.
-        # --no-parallel: runs XCTest and Swift Testing serially (deadlock-safe).
-        # Second invocation runs one Swift Testing suite in parallel to bisect
-        # which suite(s) cause the cooperative-thread deadlock.
+      - name: Test
         run: |
           echo "::stop-commands::test-fence"
-          swift test --package-path AIDevToolsKit --no-parallel
-          swift test --package-path AIDevToolsKit --filter "DurationFormatter"
-          echo "::test-fence::"
-
-      - name: Test (macOS)
-        if: matrix.os == 'macos-latest'
-        # stop-commands prevents tests that emit ::error:: / ::notice:: strings
-        # (e.g. GitHub Actions output formatting tests) from creating spurious
-        # annotations in the check run UI.
-        # --no-parallel: runs XCTest and Swift Testing serially (deadlock-safe).
-        # Second invocation runs one Swift Testing suite in parallel to bisect
-        # which suite(s) cause the cooperative-thread deadlock.
-        run: |
-          echo "::stop-commands::test-fence"
-          swift test --package-path AIDevToolsKit --no-parallel
-          swift test --package-path AIDevToolsKit --filter "DurationFormatter"
+          swift test --package-path AIDevToolsKit
           echo "::test-fence::"

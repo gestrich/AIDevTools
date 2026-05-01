@@ -159,7 +159,7 @@ private func cmdAutoStart(
         }
         let service = GitHubServiceFactory.make(token: token, owner: slugParts[0], repo: slugParts[1])
         let workflowService = WorkflowService(githubService: service)
-        let (successful, failed) = workflowService.batchTriggerClaudeChainWorkflows(
+        let (successful, failed) = await workflowService.batchTriggerClaudeChainWorkflows(
             projects: projectsToTrigger,
             baseBranch: baseBranch,
             checkoutRef: refAfter,

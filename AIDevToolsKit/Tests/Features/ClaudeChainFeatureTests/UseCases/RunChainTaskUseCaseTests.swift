@@ -5,9 +5,9 @@ import ClaudeChainService
 import Foundation
 import Testing
 
-// System test: initGitRepo() calls Process().waitUntilExit() multiple times per test setup.
-// Parallel execution on CI exhausts Swift's cooperative thread pool. Disabled in CI.
-@Suite("RunSpecChainTaskUseCase", .serialized, .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
+// System test: initGitRepo() calls async Process helpers multiple times per test setup.
+// Fixed: now uses async terminationHandler.
+@Suite("RunSpecChainTaskUseCase", .serialized)
 struct RunSpecChainTaskUseCaseTests {
 
     // MARK: - Helpers
@@ -153,7 +153,7 @@ struct RunSpecChainTaskUseCaseTests {
             """)
         defer { cleanup(tmpDir) }
 
-        initGitRepo(at: tmpDir)
+        await initGitRepo(at: tmpDir)
 
         var progressEvents: [String] = []
         let useCase = RunSpecChainTaskUseCase(client: StubAIClient())
@@ -199,7 +199,7 @@ struct RunSpecChainTaskUseCaseTests {
 
     // MARK: - Git Helpers
 
-    private func initGitRepo(at url: URL) {
+    private func initGitRepo(at url: URL) async {
         let commands: [[String]] = [
             ["init"],
             ["config", "user.email", "test@test.com"],
@@ -214,8 +214,14 @@ struct RunSpecChainTaskUseCaseTests {
             process.currentDirectoryURL = url
             process.standardOutput = FileHandle.nullDevice
             process.standardError = FileHandle.nullDevice
+            let terminationSignal = AsyncStream<Void> { continuation in
+                process.terminationHandler = { _ in
+                    continuation.yield()
+                    continuation.finish()
+                }
+            }
             try? process.run()
-            process.waitUntilExit()
+            for await _ in terminationSignal { break }
         }
     }
 }
