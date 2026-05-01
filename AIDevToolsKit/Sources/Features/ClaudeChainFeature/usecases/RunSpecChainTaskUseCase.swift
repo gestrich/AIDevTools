@@ -205,11 +205,16 @@ public struct RunSpecChainTaskUseCase: UseCase {
         logger.debug("prepare: baseBranch=\(baseBranch) repoDir=\(repoDir)")
 
         // Best-effort fetch so spec.md reflects the latest remote state; continue on failure.
-        // Guard behind a remote-URL check: git fetch with an unconfigured remote name can
-        // attempt SSH/DNS resolution and hang ~22 minutes on CI (Homebrew git 2.54.0 treats
-        // the remote name as a hostname when it can't look it up in .git/config).
+        // Guard via a pure file-system read of .git/config: git fetch/remote subprocesses
+        // with an unconfigured remote name can attempt SSH/DNS resolution and hang ~22 minutes
+        // on CI (Homebrew git 2.54.0 treats the remote name as a hostname).
         logger.debug("prepare: fetching origin/\(baseBranch)")
-        if (try? await git.remoteGetURL(name: "origin", workingDirectory: repoDir)) != nil,
+        let originConfigured: Bool = {
+            let configPath = "\(repoDir)/.git/config"
+            guard let config = try? String(contentsOfFile: configPath, encoding: .utf8) else { return false }
+            return config.contains(#"[remote "origin"]"#)
+        }()
+        if originConfigured,
            (try? await git.fetch(remote: "origin", branch: baseBranch, workingDirectory: repoDir)) != nil {
             logger.debug("prepare: fetch complete, checking out FETCH_HEAD")
             try? await git.checkout(ref: "FETCH_HEAD", workingDirectory: repoDir)
