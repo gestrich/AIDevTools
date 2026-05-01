@@ -304,7 +304,7 @@
       "location" : "https://github.com/gestrich/SwiftCLI",
       "state" : {
         "branch" : "fix/linux-eof-hang",
-        "revision" : "d4cf08332133a3e5eebc5ab6e5385886ef40481a"
+        "revision" : "e6fbd92d21859991a7dd35707fdf8c30dc52314e"
       }
     },
     {
