@@ -186,7 +186,7 @@ struct SweepClaudeChainSourceNextTaskNoGitTests {
 
 // MARK: - nextTask git tests
 
-// System test: calls initGitRepo() which calls Process().waitUntilExit(). Disabled in CI.
+// System test: calls initGitRepo() which calls Process().waitUntilExit(). Fixed: now uses async terminationHandler.
 @Suite("SweepClaudeChainSource.nextTask (with git)")
 struct SweepClaudeChainSourceNextTaskGitTests {
 
@@ -385,7 +385,7 @@ struct SweepClaudeChainSourceDirectoryLoadProjectTests {
 
 // MARK: - nextTask directory-mode tests (with git)
 
-// System test: calls initGitRepo() which calls Process().waitUntilExit(). Disabled in CI.
+// System test: calls initGitRepo() which calls Process().waitUntilExit(). Fixed: now uses async terminationHandler.
 @Suite("SweepClaudeChainSource.nextTask (directory mode)")
 struct SweepClaudeChainSourceDirectoryNextTaskTests {
 

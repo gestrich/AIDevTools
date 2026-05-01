@@ -5,7 +5,7 @@ import Testing
 
 // System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and Process().waitUntilExit().
 // FSEvents are not reliable in CI sandbox environments and blocking process calls exhaust
-// Swift's cooperative thread pool. Disabled in CI; run locally without the CI env var set.
+// Swift's cooperative thread pool. Fixed: now uses async terminationHandler.
 @Suite("GitWorkingDirectoryMonitor")
 struct GitWorkingDirectoryMonitorTests {
     private let gitClient = GitClient()

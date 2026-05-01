@@ -56,7 +56,7 @@ struct GitCLICommandTests {
 // MARK: - Integration tests against temp repos
 
 // System test: calls GitClient.execute() → CLIClient.execute() → waitUntilExit().
-// Parallel execution on CI exhausts Swift's cooperative thread pool. Disabled in CI.
+// Fixed: now uses async terminationHandler.
 @Suite("GitClient")
 struct GitClientTests {
 
