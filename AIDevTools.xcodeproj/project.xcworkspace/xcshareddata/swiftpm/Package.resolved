@@ -301,10 +301,10 @@
     {
       "identity" : "swiftcli",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gestrich-ai/SwiftCLI",
+      "location" : "https://github.com/gestrich/SwiftCLI",
       "state" : {
-        "branch" : "fix/async-process-wait",
-        "revision" : "db384c4e21d9e03674d270b6a7cb066aca08aa21"
+        "branch" : "main",
+        "revision" : "3f60acb6b251f9efafde4a7183277d03373752a0"
       }
     },
     {

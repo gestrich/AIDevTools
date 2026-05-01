@@ -1,5 +1,5 @@
 {
-  "originHash" : "1b38b44031942aabd0d6f4bf07b3f1012bf02b2d0067616013936c8b7bc0690d",
+  "originHash" : "08882fe7e6d36276fbe2bfb153b398458b34dc8c0826456505737dfceb6420e5",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -301,10 +301,10 @@
     {
       "identity" : "swiftcli",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gestrich-ai/SwiftCLI",
+      "location" : "https://github.com/gestrich/SwiftCLI",
       "state" : {
-        "branch" : "fix/async-process-wait",
-        "revision" : "a2a6431cc1d69f0a01153bee6f133ee7c5c10d69"
+        "branch" : "main",
+        "revision" : "3f60acb6b251f9efafde4a7183277d03373752a0"
       }
     },
     {
