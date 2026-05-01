@@ -32,6 +32,14 @@ struct ChainPRHelpers {
         if let repo = ProcessInfo.processInfo.environment["GITHUB_REPOSITORY"], !repo.isEmpty {
             return repo
         }
+        // Guard via a pure file-system read of .git/config: git remote get-url subprocess with
+        // an unconfigured remote name can attempt SSH/DNS resolution and hang ~22 minutes on CI
+        // (Homebrew git 2.54.0 treats the remote name as a hostname).
+        let configPath = "\(workingDirectory)/.git/config"
+        guard let config = try? String(contentsOfFile: configPath, encoding: .utf8),
+              config.contains(#"[remote "origin"]"#) else {
+            return ""
+        }
         guard let remoteURL = try? await git.remoteGetURL(workingDirectory: workingDirectory),
               remoteURL.contains("github.com") else {
             return ""
