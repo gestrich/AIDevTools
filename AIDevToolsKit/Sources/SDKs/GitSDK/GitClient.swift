@@ -16,11 +16,16 @@ public struct GitClient: Sendable {
         self.environment = Self.makeEnvironment(customEnvironment: environment)
     }
 
-    // Merge caller-supplied env on top of defaults that prevent interactive auth hangs.
-    // GIT_TERMINAL_PROMPT=0 disables credential prompts; without it, Homebrew git 2.54.0
-    // may attempt SSH/DNS resolution that blocks for ~22 minutes on CI.
+    // Merge caller-supplied env on top of defaults that prevent SSH/network hangs.
+    // GIT_TERMINAL_PROMPT=0: disables credential prompts.
+    // GIT_SSH_COMMAND: limits SSH connection attempts to 5 seconds (BatchMode prevents
+    // interactive auth). Without these, Homebrew git 2.54.0 may attempt SSH to an
+    // unconfigured remote name used as a hostname, hanging for ~22 minutes on CI.
     private static func makeEnvironment(customEnvironment: [String: String]?) -> [String: String] {
-        var env: [String: String] = ["GIT_TERMINAL_PROMPT": "0"]
+        var env: [String: String] = [
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o ConnectTimeout=5",
+        ]
         if let customEnvironment {
             env.merge(customEnvironment) { _, new in new }
         }
