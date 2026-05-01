@@ -75,6 +75,16 @@ public struct ScriptAnalysisService: Sendable {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
+        // Register the termination handler BEFORE run() to avoid a race where a
+        // fast-exiting script terminates before the handler is set (setting
+        // terminationHandler after the process exits has no effect on macOS).
+        let terminationSignal = AsyncStream<Void> { continuation in
+            process.terminationHandler = { _ in
+                continuation.yield()
+                continuation.finish()
+            }
+        }
+
         do {
             try process.run()
         } catch {
@@ -98,9 +108,7 @@ public struct ScriptAnalysisService: Sendable {
         }
 
         // Suspend this task until the process exits, freeing the cooperative thread.
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            process.terminationHandler = { _ in continuation.resume() }
-        }
+        for await _ in terminationSignal { break }
 
         let stdout = String(data: await stdoutDataAsync, encoding: .utf8) ?? ""
         let stderr = String(data: await stderrDataAsync, encoding: .utf8) ?? ""
