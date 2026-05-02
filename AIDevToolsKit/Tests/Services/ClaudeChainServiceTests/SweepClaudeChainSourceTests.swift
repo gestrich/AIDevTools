@@ -55,6 +55,7 @@ private func initGitRepo(at dir: URL) async {
     await sh("git init")
     await sh("git config user.email test@test.com")
     await sh("git config user.name Test")
+    await sh("git config branch.autoSetupMerge false")
     await sh("git add -A && git commit -m 'Initial commit'")
 }
 
@@ -187,7 +188,7 @@ struct SweepClaudeChainSourceNextTaskNoGitTests {
 // MARK: - nextTask git tests
 
 // System test: calls initGitRepo() which uses async Process helpers.
-@Suite("SweepClaudeChainSource.nextTask (with git)")
+@Suite("SweepClaudeChainSource.nextTask (with git)", )
 struct SweepClaudeChainSourceNextTaskGitTests {
 
     @Test("returns first file when cursor is nil")
@@ -386,7 +387,7 @@ struct SweepClaudeChainSourceDirectoryLoadProjectTests {
 // MARK: - nextTask directory-mode tests (with git)
 
 // System test: calls initGitRepo() which uses async Process helpers.
-@Suite("SweepClaudeChainSource.nextTask (directory mode)")
+@Suite("SweepClaudeChainSource.nextTask (directory mode)", )
 struct SweepClaudeChainSourceDirectoryNextTaskTests {
 
     @Test("returns first directory with Directory label in instructions")

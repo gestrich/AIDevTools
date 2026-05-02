@@ -9,10 +9,11 @@ import CoreServices
 import Darwin
 #endif
 
-public struct GitWorkingDirectoryMonitor: Sendable {
+public final class GitWorkingDirectoryMonitor: Sendable {
     private let debounceIntervalNanoseconds: UInt64
     private let gitClient: GitClient
     private let pollIntervalNanoseconds: UInt64
+    private let _cancelSource = CancelSource()
 
     public init(
         gitClient: GitClient = GitClient(),
@@ -24,8 +25,15 @@ public struct GitWorkingDirectoryMonitor: Sendable {
         self.pollIntervalNanoseconds = pollIntervalNanoseconds
     }
 
+    /// Cancels the monitor, stopping all FSEventStreams, DispatchSources, and
+    /// polling tasks. Safe to call from any thread.
+    public func cancel() {
+        _cancelSource.cancel()
+    }
+
     public func changes(repoPath: String) -> AsyncStream<Set<GitWorkingDirectoryChange>> {
-        AsyncStream { continuation in
+        let cancelSource = self._cancelSource
+        return AsyncStream { continuation in
             let emitter = ChangeEmitter(
                 continuation: continuation,
                 debounceIntervalNanoseconds: debounceIntervalNanoseconds
@@ -46,14 +54,50 @@ public struct GitWorkingDirectoryMonitor: Sendable {
                 }
             }
 
-            continuation.onTermination = { _ in
+            let cleanup = {
                 setupTask.cancel()
                 monitorState.stop()
                 Task {
                     await emitter.finish()
                 }
             }
+
+            continuation.onTermination = { _ in
+                cleanup()
+            }
+
+            // Register external cancel so cancel() works from any thread (GCD),
+            // bypassing cooperative thread-pool saturation.
+            cancelSource.onCancel(handler: cleanup)
         }
+    }
+}
+
+/// Thread-safe cancellation token.
+private final class CancelSource: @unchecked Sendable {
+    private var handler: (() -> Void)?
+    private var isCancelled = false
+    private let lock = NSLock()
+
+    func onCancel(handler: @escaping () -> Void) {
+        lock.lock()
+        if isCancelled {
+            lock.unlock()
+            handler()
+        } else {
+            self.handler = handler
+            lock.unlock()
+        }
+    }
+
+    func cancel() {
+        lock.lock()
+        guard !isCancelled else { lock.unlock(); return }
+        isCancelled = true
+        let h = handler
+        handler = nil
+        lock.unlock()
+        h?()
     }
 }
 
@@ -141,6 +185,10 @@ private final class MonitorState {
                 repoMetadataPath: repoMetadataPath
             )
         }
+    }
+
+    deinit {
+        stop()
     }
 
     func stop() {

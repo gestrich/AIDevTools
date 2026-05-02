@@ -25,6 +25,13 @@ public struct GitClient: Sendable {
         var env: [String: String] = [
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o ConnectTimeout=5",
+            // Prevent Homebrew git 2.54.0 from implicitly probing remotes on
+            // `git checkout -B`. The global branch.autoSetupMerge (set by
+            // actions/checkout@v4) causes git to treat an unconfigured remote
+            // name as a hostname, hanging for ~22 minutes on CI.
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "branch.autoSetupMerge",
+            "GIT_CONFIG_VALUE_0": "false",
         ]
         if let customEnvironment {
             env.merge(customEnvironment) { _, new in new }

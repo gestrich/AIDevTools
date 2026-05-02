@@ -204,6 +204,11 @@ struct RunSpecChainTaskUseCaseTests {
             ["init"],
             ["config", "user.email", "test@test.com"],
             ["config", "user.name", "Test"],
+            // Prevent Homebrew git from implicitly probing remotes on checkout.
+            // actions/checkout@v4 sets branch.autoSetupMerge=true globally,
+            // which causes git to treat "origin" as a hostname when no remote
+            // is configured, hanging for ~22 minutes on macOS CI.
+            ["config", "branch.autoSetupMerge", "false"],
             ["add", "-A"],
             ["commit", "-m", "Initial commit"],
         ]
