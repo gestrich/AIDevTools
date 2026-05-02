@@ -23,8 +23,10 @@ struct GitWorkingDirectoryMonitorTests {
             debounceIntervalNanoseconds: 50_000_000,
             pollIntervalNanoseconds: 50_000_000
         )
+        defer { monitor.cancel() }
         let stream = monitor.changes(repoPath: repo)
         let waiter = firstChange(in: stream, containing: .history)
+        defer { waiter.cancel() }
 
         try await Task.sleep(nanoseconds: 300_000_000)
 
@@ -48,8 +50,10 @@ struct GitWorkingDirectoryMonitorTests {
             debounceIntervalNanoseconds: 50_000_000,
             pollIntervalNanoseconds: 50_000_000
         )
+        defer { monitor.cancel() }
         let stream = monitor.changes(repoPath: repo)
         let waiter = firstChange(in: stream, containing: .index)
+        defer { waiter.cancel() }
 
         try await Task.sleep(nanoseconds: 300_000_000)
 
