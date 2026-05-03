@@ -8,7 +8,7 @@ import Testing
 // Blocking the cooperative thread pool from a @MainActor context can stall Swift Testing's
 // scheduler when many such tests run in parallel. Fixed: now uses async terminationHandler.
 @MainActor
-@Suite("CommitListDiffModel")
+@Suite("CommitListDiffModel", .timeLimit(.minutes(2)))
 struct CommitListDiffModelTests {
     private let gitClient = GitClient()
     private let diffService = LocalDiffService()

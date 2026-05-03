@@ -5,7 +5,7 @@ import Testing
 
 // System test: calls async Process helpers in makeRepository().
 // Fixed: now uses async terminationHandler.
-@Suite("LocalDiffService")
+@Suite("LocalDiffService", .timeLimit(.minutes(2)))
 struct LocalDiffServiceTests {
     private let gitClient = GitClient()
     private let service = LocalDiffService()
