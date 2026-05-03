@@ -4,8 +4,8 @@ import LocalDiffService
 import Testing
 
 // System test: calls async Process helpers in makeRepository().
-// Fixed: now uses async terminationHandler.
-@Suite("LocalDiffService", .timeLimit(.minutes(2)))
+// Uses GCD-based process execution to avoid cooperative thread-pool starvation in parallel CI.
+@Suite("LocalDiffService")
 struct LocalDiffServiceTests {
     private let gitClient = GitClient()
     private let service = LocalDiffService()
@@ -157,23 +157,53 @@ struct LocalDiffServiceTests {
         process.standardError = Pipe()
         process.standardOutput = Pipe()
 
-        let terminationSignal = AsyncStream<Void> { continuation in
-            process.terminationHandler = { _ in
-                continuation.yield()
-                continuation.finish()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let resumed = LockedFlag()
+
+            process.terminationHandler = { proc in
+                if resumed.setIfFirst() {
+                    if proc.terminationStatus != 0 {
+                        continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)"))
+                    } else {
+                        continuation.resume()
+                    }
+                }
             }
-        }
 
-        try process.run()
-        for await _ in terminationSignal { break }
+            do {
+                try process.run()
+            } catch {
+                if resumed.setIfFirst() {
+                    continuation.resume(throwing: error)
+                }
+            }
 
-        if process.terminationStatus != 0 {
-            throw TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)")
+            // GCD timeout for process execution
+            DispatchQueue.global().asyncAfter(deadline: .now() + 30) {
+                if resumed.setIfFirst() {
+                    process.terminate()
+                    continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) timed out after 30s"))
+                }
+            }
         }
     }
 }
 
-private struct TestFailure: Error {
+/// Thread-safe one-shot flag for ensuring a continuation is resumed exactly once.
+private final class LockedFlag: @unchecked Sendable {
+    private var flag = false
+    private let lock = NSLock()
+
+    func setIfFirst() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if flag { return false }
+        flag = true
+        return true
+    }
+}
+
+private struct TestFailure: Error, CustomStringConvertible {
     let description: String
 
     init(_ description: String) {

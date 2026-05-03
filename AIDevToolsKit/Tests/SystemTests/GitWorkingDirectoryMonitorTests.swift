@@ -4,9 +4,8 @@ import LocalDiffService
 import Testing
 
 // System test: uses FSEventStream (via GitWorkingDirectoryMonitor) and async Process helpers.
-// FSEvents are not reliable in CI sandbox environments and blocking process calls exhaust
-// Swift's cooperative thread pool. Fixed: now uses async terminationHandler.
-@Suite("GitWorkingDirectoryMonitor", .timeLimit(.minutes(2)))
+// Timeouts use GCD (not Task.sleep) to avoid cooperative thread-pool starvation in parallel CI.
+@Suite("GitWorkingDirectoryMonitor")
 struct GitWorkingDirectoryMonitorTests {
     private let gitClient = GitClient()
 
@@ -28,11 +27,11 @@ struct GitWorkingDirectoryMonitorTests {
         let waiter = firstChange(in: stream, containing: .history)
         defer { waiter.cancel() }
 
-        try await Task.sleep(nanoseconds: 300_000_000)
+        try await gcdSleep(seconds: 0.3)
 
         try await runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
 
-        let changes = try await awaitChange(waiter)
+        let changes = try await awaitChange(waiter, timeoutSeconds: 10)
 
         #expect(changes.contains(.history))
     }
@@ -55,12 +54,12 @@ struct GitWorkingDirectoryMonitorTests {
         let waiter = firstChange(in: stream, containing: .index)
         defer { waiter.cancel() }
 
-        try await Task.sleep(nanoseconds: 300_000_000)
+        try await gcdSleep(seconds: 0.3)
 
         try write("beta\n", to: repo, path: "README.md")
         try await gitClient.addAll(workingDirectory: repo)
 
-        let changes = try await awaitChange(waiter)
+        let changes = try await awaitChange(waiter, timeoutSeconds: 10)
 
         #expect(changes.contains(.index))
     }
@@ -109,19 +108,49 @@ struct GitWorkingDirectoryMonitorTests {
         }
     }
 
-    private func awaitChange(_ waiter: Task<Set<GitWorkingDirectoryChange>, Error>) async throws -> Set<GitWorkingDirectoryChange> {
-        try await withThrowingTaskGroup(of: Set<GitWorkingDirectoryChange>.self) { group in
-            group.addTask {
-                try await waiter.value
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: 3_000_000_000)
-                throw TestFailure("Timed out waiting for a git working directory change.")
-            }
+    /// Waits for the change waiter task to complete, with a GCD-based timeout
+    /// that doesn't depend on the cooperative thread pool.
+    private func awaitChange(
+        _ waiter: Task<Set<GitWorkingDirectoryChange>, Error>,
+        timeoutSeconds: Double
+    ) async throws -> Set<GitWorkingDirectoryChange> {
+        try await withCheckedThrowingContinuation { continuation in
+            let resumed = LockedFlag()
 
-            let result = try await group.next()
-            group.cancelAll()
-            return try #require(result)
+            // GCD timeout — fires even when the cooperative pool is saturated
+            let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
+            timer.schedule(deadline: .now() + timeoutSeconds)
+            timer.setEventHandler {
+                waiter.cancel()
+                if resumed.setIfFirst() {
+                    continuation.resume(throwing: TestFailure("Timed out after \(timeoutSeconds)s waiting for a git working directory change."))
+                }
+            }
+            timer.resume()
+
+            Task {
+                do {
+                    let result = try await waiter.value
+                    timer.cancel()
+                    if resumed.setIfFirst() {
+                        continuation.resume(returning: result)
+                    }
+                } catch {
+                    timer.cancel()
+                    if resumed.setIfFirst() {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Sleeps using GCD instead of Task.sleep to avoid cooperative pool starvation.
+    private func gcdSleep(seconds: Double) async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().asyncAfter(deadline: .now() + seconds) {
+                continuation.resume()
+            }
         }
     }
 
@@ -133,23 +162,54 @@ struct GitWorkingDirectoryMonitorTests {
         process.standardError = Pipe()
         process.standardOutput = Pipe()
 
-        let terminationSignal = AsyncStream<Void> { continuation in
-            process.terminationHandler = { _ in
-                continuation.yield()
-                continuation.finish()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let resumed = LockedFlag()
+
+            process.terminationHandler = { proc in
+                if resumed.setIfFirst() {
+                    if proc.terminationStatus != 0 {
+                        continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)"))
+                    } else {
+                        continuation.resume()
+                    }
+                }
             }
-        }
 
-        try process.run()
-        for await _ in terminationSignal { break }
+            do {
+                try process.run()
+            } catch {
+                if resumed.setIfFirst() {
+                    continuation.resume(throwing: error)
+                }
+            }
 
-        if process.terminationStatus != 0 {
-            throw TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)")
+            // GCD timeout for process execution
+            DispatchQueue.global().asyncAfter(deadline: .now() + 30) {
+                if resumed.setIfFirst() {
+                    process.terminate()
+                    continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) timed out after 30s"))
+                }
+            }
         }
     }
 }
 
-private struct TestFailure: Error {
+/// Thread-safe one-shot flag for ensuring a continuation is resumed exactly once.
+private final class LockedFlag: @unchecked Sendable {
+    private var flag = false
+    private let lock = NSLock()
+
+    /// Returns `true` if this is the first call; `false` on subsequent calls.
+    func setIfFirst() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if flag { return false }
+        flag = true
+        return true
+    }
+}
+
+private struct TestFailure: Error, CustomStringConvertible {
     let description: String
 
     init(_ description: String) {

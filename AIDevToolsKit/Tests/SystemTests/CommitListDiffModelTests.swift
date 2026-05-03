@@ -5,10 +5,9 @@ import Testing
 @testable import AIDevToolsKitMac
 
 // System test: @MainActor suite that calls async Process helpers in makeRepository().
-// Blocking the cooperative thread pool from a @MainActor context can stall Swift Testing's
-// scheduler when many such tests run in parallel. Fixed: now uses async terminationHandler.
+// Uses GCD-based process execution to avoid cooperative thread-pool starvation in parallel CI.
 @MainActor
-@Suite("CommitListDiffModel", .timeLimit(.minutes(2)))
+@Suite("CommitListDiffModel")
 struct CommitListDiffModelTests {
     private let gitClient = GitClient()
     private let diffService = LocalDiffService()
@@ -55,7 +54,7 @@ struct CommitListDiffModelTests {
         try? FileManager.default.removeItem(atPath: path)
     }
 
-    private func makeRepository() async throws -> String {
+    private nonisolated func makeRepository() async throws -> String {
         let path = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("CommitListDiffModelTests-\(UUID().uuidString)")
             .path
@@ -68,7 +67,7 @@ struct CommitListDiffModelTests {
         return path
     }
 
-    private func stageAndCommit(repoPath: String, message: String) async throws {
+    private nonisolated func stageAndCommit(repoPath: String, message: String) async throws {
         try await gitClient.addAll(workingDirectory: repoPath)
         try await gitClient.commit(message: message, workingDirectory: repoPath)
     }
@@ -78,7 +77,7 @@ struct CommitListDiffModelTests {
         try content.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 
-    private func runGit(arguments: [String], workingDirectory: String) async throws {
+    private nonisolated func runGit(arguments: [String], workingDirectory: String) async throws {
         let process = Process()
         process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -86,23 +85,53 @@ struct CommitListDiffModelTests {
         process.standardError = Pipe()
         process.standardOutput = Pipe()
 
-        let terminationSignal = AsyncStream<Void> { continuation in
-            process.terminationHandler = { _ in
-                continuation.yield()
-                continuation.finish()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let resumed = LockedFlag()
+
+            process.terminationHandler = { proc in
+                if resumed.setIfFirst() {
+                    if proc.terminationStatus != 0 {
+                        continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)"))
+                    } else {
+                        continuation.resume()
+                    }
+                }
             }
-        }
 
-        try process.run()
-        for await _ in terminationSignal { break }
+            do {
+                try process.run()
+            } catch {
+                if resumed.setIfFirst() {
+                    continuation.resume(throwing: error)
+                }
+            }
 
-        if process.terminationStatus != 0 {
-            throw TestFailure("git \(arguments.joined(separator: " ")) failed in \(workingDirectory)")
+            // GCD timeout for process execution
+            DispatchQueue.global().asyncAfter(deadline: .now() + 30) {
+                if resumed.setIfFirst() {
+                    process.terminate()
+                    continuation.resume(throwing: TestFailure("git \(arguments.joined(separator: " ")) timed out after 30s"))
+                }
+            }
         }
     }
 }
 
-private struct TestFailure: Error {
+/// Thread-safe one-shot flag for ensuring a continuation is resumed exactly once.
+private final class LockedFlag: @unchecked Sendable {
+    private var flag = false
+    private let lock = NSLock()
+
+    func setIfFirst() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if flag { return false }
+        flag = true
+        return true
+    }
+}
+
+private struct TestFailure: Error, CustomStringConvertible {
     let description: String
 
     init(_ description: String) {
