@@ -32,6 +32,5 @@ jobs:
         run: |
           echo "::stop-commands::test-fence"
           swift test --package-path AIDevToolsKit \
-            --skip SystemTests \
-            --skip WorktreeFeatureTests
+            --skip SystemTests
           echo "::test-fence::"
