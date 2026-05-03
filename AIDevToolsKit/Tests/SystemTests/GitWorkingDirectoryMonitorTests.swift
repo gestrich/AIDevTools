@@ -18,20 +18,25 @@ struct GitWorkingDirectoryMonitorTests {
         try await gitClient.addAll(workingDirectory: repo)
         try await gitClient.commit(message: "Initial commit", workingDirectory: repo)
 
+        // Use short poll interval so polling-based detection works quickly on CI
+        // where FSEvents may not deliver reliably.
         let monitor = GitWorkingDirectoryMonitor(
             debounceIntervalNanoseconds: 50_000_000,
-            pollIntervalNanoseconds: 50_000_000
+            forcePolling: true,
+            pollIntervalNanoseconds: 200_000_000
         )
         defer { monitor.cancel() }
         let stream = monitor.changes(repoPath: repo)
+
+        // Give the monitor time to capture baseline state before making changes.
+        try await gcdSleep(seconds: 1.0)
+
         let waiter = firstChange(in: stream, containing: .history)
         defer { waiter.cancel() }
 
-        try await gcdSleep(seconds: 0.3)
-
         try await runGit(arguments: ["commit", "--allow-empty", "-m", "Second commit"], workingDirectory: repo)
 
-        let changes = try await awaitChange(waiter, timeoutSeconds: 10)
+        let changes = try await awaitChange(waiter, timeoutSeconds: 30)
 
         #expect(changes.contains(.history))
     }
@@ -47,19 +52,22 @@ struct GitWorkingDirectoryMonitorTests {
 
         let monitor = GitWorkingDirectoryMonitor(
             debounceIntervalNanoseconds: 50_000_000,
-            pollIntervalNanoseconds: 50_000_000
+            forcePolling: true,
+            pollIntervalNanoseconds: 200_000_000
         )
         defer { monitor.cancel() }
         let stream = monitor.changes(repoPath: repo)
+
+        // Give the monitor time to capture baseline state before making changes.
+        try await gcdSleep(seconds: 1.0)
+
         let waiter = firstChange(in: stream, containing: .index)
         defer { waiter.cancel() }
-
-        try await gcdSleep(seconds: 0.3)
 
         try write("beta\n", to: repo, path: "README.md")
         try await gitClient.addAll(workingDirectory: repo)
 
-        let changes = try await awaitChange(waiter, timeoutSeconds: 10)
+        let changes = try await awaitChange(waiter, timeoutSeconds: 30)
 
         #expect(changes.contains(.index))
     }

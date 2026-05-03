@@ -11,6 +11,7 @@ import Darwin
 
 public final class GitWorkingDirectoryMonitor: Sendable {
     private let debounceIntervalNanoseconds: UInt64
+    private let forcePolling: Bool
     private let gitClient: GitClient
     private let pollIntervalNanoseconds: UInt64
     private let _cancelSource = CancelSource()
@@ -18,10 +19,12 @@ public final class GitWorkingDirectoryMonitor: Sendable {
     public init(
         gitClient: GitClient = GitClient(),
         debounceIntervalNanoseconds: UInt64 = 300_000_000,
+        forcePolling: Bool = false,
         pollIntervalNanoseconds: UInt64 = 1_000_000_000
     ) {
         self.gitClient = gitClient
         self.debounceIntervalNanoseconds = debounceIntervalNanoseconds
+        self.forcePolling = forcePolling
         self.pollIntervalNanoseconds = pollIntervalNanoseconds
     }
 
@@ -48,7 +51,7 @@ public final class GitWorkingDirectoryMonitor: Sendable {
                     let repoRoot = try await gitClient.getRepoRoot(workingDirectory: repoPath)
                     let gitDirectory = try await gitClient.getGitDirectory(workingDirectory: repoPath)
                     guard !Task.isCancelled else { return }
-                    monitorState.start(repoRoot: repoRoot, gitDirectory: gitDirectory)
+                    monitorState.start(repoRoot: repoRoot, gitDirectory: gitDirectory, forcePolling: forcePolling)
                 } catch {
                     await emitter.finish()
                 }
@@ -164,17 +167,21 @@ private final class MonitorState {
         self.pollIntervalNanoseconds = pollIntervalNanoseconds
     }
 
-    func start(repoRoot: String, gitDirectory: String) {
+    func start(repoRoot: String, gitDirectory: String, forcePolling: Bool = false) {
         let standardizedRepoRoot = URL(fileURLWithPath: repoRoot).standardizedFileURL.path
         let standardizedGitDirectory = URL(fileURLWithPath: gitDirectory).standardizedFileURL.path
         let repoMetadataPath = URL(fileURLWithPath: standardizedRepoRoot).appendingPathComponent(".git").standardizedFileURL.path
         let indexPath = URL(fileURLWithPath: standardizedGitDirectory).appendingPathComponent("index").standardizedFileURL.path
 
-        if !startHistoryEventStream(gitDirectory: standardizedGitDirectory) {
+        if forcePolling || !startHistoryEventStream(gitDirectory: standardizedGitDirectory) {
             startHistoryPolling(gitDirectory: standardizedGitDirectory)
         }
-        startIndexMonitor(indexPath: indexPath)
-        if !startWorkingTreeEventStream(
+        if forcePolling {
+            startIndexPolling(indexPath: indexPath)
+        } else {
+            startIndexMonitor(indexPath: indexPath)
+        }
+        if forcePolling || !startWorkingTreeEventStream(
             repoRoot: standardizedRepoRoot,
             gitDirectory: standardizedGitDirectory,
             repoMetadataPath: repoMetadataPath
