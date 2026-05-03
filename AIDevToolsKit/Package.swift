@@ -59,7 +59,7 @@ var dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
     .package(url: "https://github.com/apple/swift-log", from: "1.0.0"),
     .package(url: "https://github.com/jamesrochabrun/SwiftAnthropic", exact: "2.2.2"),
-    .package(url: "https://github.com/gestrich/SwiftCLI", branch: "fix/linux-eof-hang"),
+    .package(url: "https://github.com/gestrich/SwiftCLI", branch: "main"),
     .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
     .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.9.0"),
     .package(url: "https://github.com/nerdishbynature/octokit.swift", from: "0.14.0"),
