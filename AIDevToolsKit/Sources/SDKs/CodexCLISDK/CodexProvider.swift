@@ -6,7 +6,7 @@ import Logging
 
 public struct CodexProvider: Sendable {
 
-    private static let inactivityTimeout: TimeInterval = 480
+    private static let inactivityTimeout: TimeInterval = 1500
     private static let logger = Logger(label: "CodexProvider")
 
     public init() {}
