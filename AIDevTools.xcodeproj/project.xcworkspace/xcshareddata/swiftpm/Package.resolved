@@ -303,8 +303,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/gestrich/SwiftCLI",
       "state" : {
-        "branch" : "fix/linux-eof-hang",
-        "revision" : "e77319c4fb0f42353863429f2098dd4384f36188"
+        "branch" : "main",
+        "revision" : "e6a4cc538b41065626c8efd08ba30d21202fcf73"
       }
     },
     {
