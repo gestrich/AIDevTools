@@ -3,6 +3,16 @@
 # PRRadar Daily Review Script
 # =============================================================================
 #
+# >>> CURRENTLY DISABLED (2026-05-15, until further notice) <<<
+# The launchd agent com.aidevtools.prradar.daily-review has been unloaded,
+# so this script will NOT run automatically. The plist is still on disk at:
+#   ~/Library/LaunchAgents/com.aidevtools.prradar.daily-review.plist
+# To re-enable the daily schedule:
+#   launchctl load ~/Library/LaunchAgents/com.aidevtools.prradar.daily-review.plist
+# To verify it's loaded:
+#   launchctl list | grep prradar
+#
+
 # SETUP: Fill in --config with your saved configuration name (see:
 #   ai-dev-tools-kit prradar config list
 # Then choose one of the scheduling options below.
