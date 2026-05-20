@@ -271,6 +271,32 @@ struct PRRadarContentView: View {
                 Spacer()
 
                 Button {
+                    runAllRulePathName = allPRsModel?.config.defaultRulePath?.name ?? ""
+                    showRunAllPopover = true
+                } label: {
+                    if let model = runsModel, case .running(_, let current, let total) = model.liveRunState {
+                        HStack(spacing: 4) {
+                            ProgressView()
+                                .controlSize(.small)
+                            if total > 0 {
+                                Text("\(current)/\(total)")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                            }
+                        }
+                        .fixedSize()
+                    } else {
+                        Image(systemName: "play.rectangle")
+                    }
+                }
+                .accessibilityIdentifier("analyzeAllButton")
+                .help("Run analysis on all PRs matching the current filter")
+                .disabled(isRunAllDisabled)
+                .popover(isPresented: $showRunAllPopover, arrowEdge: .bottom) {
+                    runAllPopover
+                }
+
+                Button {
                     newPRNumber = lastSearchedPRNumber
                     showNewReview = true
                 } label: {
