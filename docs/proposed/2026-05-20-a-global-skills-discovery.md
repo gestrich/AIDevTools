@@ -74,7 +74,10 @@ Files touched:
 - `AIDevToolsKit/Sources/Features/SkillBrowserFeature/LoadSkillsUseCase.swift`
 - (review) `AIDevToolsKit/Sources/Features/ChatFeature/ScanSkillsUseCase.swift`
 
-## - [ ] Phase 3: Wire defaults through Mac app + CLI composition
+## - [x] Phase 3: Wire defaults through Mac app + CLI composition
+
+**Skills used**: `ai-dev-tools-composition-root`
+**Principles applied**: Verified that all `LoadSkillsUseCase()` call sites (Mac `AIDevToolsKitMacEntryView` and CLI `SkillsCommand`) construct the use case with no overrides, so they transparently inherit the new `SkillScanner.defaultGlobalSkillsDirectories` default from the SDK. The composition root pattern is preserved — defaults live in the SDK, the Features layer forwards them, and the Apps layer accepts them implicitly without baking any path knowledge into platform code. No platform-specific override is wired today; configurable global skill paths via `SettingsService`/`DataPathsService` are deferred as a follow-up pending Bill's confirmation.
 
 **Skills to read**: `ai-dev-tools-composition-root`
 
