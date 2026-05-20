@@ -10,9 +10,15 @@ public struct SkillScanner: Sendable {
     public static let defaultGlobalCommandsDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".claude/commands")
 
+    public static let defaultGlobalSkillsDirectories: [URL] = [
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".agents/skills"),
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/skills")
+    ]
+
     public func scanSkills(
         at repositoryPath: URL,
-        globalCommandsDirectory: URL? = defaultGlobalCommandsDirectory
+        globalCommandsDirectory: URL? = defaultGlobalCommandsDirectory,
+        globalSkillsDirectories: [URL] = defaultGlobalSkillsDirectories
     ) throws -> [SkillInfo] {
         var skills: [SkillInfo] = []
         var visited: Set<String> = []
@@ -20,33 +26,7 @@ public struct SkillScanner: Sendable {
         // Skills directories (project)
         for relative in Self.skillsDirectories {
             let skillsDirectory = repositoryPath.appendingPathComponent(relative)
-            guard FileManager.default.fileExists(atPath: skillsDirectory.path) else { continue }
-
-            let resolved = skillsDirectory.resolvingSymlinksInPath()
-            guard visited.insert(resolved.path).inserted else { continue }
-
-            let contents = try FileManager.default.contentsOfDirectory(
-                at: resolved,
-                includingPropertiesForKeys: [.isDirectoryKey]
-            )
-
-            for item in contents {
-                let isDirectory = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-                if isDirectory {
-                    // Normalize: Linux adds trailing slash to directory URLs from contentsOfDirectory
-                    let itemPath = item.path
-                    let normalized = URL(fileURLWithPath: itemPath.hasSuffix("/") ? String(itemPath.dropLast()) : itemPath)
-                    let skillFile = normalized.appendingPathComponent("SKILL.md")
-                    if FileManager.default.fileExists(atPath: skillFile.path) {
-                        let name = normalized.lastPathComponent
-                        let refs = findReferenceFiles(in: normalized)
-                        skills.append(SkillInfo(name: name, path: normalized, referenceFiles: refs, source: .project))
-                    }
-                } else if item.pathExtension == "md" {
-                    let name = item.deletingPathExtension().lastPathComponent
-                    skills.append(SkillInfo(name: name, path: item, source: .project))
-                }
-            }
+            skills.append(contentsOf: try scanSkillsDirectory(skillsDirectory, source: .project, visited: &visited))
         }
 
         // Local commands directories (project)
@@ -69,9 +49,52 @@ public struct SkillScanner: Sendable {
             }
         }
 
+        // Global skills directories (user)
+        for globalSkillsDir in globalSkillsDirectories {
+            skills.append(contentsOf: try scanSkillsDirectory(globalSkillsDir, source: .user, visited: &visited))
+        }
+
+        // Precedence: project skills win over user skills when names collide.
+        let projectFirst = skills.filter { $0.source == .project } + skills.filter { $0.source == .user }
         var seen: Set<String> = []
-        let deduplicated = skills.filter { seen.insert($0.name).inserted }
+        let deduplicated = projectFirst.filter { seen.insert($0.name).inserted }
         return deduplicated.sorted { $0.name < $1.name }
+    }
+
+    private func scanSkillsDirectory(
+        _ directory: URL,
+        source: SkillSource,
+        visited: inout Set<String>
+    ) throws -> [SkillInfo] {
+        guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
+
+        let resolved = directory.resolvingSymlinksInPath()
+        guard visited.insert(resolved.path).inserted else { return [] }
+
+        let contents = try FileManager.default.contentsOfDirectory(
+            at: resolved,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        )
+
+        var results: [SkillInfo] = []
+        for item in contents {
+            let isDirectory = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            if isDirectory {
+                // Normalize: Linux adds trailing slash to directory URLs from contentsOfDirectory
+                let itemPath = item.path
+                let normalized = URL(fileURLWithPath: itemPath.hasSuffix("/") ? String(itemPath.dropLast()) : itemPath)
+                let skillFile = normalized.appendingPathComponent("SKILL.md")
+                if FileManager.default.fileExists(atPath: skillFile.path) {
+                    let name = normalized.lastPathComponent
+                    let refs = findReferenceFiles(in: normalized)
+                    results.append(SkillInfo(name: name, path: normalized, referenceFiles: refs, source: source))
+                }
+            } else if item.pathExtension == "md" {
+                let name = item.deletingPathExtension().lastPathComponent
+                results.append(SkillInfo(name: name, path: item, source: source))
+            }
+        }
+        return results
     }
 
     public func filterSkills(_ skills: [SkillInfo], query: String) -> [SkillInfo] {
