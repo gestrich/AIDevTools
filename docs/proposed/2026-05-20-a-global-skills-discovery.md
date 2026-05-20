@@ -105,7 +105,10 @@ Files touched:
 Files touched:
 - `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Views/SkillsContainer.swift`
 
-## - [ ] Phase 5: Validation
+## - [x] Phase 5: Validation
+
+**Skills used**: `ai-dev-tools-swift-testing`
+**Principles applied**: Added four new `@Test` cases in `SkillScannerTests` for global discovery, project-over-user precedence, empty-array opt-out, and symlink dedup — each using sentence-form names and strict Arrange-Act-Assert separation. Discovered that existing tests were silently leaking Bill's real `~/.agents/skills` into the temp-repo cases (the new default scanned home), and fixed it by adding `globalSkillsDirectories: []` to every existing call — analogous to the existing `globalCommandsDirectory: nil` opt-out. CLI smoke (`swift run ai-dev-tools-kit skills <repo>`) confirms user-source skills like `grill-me`, `slack-message`, `text-me` appear with `(user)` suffix and project skills win on name collisions. Mac app smoke deferred to Bill (requires interactive UI launch); UI screenshot test skipped — no Skills sidebar screenshot test exists in the current suite to extend. No `ai-dev-tools-enforce` violations expected: changes are test-only plus four single-arg additions in existing call sites.
 
 **Skills to read**: `ai-dev-tools-swift-testing`, `ai-dev-tools-ui-tests`, `ai-dev-tools-enforce`
 

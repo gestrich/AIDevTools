@@ -27,7 +27,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 2)
@@ -42,7 +42,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -58,7 +58,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.isEmpty)
@@ -71,7 +71,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.map(\.name) == ["alpha", "middle", "zebra"])
@@ -91,7 +91,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -119,7 +119,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -135,7 +135,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -157,7 +157,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 2)
@@ -173,7 +173,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -189,7 +189,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -203,7 +203,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -224,7 +224,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 3)
@@ -246,7 +246,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 2)
@@ -268,7 +268,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: globalDir)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: globalDir, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
@@ -291,7 +291,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: globalDir)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: globalDir, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 2)
@@ -315,13 +315,132 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 2)
         #expect(skills.map(\.name) == ["claude-only", "shared"])
         let shared = skills.first(where: { $0.name == "shared" })!
         #expect(shared.path.path.contains(".agents/commands"))
+    }
+
+    // MARK: - Global Skills Directories
+
+    @Test("discovers skills in global skills directories with user source") func globalSkillsAreDiscoveredWithUserSource() throws {
+        // Arrange
+        let repoDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let projectSkillsDir = repoDir.appendingPathComponent(".agents/skills")
+        let projectSkillSubdir = projectSkillsDir.appendingPathComponent("foo")
+        try FileManager.default.createDirectory(at: projectSkillSubdir, withIntermediateDirectories: true)
+        try "# Foo".write(to: projectSkillSubdir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+
+        let globalDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let globalSkillSubdir = globalDir.appendingPathComponent("bar")
+        try FileManager.default.createDirectory(at: globalSkillSubdir, withIntermediateDirectories: true)
+        try "# Bar".write(to: globalSkillSubdir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        defer { cleanup(repoDir); cleanup(globalDir) }
+        let scanner = SkillScanner()
+
+        // Act
+        let skills = try scanner.scanSkills(
+            at: repoDir,
+            globalCommandsDirectory: nil,
+            globalSkillsDirectories: [globalDir]
+        )
+
+        // Assert
+        #expect(skills.count == 2)
+        let foo = skills.first(where: { $0.name == "foo" })!
+        #expect(foo.source == .project)
+        let bar = skills.first(where: { $0.name == "bar" })!
+        #expect(bar.source == .user)
+    }
+
+    @Test("project skill wins over user skill when names collide") func projectSkillPrecedenceOverUserSkill() throws {
+        // Arrange
+        let repoDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let projectSkillsDir = repoDir.appendingPathComponent(".agents/skills")
+        let projectShared = projectSkillsDir.appendingPathComponent("shared")
+        try FileManager.default.createDirectory(at: projectShared, withIntermediateDirectories: true)
+        try "# Project shared".write(to: projectShared.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+
+        let globalDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let globalShared = globalDir.appendingPathComponent("shared")
+        try FileManager.default.createDirectory(at: globalShared, withIntermediateDirectories: true)
+        try "# Global shared".write(to: globalShared.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+        defer { cleanup(repoDir); cleanup(globalDir) }
+        let scanner = SkillScanner()
+
+        // Act
+        let skills = try scanner.scanSkills(
+            at: repoDir,
+            globalCommandsDirectory: nil,
+            globalSkillsDirectories: [globalDir]
+        )
+
+        // Assert
+        #expect(skills.count == 1)
+        #expect(skills[0].name == "shared")
+        #expect(skills[0].source == .project)
+        #expect(skills[0].path.path.contains(".agents/skills"))
+    }
+
+    @Test("empty global skills directories array produces no user-source skills") func emptyGlobalSkillsDirectoriesYieldsNoUserSkills() throws {
+        // Arrange
+        let repoDir = try makeTempRepo(skillFiles: ["only-project.md"])
+        defer { cleanup(repoDir) }
+        let scanner = SkillScanner()
+
+        // Act
+        let skills = try scanner.scanSkills(
+            at: repoDir,
+            globalCommandsDirectory: nil,
+            globalSkillsDirectories: []
+        )
+
+        // Assert
+        #expect(skills.count == 1)
+        #expect(skills.allSatisfy { $0.source == .project })
+    }
+
+    @Test("symlinked global skills directories do not duplicate entries") func symlinkedGlobalSkillsDirectoryIsDeduplicated() throws {
+        // Arrange
+        let repoDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: repoDir, withIntermediateDirectories: true)
+
+        let globalContainer = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let agentsDir = globalContainer.appendingPathComponent("agents/skills")
+        try FileManager.default.createDirectory(at: agentsDir, withIntermediateDirectories: true)
+        let onlySkill = agentsDir.appendingPathComponent("only")
+        try FileManager.default.createDirectory(at: onlySkill, withIntermediateDirectories: true)
+        try "# Only".write(to: onlySkill.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+
+        let claudeDir = globalContainer.appendingPathComponent("claude/skills")
+        try FileManager.default.createDirectory(
+            at: claudeDir.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(at: claudeDir, withDestinationURL: agentsDir)
+        defer { cleanup(repoDir); cleanup(globalContainer) }
+        let scanner = SkillScanner()
+
+        // Act
+        let skills = try scanner.scanSkills(
+            at: repoDir,
+            globalCommandsDirectory: nil,
+            globalSkillsDirectories: [agentsDir, claudeDir]
+        )
+
+        // Assert
+        #expect(skills.count == 1)
+        #expect(skills[0].name == "only")
+        #expect(skills[0].source == .user)
     }
 
     @Test("ignores non-markdown files in commands directory") func commandsIgnoresNonMarkdownFiles() throws {
@@ -334,7 +453,7 @@ struct SkillScannerTests {
         let scanner = SkillScanner()
 
         // Act
-        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil)
+        let skills = try scanner.scanSkills(at: repoDir, globalCommandsDirectory: nil, globalSkillsDirectories: [])
 
         // Assert
         #expect(skills.count == 1)
