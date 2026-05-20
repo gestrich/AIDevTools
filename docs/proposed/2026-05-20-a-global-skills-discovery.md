@@ -59,7 +59,10 @@ The fix is to teach the scanner to also walk user-level skill directories, threa
 Files touched:
 - `AIDevToolsKit/Sources/SDKs/SkillScannerSDK/SkillScanner.swift`
 
-## - [ ] Phase 2: Thread global skill dirs through `LoadSkillsUseCase`
+## - [x] Phase 2: Thread global skill dirs through `LoadSkillsUseCase`
+
+**Skills used**: `ai-dev-tools-architecture`, `swift-architecture`
+**Principles applied**: Added `globalSkillsDirectories: [URL]` parameter to `LoadSkillsUseCase.init` with a default of `SkillScanner.defaultGlobalSkillsDirectories`, so existing call sites compile unchanged and the Features layer stays free of any concrete path knowledge (it just forwards the SDK-supplied default). Captured both global parameters into locals before the detached task so the closure stays `Sendable` and doesn't capture `self`. Left `ScanSkillsUseCase` untouched — it already calls `scanner.scanSkills(at:)` with no overrides, so it inherits the new user-skills default automatically; no divergence comment needed.
 
 **Skills to read**: `ai-dev-tools-architecture`, `swift-architecture`
 
