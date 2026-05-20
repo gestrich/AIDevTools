@@ -42,7 +42,7 @@ struct SkillsContainer: View {
             showCreateSheet = true
         } content: {
             List(model.skills, id: \.name, selection: $selectedSkillName) { skill in
-                Text(skill.name)
+                SkillRow(skill: skill)
                     .tag(skill.name)
             }
             .listStyle(.sidebar)
@@ -65,6 +65,29 @@ struct SkillsContainer: View {
         } else {
             ContentUnavailableView("Select a Skill", systemImage: "star", description: Text("Choose a skill to view details."))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
+// MARK: - Skill Row
+
+private struct SkillRow: View {
+    let skill: SkillInfo
+
+    var body: some View {
+        HStack {
+            Text(skill.name)
+            Spacer()
+            if skill.source == .user {
+                Text("user")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule().fill(Color.secondary.opacity(0.15))
+                    )
+            }
         }
     }
 }

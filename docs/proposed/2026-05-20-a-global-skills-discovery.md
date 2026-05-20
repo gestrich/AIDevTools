@@ -91,7 +91,10 @@ Files touched:
 - (review) `AIDevToolsKit/Sources/Apps/AIDevToolsKitMac/Models/WorkspaceModel.swift`
 - (review) `AIDevToolsKit/Sources/Apps/AIDevToolsKitCLI/SkillsCommand.swift`
 
-## - [ ] Phase 4: Surface skill source in the Mac Skills sidebar
+## - [x] Phase 4: Surface skill source in the Mac Skills sidebar
+
+**Skills used**: `ai-dev-tools-code-quality`
+**Principles applied**: Extracted the row into a `SkillRow` subview so the badge logic stays local and the row remains the single source of truth for the sidebar's visual treatment. Used the typed `SkillSource.user` case directly rather than re-encoding the source as a string, so the badge can never silently diverge from the model. Selection stays keyed by `skill.name` (current behavior); Phase 1 dedup guarantees name lookup remains unambiguous.
 
 **Skills to read**: `ai-dev-tools-code-quality`
 
