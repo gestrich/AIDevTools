@@ -41,9 +41,27 @@ struct SkillsContainer: View {
         WorkspaceSidebar {
             showCreateSheet = true
         } content: {
-            List(model.skills, id: \.name, selection: $selectedSkillName) { skill in
-                SkillRow(skill: skill)
-                    .tag(skill.name)
+            List(selection: $selectedSkillName) {
+                let userSkills = model.skills.filter { $0.source == .user }
+                let otherSkills = model.skills.filter { $0.source != .user }
+
+                if !otherSkills.isEmpty {
+                    Section("Project") {
+                        ForEach(otherSkills, id: \.name) { skill in
+                            SkillRow(skill: skill)
+                                .tag(skill.name)
+                        }
+                    }
+                }
+
+                if !userSkills.isEmpty {
+                    Section("User") {
+                        ForEach(userSkills, id: \.name) { skill in
+                            SkillRow(skill: skill)
+                                .tag(skill.name)
+                        }
+                    }
+                }
             }
             .listStyle(.sidebar)
             .overlay {
