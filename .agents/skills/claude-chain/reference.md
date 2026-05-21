@@ -1,0 +1,208 @@
+# Claude Chain Reference
+
+## Workflow Details
+
+### Workflow File
+`.github/workflows/claude-chain.yml`
+
+- **Name**: `Claude Chain`
+- **Triggers**: `workflow_dispatch` (manual) or `pull_request` closed+merged touching `claude-chain/**`
+- **Concurrency**: Group `claude-chain`, no cancel-in-progress (queues)
+- **Runner**: `ubuntu-latest`
+
+### Statistics Workflow
+`.github/workflows/claude-chain-status.yml`
+
+- **Name**: `Claude Chain Status`
+- **Triggers**: Daily at 8 AM UTC cron, or manual dispatch
+- **Reports to**: Slack via `CLAUDE_CHAIN_SLACK_WEBHOOK_URL`
+
+## Triggering a Chain Run
+
+```bash
+gh workflow run "Claude Chain" \
+  --repo gestrich/AIDevTools \
+  --ref <base_branch> \
+  --field project_name=<project_name> \
+  --field base_branch=<base_branch>
+```
+
+The `--ref` must match the branch where the `claude-chain/<project_name>/spec.md` file exists. This is typically the same as `base_branch` from `configuration.yml`.
+
+### Examples
+
+```bash
+# Chain targeting main
+gh workflow run "Claude Chain" \
+  --repo gestrich/AIDevTools \
+  --ref main \
+  --field project_name=model-cli-parity \
+  --field base_branch=main
+
+# Chain targeting a feature branch
+gh workflow run "Claude Chain" \
+  --repo gestrich/AIDevTools \
+  --ref feature/my-branch \
+  --field project_name=my-project \
+  --field base_branch=feature/my-branch
+```
+
+## Fetching Workflow Logs
+
+```bash
+# List recent runs
+gh run list --repo gestrich/AIDevTools --workflow "Claude Chain" --limit 10
+
+# View a specific run
+gh run view <run_id> --repo gestrich/AIDevTools
+
+# Download logs
+gh run view <run_id> --repo gestrich/AIDevTools --log
+```
+
+## Fetching PR Summary Comments
+
+When ClaudeChain finishes creating a PR, it posts a summary comment (from `devops_jepp`) containing:
+- **`## ClaudeChain Summary`** — description of what was changed and why
+- **`## 💰 Cost Breakdown`** — token usage and cost per model
+- A link to the workflow run that generated the PR
+
+This comment is the primary source of context for understanding what a chain PR does.
+
+```bash
+# Summary for a specific PR
+scripts/chain-summary.sh <pr_number>
+
+# Summaries for all open chain PRs
+scripts/chain-summary.sh all
+
+# Summaries for a specific project's open PRs
+scripts/chain-summary.sh all <project_name>
+```
+
+Or manually:
+```bash
+gh pr view <pr_number> --repo gestrich/AIDevTools --json comments \
+  --jq '.comments[] | select(.author.login == "devops_jepp") | .body'
+```
+
+## Finding Open Chain PRs
+
+```bash
+# All open chain PRs
+gh pr list --repo gestrich/AIDevTools --label claudechain --state open \
+  --json number,title,headRefName,baseRefName,labels
+
+# Filter by project name (branch contains project name)
+gh pr list --repo gestrich/AIDevTools --label claudechain --state open \
+  --json number,title,headRefName,baseRefName \
+  --jq '[.[] | select(.headRefName | contains("model-cli-parity"))]'
+```
+
+## Rebasing Chain Branches
+
+For each open chain PR, rebase its branch onto the current base:
+
+```bash
+git fetch origin
+git checkout <head_branch>
+git rebase origin/<base_branch>
+git push --force-with-lease
+```
+
+**Always confirm force-push with the user.** Chain branches are ephemeral (auto-generated), so force-push is generally safe, but confirm anyway.
+
+## Checking Chain Capacity
+
+Capacity = (unchecked tasks in spec.md) - (open PRs for that project)
+
+### Reading spec.md from a remote branch
+```bash
+# Get spec from remote branch without checking it out
+gh api repos/gestrich/AIDevTools/contents/claude-chain/<project>/spec.md \
+  --jq '.content' -H "Accept: application/vnd.github.v3+json" | base64 -d
+
+# Count unchecked tasks
+gh api repos/gestrich/AIDevTools/contents/claude-chain/<project>/spec.md \
+  --jq '.content' -H "Accept: application/vnd.github.v3+json" \
+  --field ref=<base_branch> | base64 -d | grep -c '^\- \[ \]'
+
+# Count open PRs for this project
+gh pr list --repo gestrich/AIDevTools --label claudechain --state open \
+  --json headRefName --jq '[.[] | select(.headRefName | contains("<project>"))] | length'
+```
+
+## Creating a New Chain Project
+
+### 1. Create the directory
+```bash
+mkdir -p claude-chain/<project-name>
+```
+
+### 2. Create configuration.yml
+```yaml
+assignee: gestrich
+baseBranch: main
+labels: all_tests
+```
+
+Additional optional fields:
+- `allowedTools`: Override tool permissions (default from workflow: `Read,Write,Edit,Bash(git add:*),Bash(git commit:*)`)
+
+### 3. Create spec.md
+```markdown
+# Project Title
+
+Description of what this chain accomplishes and how each task should be performed.
+
+## Instructions
+
+Step-by-step instructions for Claude to follow on each task.
+
+## Tasks
+
+- [ ] First task description
+- [ ] Second task description
+- [ ] Third task description
+```
+
+Tasks must use `- [ ]` checkbox syntax. They can be grouped under headings. Text between tasks is treated as context for Claude.
+
+### 4. Create pr-template.md (optional)
+```markdown
+## Details
+Description of the chain's purpose.
+
+{{TASK_DESCRIPTION}}
+
+This PR was generated by [ClaudeChain](https://github.com/gestrich/AIDevTools), an AI tool for automatically staging refactors.
+
+## Testing notes
+QA not needed - no functional impact; safe if build passes.
+```
+
+### 5. Create pre-action.sh / post-action.sh (optional)
+```bash
+#!/bin/bash
+echo "Pre-action script completed successfully"
+```
+
+If your chain needs build tools (e.g., XcodeGen, CodeOwner), install them in `pre-action.sh`.
+
+### 6. Commit and push to the base branch
+The chain won't start until `spec.md` exists on the base branch. Then either:
+- Merge a PR that touches `claude-chain/**` (auto-triggers), or
+- Manually dispatch the workflow
+
+## Configuration Reference
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `assignee` | (none) | GitHub username assigned to PRs |
+| `baseBranch` | `main` | Branch PRs target and chain reads spec from |
+| `labels` | (none) | Comma-separated labels applied to PRs (in addition to `claudechain`) |
+| `allowedTools` | workflow default | Override Claude's tool permissions |
+
+## Branch Naming
+
+Chain PRs use branches named `claude-chain-{project-name}-{8-char-hash}`. Multiple PRs for the same project will have different hashes.
