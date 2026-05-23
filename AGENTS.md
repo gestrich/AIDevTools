@@ -2,6 +2,7 @@
 - When the user describes a problem with the app, reports an error, or posts a screenshot showing an issue, use the `ai-dev-tools-debug` skill first to check logs before investigating code.
 - Skills live in `.agents/skills/` (Codex convention). `.claude/skills` is a symlink to `.agents/skills` so Claude discovers them too. New skills should be created in `.agents/skills/`.
 - Keep lists sorted alphabetically when the order doesn't need to be logical (e.g., Package.swift targets, CLI command definitions, enum cases, imports).
+- `AIDevTools.xcodeproj` is generated from `project.yml` by XcodeGen and is gitignored. To regenerate, run `scripts/generate-xcodeproj.sh` (not bare `xcodegen generate` — the wrapper also writes `xcshareddata/WorkspaceSettings.xcsettings` with `IDEWorkspaceSharedSettings_AutocreateContextsIfNeeded=false`, which XcodeGen has no native option for; without it Xcode prompts "Autocreate Schemes" on every open because of the many transitive Swift Package targets). `DEVELOPMENT_TEAM` is read from `Local.xcconfig` (gitignored; copy `Local.xcconfig.example`) — never hardcode the team in `project.yml`.
 
 
 ### Skills to use
