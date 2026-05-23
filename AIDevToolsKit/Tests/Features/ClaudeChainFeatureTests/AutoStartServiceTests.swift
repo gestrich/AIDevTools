@@ -11,16 +11,16 @@ final class AutoStartServiceTests: XCTestCase {
     // MARK: - Test detect_changed_projects() method
     
     func testDetectAddedProject() async throws {
-        // Mock PRService
+        // Placeholder test that invokes the real GitClient with bogus refs.
+        // On Linux CI this falls through to `git fetch origin abc123 --depth 1`
+        // which hangs indefinitely on current ubuntu-latest images, so skip there
+        // until GitClient is mockable. macOS git fails fast and runs in <1s.
+        #if os(Linux)
+        throw XCTSkip("calls real git; hangs on ubuntu-latest — needs GitClient mock support")
+        #else
         let mockPRService = TestMockPRService(repo: "owner/repo")
         let service = AutoStartService(repo: "owner/repo", prService: mockPRService)
 
-        // Note: This test would require mocking GitClient, which would need refactoring
-        // to make the methods mockable. For now, we'll test the public interface behavior
-        // The actual implementation calls GitClient.diffChangedFiles and GitClient.diffDeletedFiles
-
-        // This is a placeholder test showing the expected behavior
-        // In practice, we'd need to mock the infrastructure dependencies
         let projects = try await service.detectChangedProjects(refBefore: "abc123", refAfter: "def456")
 
         // The method should return projects found by GitClient
@@ -28,6 +28,7 @@ final class AutoStartServiceTests: XCTestCase {
             project.changeType == .modified || project.changeType == .deleted
         }
         XCTAssertTrue(isValidProjectList)
+        #endif
     }
     
     // MARK: - Test determine_new_projects() method
